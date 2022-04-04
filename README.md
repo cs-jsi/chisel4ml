@@ -1,2 +1,5 @@
 # Chisel4ml
 Chisel4ml is an open-source library for generating dataflow architectures inspired by the hls4ml library.
+
+
+Run "sbt assembly" to build a standalone .jar executable.

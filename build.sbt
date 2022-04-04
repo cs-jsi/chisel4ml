@@ -4,6 +4,11 @@ ThisBuild / organization     := "JSI"
 
 Compile / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "main"
 
+ThisBuild / assemblyMergeStrategy := {
+    case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
+    case _ => MergeStrategy.first
+}
+
 val chiselVersion = "3.5.1"
 
 lazy val root = (project in file("."))
