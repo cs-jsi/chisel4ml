@@ -3,6 +3,7 @@ ThisBuild / version          := "0.1.0"
 ThisBuild / organization     := "JSI"
 
 Compile / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "main"
+Compile / scalaSource += baseDirectory.value / "chisel4ml" / "scala" / "lbir"
 
 ThisBuild / assemblyMergeStrategy := {
     case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard

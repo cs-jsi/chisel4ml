@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package chisel4ml;
+
+option java_multiple_files = true;
+option java_package = "lbir";
+option java_outer_classname = "ModelProtos";
+
+message Model {
+    string name = 1;
+    repeated Layer layers = 2;
+}
+
+message Layer {
+    enum LayerType {
+        DENSE  = 0;
+        CONV2D = 1;
+    }
+
+    LayerType layer_type = 1;
+    bool use_bias = 2;
+    QTensor weights = 3;
+    QTensor biases  = 4;
+    Quantizer input_quantizer = 5;
+}
+
+message QTensor {
+    Quantizer quantizer = 1;
+    repeated float values = 2;
+}
+
+message Quantizer {
+    enum QuantizerType {
+        SYMMETRIC_UNIFORM_PO2 = 0;
+        BINARY_SIGN = 1;
+    }
+
+    QuantizerType quantizer_type = 1;
+    uint32 bit_width = 2;
+    float scale = 3;
+    float offset = 4;
+}
