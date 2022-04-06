@@ -44,3 +44,8 @@ bin/
 #general
 *.class
 *.swp
+
+# python package build and venv
+*.egg-info/
+venv/
+__pycache__
