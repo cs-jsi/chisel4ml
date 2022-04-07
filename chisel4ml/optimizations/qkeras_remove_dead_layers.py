@@ -3,8 +3,8 @@ from tensorflow.keras.layers import Layer as KerasLayer
 
 from typing import List
 
-from optimizations.qkeras_optimization import QKerasOptimization
-from optimizations import register_qkeras_transform
+from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
+from chisel4ml.optimizations import register_qkeras_transform
 
 
 @register_qkeras_transform([tf.keras.layers.Dropout,
