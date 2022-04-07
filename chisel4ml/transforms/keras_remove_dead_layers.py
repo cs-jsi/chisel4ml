@@ -14,7 +14,7 @@ class KerasRemoveDeadLayersTransform(KerasLbirTransform):
         _dead_layers = ["Dropout", 
                         "InputLayer"]
 
-    def is_applicable(self, layers : Tuple[tf.keras.Layer, ...]) -> lbir:Layer:
+    def is_applicable(self, layers : Tuple[tf.keras.Layer]) -> lbir.Layer:
         return layers[0].__name__ in _dead_layers
 
     def __call__(self, layers : Tuple[tf.keras.Layer]) -> lbir.Layer:
