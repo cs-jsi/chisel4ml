@@ -2,11 +2,14 @@
 __all__ = ["qkeras_opt_factory"]
 
 from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
+from tensorflow.keras.layers import Layer as KerasLayer
 
 import os
 import importlib
+from typing import Dict
 
-__QKERAS_OPT_DICT__ = dict()
+__QKERAS_OPT_DICT__: Dict[KerasLayer, QKerasOptimization] = dict()
+
 
 def qkeras_opt_factory(name):
     return __QKERAS_OPT_DICT__[name.__class__]
@@ -32,4 +35,3 @@ for file in os.listdir(os.path.dirname(__file__)):
     if file.endswith('.py') and not file.startswith('_'):
         module_name = file[:file.find('.py')]
         module = importlib.import_module('chisel4ml.optimizations.' + module_name)
-

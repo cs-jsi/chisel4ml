@@ -12,7 +12,5 @@ from chisel4ml.optimizations import register_qkeras_transform
 class QKerasRemoveDeadLayersOptimization(QKerasOptimization):
     num_layers = 1
 
-    def __call__(self, layers : List[KerasLayer]) -> List[KerasLayer]:
+    def __call__(self, layers: List[KerasLayer]) -> List[KerasLayer]:
         return []
-
-

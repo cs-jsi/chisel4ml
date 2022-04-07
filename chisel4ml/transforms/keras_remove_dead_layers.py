@@ -1,23 +1,19 @@
 import tensorflow as tf
 
-from typing import Tuple
+from chisel4ml.transforms.transform import KerasLbirTransform
+from chisel4ml.transforms import register_keras_transform
 
-from transforms.transform import KerasLbirTransform
-import LBIR_pb2 as lbir
+import chisel4ml.lbir_python.lbir_pb2 as lbir
 
 
 @register_keras_transform("keras_remove_dead_layers")
 class KerasRemoveDeadLayersTransform(KerasLbirTransform):
     def __init__(self):
-        num_layers = 1
+        self._dead_layers = ["Dropout",
+                             "InputLayer"]
 
-        _dead_layers = ["Dropout", 
-                        "InputLayer"]
+    def is_applicable(self, layer: tf.keras.Layer) -> lbir.Layer:
+        return layer.__name__ in self._dead_layers
 
-    def is_applicable(self, layers : Tuple[tf.keras.Layer]) -> lbir.Layer:
-        return layers[0].__name__ in _dead_layers
-
-    def __call__(self, layers : Tuple[tf.keras.Layer]) -> lbir.Layer:
+    def __call__(self, layer: tf.keras.Layer) -> lbir.Layer:
         return ()
-
-
