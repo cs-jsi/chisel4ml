@@ -16,7 +16,7 @@ def optimize_model(model):
     for _ in range(MAX_PASSES):
         for i, layer in enumerate(list(layers)):
             opt = qkeras_opt_factory(layer)
-            layers[i:i+opt.num_layers] = opt([layer])
+            layers[i:i+opt.num_layers] = opt(layers[i:i+opt.num_layers])
 
     # Re-create the model
     new_model = tf.keras.models.Sequential()
