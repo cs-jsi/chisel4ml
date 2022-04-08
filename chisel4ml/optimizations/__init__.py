@@ -7,8 +7,16 @@ from tensorflow.keras.layers import Layer as KerasLayer
 import os
 import importlib
 from typing import Dict
+from collections import defaultdict
 
-__QKERAS_OPT_DICT__: Dict[KerasLayer, QKerasOptimization] = dict()
+class KeyDict(defaultdict):
+    """ The defaultdict dictonary doesn't have the option to use arguments in the lambda function. When we encounter
+        a missing key (unknown layer) we return a function, that returns that layer as is.
+    """
+    def __missing__(self, key):
+        return lambda x: x
+                
+__QKERAS_OPT_DICT__: Dict[KerasLayer, QKerasOptimization] = KeyDict()
 
 
 def qkeras_opt_factory(name):
