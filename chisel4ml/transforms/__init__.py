@@ -20,11 +20,12 @@ def qkeras_transform_factory(keras_layer):
 def register_qkeras_transform(keras_layer):
     def register_qkeras_transform_fn(fn):
         if keras_layer.__class__ in __QKERAS_TRANSFORM_DICT__:
-            raise ValueError(f"Transform for {name} already registered!")
+            raise ValueError(f"Transform for {keras_layer} already registered!")
         __QKERAS_TRANSFORM_DICT__[keras_layer] = fn
         return fn
 
     return register_qkeras_transform_fn
+
 
 for file in os.listdir(os.path.dirname(__file__)):
     if file.endswith('.py') and not file.startswith('_'):
