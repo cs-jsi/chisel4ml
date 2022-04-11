@@ -335,11 +335,11 @@ object Layer extends scalapb.GeneratedMessageCompanion[lbir.Layer] {
     def height: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Int] = field(_.height)((c_, f_) => c_.copy(height = f_))
     def channels: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Int] = field(_.channels)((c_, f_) => c_.copy(channels = f_))
   }
-  final val LAYER_TYPE_FIELD_NUMBER = 1
+  final val LAYERTYPE_FIELD_NUMBER = 1
   final val USE_BIAS_FIELD_NUMBER = 2
   final val WEIGHTS_FIELD_NUMBER = 3
   final val BIASES_FIELD_NUMBER = 4
-  final val INPUT_QUANTIZER_FIELD_NUMBER = 5
+  final val INPUTQUANTIZER_FIELD_NUMBER = 5
   final val WIDTH_FIELD_NUMBER = 6
   final val HEIGHT_FIELD_NUMBER = 7
   final val CHANNELS_FIELD_NUMBER = 8

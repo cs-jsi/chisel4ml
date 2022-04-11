@@ -17,11 +17,11 @@ message Layer {
         CONV2D = 1;
     }
 
-    LayerType layer_type = 1;
+    LayerType layerType = 1;
     bool use_bias = 2;
     QTensor weights = 3;
     QTensor biases  = 4;
-    Quantizer input_quantizer = 5;
+    Quantizer inputQuantizer = 5;
     uint32 width = 6;
     uint32 height = 7;
     uint32 channels = 8;
@@ -39,8 +39,8 @@ message Quantizer {
         BINARY_PO2 = 2;
     }
 
-    QuantizerType type = 1;
-    uint32 bit_width = 2;
+    QuantizerType qtype = 1;
+    uint32 bitWidth = 2;
     float scale = 3;
     float offset = 4;
 }

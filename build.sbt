@@ -4,7 +4,6 @@ ThisBuild / organization     := "JSI"
 
 Compile / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "main"
 Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "scala" / "lbir"
-//Compile / packageBin / artifactPath := baseDirectory.value / "bin" / "chisel4ml.jar"
 crossTarget := baseDirectory.value / "bin"
 assembly / assemblyJarName  := "chisel4ml.jar"
 
@@ -13,8 +12,10 @@ ThisBuild / assemblyMergeStrategy := {
     case _ => MergeStrategy.first
 }
 
+PB.deleteTargetDirectory := false
+Compile / PB.protoSources := Seq(baseDirectory.value / "chisel4ml")
 Compile / PB.targets := Seq(
-  scalapb.gen() -> (Compile / sourceManaged).value / "scalapb"
+  scalapb.gen(flatPackage = true) ->  baseDirectory.value / "chisel4ml" / "scala"
 )
 
 val chiselVersion = "3.5.1"
