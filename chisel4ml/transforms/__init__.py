@@ -1,35 +1,32 @@
 # models.__init__.py
-__all__ = ["keras_transform_factory"]
+__all__ = ["qkeras_transform_factory"]
 
 import os
 import importlib
 from typing import Dict
 
 from tensorflow.keras.layers import Layer as KerasLayer
-from chisel4ml.transforms.keras_lbir_transform import KerasLbirTransform
 from chisel4ml.lbir_python.lbir_pb2 import Layer as LbirLayer
 
-__KERAS_TRANSFORM_DICT__: Dict[KerasLayer, LbirLayer] = dict()
+__QKERAS_TRANSFORM_DICT__: Dict[KerasLayer, LbirLayer] = dict()
 
 
-def keras_transform_factory(name):
-    return __KERAS_TRANSFORM_DICT__[name]
+def qkeras_transform_factory(keras_layer):
+    assert keras_layer.__class__ in __QKERAS_TRANSFORM_DICT__, \
+            f"Layer {keras_layer.__class__} is not (yet) supported by chisel4ml. Sorry about that."
+    return __QKERAS_TRANSFORM_DICT__[keras_layer.__class__]
 
 
-def register_keras_transform(name):
-    def register_keras_transform_fn(cls):
-        if name in __KERAS_TRANSFORM_DICT__:
-            raise ValueError("Name %s already registered!" % name)
-        if not issubclass(cls, KerasLbirTransform):
-            raise ValueError("Class %s is not a subclass of %s" % (cls, KerasLbirTransform))
+def register_qkeras_transform(keras_layer):
+    def register_qkeras_transform_fn(fn):
+        if keras_layer.__class__ in __QKERAS_TRANSFORM_DICT__:
+            raise ValueError(f"Transform for {name} already registered!")
+        __QKERAS_TRANSFORM_DICT__[keras_layer] = fn
+        return fn
 
-        __KERAS_TRANSFORM_DICT__[name] = cls
-        return cls
-
-    return register_keras_transform_fn
-
+    return register_qkeras_transform_fn
 
 for file in os.listdir(os.path.dirname(__file__)):
     if file.endswith('.py') and not file.startswith('_'):
         module_name = file[:file.find('.py')]
-        module = importlib.import_module('transforms.' + module_name)
+        module = importlib.import_module('chisel4ml.transforms.' + module_name)

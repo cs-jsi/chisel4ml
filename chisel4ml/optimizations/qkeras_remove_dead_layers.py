@@ -4,11 +4,11 @@ from tensorflow.keras.layers import Layer as KerasLayer
 from typing import List
 
 from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
-from chisel4ml.optimizations import register_qkeras_transform
+from chisel4ml.optimizations import register_qkeras_optimization
 
 
-@register_qkeras_transform([tf.keras.layers.Dropout,
-                            tf.keras.layers.InputLayer])
+@register_qkeras_optimization([tf.keras.layers.Dropout,
+                               tf.keras.layers.InputLayer])
 class QKerasRemoveDeadLayersOptimization(QKerasOptimization):
     num_layers = 1
 

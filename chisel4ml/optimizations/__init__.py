@@ -27,11 +27,11 @@ def qkeras_opt_factory(name):
     return __QKERAS_OPT_DICT__[name.__class__]
 
 
-def register_qkeras_transform(class_list):
+def register_qkeras_optimization(class_list):
     if not isinstance(class_list, list):
         class_list = [class_list]
 
-    def register_qkeras_transform_fn(cls):
+    def register_qkeras_optimization_fn(cls):
         if not issubclass(cls, QKerasOptimization):
             raise ValueError(f"Class {cls} is not a subclass of {QKerasOptimization}!")
         for c in class_list:
@@ -40,7 +40,7 @@ def register_qkeras_transform(class_list):
             __QKERAS_OPT_DICT__[c] = cls()
         return cls
 
-    return register_qkeras_transform_fn
+    return register_qkeras_optimization_fn
 
 
 for file in os.listdir(os.path.dirname(__file__)):

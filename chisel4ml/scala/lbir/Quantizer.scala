@@ -7,7 +7,7 @@ package lbir
 
 @SerialVersionUID(0L)
 final case class Quantizer(
-    quantizerType: lbir.Quantizer.QuantizerType = lbir.Quantizer.QuantizerType.SYMMETRIC_UNIFORM_PO2,
+    `type`: lbir.Quantizer.QuantizerType = lbir.Quantizer.QuantizerType.SYMMETRIC_UNIFORM_PO2,
     bitWidth: _root_.scala.Int = 0,
     scale: _root_.scala.Float = 0.0f,
     offset: _root_.scala.Float = 0.0f,
@@ -19,7 +19,7 @@ final case class Quantizer(
       var __size = 0
       
       {
-        val __value = quantizerType.value
+        val __value = `type`.value
         if (__value != 0) {
           __size += _root_.com.google.protobuf.CodedOutputStream.computeEnumSize(1, __value)
         }
@@ -58,7 +58,7 @@ final case class Quantizer(
     }
     def writeTo(`_output__`: _root_.com.google.protobuf.CodedOutputStream): _root_.scala.Unit = {
       {
-        val __v = quantizerType.value
+        val __v = `type`.value
         if (__v != 0) {
           _output__.writeEnum(1, __v)
         }
@@ -83,7 +83,7 @@ final case class Quantizer(
       };
       unknownFields.writeTo(_output__)
     }
-    def withQuantizerType(__v: lbir.Quantizer.QuantizerType): Quantizer = copy(quantizerType = __v)
+    def withType(__v: lbir.Quantizer.QuantizerType): Quantizer = copy(`type` = __v)
     def withBitWidth(__v: _root_.scala.Int): Quantizer = copy(bitWidth = __v)
     def withScale(__v: _root_.scala.Float): Quantizer = copy(scale = __v)
     def withOffset(__v: _root_.scala.Float): Quantizer = copy(offset = __v)
@@ -92,7 +92,7 @@ final case class Quantizer(
     def getFieldByNumber(__fieldNumber: _root_.scala.Int): _root_.scala.Any = {
       (__fieldNumber: @_root_.scala.unchecked) match {
         case 1 => {
-          val __t = quantizerType.javaValueDescriptor
+          val __t = `type`.javaValueDescriptor
           if (__t.getNumber() != 0) __t else null
         }
         case 2 => {
@@ -112,7 +112,7 @@ final case class Quantizer(
     def getField(__field: _root_.scalapb.descriptors.FieldDescriptor): _root_.scalapb.descriptors.PValue = {
       _root_.scala.Predef.require(__field.containingMessage eq companion.scalaDescriptor)
       (__field.number: @_root_.scala.unchecked) match {
-        case 1 => _root_.scalapb.descriptors.PEnum(quantizerType.scalaValueDescriptor)
+        case 1 => _root_.scalapb.descriptors.PEnum(`type`.scalaValueDescriptor)
         case 2 => _root_.scalapb.descriptors.PInt(bitWidth)
         case 3 => _root_.scalapb.descriptors.PFloat(scale)
         case 4 => _root_.scalapb.descriptors.PFloat(offset)
@@ -126,7 +126,7 @@ final case class Quantizer(
 object Quantizer extends scalapb.GeneratedMessageCompanion[lbir.Quantizer] {
   implicit def messageCompanion: scalapb.GeneratedMessageCompanion[lbir.Quantizer] = this
   def parseFrom(`_input__`: _root_.com.google.protobuf.CodedInputStream): lbir.Quantizer = {
-    var __quantizerType: lbir.Quantizer.QuantizerType = lbir.Quantizer.QuantizerType.SYMMETRIC_UNIFORM_PO2
+    var __type: lbir.Quantizer.QuantizerType = lbir.Quantizer.QuantizerType.SYMMETRIC_UNIFORM_PO2
     var __bitWidth: _root_.scala.Int = 0
     var __scale: _root_.scala.Float = 0.0f
     var __offset: _root_.scala.Float = 0.0f
@@ -137,7 +137,7 @@ object Quantizer extends scalapb.GeneratedMessageCompanion[lbir.Quantizer] {
       _tag__ match {
         case 0 => _done__ = true
         case 8 =>
-          __quantizerType = lbir.Quantizer.QuantizerType.fromValue(_input__.readEnum())
+          __type = lbir.Quantizer.QuantizerType.fromValue(_input__.readEnum())
         case 16 =>
           __bitWidth = _input__.readUInt32()
         case 29 =>
@@ -152,7 +152,7 @@ object Quantizer extends scalapb.GeneratedMessageCompanion[lbir.Quantizer] {
       }
     }
     lbir.Quantizer(
-        quantizerType = __quantizerType,
+        `type` = __type,
         bitWidth = __bitWidth,
         scale = __scale,
         offset = __offset,
@@ -163,7 +163,7 @@ object Quantizer extends scalapb.GeneratedMessageCompanion[lbir.Quantizer] {
     case _root_.scalapb.descriptors.PMessage(__fieldsMap) =>
       _root_.scala.Predef.require(__fieldsMap.keys.forall(_.containingMessage eq scalaDescriptor), "FieldDescriptor does not match message type.")
       lbir.Quantizer(
-        quantizerType = lbir.Quantizer.QuantizerType.fromValue(__fieldsMap.get(scalaDescriptor.findFieldByNumber(1).get).map(_.as[_root_.scalapb.descriptors.EnumValueDescriptor]).getOrElse(lbir.Quantizer.QuantizerType.SYMMETRIC_UNIFORM_PO2.scalaValueDescriptor).number),
+        `type` = lbir.Quantizer.QuantizerType.fromValue(__fieldsMap.get(scalaDescriptor.findFieldByNumber(1).get).map(_.as[_root_.scalapb.descriptors.EnumValueDescriptor]).getOrElse(lbir.Quantizer.QuantizerType.SYMMETRIC_UNIFORM_PO2.scalaValueDescriptor).number),
         bitWidth = __fieldsMap.get(scalaDescriptor.findFieldByNumber(2).get).map(_.as[_root_.scala.Int]).getOrElse(0),
         scale = __fieldsMap.get(scalaDescriptor.findFieldByNumber(3).get).map(_.as[_root_.scala.Float]).getOrElse(0.0f),
         offset = __fieldsMap.get(scalaDescriptor.findFieldByNumber(4).get).map(_.as[_root_.scala.Float]).getOrElse(0.0f)
@@ -180,7 +180,7 @@ object Quantizer extends scalapb.GeneratedMessageCompanion[lbir.Quantizer] {
     }
   }
   lazy val defaultInstance = lbir.Quantizer(
-    quantizerType = lbir.Quantizer.QuantizerType.SYMMETRIC_UNIFORM_PO2,
+    `type` = lbir.Quantizer.QuantizerType.SYMMETRIC_UNIFORM_PO2,
     bitWidth = 0,
     scale = 0.0f,
     offset = 0.0f
@@ -189,6 +189,7 @@ object Quantizer extends scalapb.GeneratedMessageCompanion[lbir.Quantizer] {
     type EnumType = QuantizerType
     def isSymmetricUniformPo2: _root_.scala.Boolean = false
     def isBinarySign: _root_.scala.Boolean = false
+    def isBinaryPo2: _root_.scala.Boolean = false
     def companion: _root_.scalapb.GeneratedEnumCompanion[QuantizerType] = lbir.Quantizer.QuantizerType
     final def asRecognized: _root_.scala.Option[lbir.Quantizer.QuantizerType.Recognized] = if (isUnrecognized) _root_.scala.None else _root_.scala.Some(this.asInstanceOf[lbir.Quantizer.QuantizerType.Recognized])
   }
@@ -211,34 +212,42 @@ object Quantizer extends scalapb.GeneratedMessageCompanion[lbir.Quantizer] {
     }
     
     @SerialVersionUID(0L)
+    case object BINARY_PO2 extends QuantizerType(2) with QuantizerType.Recognized {
+      val index = 2
+      val name = "BINARY_PO2"
+      override def isBinaryPo2: _root_.scala.Boolean = true
+    }
+    
+    @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int) extends QuantizerType(unrecognizedValue) with _root_.scalapb.UnrecognizedEnum
     
-    lazy val values = scala.collection.immutable.Seq(SYMMETRIC_UNIFORM_PO2, BINARY_SIGN)
+    lazy val values = scala.collection.immutable.Seq(SYMMETRIC_UNIFORM_PO2, BINARY_SIGN, BINARY_PO2)
     def fromValue(__value: _root_.scala.Int): QuantizerType = __value match {
       case 0 => SYMMETRIC_UNIFORM_PO2
       case 1 => BINARY_SIGN
+      case 2 => BINARY_PO2
       case __other => Unrecognized(__other)
     }
     def javaDescriptor: _root_.com.google.protobuf.Descriptors.EnumDescriptor = lbir.Quantizer.javaDescriptor.getEnumTypes().get(0)
     def scalaDescriptor: _root_.scalapb.descriptors.EnumDescriptor = lbir.Quantizer.scalaDescriptor.enums(0)
   }
   implicit class QuantizerLens[UpperPB](_l: _root_.scalapb.lenses.Lens[UpperPB, lbir.Quantizer]) extends _root_.scalapb.lenses.ObjectLens[UpperPB, lbir.Quantizer](_l) {
-    def quantizerType: _root_.scalapb.lenses.Lens[UpperPB, lbir.Quantizer.QuantizerType] = field(_.quantizerType)((c_, f_) => c_.copy(quantizerType = f_))
+    def `type`: _root_.scalapb.lenses.Lens[UpperPB, lbir.Quantizer.QuantizerType] = field(_.`type`)((c_, f_) => c_.copy(`type` = f_))
     def bitWidth: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Int] = field(_.bitWidth)((c_, f_) => c_.copy(bitWidth = f_))
     def scale: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Float] = field(_.scale)((c_, f_) => c_.copy(scale = f_))
     def offset: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Float] = field(_.offset)((c_, f_) => c_.copy(offset = f_))
   }
-  final val QUANTIZER_TYPE_FIELD_NUMBER = 1
+  final val TYPE_FIELD_NUMBER = 1
   final val BIT_WIDTH_FIELD_NUMBER = 2
   final val SCALE_FIELD_NUMBER = 3
   final val OFFSET_FIELD_NUMBER = 4
   def of(
-    quantizerType: lbir.Quantizer.QuantizerType,
+    `type`: lbir.Quantizer.QuantizerType,
     bitWidth: _root_.scala.Int,
     scale: _root_.scala.Float,
     offset: _root_.scala.Float
   ): _root_.lbir.Quantizer = _root_.lbir.Quantizer(
-    quantizerType,
+    `type`,
     bitWidth,
     scale,
     offset

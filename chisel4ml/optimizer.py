@@ -14,7 +14,7 @@ def optimize_model(model):
     # Some layers are wrapped in other layers (pruning layer i.e.) in the first pass we unwrapp it and then
     # we apply other optimizations.
     for _ in range(MAX_PASSES):
-        for i, layer in enumerate(list(layers)):
+        for i, layer in enumerate(layers):  # TODO: is this safe?
             opt = qkeras_opt_factory(layer)
             layers[i:i+opt.num_layers] = opt(layers[i:i+opt.num_layers])
 
