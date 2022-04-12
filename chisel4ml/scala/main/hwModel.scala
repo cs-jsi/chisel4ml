@@ -5,7 +5,7 @@
  * This file contains the definition of the Model.
  */
 
-package mpbnn_hw_gen
+package chisel4ml
 
 import chisel3._
 import chisel3.util._
@@ -16,7 +16,7 @@ object hwModel (model : lbir.Model) extends Module {
 
   val hwLayers = new mutable.MutableList[Layer]() 
   
-  // This code should eventually become superfluous, the plan is to add an IR
+  // This code should eventually become superfluous, tVhe plan is to add an IR
   // that will already represent the conversion bellow. The hardware layers will 
   // then simply be parameterized by software layers.
   for (swLayer <- model.config.layers) {
