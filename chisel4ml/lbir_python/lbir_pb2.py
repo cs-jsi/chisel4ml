@@ -19,14 +19,14 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='chisel4ml',
   syntax='proto3',
   serialized_options=_b('\n\004lbirB\013ModelProtosP\001'),
-  serialized_pb=_b('\n\nlbir.proto\x12\tchisel4ml\"7\n\x05Model\x12\x0c\n\x04name\x18\x01 \x01(\t\x12 \n\x06layers\x18\x02 \x03(\x0b\x32\x10.chisel4ml.Layer\"\x96\x02\n\x05Layer\x12.\n\nlayer_type\x18\x01 \x01(\x0e\x32\x1a.chisel4ml.Layer.LayerType\x12\x10\n\x08use_bias\x18\x02 \x01(\x08\x12#\n\x07weights\x18\x03 \x01(\x0b\x32\x12.chisel4ml.QTensor\x12\"\n\x06\x62iases\x18\x04 \x01(\x0b\x32\x12.chisel4ml.QTensor\x12-\n\x0finput_quantizer\x18\x05 \x01(\x0b\x32\x14.chisel4ml.Quantizer\x12\r\n\x05width\x18\x06 \x01(\r\x12\x0e\n\x06height\x18\x07 \x01(\r\x12\x10\n\x08\x63hannels\x18\x08 \x01(\r\"\"\n\tLayerType\x12\t\n\x05\x44\x45NSE\x10\x00\x12\n\n\x06\x43ONV2D\x10\x01\"B\n\x07QTensor\x12\'\n\tquantizer\x18\x01 \x01(\x0b\x32\x14.chisel4ml.Quantizer\x12\x0e\n\x06values\x18\x02 \x03(\x02\"\xbc\x01\n\tQuantizer\x12\x30\n\x04type\x18\x01 \x01(\x0e\x32\".chisel4ml.Quantizer.QuantizerType\x12\x11\n\tbit_width\x18\x02 \x01(\r\x12\r\n\x05scale\x18\x03 \x01(\x02\x12\x0e\n\x06offset\x18\x04 \x01(\x02\"K\n\rQuantizerType\x12\x19\n\x15SYMMETRIC_UNIFORM_PO2\x10\x00\x12\x0f\n\x0b\x42INARY_SIGN\x10\x01\x12\x0e\n\nBINARY_PO2\x10\x02\x42\x15\n\x04lbirB\x0bModelProtosP\x01\x62\x06proto3')
+  serialized_pb=_b('\n\nlbir.proto\x12\tchisel4ml\"7\n\x05Model\x12\x0c\n\x04name\x18\x01 \x01(\t\x12 \n\x06layers\x18\x02 \x03(\x0b\x32\x10.chisel4ml.Layer\"\xee\x01\n\x05Layer\x12$\n\x05ltype\x18\x01 \x01(\x0e\x32\x15.chisel4ml.Layer.Type\x12\x10\n\x08use_bias\x18\x02 \x01(\x08\x12\"\n\x06\x62iases\x18\x03 \x01(\x0b\x32\x12.chisel4ml.QTensor\x12#\n\x07weights\x18\x04 \x01(\x0b\x32\x12.chisel4ml.QTensor\x12!\n\x05input\x18\x05 \x01(\x0b\x32\x12.chisel4ml.QTensor\x12\"\n\x06output\x18\x06 \x01(\x0b\x32\x12.chisel4ml.QTensor\"\x1d\n\x04Type\x12\t\n\x05\x44\x45NSE\x10\x00\x12\n\n\x06\x43ONV2D\x10\x01\"L\n\x07QTensor\x12\"\n\x05\x64type\x18\x01 \x01(\x0b\x32\x13.chisel4ml.Datatype\x12\r\n\x05shape\x18\x02 \x03(\r\x12\x0e\n\x06values\x18\x03 \x03(\x02\"\xc7\x01\n\x08\x44\x61tatype\x12:\n\x0cquantization\x18\x01 \x01(\x0e\x32$.chisel4ml.Datatype.QuantizationType\x12\x10\n\x08\x62itwidth\x18\x02 \x01(\r\x12\r\n\x05scale\x18\x03 \x01(\x02\x12\x0e\n\x06offset\x18\x04 \x01(\x02\"N\n\x10QuantizationType\x12\x19\n\x15SYMMETRIC_UNIFORM_PO2\x10\x00\x12\x0f\n\x0b\x42INARY_SIGN\x10\x01\x12\x0e\n\nBINARY_PO2\x10\x02\x42\x15\n\x04lbirB\x0bModelProtosP\x01\x62\x06proto3')
 )
 
 
 
-_LAYER_LAYERTYPE = _descriptor.EnumDescriptor(
-  name='LayerType',
-  full_name='chisel4ml.Layer.LayerType',
+_LAYER_TYPE = _descriptor.EnumDescriptor(
+  name='Type',
+  full_name='chisel4ml.Layer.Type',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -41,14 +41,14 @@ _LAYER_LAYERTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=327,
-  serialized_end=361,
+  serialized_start=292,
+  serialized_end=321,
 )
-_sym_db.RegisterEnumDescriptor(_LAYER_LAYERTYPE)
+_sym_db.RegisterEnumDescriptor(_LAYER_TYPE)
 
-_QUANTIZER_QUANTIZERTYPE = _descriptor.EnumDescriptor(
-  name='QuantizerType',
-  full_name='chisel4ml.Quantizer.QuantizerType',
+_DATATYPE_QUANTIZATIONTYPE = _descriptor.EnumDescriptor(
+  name='QuantizationType',
+  full_name='chisel4ml.Datatype.QuantizationType',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -67,10 +67,10 @@ _QUANTIZER_QUANTIZERTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=545,
-  serialized_end=620,
+  serialized_start=523,
+  serialized_end=601,
 )
-_sym_db.RegisterEnumDescriptor(_QUANTIZER_QUANTIZERTYPE)
+_sym_db.RegisterEnumDescriptor(_DATATYPE_QUANTIZATIONTYPE)
 
 
 _MODEL = _descriptor.Descriptor(
@@ -119,7 +119,7 @@ _LAYER = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='layer_type', full_name='chisel4ml.Layer.layer_type', index=0,
+      name='ltype', full_name='chisel4ml.Layer.ltype', index=0,
       number=1, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -133,44 +133,30 @@ _LAYER = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='weights', full_name='chisel4ml.Layer.weights', index=2,
+      name='biases', full_name='chisel4ml.Layer.biases', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='biases', full_name='chisel4ml.Layer.biases', index=3,
+      name='weights', full_name='chisel4ml.Layer.weights', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='input_quantizer', full_name='chisel4ml.Layer.input_quantizer', index=4,
+      name='input', full_name='chisel4ml.Layer.input', index=4,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='width', full_name='chisel4ml.Layer.width', index=5,
-      number=6, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='height', full_name='chisel4ml.Layer.height', index=6,
-      number=7, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='channels', full_name='chisel4ml.Layer.channels', index=7,
-      number=8, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
+      name='output', full_name='chisel4ml.Layer.output', index=5,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -179,7 +165,7 @@ _LAYER = _descriptor.Descriptor(
   ],
   nested_types=[],
   enum_types=[
-    _LAYER_LAYERTYPE,
+    _LAYER_TYPE,
   ],
   serialized_options=None,
   is_extendable=False,
@@ -188,7 +174,7 @@ _LAYER = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=83,
-  serialized_end=361,
+  serialized_end=321,
 )
 
 
@@ -200,15 +186,22 @@ _QTENSOR = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='quantizer', full_name='chisel4ml.QTensor.quantizer', index=0,
+      name='dtype', full_name='chisel4ml.QTensor.dtype', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='values', full_name='chisel4ml.QTensor.values', index=1,
-      number=2, type=2, cpp_type=6, label=3,
+      name='shape', full_name='chisel4ml.QTensor.shape', index=1,
+      number=2, type=13, cpp_type=3, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='values', full_name='chisel4ml.QTensor.values', index=2,
+      number=3, type=2, cpp_type=6, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -225,41 +218,41 @@ _QTENSOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=363,
-  serialized_end=429,
+  serialized_start=323,
+  serialized_end=399,
 )
 
 
-_QUANTIZER = _descriptor.Descriptor(
-  name='Quantizer',
-  full_name='chisel4ml.Quantizer',
+_DATATYPE = _descriptor.Descriptor(
+  name='Datatype',
+  full_name='chisel4ml.Datatype',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='type', full_name='chisel4ml.Quantizer.type', index=0,
+      name='quantization', full_name='chisel4ml.Datatype.quantization', index=0,
       number=1, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='bit_width', full_name='chisel4ml.Quantizer.bit_width', index=1,
+      name='bitwidth', full_name='chisel4ml.Datatype.bitwidth', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='scale', full_name='chisel4ml.Quantizer.scale', index=2,
+      name='scale', full_name='chisel4ml.Datatype.scale', index=2,
       number=3, type=2, cpp_type=6, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='offset', full_name='chisel4ml.Quantizer.offset', index=3,
+      name='offset', full_name='chisel4ml.Datatype.offset', index=3,
       number=4, type=2, cpp_type=6, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
@@ -270,7 +263,7 @@ _QUANTIZER = _descriptor.Descriptor(
   ],
   nested_types=[],
   enum_types=[
-    _QUANTIZER_QUANTIZERTYPE,
+    _DATATYPE_QUANTIZATIONTYPE,
   ],
   serialized_options=None,
   is_extendable=False,
@@ -278,23 +271,24 @@ _QUANTIZER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=432,
-  serialized_end=620,
+  serialized_start=402,
+  serialized_end=601,
 )
 
 _MODEL.fields_by_name['layers'].message_type = _LAYER
-_LAYER.fields_by_name['layer_type'].enum_type = _LAYER_LAYERTYPE
-_LAYER.fields_by_name['weights'].message_type = _QTENSOR
+_LAYER.fields_by_name['ltype'].enum_type = _LAYER_TYPE
 _LAYER.fields_by_name['biases'].message_type = _QTENSOR
-_LAYER.fields_by_name['input_quantizer'].message_type = _QUANTIZER
-_LAYER_LAYERTYPE.containing_type = _LAYER
-_QTENSOR.fields_by_name['quantizer'].message_type = _QUANTIZER
-_QUANTIZER.fields_by_name['type'].enum_type = _QUANTIZER_QUANTIZERTYPE
-_QUANTIZER_QUANTIZERTYPE.containing_type = _QUANTIZER
+_LAYER.fields_by_name['weights'].message_type = _QTENSOR
+_LAYER.fields_by_name['input'].message_type = _QTENSOR
+_LAYER.fields_by_name['output'].message_type = _QTENSOR
+_LAYER_TYPE.containing_type = _LAYER
+_QTENSOR.fields_by_name['dtype'].message_type = _DATATYPE
+_DATATYPE.fields_by_name['quantization'].enum_type = _DATATYPE_QUANTIZATIONTYPE
+_DATATYPE_QUANTIZATIONTYPE.containing_type = _DATATYPE
 DESCRIPTOR.message_types_by_name['Model'] = _MODEL
 DESCRIPTOR.message_types_by_name['Layer'] = _LAYER
 DESCRIPTOR.message_types_by_name['QTensor'] = _QTENSOR
-DESCRIPTOR.message_types_by_name['Quantizer'] = _QUANTIZER
+DESCRIPTOR.message_types_by_name['Datatype'] = _DATATYPE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 Model = _reflection.GeneratedProtocolMessageType('Model', (_message.Message,), dict(
@@ -318,12 +312,12 @@ QTensor = _reflection.GeneratedProtocolMessageType('QTensor', (_message.Message,
   ))
 _sym_db.RegisterMessage(QTensor)
 
-Quantizer = _reflection.GeneratedProtocolMessageType('Quantizer', (_message.Message,), dict(
-  DESCRIPTOR = _QUANTIZER,
+Datatype = _reflection.GeneratedProtocolMessageType('Datatype', (_message.Message,), dict(
+  DESCRIPTOR = _DATATYPE,
   __module__ = 'lbir_pb2'
-  # @@protoc_insertion_point(class_scope:chisel4ml.Quantizer)
+  # @@protoc_insertion_point(class_scope:chisel4ml.Datatype)
   ))
-_sym_db.RegisterMessage(Quantizer)
+_sym_db.RegisterMessage(Datatype)
 
 
 DESCRIPTOR._options = None

@@ -7,10 +7,20 @@ package lbir
 
 @SerialVersionUID(0L)
 final case class QTensor(
-    quantizer: _root_.scala.Option[lbir.Quantizer] = _root_.scala.None,
+    dtype: _root_.scala.Option[lbir.Datatype] = _root_.scala.None,
+    shape: _root_.scala.Seq[_root_.scala.Int] = _root_.scala.Seq.empty,
     values: _root_.scala.Seq[_root_.scala.Float] = _root_.scala.Seq.empty,
     unknownFields: _root_.scalapb.UnknownFieldSet = _root_.scalapb.UnknownFieldSet.empty
     ) extends scalapb.GeneratedMessage with scalapb.lenses.Updatable[QTensor] {
+    private[this] def shapeSerializedSize = {
+      if (__shapeSerializedSizeField == 0) __shapeSerializedSizeField = {
+        var __s: _root_.scala.Int = 0
+        shape.foreach(__i => __s += _root_.com.google.protobuf.CodedOutputStream.computeUInt32SizeNoTag(__i))
+        __s
+      }
+      __shapeSerializedSizeField
+    }
+    @transient private[this] var __shapeSerializedSizeField: _root_.scala.Int = 0
     private[this] def valuesSerializedSize = {
       4 * values.size
     }
@@ -18,10 +28,14 @@ final case class QTensor(
     private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
     private[this] def __computeSerializedValue(): _root_.scala.Int = {
       var __size = 0
-      if (quantizer.isDefined) {
-        val __value = quantizer.get
+      if (dtype.isDefined) {
+        val __value = dtype.get
         __size += 1 + _root_.com.google.protobuf.CodedOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       };
+      if (shape.nonEmpty) {
+        val __localsize = shapeSerializedSize
+        __size += 1 + _root_.com.google.protobuf.CodedOutputStream.computeUInt32SizeNoTag(__localsize) + __localsize
+      }
       if (values.nonEmpty) {
         val __localsize = valuesSerializedSize
         __size += 1 + _root_.com.google.protobuf.CodedOutputStream.computeUInt32SizeNoTag(__localsize) + __localsize
@@ -38,22 +52,31 @@ final case class QTensor(
       read
     }
     def writeTo(`_output__`: _root_.com.google.protobuf.CodedOutputStream): _root_.scala.Unit = {
-      quantizer.foreach { __v =>
+      dtype.foreach { __v =>
         val __m = __v
         _output__.writeTag(1, 2)
         _output__.writeUInt32NoTag(__m.serializedSize)
         __m.writeTo(_output__)
       };
-      if (values.nonEmpty) {
+      if (shape.nonEmpty) {
         _output__.writeTag(2, 2)
+        _output__.writeUInt32NoTag(shapeSerializedSize)
+        shape.foreach(_output__.writeUInt32NoTag)
+      };
+      if (values.nonEmpty) {
+        _output__.writeTag(3, 2)
         _output__.writeUInt32NoTag(valuesSerializedSize)
         values.foreach(_output__.writeFloatNoTag)
       };
       unknownFields.writeTo(_output__)
     }
-    def getQuantizer: lbir.Quantizer = quantizer.getOrElse(lbir.Quantizer.defaultInstance)
-    def clearQuantizer: QTensor = copy(quantizer = _root_.scala.None)
-    def withQuantizer(__v: lbir.Quantizer): QTensor = copy(quantizer = Option(__v))
+    def getDtype: lbir.Datatype = dtype.getOrElse(lbir.Datatype.defaultInstance)
+    def clearDtype: QTensor = copy(dtype = _root_.scala.None)
+    def withDtype(__v: lbir.Datatype): QTensor = copy(dtype = Option(__v))
+    def clearShape = copy(shape = _root_.scala.Seq.empty)
+    def addShape(__vs: _root_.scala.Int*): QTensor = addAllShape(__vs)
+    def addAllShape(__vs: Iterable[_root_.scala.Int]): QTensor = copy(shape = shape ++ __vs)
+    def withShape(__v: _root_.scala.Seq[_root_.scala.Int]): QTensor = copy(shape = __v)
     def clearValues = copy(values = _root_.scala.Seq.empty)
     def addValues(__vs: _root_.scala.Float*): QTensor = addAllValues(__vs)
     def addAllValues(__vs: Iterable[_root_.scala.Float]): QTensor = copy(values = values ++ __vs)
@@ -62,15 +85,17 @@ final case class QTensor(
     def discardUnknownFields = copy(unknownFields = _root_.scalapb.UnknownFieldSet.empty)
     def getFieldByNumber(__fieldNumber: _root_.scala.Int): _root_.scala.Any = {
       (__fieldNumber: @_root_.scala.unchecked) match {
-        case 1 => quantizer.orNull
-        case 2 => values
+        case 1 => dtype.orNull
+        case 2 => shape
+        case 3 => values
       }
     }
     def getField(__field: _root_.scalapb.descriptors.FieldDescriptor): _root_.scalapb.descriptors.PValue = {
       _root_.scala.Predef.require(__field.containingMessage eq companion.scalaDescriptor)
       (__field.number: @_root_.scala.unchecked) match {
-        case 1 => quantizer.map(_.toPMessage).getOrElse(_root_.scalapb.descriptors.PEmpty)
-        case 2 => _root_.scalapb.descriptors.PRepeated(values.iterator.map(_root_.scalapb.descriptors.PFloat(_)).toVector)
+        case 1 => dtype.map(_.toPMessage).getOrElse(_root_.scalapb.descriptors.PEmpty)
+        case 2 => _root_.scalapb.descriptors.PRepeated(shape.iterator.map(_root_.scalapb.descriptors.PInt(_)).toVector)
+        case 3 => _root_.scalapb.descriptors.PRepeated(values.iterator.map(_root_.scalapb.descriptors.PFloat(_)).toVector)
       }
     }
     def toProtoString: _root_.scala.Predef.String = _root_.scalapb.TextFormat.printToUnicodeString(this)
@@ -81,7 +106,8 @@ final case class QTensor(
 object QTensor extends scalapb.GeneratedMessageCompanion[lbir.QTensor] {
   implicit def messageCompanion: scalapb.GeneratedMessageCompanion[lbir.QTensor] = this
   def parseFrom(`_input__`: _root_.com.google.protobuf.CodedInputStream): lbir.QTensor = {
-    var __quantizer: _root_.scala.Option[lbir.Quantizer] = _root_.scala.None
+    var __dtype: _root_.scala.Option[lbir.Datatype] = _root_.scala.None
+    val __shape: _root_.scala.collection.immutable.VectorBuilder[_root_.scala.Int] = new _root_.scala.collection.immutable.VectorBuilder[_root_.scala.Int]
     val __values: _root_.scala.collection.immutable.VectorBuilder[_root_.scala.Float] = new _root_.scala.collection.immutable.VectorBuilder[_root_.scala.Float]
     var `_unknownFields__`: _root_.scalapb.UnknownFieldSet.Builder = null
     var _done__ = false
@@ -90,10 +116,20 @@ object QTensor extends scalapb.GeneratedMessageCompanion[lbir.QTensor] {
       _tag__ match {
         case 0 => _done__ = true
         case 10 =>
-          __quantizer = Option(__quantizer.fold(_root_.scalapb.LiteParser.readMessage[lbir.Quantizer](_input__))(_root_.scalapb.LiteParser.readMessage(_input__, _)))
-        case 21 =>
-          __values += _input__.readFloat()
+          __dtype = Option(__dtype.fold(_root_.scalapb.LiteParser.readMessage[lbir.Datatype](_input__))(_root_.scalapb.LiteParser.readMessage(_input__, _)))
+        case 16 =>
+          __shape += _input__.readUInt32()
         case 18 => {
+          val length = _input__.readRawVarint32()
+          val oldLimit = _input__.pushLimit(length)
+          while (_input__.getBytesUntilLimit > 0) {
+            __shape += _input__.readUInt32()
+          }
+          _input__.popLimit(oldLimit)
+        }
+        case 29 =>
+          __values += _input__.readFloat()
+        case 26 => {
           val length = _input__.readRawVarint32()
           val oldLimit = _input__.pushLimit(length)
           while (_input__.getBytesUntilLimit > 0) {
@@ -109,7 +145,8 @@ object QTensor extends scalapb.GeneratedMessageCompanion[lbir.QTensor] {
       }
     }
     lbir.QTensor(
-        quantizer = __quantizer,
+        dtype = __dtype,
+        shape = __shape.result(),
         values = __values.result(),
         unknownFields = if (_unknownFields__ == null) _root_.scalapb.UnknownFieldSet.empty else _unknownFields__.result()
     )
@@ -118,8 +155,9 @@ object QTensor extends scalapb.GeneratedMessageCompanion[lbir.QTensor] {
     case _root_.scalapb.descriptors.PMessage(__fieldsMap) =>
       _root_.scala.Predef.require(__fieldsMap.keys.forall(_.containingMessage eq scalaDescriptor), "FieldDescriptor does not match message type.")
       lbir.QTensor(
-        quantizer = __fieldsMap.get(scalaDescriptor.findFieldByNumber(1).get).flatMap(_.as[_root_.scala.Option[lbir.Quantizer]]),
-        values = __fieldsMap.get(scalaDescriptor.findFieldByNumber(2).get).map(_.as[_root_.scala.Seq[_root_.scala.Float]]).getOrElse(_root_.scala.Seq.empty)
+        dtype = __fieldsMap.get(scalaDescriptor.findFieldByNumber(1).get).flatMap(_.as[_root_.scala.Option[lbir.Datatype]]),
+        shape = __fieldsMap.get(scalaDescriptor.findFieldByNumber(2).get).map(_.as[_root_.scala.Seq[_root_.scala.Int]]).getOrElse(_root_.scala.Seq.empty),
+        values = __fieldsMap.get(scalaDescriptor.findFieldByNumber(3).get).map(_.as[_root_.scala.Seq[_root_.scala.Float]]).getOrElse(_root_.scala.Seq.empty)
       )
     case _ => throw new RuntimeException("Expected PMessage")
   }
@@ -128,28 +166,33 @@ object QTensor extends scalapb.GeneratedMessageCompanion[lbir.QTensor] {
   def messageCompanionForFieldNumber(__number: _root_.scala.Int): _root_.scalapb.GeneratedMessageCompanion[_] = {
     var __out: _root_.scalapb.GeneratedMessageCompanion[_] = null
     (__number: @_root_.scala.unchecked) match {
-      case 1 => __out = lbir.Quantizer
+      case 1 => __out = lbir.Datatype
     }
     __out
   }
   lazy val nestedMessagesCompanions: Seq[_root_.scalapb.GeneratedMessageCompanion[_ <: _root_.scalapb.GeneratedMessage]] = Seq.empty
   def enumCompanionForFieldNumber(__fieldNumber: _root_.scala.Int): _root_.scalapb.GeneratedEnumCompanion[_] = throw new MatchError(__fieldNumber)
   lazy val defaultInstance = lbir.QTensor(
-    quantizer = _root_.scala.None,
+    dtype = _root_.scala.None,
+    shape = _root_.scala.Seq.empty,
     values = _root_.scala.Seq.empty
   )
   implicit class QTensorLens[UpperPB](_l: _root_.scalapb.lenses.Lens[UpperPB, lbir.QTensor]) extends _root_.scalapb.lenses.ObjectLens[UpperPB, lbir.QTensor](_l) {
-    def quantizer: _root_.scalapb.lenses.Lens[UpperPB, lbir.Quantizer] = field(_.getQuantizer)((c_, f_) => c_.copy(quantizer = Option(f_)))
-    def optionalQuantizer: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Option[lbir.Quantizer]] = field(_.quantizer)((c_, f_) => c_.copy(quantizer = f_))
+    def dtype: _root_.scalapb.lenses.Lens[UpperPB, lbir.Datatype] = field(_.getDtype)((c_, f_) => c_.copy(dtype = Option(f_)))
+    def optionalDtype: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Option[lbir.Datatype]] = field(_.dtype)((c_, f_) => c_.copy(dtype = f_))
+    def shape: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Seq[_root_.scala.Int]] = field(_.shape)((c_, f_) => c_.copy(shape = f_))
     def values: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Seq[_root_.scala.Float]] = field(_.values)((c_, f_) => c_.copy(values = f_))
   }
-  final val QUANTIZER_FIELD_NUMBER = 1
-  final val VALUES_FIELD_NUMBER = 2
+  final val DTYPE_FIELD_NUMBER = 1
+  final val SHAPE_FIELD_NUMBER = 2
+  final val VALUES_FIELD_NUMBER = 3
   def of(
-    quantizer: _root_.scala.Option[lbir.Quantizer],
+    dtype: _root_.scala.Option[lbir.Datatype],
+    shape: _root_.scala.Seq[_root_.scala.Int],
     values: _root_.scala.Seq[_root_.scala.Float]
   ): _root_.lbir.QTensor = _root_.lbir.QTensor(
-    quantizer,
+    dtype,
+    shape,
     values
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[chisel4ml.QTensor])

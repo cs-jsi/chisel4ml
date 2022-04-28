@@ -5,16 +5,21 @@
 
 package lbir
 
+/** @param ltype
+  *   type is a python keyword
+  * @param input
+  *   no values, just shape / dtype
+  * @param output
+  *   also no values, but we need the dtype info
+  */
 @SerialVersionUID(0L)
 final case class Layer(
-    layerType: lbir.Layer.LayerType = lbir.Layer.LayerType.DENSE,
+    ltype: lbir.Layer.Type = lbir.Layer.Type.DENSE,
     useBias: _root_.scala.Boolean = false,
-    weights: _root_.scala.Option[lbir.QTensor] = _root_.scala.None,
     biases: _root_.scala.Option[lbir.QTensor] = _root_.scala.None,
-    inputQuantizer: _root_.scala.Option[lbir.Quantizer] = _root_.scala.None,
-    width: _root_.scala.Int = 0,
-    height: _root_.scala.Int = 0,
-    channels: _root_.scala.Int = 0,
+    weights: _root_.scala.Option[lbir.QTensor] = _root_.scala.None,
+    input: _root_.scala.Option[lbir.QTensor] = _root_.scala.None,
+    output: _root_.scala.Option[lbir.QTensor] = _root_.scala.None,
     unknownFields: _root_.scalapb.UnknownFieldSet = _root_.scalapb.UnknownFieldSet.empty
     ) extends scalapb.GeneratedMessage with scalapb.lenses.Updatable[Layer] {
     @transient
@@ -23,7 +28,7 @@ final case class Layer(
       var __size = 0
       
       {
-        val __value = layerType.value
+        val __value = ltype.value
         if (__value != 0) {
           __size += _root_.com.google.protobuf.CodedOutputStream.computeEnumSize(1, __value)
         }
@@ -35,38 +40,21 @@ final case class Layer(
           __size += _root_.com.google.protobuf.CodedOutputStream.computeBoolSize(2, __value)
         }
       };
-      if (weights.isDefined) {
-        val __value = weights.get
-        __size += 1 + _root_.com.google.protobuf.CodedOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
-      };
       if (biases.isDefined) {
         val __value = biases.get
         __size += 1 + _root_.com.google.protobuf.CodedOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       };
-      if (inputQuantizer.isDefined) {
-        val __value = inputQuantizer.get
+      if (weights.isDefined) {
+        val __value = weights.get
         __size += 1 + _root_.com.google.protobuf.CodedOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       };
-      
-      {
-        val __value = width
-        if (__value != 0) {
-          __size += _root_.com.google.protobuf.CodedOutputStream.computeUInt32Size(6, __value)
-        }
+      if (input.isDefined) {
+        val __value = input.get
+        __size += 1 + _root_.com.google.protobuf.CodedOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       };
-      
-      {
-        val __value = height
-        if (__value != 0) {
-          __size += _root_.com.google.protobuf.CodedOutputStream.computeUInt32Size(7, __value)
-        }
-      };
-      
-      {
-        val __value = channels
-        if (__value != 0) {
-          __size += _root_.com.google.protobuf.CodedOutputStream.computeUInt32Size(8, __value)
-        }
+      if (output.isDefined) {
+        val __value = output.get
+        __size += 1 + _root_.com.google.protobuf.CodedOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       };
       __size += unknownFields.serializedSize
       __size
@@ -81,7 +69,7 @@ final case class Layer(
     }
     def writeTo(`_output__`: _root_.com.google.protobuf.CodedOutputStream): _root_.scala.Unit = {
       {
-        val __v = layerType.value
+        val __v = ltype.value
         if (__v != 0) {
           _output__.writeEnum(1, __v)
         }
@@ -92,98 +80,73 @@ final case class Layer(
           _output__.writeBool(2, __v)
         }
       };
-      weights.foreach { __v =>
+      biases.foreach { __v =>
         val __m = __v
         _output__.writeTag(3, 2)
         _output__.writeUInt32NoTag(__m.serializedSize)
         __m.writeTo(_output__)
       };
-      biases.foreach { __v =>
+      weights.foreach { __v =>
         val __m = __v
         _output__.writeTag(4, 2)
         _output__.writeUInt32NoTag(__m.serializedSize)
         __m.writeTo(_output__)
       };
-      inputQuantizer.foreach { __v =>
+      input.foreach { __v =>
         val __m = __v
         _output__.writeTag(5, 2)
         _output__.writeUInt32NoTag(__m.serializedSize)
         __m.writeTo(_output__)
       };
-      {
-        val __v = width
-        if (__v != 0) {
-          _output__.writeUInt32(6, __v)
-        }
-      };
-      {
-        val __v = height
-        if (__v != 0) {
-          _output__.writeUInt32(7, __v)
-        }
-      };
-      {
-        val __v = channels
-        if (__v != 0) {
-          _output__.writeUInt32(8, __v)
-        }
+      output.foreach { __v =>
+        val __m = __v
+        _output__.writeTag(6, 2)
+        _output__.writeUInt32NoTag(__m.serializedSize)
+        __m.writeTo(_output__)
       };
       unknownFields.writeTo(_output__)
     }
-    def withLayerType(__v: lbir.Layer.LayerType): Layer = copy(layerType = __v)
+    def withLtype(__v: lbir.Layer.Type): Layer = copy(ltype = __v)
     def withUseBias(__v: _root_.scala.Boolean): Layer = copy(useBias = __v)
-    def getWeights: lbir.QTensor = weights.getOrElse(lbir.QTensor.defaultInstance)
-    def clearWeights: Layer = copy(weights = _root_.scala.None)
-    def withWeights(__v: lbir.QTensor): Layer = copy(weights = Option(__v))
     def getBiases: lbir.QTensor = biases.getOrElse(lbir.QTensor.defaultInstance)
     def clearBiases: Layer = copy(biases = _root_.scala.None)
     def withBiases(__v: lbir.QTensor): Layer = copy(biases = Option(__v))
-    def getInputQuantizer: lbir.Quantizer = inputQuantizer.getOrElse(lbir.Quantizer.defaultInstance)
-    def clearInputQuantizer: Layer = copy(inputQuantizer = _root_.scala.None)
-    def withInputQuantizer(__v: lbir.Quantizer): Layer = copy(inputQuantizer = Option(__v))
-    def withWidth(__v: _root_.scala.Int): Layer = copy(width = __v)
-    def withHeight(__v: _root_.scala.Int): Layer = copy(height = __v)
-    def withChannels(__v: _root_.scala.Int): Layer = copy(channels = __v)
+    def getWeights: lbir.QTensor = weights.getOrElse(lbir.QTensor.defaultInstance)
+    def clearWeights: Layer = copy(weights = _root_.scala.None)
+    def withWeights(__v: lbir.QTensor): Layer = copy(weights = Option(__v))
+    def getInput: lbir.QTensor = input.getOrElse(lbir.QTensor.defaultInstance)
+    def clearInput: Layer = copy(input = _root_.scala.None)
+    def withInput(__v: lbir.QTensor): Layer = copy(input = Option(__v))
+    def getOutput: lbir.QTensor = output.getOrElse(lbir.QTensor.defaultInstance)
+    def clearOutput: Layer = copy(output = _root_.scala.None)
+    def withOutput(__v: lbir.QTensor): Layer = copy(output = Option(__v))
     def withUnknownFields(__v: _root_.scalapb.UnknownFieldSet) = copy(unknownFields = __v)
     def discardUnknownFields = copy(unknownFields = _root_.scalapb.UnknownFieldSet.empty)
     def getFieldByNumber(__fieldNumber: _root_.scala.Int): _root_.scala.Any = {
       (__fieldNumber: @_root_.scala.unchecked) match {
         case 1 => {
-          val __t = layerType.javaValueDescriptor
+          val __t = ltype.javaValueDescriptor
           if (__t.getNumber() != 0) __t else null
         }
         case 2 => {
           val __t = useBias
           if (__t != false) __t else null
         }
-        case 3 => weights.orNull
-        case 4 => biases.orNull
-        case 5 => inputQuantizer.orNull
-        case 6 => {
-          val __t = width
-          if (__t != 0) __t else null
-        }
-        case 7 => {
-          val __t = height
-          if (__t != 0) __t else null
-        }
-        case 8 => {
-          val __t = channels
-          if (__t != 0) __t else null
-        }
+        case 3 => biases.orNull
+        case 4 => weights.orNull
+        case 5 => input.orNull
+        case 6 => output.orNull
       }
     }
     def getField(__field: _root_.scalapb.descriptors.FieldDescriptor): _root_.scalapb.descriptors.PValue = {
       _root_.scala.Predef.require(__field.containingMessage eq companion.scalaDescriptor)
       (__field.number: @_root_.scala.unchecked) match {
-        case 1 => _root_.scalapb.descriptors.PEnum(layerType.scalaValueDescriptor)
+        case 1 => _root_.scalapb.descriptors.PEnum(ltype.scalaValueDescriptor)
         case 2 => _root_.scalapb.descriptors.PBoolean(useBias)
-        case 3 => weights.map(_.toPMessage).getOrElse(_root_.scalapb.descriptors.PEmpty)
-        case 4 => biases.map(_.toPMessage).getOrElse(_root_.scalapb.descriptors.PEmpty)
-        case 5 => inputQuantizer.map(_.toPMessage).getOrElse(_root_.scalapb.descriptors.PEmpty)
-        case 6 => _root_.scalapb.descriptors.PInt(width)
-        case 7 => _root_.scalapb.descriptors.PInt(height)
-        case 8 => _root_.scalapb.descriptors.PInt(channels)
+        case 3 => biases.map(_.toPMessage).getOrElse(_root_.scalapb.descriptors.PEmpty)
+        case 4 => weights.map(_.toPMessage).getOrElse(_root_.scalapb.descriptors.PEmpty)
+        case 5 => input.map(_.toPMessage).getOrElse(_root_.scalapb.descriptors.PEmpty)
+        case 6 => output.map(_.toPMessage).getOrElse(_root_.scalapb.descriptors.PEmpty)
       }
     }
     def toProtoString: _root_.scala.Predef.String = _root_.scalapb.TextFormat.printToUnicodeString(this)
@@ -194,14 +157,12 @@ final case class Layer(
 object Layer extends scalapb.GeneratedMessageCompanion[lbir.Layer] {
   implicit def messageCompanion: scalapb.GeneratedMessageCompanion[lbir.Layer] = this
   def parseFrom(`_input__`: _root_.com.google.protobuf.CodedInputStream): lbir.Layer = {
-    var __layerType: lbir.Layer.LayerType = lbir.Layer.LayerType.DENSE
+    var __ltype: lbir.Layer.Type = lbir.Layer.Type.DENSE
     var __useBias: _root_.scala.Boolean = false
-    var __weights: _root_.scala.Option[lbir.QTensor] = _root_.scala.None
     var __biases: _root_.scala.Option[lbir.QTensor] = _root_.scala.None
-    var __inputQuantizer: _root_.scala.Option[lbir.Quantizer] = _root_.scala.None
-    var __width: _root_.scala.Int = 0
-    var __height: _root_.scala.Int = 0
-    var __channels: _root_.scala.Int = 0
+    var __weights: _root_.scala.Option[lbir.QTensor] = _root_.scala.None
+    var __input: _root_.scala.Option[lbir.QTensor] = _root_.scala.None
+    var __output: _root_.scala.Option[lbir.QTensor] = _root_.scala.None
     var `_unknownFields__`: _root_.scalapb.UnknownFieldSet.Builder = null
     var _done__ = false
     while (!_done__) {
@@ -209,21 +170,17 @@ object Layer extends scalapb.GeneratedMessageCompanion[lbir.Layer] {
       _tag__ match {
         case 0 => _done__ = true
         case 8 =>
-          __layerType = lbir.Layer.LayerType.fromValue(_input__.readEnum())
+          __ltype = lbir.Layer.Type.fromValue(_input__.readEnum())
         case 16 =>
           __useBias = _input__.readBool()
         case 26 =>
-          __weights = Option(__weights.fold(_root_.scalapb.LiteParser.readMessage[lbir.QTensor](_input__))(_root_.scalapb.LiteParser.readMessage(_input__, _)))
-        case 34 =>
           __biases = Option(__biases.fold(_root_.scalapb.LiteParser.readMessage[lbir.QTensor](_input__))(_root_.scalapb.LiteParser.readMessage(_input__, _)))
+        case 34 =>
+          __weights = Option(__weights.fold(_root_.scalapb.LiteParser.readMessage[lbir.QTensor](_input__))(_root_.scalapb.LiteParser.readMessage(_input__, _)))
         case 42 =>
-          __inputQuantizer = Option(__inputQuantizer.fold(_root_.scalapb.LiteParser.readMessage[lbir.Quantizer](_input__))(_root_.scalapb.LiteParser.readMessage(_input__, _)))
-        case 48 =>
-          __width = _input__.readUInt32()
-        case 56 =>
-          __height = _input__.readUInt32()
-        case 64 =>
-          __channels = _input__.readUInt32()
+          __input = Option(__input.fold(_root_.scalapb.LiteParser.readMessage[lbir.QTensor](_input__))(_root_.scalapb.LiteParser.readMessage(_input__, _)))
+        case 50 =>
+          __output = Option(__output.fold(_root_.scalapb.LiteParser.readMessage[lbir.QTensor](_input__))(_root_.scalapb.LiteParser.readMessage(_input__, _)))
         case tag =>
           if (_unknownFields__ == null) {
             _unknownFields__ = new _root_.scalapb.UnknownFieldSet.Builder()
@@ -232,14 +189,12 @@ object Layer extends scalapb.GeneratedMessageCompanion[lbir.Layer] {
       }
     }
     lbir.Layer(
-        layerType = __layerType,
+        ltype = __ltype,
         useBias = __useBias,
-        weights = __weights,
         biases = __biases,
-        inputQuantizer = __inputQuantizer,
-        width = __width,
-        height = __height,
-        channels = __channels,
+        weights = __weights,
+        input = __input,
+        output = __output,
         unknownFields = if (_unknownFields__ == null) _root_.scalapb.UnknownFieldSet.empty else _unknownFields__.result()
     )
   }
@@ -247,14 +202,12 @@ object Layer extends scalapb.GeneratedMessageCompanion[lbir.Layer] {
     case _root_.scalapb.descriptors.PMessage(__fieldsMap) =>
       _root_.scala.Predef.require(__fieldsMap.keys.forall(_.containingMessage eq scalaDescriptor), "FieldDescriptor does not match message type.")
       lbir.Layer(
-        layerType = lbir.Layer.LayerType.fromValue(__fieldsMap.get(scalaDescriptor.findFieldByNumber(1).get).map(_.as[_root_.scalapb.descriptors.EnumValueDescriptor]).getOrElse(lbir.Layer.LayerType.DENSE.scalaValueDescriptor).number),
+        ltype = lbir.Layer.Type.fromValue(__fieldsMap.get(scalaDescriptor.findFieldByNumber(1).get).map(_.as[_root_.scalapb.descriptors.EnumValueDescriptor]).getOrElse(lbir.Layer.Type.DENSE.scalaValueDescriptor).number),
         useBias = __fieldsMap.get(scalaDescriptor.findFieldByNumber(2).get).map(_.as[_root_.scala.Boolean]).getOrElse(false),
-        weights = __fieldsMap.get(scalaDescriptor.findFieldByNumber(3).get).flatMap(_.as[_root_.scala.Option[lbir.QTensor]]),
-        biases = __fieldsMap.get(scalaDescriptor.findFieldByNumber(4).get).flatMap(_.as[_root_.scala.Option[lbir.QTensor]]),
-        inputQuantizer = __fieldsMap.get(scalaDescriptor.findFieldByNumber(5).get).flatMap(_.as[_root_.scala.Option[lbir.Quantizer]]),
-        width = __fieldsMap.get(scalaDescriptor.findFieldByNumber(6).get).map(_.as[_root_.scala.Int]).getOrElse(0),
-        height = __fieldsMap.get(scalaDescriptor.findFieldByNumber(7).get).map(_.as[_root_.scala.Int]).getOrElse(0),
-        channels = __fieldsMap.get(scalaDescriptor.findFieldByNumber(8).get).map(_.as[_root_.scala.Int]).getOrElse(0)
+        biases = __fieldsMap.get(scalaDescriptor.findFieldByNumber(3).get).flatMap(_.as[_root_.scala.Option[lbir.QTensor]]),
+        weights = __fieldsMap.get(scalaDescriptor.findFieldByNumber(4).get).flatMap(_.as[_root_.scala.Option[lbir.QTensor]]),
+        input = __fieldsMap.get(scalaDescriptor.findFieldByNumber(5).get).flatMap(_.as[_root_.scala.Option[lbir.QTensor]]),
+        output = __fieldsMap.get(scalaDescriptor.findFieldByNumber(6).get).flatMap(_.as[_root_.scala.Option[lbir.QTensor]])
       )
     case _ => throw new RuntimeException("Expected PMessage")
   }
@@ -265,56 +218,55 @@ object Layer extends scalapb.GeneratedMessageCompanion[lbir.Layer] {
     (__number: @_root_.scala.unchecked) match {
       case 3 => __out = lbir.QTensor
       case 4 => __out = lbir.QTensor
-      case 5 => __out = lbir.Quantizer
+      case 5 => __out = lbir.QTensor
+      case 6 => __out = lbir.QTensor
     }
     __out
   }
   lazy val nestedMessagesCompanions: Seq[_root_.scalapb.GeneratedMessageCompanion[_ <: _root_.scalapb.GeneratedMessage]] = Seq.empty
   def enumCompanionForFieldNumber(__fieldNumber: _root_.scala.Int): _root_.scalapb.GeneratedEnumCompanion[_] = {
     (__fieldNumber: @_root_.scala.unchecked) match {
-      case 1 => lbir.Layer.LayerType
+      case 1 => lbir.Layer.Type
     }
   }
   lazy val defaultInstance = lbir.Layer(
-    layerType = lbir.Layer.LayerType.DENSE,
+    ltype = lbir.Layer.Type.DENSE,
     useBias = false,
-    weights = _root_.scala.None,
     biases = _root_.scala.None,
-    inputQuantizer = _root_.scala.None,
-    width = 0,
-    height = 0,
-    channels = 0
+    weights = _root_.scala.None,
+    input = _root_.scala.None,
+    output = _root_.scala.None
   )
-  sealed abstract class LayerType(val value: _root_.scala.Int) extends _root_.scalapb.GeneratedEnum {
-    type EnumType = LayerType
+  sealed abstract class Type(val value: _root_.scala.Int) extends _root_.scalapb.GeneratedEnum {
+    type EnumType = Type
     def isDense: _root_.scala.Boolean = false
     def isConv2D: _root_.scala.Boolean = false
-    def companion: _root_.scalapb.GeneratedEnumCompanion[LayerType] = lbir.Layer.LayerType
-    final def asRecognized: _root_.scala.Option[lbir.Layer.LayerType.Recognized] = if (isUnrecognized) _root_.scala.None else _root_.scala.Some(this.asInstanceOf[lbir.Layer.LayerType.Recognized])
+    def companion: _root_.scalapb.GeneratedEnumCompanion[Type] = lbir.Layer.Type
+    final def asRecognized: _root_.scala.Option[lbir.Layer.Type.Recognized] = if (isUnrecognized) _root_.scala.None else _root_.scala.Some(this.asInstanceOf[lbir.Layer.Type.Recognized])
   }
   
-  object LayerType extends _root_.scalapb.GeneratedEnumCompanion[LayerType] {
-    sealed trait Recognized extends LayerType
-    implicit def enumCompanion: _root_.scalapb.GeneratedEnumCompanion[LayerType] = this
+  object Type extends _root_.scalapb.GeneratedEnumCompanion[Type] {
+    sealed trait Recognized extends Type
+    implicit def enumCompanion: _root_.scalapb.GeneratedEnumCompanion[Type] = this
     @SerialVersionUID(0L)
-    case object DENSE extends LayerType(0) with LayerType.Recognized {
+    case object DENSE extends Type(0) with Type.Recognized {
       val index = 0
       val name = "DENSE"
       override def isDense: _root_.scala.Boolean = true
     }
     
     @SerialVersionUID(0L)
-    case object CONV2D extends LayerType(1) with LayerType.Recognized {
+    case object CONV2D extends Type(1) with Type.Recognized {
       val index = 1
       val name = "CONV2D"
       override def isConv2D: _root_.scala.Boolean = true
     }
     
     @SerialVersionUID(0L)
-    final case class Unrecognized(unrecognizedValue: _root_.scala.Int) extends LayerType(unrecognizedValue) with _root_.scalapb.UnrecognizedEnum
+    final case class Unrecognized(unrecognizedValue: _root_.scala.Int) extends Type(unrecognizedValue) with _root_.scalapb.UnrecognizedEnum
     
     lazy val values = scala.collection.immutable.Seq(DENSE, CONV2D)
-    def fromValue(__value: _root_.scala.Int): LayerType = __value match {
+    def fromValue(__value: _root_.scala.Int): Type = __value match {
       case 0 => DENSE
       case 1 => CONV2D
       case __other => Unrecognized(__other)
@@ -323,44 +275,37 @@ object Layer extends scalapb.GeneratedMessageCompanion[lbir.Layer] {
     def scalaDescriptor: _root_.scalapb.descriptors.EnumDescriptor = lbir.Layer.scalaDescriptor.enums(0)
   }
   implicit class LayerLens[UpperPB](_l: _root_.scalapb.lenses.Lens[UpperPB, lbir.Layer]) extends _root_.scalapb.lenses.ObjectLens[UpperPB, lbir.Layer](_l) {
-    def layerType: _root_.scalapb.lenses.Lens[UpperPB, lbir.Layer.LayerType] = field(_.layerType)((c_, f_) => c_.copy(layerType = f_))
+    def ltype: _root_.scalapb.lenses.Lens[UpperPB, lbir.Layer.Type] = field(_.ltype)((c_, f_) => c_.copy(ltype = f_))
     def useBias: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Boolean] = field(_.useBias)((c_, f_) => c_.copy(useBias = f_))
-    def weights: _root_.scalapb.lenses.Lens[UpperPB, lbir.QTensor] = field(_.getWeights)((c_, f_) => c_.copy(weights = Option(f_)))
-    def optionalWeights: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Option[lbir.QTensor]] = field(_.weights)((c_, f_) => c_.copy(weights = f_))
     def biases: _root_.scalapb.lenses.Lens[UpperPB, lbir.QTensor] = field(_.getBiases)((c_, f_) => c_.copy(biases = Option(f_)))
     def optionalBiases: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Option[lbir.QTensor]] = field(_.biases)((c_, f_) => c_.copy(biases = f_))
-    def inputQuantizer: _root_.scalapb.lenses.Lens[UpperPB, lbir.Quantizer] = field(_.getInputQuantizer)((c_, f_) => c_.copy(inputQuantizer = Option(f_)))
-    def optionalInputQuantizer: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Option[lbir.Quantizer]] = field(_.inputQuantizer)((c_, f_) => c_.copy(inputQuantizer = f_))
-    def width: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Int] = field(_.width)((c_, f_) => c_.copy(width = f_))
-    def height: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Int] = field(_.height)((c_, f_) => c_.copy(height = f_))
-    def channels: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Int] = field(_.channels)((c_, f_) => c_.copy(channels = f_))
+    def weights: _root_.scalapb.lenses.Lens[UpperPB, lbir.QTensor] = field(_.getWeights)((c_, f_) => c_.copy(weights = Option(f_)))
+    def optionalWeights: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Option[lbir.QTensor]] = field(_.weights)((c_, f_) => c_.copy(weights = f_))
+    def input: _root_.scalapb.lenses.Lens[UpperPB, lbir.QTensor] = field(_.getInput)((c_, f_) => c_.copy(input = Option(f_)))
+    def optionalInput: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Option[lbir.QTensor]] = field(_.input)((c_, f_) => c_.copy(input = f_))
+    def output: _root_.scalapb.lenses.Lens[UpperPB, lbir.QTensor] = field(_.getOutput)((c_, f_) => c_.copy(output = Option(f_)))
+    def optionalOutput: _root_.scalapb.lenses.Lens[UpperPB, _root_.scala.Option[lbir.QTensor]] = field(_.output)((c_, f_) => c_.copy(output = f_))
   }
-  final val LAYERTYPE_FIELD_NUMBER = 1
+  final val LTYPE_FIELD_NUMBER = 1
   final val USE_BIAS_FIELD_NUMBER = 2
-  final val WEIGHTS_FIELD_NUMBER = 3
-  final val BIASES_FIELD_NUMBER = 4
-  final val INPUTQUANTIZER_FIELD_NUMBER = 5
-  final val WIDTH_FIELD_NUMBER = 6
-  final val HEIGHT_FIELD_NUMBER = 7
-  final val CHANNELS_FIELD_NUMBER = 8
+  final val BIASES_FIELD_NUMBER = 3
+  final val WEIGHTS_FIELD_NUMBER = 4
+  final val INPUT_FIELD_NUMBER = 5
+  final val OUTPUT_FIELD_NUMBER = 6
   def of(
-    layerType: lbir.Layer.LayerType,
+    ltype: lbir.Layer.Type,
     useBias: _root_.scala.Boolean,
-    weights: _root_.scala.Option[lbir.QTensor],
     biases: _root_.scala.Option[lbir.QTensor],
-    inputQuantizer: _root_.scala.Option[lbir.Quantizer],
-    width: _root_.scala.Int,
-    height: _root_.scala.Int,
-    channels: _root_.scala.Int
+    weights: _root_.scala.Option[lbir.QTensor],
+    input: _root_.scala.Option[lbir.QTensor],
+    output: _root_.scala.Option[lbir.QTensor]
   ): _root_.lbir.Layer = _root_.lbir.Layer(
-    layerType,
+    ltype,
     useBias,
-    weights,
     biases,
-    inputQuantizer,
-    width,
-    height,
-    channels
+    weights,
+    input,
+    output
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[chisel4ml.Layer])
 }

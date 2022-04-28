@@ -2,7 +2,7 @@
  * HEADER: TODO 
  *
  *
- * This file contains the definition of the abstract class Layer.
+ * This file contains the definition of the abstract class ProcessingElement.
  */
 
 package chisel4ml
@@ -12,36 +12,33 @@ import chisel3.util._
 import chisel3.experimental._
 
 /**
- *  Base class of all Layers.
+ *  Base class of all ProcessingElements.
  *
- *  The base class of all layers. It provides
- *  some basic fields each Layer must implement. It is parameterized
- *  by the following parameters:
+ *  The base class of all ProcessingElements.:
  *
- * @param weights is the tensor of weights.
- * @param thresh is the tensor of threshold values.
+ * @param layer Is a layer definition defined by the LBIR format.
  */
-abstract class Layer(lbirLayer: lbir.Layer) extends Module {
+abstract class Layer(layer: lbir.Layer) extends Module {
   /**
-   * TODO
+   * Number of inputs.
    */
-  val inDataType = thresh(0).getClass 
- 
-  /** 
-   * inSize is the number of input elements. 
-   */
-  val inSize: Int = weights(0).length
+  val inSize: Int = layer.input.shape.reduce(_ * _)  
 
-  /**
-   * Number of input bits
+   /**
+   * Number of input bits.
    */
-  val inSizeBits: Int = inSize*inDataWidth
+  val inSizeBits: Int = inSize  * layer.input.dtype.bitwidth
   
   /**
-   * outSize is the number of output elements. It determines the width of
+   * Number of outputs.
+   */
+  val outSize: Int = layer.output.shape.reduce(_ * _)
+
+  /**
+   * outSizeBits is the number of output bits. It determines the width of
    * the outgoing UInt.
    */
-  val outSize: Int = thresh.length
+  val outSizeBits: Int = layer.output.shape.reduce(_ * _) * layer.output.dtype.bitwidth
 
   
   /*
@@ -49,8 +46,8 @@ abstract class Layer(lbirLayer: lbir.Layer) extends Module {
    * types in Layer implementation classes.
    */  
   val io = IO(new Bundle {
-      val in  = Input(UInt((inSizeBits).W))
-      val out = Output(UInt(outSize.W))
+      val in  = Input(UInt(inSizeBits.W))
+      val out = Output(UInt(outSizeBits.W))
   })
 }
 
@@ -62,11 +59,6 @@ abstract class Layer(lbirLayer: lbir.Layer) extends Module {
  *   
  */
 class BinarizedDense(lbirLayer: lbir.Layer]) extends Layer(lbirLayer) {
-  require(thresh.length == weights.length, s"""Weights and threshold dimensions dont match! The weights 
-                                               length dimension is ${weights.length} and the threshold 
-                                               length dimension is ${thresh.length}. The inSize of this
-                                               layer is ${inSize} and the outSize is ${outSize}.""") 
-
   // We import the values as UInts and the convert them to Bool Vectors, because
   // in Verilog this results as an Array, instead of a number of individual elements
   // in the interface. (I.e. in[0:2] instead of in_0, in_1 and in_2.)

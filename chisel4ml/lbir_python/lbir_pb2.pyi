@@ -29,101 +29,106 @@ global___Model = Model
 
 class Layer(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
-    class _LayerType:
+    class _Type:
         ValueType = typing.NewType('ValueType', builtins.int)
         V: typing_extensions.TypeAlias = ValueType
-    class _LayerTypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[Layer._LayerType.ValueType], builtins.type):
+    class _TypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[Layer._Type.ValueType], builtins.type):
         DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
-        DENSE: Layer._LayerType.ValueType  # 0
-        CONV2D: Layer._LayerType.ValueType  # 1
-    class LayerType(_LayerType, metaclass=_LayerTypeEnumTypeWrapper):
+        DENSE: Layer._Type.ValueType  # 0
+        CONV2D: Layer._Type.ValueType  # 1
+    class Type(_Type, metaclass=_TypeEnumTypeWrapper):
         pass
 
-    DENSE: Layer.LayerType.ValueType  # 0
-    CONV2D: Layer.LayerType.ValueType  # 1
+    DENSE: Layer.Type.ValueType  # 0
+    CONV2D: Layer.Type.ValueType  # 1
 
-    LAYER_TYPE_FIELD_NUMBER: builtins.int
+    LTYPE_FIELD_NUMBER: builtins.int
     USE_BIAS_FIELD_NUMBER: builtins.int
-    WEIGHTS_FIELD_NUMBER: builtins.int
     BIASES_FIELD_NUMBER: builtins.int
-    INPUT_QUANTIZER_FIELD_NUMBER: builtins.int
-    WIDTH_FIELD_NUMBER: builtins.int
-    HEIGHT_FIELD_NUMBER: builtins.int
-    CHANNELS_FIELD_NUMBER: builtins.int
-    layer_type: global___Layer.LayerType.ValueType
+    WEIGHTS_FIELD_NUMBER: builtins.int
+    INPUT_FIELD_NUMBER: builtins.int
+    OUTPUT_FIELD_NUMBER: builtins.int
+    ltype: global___Layer.Type.ValueType
+    """type is a python keyword"""
+
     use_bias: builtins.bool
-    @property
-    def weights(self) -> global___QTensor: ...
     @property
     def biases(self) -> global___QTensor: ...
     @property
-    def input_quantizer(self) -> global___Quantizer: ...
-    width: builtins.int
-    height: builtins.int
-    channels: builtins.int
+    def weights(self) -> global___QTensor: ...
+    @property
+    def input(self) -> global___QTensor:
+        """no values, just shape / dtype"""
+        pass
+    @property
+    def output(self) -> global___QTensor:
+        """also no values, but we need the dtype info"""
+        pass
     def __init__(self,
         *,
-        layer_type: global___Layer.LayerType.ValueType = ...,
+        ltype: global___Layer.Type.ValueType = ...,
         use_bias: builtins.bool = ...,
-        weights: typing.Optional[global___QTensor] = ...,
         biases: typing.Optional[global___QTensor] = ...,
-        input_quantizer: typing.Optional[global___Quantizer] = ...,
-        width: builtins.int = ...,
-        height: builtins.int = ...,
-        channels: builtins.int = ...,
+        weights: typing.Optional[global___QTensor] = ...,
+        input: typing.Optional[global___QTensor] = ...,
+        output: typing.Optional[global___QTensor] = ...,
         ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["biases",b"biases","input_quantizer",b"input_quantizer","weights",b"weights"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["biases",b"biases","channels",b"channels","height",b"height","input_quantizer",b"input_quantizer","layer_type",b"layer_type","use_bias",b"use_bias","weights",b"weights","width",b"width"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["biases",b"biases","input",b"input","output",b"output","weights",b"weights"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["biases",b"biases","input",b"input","ltype",b"ltype","output",b"output","use_bias",b"use_bias","weights",b"weights"]) -> None: ...
 global___Layer = Layer
 
 class QTensor(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
-    QUANTIZER_FIELD_NUMBER: builtins.int
+    DTYPE_FIELD_NUMBER: builtins.int
+    SHAPE_FIELD_NUMBER: builtins.int
     VALUES_FIELD_NUMBER: builtins.int
     @property
-    def quantizer(self) -> global___Quantizer: ...
+    def dtype(self) -> global___Datatype: ...
+    @property
+    def shape(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
     @property
     def values(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.float]: ...
     def __init__(self,
         *,
-        quantizer: typing.Optional[global___Quantizer] = ...,
+        dtype: typing.Optional[global___Datatype] = ...,
+        shape: typing.Optional[typing.Iterable[builtins.int]] = ...,
         values: typing.Optional[typing.Iterable[builtins.float]] = ...,
         ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["quantizer",b"quantizer"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["quantizer",b"quantizer","values",b"values"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["dtype",b"dtype"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["dtype",b"dtype","shape",b"shape","values",b"values"]) -> None: ...
 global___QTensor = QTensor
 
-class Quantizer(google.protobuf.message.Message):
+class Datatype(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
-    class _QuantizerType:
+    class _QuantizationType:
         ValueType = typing.NewType('ValueType', builtins.int)
         V: typing_extensions.TypeAlias = ValueType
-    class _QuantizerTypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[Quantizer._QuantizerType.ValueType], builtins.type):
+    class _QuantizationTypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[Datatype._QuantizationType.ValueType], builtins.type):
         DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
-        SYMMETRIC_UNIFORM_PO2: Quantizer._QuantizerType.ValueType  # 0
-        BINARY_SIGN: Quantizer._QuantizerType.ValueType  # 1
-        BINARY_PO2: Quantizer._QuantizerType.ValueType  # 2
-    class QuantizerType(_QuantizerType, metaclass=_QuantizerTypeEnumTypeWrapper):
+        SYMMETRIC_UNIFORM_PO2: Datatype._QuantizationType.ValueType  # 0
+        BINARY_SIGN: Datatype._QuantizationType.ValueType  # 1
+        BINARY_PO2: Datatype._QuantizationType.ValueType  # 2
+    class QuantizationType(_QuantizationType, metaclass=_QuantizationTypeEnumTypeWrapper):
         pass
 
-    SYMMETRIC_UNIFORM_PO2: Quantizer.QuantizerType.ValueType  # 0
-    BINARY_SIGN: Quantizer.QuantizerType.ValueType  # 1
-    BINARY_PO2: Quantizer.QuantizerType.ValueType  # 2
+    SYMMETRIC_UNIFORM_PO2: Datatype.QuantizationType.ValueType  # 0
+    BINARY_SIGN: Datatype.QuantizationType.ValueType  # 1
+    BINARY_PO2: Datatype.QuantizationType.ValueType  # 2
 
-    TYPE_FIELD_NUMBER: builtins.int
-    BIT_WIDTH_FIELD_NUMBER: builtins.int
+    QUANTIZATION_FIELD_NUMBER: builtins.int
+    BITWIDTH_FIELD_NUMBER: builtins.int
     SCALE_FIELD_NUMBER: builtins.int
     OFFSET_FIELD_NUMBER: builtins.int
-    type: global___Quantizer.QuantizerType.ValueType
-    bit_width: builtins.int
+    quantization: global___Datatype.QuantizationType.ValueType
+    bitwidth: builtins.int
     scale: builtins.float
     offset: builtins.float
     def __init__(self,
         *,
-        type: global___Quantizer.QuantizerType.ValueType = ...,
-        bit_width: builtins.int = ...,
+        quantization: global___Datatype.QuantizationType.ValueType = ...,
+        bitwidth: builtins.int = ...,
         scale: builtins.float = ...,
         offset: builtins.float = ...,
         ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["bit_width",b"bit_width","offset",b"offset","scale",b"scale","type",b"type"]) -> None: ...
-global___Quantizer = Quantizer
+    def ClearField(self, field_name: typing_extensions.Literal["bitwidth",b"bitwidth","offset",b"offset","quantization",b"quantization","scale",b"scale"]) -> None: ...
+global___Datatype = Datatype

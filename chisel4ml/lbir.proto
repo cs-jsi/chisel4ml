@@ -12,35 +12,34 @@ message Model {
 }
 
 message Layer {
-    enum LayerType {
+    enum Type {
         DENSE  = 0;
         CONV2D = 1;
     }
 
-    LayerType layerType = 1;
+    Type ltype = 1; // type is a python keyword
     bool use_bias = 2;
-    QTensor weights = 3;
-    QTensor biases  = 4;
-    Quantizer inputQuantizer = 5;
-    uint32 width = 6;
-    uint32 height = 7;
-    uint32 channels = 8;
+    QTensor biases  = 3;
+    QTensor weights = 4;
+    QTensor input = 5;  // no values, just shape / dtype
+    QTensor output = 6; // also no values, but we need the dtype info
 }
 
 message QTensor {
-    Quantizer quantizer = 1;
-    repeated float values = 2;
+    Datatype dtype = 1;
+    repeated uint32 shape = 2;
+    repeated float values = 3;
 }
 
-message Quantizer {
-    enum QuantizerType {
+message Datatype {
+    enum QuantizationType {
         SYMMETRIC_UNIFORM_PO2 = 0;
         BINARY_SIGN = 1;
         BINARY_PO2 = 2;
     }
 
-    QuantizerType qtype = 1;
-    uint32 bitWidth = 2;
+    QuantizationType quantization = 1;
+    uint32 bitwidth = 2;
     float scale = 3;
     float offset = 4;
 }
