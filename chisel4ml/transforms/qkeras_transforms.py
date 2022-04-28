@@ -11,8 +11,8 @@ import logging
 # TODO: A single quantizer could possibly have several targets.
 # I.e. binary-auto and binary-po2
 _qkeras2lbir_quantizer_dict = {
-        qkeras.quantized_bits: lbir.Quantizer.SYMMETRIC_UNIFORM_PO2,
-        qkeras.binary: lbir.Quantizer.BINARY_SIGN
+        qkeras.quantized_bits: lbir.Datatype.SYMMETRIC_UNIFORM_PO2,
+        qkeras.binary: lbir.Datatype.BINARY_SIGN
         }
 
 
@@ -33,18 +33,21 @@ def transform_qkeras_dense(layer: KerasLayer) -> lbir.Layer:
         if not layer.bias.dtype == tf.float32:
             raise ValueError("The tensorflow backend should be set to float32!")  # TODO
     lbir_layer = lbir.Layer()
-    lbir_layer.layer_type = lbir._LAYER_LAYERTYPE.values_by_name['DENSE'].number
+    lbir_layer.ltype = lbir.Layer.DENSE
     lbir_layer.use_bias = layer.use_bias
-    lbir_layer.weights.quantizer.type = _qkeras2lbir_quantizer_dict[layer.kernel_quantizer.__class__]
-    lbir_layer.weights.quantizer.scale = 1
-    lbir_layer.weights.quantizer.offset = 0
+    lbir_layer.weights.dtype.quantization = _qkeras2lbir_quantizer_dict[layer.kernel_quantizer.__class__]
+    lbir_layer.weights.dtype.scale = 1
+    lbir_layer.weights.dtype.offset = 0
     lbir_layer.weights.values.extend(layer.kernel_quantizer_internal(layer.kernel).numpy().tobytes())
     if layer.use_bias:
         lbir_layer.biases.quantizer.type = _qkeras2lbir_quantizer_dict[layer.bias_quantizer.__class__]
         lbir_layer.biases.quantizer.scale = 1
         lbir_layer.biases.quantizer.offset = 0
         lbir_layer.biases.values.extend(layer.bias_quantizer_internal(layer.bias).numpy().tobytes())
-    lbir_layer.width = layer.kernel_quantizer_internal(layer.kernel).numpy().shape[0]
-    lbir_layer.height = layer.kernel_quantizer_internal(layer.kernel).numpy().shape[1]
-    lbir_layer.channels = 0
+
+    lbir_layer.input.dtype.quantization = _qkeras2lbir_quantizer_dict[layer.kernel_quantizer.__class__]
+    lbir_layer.input.dtype.scale = 1
+    lbir_layer.input.dtype.offset = 0
+    lbir_layer.input.shape[:] = layer.weights[0].shape
+    lbir_layer.output.shape[:] = layer.weights[0].shape
     return lbir_layer

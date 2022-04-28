@@ -9,6 +9,5 @@ def transform_model_to_lbir(model: tf.keras.Model) -> lbir.Model:
     lbir_model = lbir.Model()
     for i, layer in enumerate(model.layers):
         lbir_layer = qkeras_transform_factory(layer)(layer)
-        print(type(lbir_layer))
         lbir_model.layers.extend([lbir_layer])
     return lbir_model
