@@ -13,7 +13,6 @@ import chisel3.experimental._
 import scala.collection._
 
 object ProcessingPipeline (model : lbir.Model) extends Module {  
-
   val inSize = model.layers(0).inSize
   val inSizeBits = hwLayers(0).inSizeBits
   val outSize  = hwLayers.last.outSize
