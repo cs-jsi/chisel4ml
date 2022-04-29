@@ -7,7 +7,7 @@ import copy
 MAX_PASSES = 3
 
 
-def optimize_model(model):
+def qkeras_model(model):
     "Applys optimization passes to the model, and returns a dummy model that can be transformed into a LBIR model."
     layers = copy.deepcopy(model.layers)  # layers in keras are read-only
 

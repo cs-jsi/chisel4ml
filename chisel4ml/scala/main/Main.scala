@@ -16,7 +16,7 @@ object Main {
     def main(args: Array[String]): Unit = {
         val byteArray = Files.readAllBytes(Paths.get(args(0)))
         val lbirModel = lbir.Model.parseFrom(byteArray)
-        (new ChiselStage).emitVerilog(new Model(ProcessingPipeline(lbirModel)), 
+        (new ChiselStage).emitVerilog(Module(new ProcessingPipeline(lbirModel)), 
                                       Array("-td","gen/"))
     }
 }

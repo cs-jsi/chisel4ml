@@ -1,4 +1,4 @@
-from chisel4ml import optimizer, transformer, generator
+from chisel4ml import optimize, transform, generate
 import tensorflow as tf
 import qkeras
 import pytest
@@ -20,6 +20,6 @@ def test_qkeras_simple_dense_binarized_model_nofixedpoint():
     model.compile()
     pbfile = "test_qkeras_dense.pb"
     vfile = "test_qkeras_dense.v"
-    generator.generate_verilog(model, pbfile = pbfile)
+    generate.hardware(model, pbfile = pbfile)
     os.remove(pbfile)
     assert os.path.exists(vfile)

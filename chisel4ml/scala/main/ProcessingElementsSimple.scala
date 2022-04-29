@@ -18,27 +18,27 @@ import chisel3.experimental._
  *
  * @param layer Is a layer definition defined by the LBIR format.
  */
-abstract class Layer(layer: lbir.Layer) extends Module {
+abstract class ProcessingElementSimple(layer: lbir.Layer) extends Module {
   /**
    * Number of inputs.
    */
-  val inSize: Int = layer.input.shape.reduce(_ * _)  
+  val inSize: Int = layer.input.get.shape.reduce(_ * _)  
 
    /**
    * Number of input bits.
    */
-  val inSizeBits: Int = inSize  * layer.input.dtype.bitwidth
+  val inSizeBits: Int = inSize  * layer.input.get.dtype.get.bitwidth
   
   /**
    * Number of outputs.
    */
-  val outSize: Int = layer.output.shape.reduce(_ * _)
+  val outSize: Int = layer.output.get.shape.reduce(_ * _)
 
   /**
    * outSizeBits is the number of output bits. It determines the width of
    * the outgoing UInt.
    */
-  val outSizeBits: Int = layer.output.shape.reduce(_ * _) * layer.output.dtype.bitwidth
+  val outSizeBits: Int = layer.output.get.shape.reduce(_ * _) * layer.output.get.dtype.get.bitwidth
 
   
   /*
@@ -58,12 +58,15 @@ abstract class Layer(layer: lbir.Layer) extends Module {
  * Hubara et al.: Binarized Neural Networks (https://arxiv.org/abs/1602.02830).
  *   
  */
-class BinarizedDense(lbirLayer: lbir.Layer]) extends Layer(lbirLayer) {
+class BinarizedDense(lbirLayer: lbir.Layer) extends ProcessingElementSimple(lbirLayer) {
   // We import the values as UInts and the convert them to Bool Vectors, because
   // in Verilog this results as an Array, instead of a number of individual elements
   // in the interface. (I.e. in[0:2] instead of in_0, in_1 and in_2.)
   val in_int = Wire(Vec(inSize, Bool()))
   val out_int = Wire(Vec(outSize, Bool()))
+
+  val weights = lbirLayer.weights.get.values.map(
+  val thresh = lbirLayer.weights.get.values 
     
   in_int := io.in.asTypeOf(in_int)  
 

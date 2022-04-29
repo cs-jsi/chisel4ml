@@ -38,12 +38,12 @@ def transform_qkeras_dense(layer: KerasLayer) -> lbir.Layer:
     lbir_layer.weights.dtype.quantization = _qkeras2lbir_quantizer_dict[layer.kernel_quantizer.__class__]
     lbir_layer.weights.dtype.scale = 1
     lbir_layer.weights.dtype.offset = 0
-    lbir_layer.weights.values.extend(layer.kernel_quantizer_internal(layer.kernel).numpy().tobytes())
+    lbir_layer.weights.values[:] = layer.kernel_quantizer_internal(layer.kernel).numpy().tobytes()
     if layer.use_bias:
         lbir_layer.biases.quantizer.type = _qkeras2lbir_quantizer_dict[layer.bias_quantizer.__class__]
         lbir_layer.biases.quantizer.scale = 1
         lbir_layer.biases.quantizer.offset = 0
-        lbir_layer.biases.values.extend(layer.bias_quantizer_internal(layer.bias).numpy().tobytes())
+        lbir_layer.biases.values[:] = layer.bias_quantizer_internal(layer.bias).numpy().tobytes()
 
     lbir_layer.input.dtype.quantization = _qkeras2lbir_quantizer_dict[layer.kernel_quantizer.__class__]
     lbir_layer.input.dtype.scale = 1
