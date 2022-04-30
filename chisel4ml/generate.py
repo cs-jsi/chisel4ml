@@ -1,9 +1,8 @@
-from chisel4ml import generate, optimize, transform
+from chisel4ml import optimize, transform
 
 import tensorflow as tf
 
 import subprocess
-from subprocess import STDOUT, PIPE
 
 
 def hardware(model: tf.keras.Model, pbfile):

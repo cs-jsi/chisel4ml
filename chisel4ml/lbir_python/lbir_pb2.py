@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='chisel4ml',
   syntax='proto3',
   serialized_options=_b('\n\004lbirB\013ModelProtosP\001'),
-  serialized_pb=_b('\n\nlbir.proto\x12\tchisel4ml\"7\n\x05Model\x12\x0c\n\x04name\x18\x01 \x01(\t\x12 \n\x06layers\x18\x02 \x03(\x0b\x32\x10.chisel4ml.Layer\"\xee\x01\n\x05Layer\x12$\n\x05ltype\x18\x01 \x01(\x0e\x32\x15.chisel4ml.Layer.Type\x12\x10\n\x08use_bias\x18\x02 \x01(\x08\x12\"\n\x06\x62iases\x18\x03 \x01(\x0b\x32\x12.chisel4ml.QTensor\x12#\n\x07weights\x18\x04 \x01(\x0b\x32\x12.chisel4ml.QTensor\x12!\n\x05input\x18\x05 \x01(\x0b\x32\x12.chisel4ml.QTensor\x12\"\n\x06output\x18\x06 \x01(\x0b\x32\x12.chisel4ml.QTensor\"\x1d\n\x04Type\x12\t\n\x05\x44\x45NSE\x10\x00\x12\n\n\x06\x43ONV2D\x10\x01\"L\n\x07QTensor\x12\"\n\x05\x64type\x18\x01 \x01(\x0b\x32\x13.chisel4ml.Datatype\x12\r\n\x05shape\x18\x02 \x03(\r\x12\x0e\n\x06values\x18\x03 \x03(\x02\"\xc7\x01\n\x08\x44\x61tatype\x12:\n\x0cquantization\x18\x01 \x01(\x0e\x32$.chisel4ml.Datatype.QuantizationType\x12\x10\n\x08\x62itwidth\x18\x02 \x01(\r\x12\r\n\x05scale\x18\x03 \x01(\x02\x12\x0e\n\x06offset\x18\x04 \x01(\x02\"N\n\x10QuantizationType\x12\x19\n\x15SYMMETRIC_UNIFORM_PO2\x10\x00\x12\x0f\n\x0b\x42INARY_SIGN\x10\x01\x12\x0e\n\nBINARY_PO2\x10\x02\x42\x15\n\x04lbirB\x0bModelProtosP\x01\x62\x06proto3')
+  serialized_pb=_b('\n\nlbir.proto\x12\tchisel4ml\"7\n\x05Model\x12\x0c\n\x04name\x18\x01 \x01(\t\x12 \n\x06layers\x18\x02 \x03(\x0b\x32\x10.chisel4ml.Layer\"\x88\x02\n\x05Layer\x12$\n\x05ltype\x18\x01 \x01(\x0e\x32\x15.chisel4ml.Layer.Type\x12\x10\n\x08use_bias\x18\x02 \x01(\x08\x12\"\n\x06\x62iases\x18\x03 \x01(\x0b\x32\x12.chisel4ml.QTensor\x12#\n\x07weights\x18\x04 \x01(\x0b\x32\x12.chisel4ml.QTensor\x12!\n\x05input\x18\x05 \x01(\x0b\x32\x12.chisel4ml.QTensor\x12)\n\nactivation\x18\x06 \x01(\x0b\x32\x15.chisel4ml.Activation\x12\x11\n\tout_shape\x18\x07 \x03(\r\"\x1d\n\x04Type\x12\t\n\x05\x44\x45NSE\x10\x00\x12\n\n\x06\x43ONV2D\x10\x01\"L\n\x07QTensor\x12\"\n\x05\x64type\x18\x01 \x01(\x0b\x32\x13.chisel4ml.Datatype\x12\r\n\x05shape\x18\x02 \x03(\r\x12\x0e\n\x06values\x18\x03 \x03(\x02\"\xb1\x01\n\x08\x44\x61tatype\x12:\n\x0cquantization\x18\x01 \x01(\x0e\x32$.chisel4ml.Datatype.QuantizationType\x12\x10\n\x08\x62itwidth\x18\x02 \x01(\r\x12\r\n\x05scale\x18\x03 \x01(\x02\x12\x0e\n\x06offset\x18\x04 \x01(\x02\"8\n\x10QuantizationType\x12\x0b\n\x07UNIFORM\x10\x00\x12\n\n\x06\x42INARY\x10\x01\x12\x0b\n\x07TERNARY\x10\x03\"q\n\nActivation\x12*\n\x02\x66n\x18\x01 \x01(\x0e\x32\x1e.chisel4ml.Activation.Function\x12\x10\n\x08\x62itwidth\x18\x02 \x01(\r\"%\n\x08\x46unction\x12\x0f\n\x0b\x42INARY_SIGN\x10\x00\x12\x08\n\x04RELU\x10\x01\x42\x15\n\x04lbirB\x0bModelProtosP\x01\x62\x06proto3')
 )
 
 
@@ -41,8 +41,8 @@ _LAYER_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=292,
-  serialized_end=321,
+  serialized_start=318,
+  serialized_end=347,
 )
 _sym_db.RegisterEnumDescriptor(_LAYER_TYPE)
 
@@ -53,24 +53,46 @@ _DATATYPE_QUANTIZATIONTYPE = _descriptor.EnumDescriptor(
   file=DESCRIPTOR,
   values=[
     _descriptor.EnumValueDescriptor(
-      name='SYMMETRIC_UNIFORM_PO2', index=0, number=0,
+      name='UNIFORM', index=0, number=0,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='BINARY_SIGN', index=1, number=1,
+      name='BINARY', index=1, number=1,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='BINARY_PO2', index=2, number=2,
+      name='TERNARY', index=2, number=3,
       serialized_options=None,
       type=None),
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=523,
-  serialized_end=601,
+  serialized_start=549,
+  serialized_end=605,
 )
 _sym_db.RegisterEnumDescriptor(_DATATYPE_QUANTIZATIONTYPE)
+
+_ACTIVATION_FUNCTION = _descriptor.EnumDescriptor(
+  name='Function',
+  full_name='chisel4ml.Activation.Function',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='BINARY_SIGN', index=0, number=0,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='RELU', index=1, number=1,
+      serialized_options=None,
+      type=None),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=683,
+  serialized_end=720,
+)
+_sym_db.RegisterEnumDescriptor(_ACTIVATION_FUNCTION)
 
 
 _MODEL = _descriptor.Descriptor(
@@ -154,9 +176,16 @@ _LAYER = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='output', full_name='chisel4ml.Layer.output', index=5,
+      name='activation', full_name='chisel4ml.Layer.activation', index=5,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='out_shape', full_name='chisel4ml.Layer.out_shape', index=6,
+      number=7, type=13, cpp_type=3, label=3,
+      has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -174,7 +203,7 @@ _LAYER = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=83,
-  serialized_end=321,
+  serialized_end=347,
 )
 
 
@@ -218,8 +247,8 @@ _QTENSOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=323,
-  serialized_end=399,
+  serialized_start=349,
+  serialized_end=425,
 )
 
 
@@ -271,8 +300,47 @@ _DATATYPE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=402,
-  serialized_end=601,
+  serialized_start=428,
+  serialized_end=605,
+)
+
+
+_ACTIVATION = _descriptor.Descriptor(
+  name='Activation',
+  full_name='chisel4ml.Activation',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='fn', full_name='chisel4ml.Activation.fn', index=0,
+      number=1, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='bitwidth', full_name='chisel4ml.Activation.bitwidth', index=1,
+      number=2, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _ACTIVATION_FUNCTION,
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=607,
+  serialized_end=720,
 )
 
 _MODEL.fields_by_name['layers'].message_type = _LAYER
@@ -280,15 +348,18 @@ _LAYER.fields_by_name['ltype'].enum_type = _LAYER_TYPE
 _LAYER.fields_by_name['biases'].message_type = _QTENSOR
 _LAYER.fields_by_name['weights'].message_type = _QTENSOR
 _LAYER.fields_by_name['input'].message_type = _QTENSOR
-_LAYER.fields_by_name['output'].message_type = _QTENSOR
+_LAYER.fields_by_name['activation'].message_type = _ACTIVATION
 _LAYER_TYPE.containing_type = _LAYER
 _QTENSOR.fields_by_name['dtype'].message_type = _DATATYPE
 _DATATYPE.fields_by_name['quantization'].enum_type = _DATATYPE_QUANTIZATIONTYPE
 _DATATYPE_QUANTIZATIONTYPE.containing_type = _DATATYPE
+_ACTIVATION.fields_by_name['fn'].enum_type = _ACTIVATION_FUNCTION
+_ACTIVATION_FUNCTION.containing_type = _ACTIVATION
 DESCRIPTOR.message_types_by_name['Model'] = _MODEL
 DESCRIPTOR.message_types_by_name['Layer'] = _LAYER
 DESCRIPTOR.message_types_by_name['QTensor'] = _QTENSOR
 DESCRIPTOR.message_types_by_name['Datatype'] = _DATATYPE
+DESCRIPTOR.message_types_by_name['Activation'] = _ACTIVATION
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 Model = _reflection.GeneratedProtocolMessageType('Model', (_message.Message,), dict(
@@ -318,6 +389,13 @@ Datatype = _reflection.GeneratedProtocolMessageType('Datatype', (_message.Messag
   # @@protoc_insertion_point(class_scope:chisel4ml.Datatype)
   ))
 _sym_db.RegisterMessage(Datatype)
+
+Activation = _reflection.GeneratedProtocolMessageType('Activation', (_message.Message,), dict(
+  DESCRIPTOR = _ACTIVATION,
+  __module__ = 'lbir_pb2'
+  # @@protoc_insertion_point(class_scope:chisel4ml.Activation)
+  ))
+_sym_db.RegisterMessage(Activation)
 
 
 DESCRIPTOR._options = None

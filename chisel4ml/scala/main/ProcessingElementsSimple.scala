@@ -27,18 +27,18 @@ abstract class ProcessingElementSimple(layer: lbir.Layer) extends Module {
    /**
    * Number of input bits.
    */
-  val inSizeBits: Int = inSize  * layer.input.get.dtype.get.bitwidth
+  val inSizeBits: Int = inSize * layer.input.get.dtype.get.bitwidth
   
   /**
    * Number of outputs.
    */
-  val outSize: Int = layer.output.get.shape.reduce(_ * _)
+  val outSize: Int = layer.outShape.reduce(_ * _)
 
   /**
    * outSizeBits is the number of output bits. It determines the width of
    * the outgoing UInt.
    */
-  val outSizeBits: Int = layer.output.get.shape.reduce(_ * _) * layer.output.get.dtype.get.bitwidth
+  val outSizeBits: Int = outSize * layer.activation.get.bitwidth
 
   
   /*
@@ -65,8 +65,8 @@ class BinarizedDense(lbirLayer: lbir.Layer) extends ProcessingElementSimple(lbir
   val in_int = Wire(Vec(inSize, Bool()))
   val out_int = Wire(Vec(outSize, Bool()))
 
-  val weights = lbirLayer.weights.get.values.map(
-  val thresh = lbirLayer.weights.get.values 
+  val weights: Seq[Seq[Bool]] = lbirLayer.weights.get.values.map(_ > 0).map(_.B).sliding(inSize, inSize).toSeq
+  val thresh: Seq[UInt] = lbirLayer.biases.get.values.map(_.toInt.U)
     
   in_int := io.in.asTypeOf(in_int)  
 
@@ -104,12 +104,7 @@ class BinarizedDense(lbirLayer: lbir.Layer) extends ProcessingElementSimple(lbir
  *
  *  -> This than needs to be added together and compared with the threshold.
  */
-class FixedPointDense(lbirLayer:lbir.Layer) extends Layer(lbirLayer) {
-  require(thresh.length == weights.length, s"""Weights and threshold dimensions dont match! The weights 
-                                               length dimension is ${weights.length} and the threshold 
-                                               length dimension is ${thresh.length}. The inSize of this
-                                               layer is ${inSize} and the outSize is ${outSize}.""") 
-
+/*class FixedPointDense(lbirLayer:lbir.Layer) extends ProcessingElementSimple(lbirLayer) {
   val numTotalBits:Int = thresh(0).getWidth
   val numFractBits = thresh(0).binaryPoint 
 
@@ -142,5 +137,5 @@ class FixedPointDense(lbirLayer:lbir.Layer) extends Layer(lbirLayer) {
   // The CAT operator reverses the order of bits, so we reverse them 
   // to evenout the reversing (its not pretty but it works).
   io.out := Cat(out_int.reverse)
-}
+}*/
 

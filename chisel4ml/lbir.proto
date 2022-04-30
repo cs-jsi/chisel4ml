@@ -22,7 +22,8 @@ message Layer {
     QTensor biases  = 3;
     QTensor weights = 4;
     QTensor input = 5;  // no values, just shape / dtype
-    QTensor output = 6; // also no values, but we need the dtype info
+    Activation activation = 6;
+    repeated uint32 out_shape = 7;    
 }
 
 message QTensor {
@@ -33,13 +34,22 @@ message QTensor {
 
 message Datatype {
     enum QuantizationType {
-        SYMMETRIC_UNIFORM_PO2 = 0;
-        BINARY_SIGN = 1;
-        BINARY_PO2 = 2;
+        UNIFORM = 0;
+        BINARY = 1;
+        TERNARY = 3;
     }
-
     QuantizationType quantization = 1;
     uint32 bitwidth = 2;
     float scale = 3;
     float offset = 4;
+}
+
+
+message Activation {
+    enum Function {
+        BINARY_SIGN = 0;
+        RELU = 1; 
+    }
+    Function fn = 1;
+    uint32 bitwidth = 2;
 }

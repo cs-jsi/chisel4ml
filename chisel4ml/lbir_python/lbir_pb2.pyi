@@ -47,7 +47,8 @@ class Layer(google.protobuf.message.Message):
     BIASES_FIELD_NUMBER: builtins.int
     WEIGHTS_FIELD_NUMBER: builtins.int
     INPUT_FIELD_NUMBER: builtins.int
-    OUTPUT_FIELD_NUMBER: builtins.int
+    ACTIVATION_FIELD_NUMBER: builtins.int
+    OUT_SHAPE_FIELD_NUMBER: builtins.int
     ltype: global___Layer.Type.ValueType
     """type is a python keyword"""
 
@@ -61,9 +62,9 @@ class Layer(google.protobuf.message.Message):
         """no values, just shape / dtype"""
         pass
     @property
-    def output(self) -> global___QTensor:
-        """also no values, but we need the dtype info"""
-        pass
+    def activation(self) -> global___Activation: ...
+    @property
+    def out_shape(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
     def __init__(self,
         *,
         ltype: global___Layer.Type.ValueType = ...,
@@ -71,10 +72,11 @@ class Layer(google.protobuf.message.Message):
         biases: typing.Optional[global___QTensor] = ...,
         weights: typing.Optional[global___QTensor] = ...,
         input: typing.Optional[global___QTensor] = ...,
-        output: typing.Optional[global___QTensor] = ...,
+        activation: typing.Optional[global___Activation] = ...,
+        out_shape: typing.Optional[typing.Iterable[builtins.int]] = ...,
         ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["biases",b"biases","input",b"input","output",b"output","weights",b"weights"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["biases",b"biases","input",b"input","ltype",b"ltype","output",b"output","use_bias",b"use_bias","weights",b"weights"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["activation",b"activation","biases",b"biases","input",b"input","weights",b"weights"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["activation",b"activation","biases",b"biases","input",b"input","ltype",b"ltype","out_shape",b"out_shape","use_bias",b"use_bias","weights",b"weights"]) -> None: ...
 global___Layer = Layer
 
 class QTensor(google.protobuf.message.Message):
@@ -105,15 +107,15 @@ class Datatype(google.protobuf.message.Message):
         V: typing_extensions.TypeAlias = ValueType
     class _QuantizationTypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[Datatype._QuantizationType.ValueType], builtins.type):
         DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
-        SYMMETRIC_UNIFORM_PO2: Datatype._QuantizationType.ValueType  # 0
-        BINARY_SIGN: Datatype._QuantizationType.ValueType  # 1
-        BINARY_PO2: Datatype._QuantizationType.ValueType  # 2
+        UNIFORM: Datatype._QuantizationType.ValueType  # 0
+        BINARY: Datatype._QuantizationType.ValueType  # 1
+        TERNARY: Datatype._QuantizationType.ValueType  # 3
     class QuantizationType(_QuantizationType, metaclass=_QuantizationTypeEnumTypeWrapper):
         pass
 
-    SYMMETRIC_UNIFORM_PO2: Datatype.QuantizationType.ValueType  # 0
-    BINARY_SIGN: Datatype.QuantizationType.ValueType  # 1
-    BINARY_PO2: Datatype.QuantizationType.ValueType  # 2
+    UNIFORM: Datatype.QuantizationType.ValueType  # 0
+    BINARY: Datatype.QuantizationType.ValueType  # 1
+    TERNARY: Datatype.QuantizationType.ValueType  # 3
 
     QUANTIZATION_FIELD_NUMBER: builtins.int
     BITWIDTH_FIELD_NUMBER: builtins.int
@@ -132,3 +134,30 @@ class Datatype(google.protobuf.message.Message):
         ) -> None: ...
     def ClearField(self, field_name: typing_extensions.Literal["bitwidth",b"bitwidth","offset",b"offset","quantization",b"quantization","scale",b"scale"]) -> None: ...
 global___Datatype = Datatype
+
+class Activation(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+    class _Function:
+        ValueType = typing.NewType('ValueType', builtins.int)
+        V: typing_extensions.TypeAlias = ValueType
+    class _FunctionEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[Activation._Function.ValueType], builtins.type):
+        DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+        BINARY_SIGN: Activation._Function.ValueType  # 0
+        RELU: Activation._Function.ValueType  # 1
+    class Function(_Function, metaclass=_FunctionEnumTypeWrapper):
+        pass
+
+    BINARY_SIGN: Activation.Function.ValueType  # 0
+    RELU: Activation.Function.ValueType  # 1
+
+    FN_FIELD_NUMBER: builtins.int
+    BITWIDTH_FIELD_NUMBER: builtins.int
+    fn: global___Activation.Function.ValueType
+    bitwidth: builtins.int
+    def __init__(self,
+        *,
+        fn: global___Activation.Function.ValueType = ...,
+        bitwidth: builtins.int = ...,
+        ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["bitwidth",b"bitwidth","fn",b"fn"]) -> None: ...
+global___Activation = Activation

@@ -7,7 +7,7 @@ package lbir
 
 @SerialVersionUID(0L)
 final case class Datatype(
-    quantization: lbir.Datatype.QuantizationType = lbir.Datatype.QuantizationType.SYMMETRIC_UNIFORM_PO2,
+    quantization: lbir.Datatype.QuantizationType = lbir.Datatype.QuantizationType.UNIFORM,
     bitwidth: _root_.scala.Int = 0,
     scale: _root_.scala.Float = 0.0f,
     offset: _root_.scala.Float = 0.0f,
@@ -126,7 +126,7 @@ final case class Datatype(
 object Datatype extends scalapb.GeneratedMessageCompanion[lbir.Datatype] {
   implicit def messageCompanion: scalapb.GeneratedMessageCompanion[lbir.Datatype] = this
   def parseFrom(`_input__`: _root_.com.google.protobuf.CodedInputStream): lbir.Datatype = {
-    var __quantization: lbir.Datatype.QuantizationType = lbir.Datatype.QuantizationType.SYMMETRIC_UNIFORM_PO2
+    var __quantization: lbir.Datatype.QuantizationType = lbir.Datatype.QuantizationType.UNIFORM
     var __bitwidth: _root_.scala.Int = 0
     var __scale: _root_.scala.Float = 0.0f
     var __offset: _root_.scala.Float = 0.0f
@@ -163,7 +163,7 @@ object Datatype extends scalapb.GeneratedMessageCompanion[lbir.Datatype] {
     case _root_.scalapb.descriptors.PMessage(__fieldsMap) =>
       _root_.scala.Predef.require(__fieldsMap.keys.forall(_.containingMessage eq scalaDescriptor), "FieldDescriptor does not match message type.")
       lbir.Datatype(
-        quantization = lbir.Datatype.QuantizationType.fromValue(__fieldsMap.get(scalaDescriptor.findFieldByNumber(1).get).map(_.as[_root_.scalapb.descriptors.EnumValueDescriptor]).getOrElse(lbir.Datatype.QuantizationType.SYMMETRIC_UNIFORM_PO2.scalaValueDescriptor).number),
+        quantization = lbir.Datatype.QuantizationType.fromValue(__fieldsMap.get(scalaDescriptor.findFieldByNumber(1).get).map(_.as[_root_.scalapb.descriptors.EnumValueDescriptor]).getOrElse(lbir.Datatype.QuantizationType.UNIFORM.scalaValueDescriptor).number),
         bitwidth = __fieldsMap.get(scalaDescriptor.findFieldByNumber(2).get).map(_.as[_root_.scala.Int]).getOrElse(0),
         scale = __fieldsMap.get(scalaDescriptor.findFieldByNumber(3).get).map(_.as[_root_.scala.Float]).getOrElse(0.0f),
         offset = __fieldsMap.get(scalaDescriptor.findFieldByNumber(4).get).map(_.as[_root_.scala.Float]).getOrElse(0.0f)
@@ -180,16 +180,16 @@ object Datatype extends scalapb.GeneratedMessageCompanion[lbir.Datatype] {
     }
   }
   lazy val defaultInstance = lbir.Datatype(
-    quantization = lbir.Datatype.QuantizationType.SYMMETRIC_UNIFORM_PO2,
+    quantization = lbir.Datatype.QuantizationType.UNIFORM,
     bitwidth = 0,
     scale = 0.0f,
     offset = 0.0f
   )
   sealed abstract class QuantizationType(val value: _root_.scala.Int) extends _root_.scalapb.GeneratedEnum {
     type EnumType = QuantizationType
-    def isSymmetricUniformPo2: _root_.scala.Boolean = false
-    def isBinarySign: _root_.scala.Boolean = false
-    def isBinaryPo2: _root_.scala.Boolean = false
+    def isUniform: _root_.scala.Boolean = false
+    def isBinary: _root_.scala.Boolean = false
+    def isTernary: _root_.scala.Boolean = false
     def companion: _root_.scalapb.GeneratedEnumCompanion[QuantizationType] = lbir.Datatype.QuantizationType
     final def asRecognized: _root_.scala.Option[lbir.Datatype.QuantizationType.Recognized] = if (isUnrecognized) _root_.scala.None else _root_.scala.Some(this.asInstanceOf[lbir.Datatype.QuantizationType.Recognized])
   }
@@ -198,34 +198,34 @@ object Datatype extends scalapb.GeneratedMessageCompanion[lbir.Datatype] {
     sealed trait Recognized extends QuantizationType
     implicit def enumCompanion: _root_.scalapb.GeneratedEnumCompanion[QuantizationType] = this
     @SerialVersionUID(0L)
-    case object SYMMETRIC_UNIFORM_PO2 extends QuantizationType(0) with QuantizationType.Recognized {
+    case object UNIFORM extends QuantizationType(0) with QuantizationType.Recognized {
       val index = 0
-      val name = "SYMMETRIC_UNIFORM_PO2"
-      override def isSymmetricUniformPo2: _root_.scala.Boolean = true
+      val name = "UNIFORM"
+      override def isUniform: _root_.scala.Boolean = true
     }
     
     @SerialVersionUID(0L)
-    case object BINARY_SIGN extends QuantizationType(1) with QuantizationType.Recognized {
+    case object BINARY extends QuantizationType(1) with QuantizationType.Recognized {
       val index = 1
-      val name = "BINARY_SIGN"
-      override def isBinarySign: _root_.scala.Boolean = true
+      val name = "BINARY"
+      override def isBinary: _root_.scala.Boolean = true
     }
     
     @SerialVersionUID(0L)
-    case object BINARY_PO2 extends QuantizationType(2) with QuantizationType.Recognized {
+    case object TERNARY extends QuantizationType(3) with QuantizationType.Recognized {
       val index = 2
-      val name = "BINARY_PO2"
-      override def isBinaryPo2: _root_.scala.Boolean = true
+      val name = "TERNARY"
+      override def isTernary: _root_.scala.Boolean = true
     }
     
     @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int) extends QuantizationType(unrecognizedValue) with _root_.scalapb.UnrecognizedEnum
     
-    lazy val values = scala.collection.immutable.Seq(SYMMETRIC_UNIFORM_PO2, BINARY_SIGN, BINARY_PO2)
+    lazy val values = scala.collection.immutable.Seq(UNIFORM, BINARY, TERNARY)
     def fromValue(__value: _root_.scala.Int): QuantizationType = __value match {
-      case 0 => SYMMETRIC_UNIFORM_PO2
-      case 1 => BINARY_SIGN
-      case 2 => BINARY_PO2
+      case 0 => UNIFORM
+      case 1 => BINARY
+      case 3 => TERNARY
       case __other => Unrecognized(__other)
     }
     def javaDescriptor: _root_.com.google.protobuf.Descriptors.EnumDescriptor = lbir.Datatype.javaDescriptor.getEnumTypes().get(0)
