@@ -29,7 +29,6 @@ build/
 .project
 .settings
 .worksheet
-bin/
 .cache
 
 # intellij idea
