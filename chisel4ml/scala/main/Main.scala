@@ -4,7 +4,7 @@
  */
 package chisel4ml
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Files, Paths, Path}
 import chisel3.stage.ChiselStage
 import chisel3._
 
@@ -13,9 +13,12 @@ import chisel3._
  */
 object Main {
     def main(args: Array[String]): Unit = {
-        val byteArray = Files.readAllBytes(Paths.get(args(0)))
+        require(args.size == 2)
+        val genDir = Paths.get(args(0))
+        val byteArray = Files.readAllBytes(Path.of(args(0), args(1)))
         val lbirModel = lbir.Model.parseFrom(byteArray)
         (new ChiselStage).emitVerilog(new ProcessingPipeline(lbirModel), 
-                                      Array("-td","gen/"))
+                                      Array("-td", genDir.toAbsolutePath().toString(),
+                                            "--no-dce"))
     }
 }
