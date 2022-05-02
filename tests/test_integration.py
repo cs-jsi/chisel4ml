@@ -13,7 +13,7 @@ def test_qkeras_simple_dense_binarized_model_nofixedpoint():
     """
     w1 = np.array([[1, -1, -1, 1], [-1, 1, 1, -1], [-1, -1, 1, 1]])
     b1 = np.array([1, -1, 0, 0])
-    w2 = np.array([-1, 1, -1, -1]).reshape(4,1)
+    w2 = np.array([-1, 1, -1, -1]).reshape(4, 1)
     b2 = np.array([0])
     x = x_in = tf.keras.layers.Input(shape=3)
     x = qkeras.QDense(4, kernel_quantizer=qkeras.binary(alpha=1))(x)
