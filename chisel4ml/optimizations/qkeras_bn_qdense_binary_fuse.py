@@ -14,7 +14,11 @@ from chisel4ml.optimizations import register_qkeras_optimization
 
 
 @register_qkeras_optimization
-class QKerasBnQdenseBinaryFuse(QKerasOptimization):
+class QKerasBNQDenseBinaryFuse(QKerasOptimization):
+    """ 
+        Fuses the BatchNorm and QDense layer with a binary quantizer. For more information read the paper
+        on Binarized Neural networks by Courbariaux and Hubara et al.: https://arxiv.org/pdf/1602.02830.pdf. 
+    """
     num_layers = 3
 
     def __call__(self, layers: List[KerasLayer]) -> List[KerasLayer]:
