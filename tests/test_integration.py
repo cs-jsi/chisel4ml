@@ -47,15 +47,15 @@ def test_qkeras_dense_binarized_fixedpoint_batchnorm():
     # to explicitly encode this for the chisel4ml optimizer.
     model.add(tf.keras.layers.Input(shape=image_vector_size))
     model.add(qkeras.QActivation(qkeras.quantized_bits(bits=8, integer=8, keep_negative=False)))
-    model.add(qkeras.QDense(64, kernel_quantizer=qkeras.binary(alpha=1), 
-                            activation=qkeras.binary(alpha=1)))
-    model.add(tf.keras.layers.BatchNormalization())
-    model.add(qkeras.QDense(64, kernel_quantizer=qkeras.binary(alpha=1),
-                            activation=qkeras.binary(alpha=1)))
-    model.add(tf.keras.layers.BatchNormalization())
     model.add(qkeras.QDense(64, kernel_quantizer=qkeras.binary(alpha=1)))
-    model.add(qkeras.QActivation(qkeras.binary(alpha=1)))
     model.add(tf.keras.layers.BatchNormalization())
+    model.add(qkeras.QActivation(qkeras.binary(alpha=1)))
+    model.add(qkeras.QDense(64, kernel_quantizer=qkeras.binary(alpha=1)))
+    model.add(tf.keras.layers.BatchNormalization())
+    model.add(qkeras.QActivation(qkeras.binary(alpha=1)))
+    model.add(qkeras.QDense(64, kernel_quantizer=qkeras.binary(alpha=1)))
+    model.add(tf.keras.layers.BatchNormalization())
+    model.add(qkeras.QActivation(qkeras.binary(alpha=1)))
     model.add(qkeras.QDense(num_classes, kernel_quantizer=qkeras.binary(alpha=1), activation='softmax'))
 
 

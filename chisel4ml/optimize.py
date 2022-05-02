@@ -1,4 +1,4 @@
-from chisel4ml.optimizations import qkeras_opt_factory
+from chisel4ml.optimizations import __QKERAS_OPT_DICT__
 
 import tensorflow as tf
 
@@ -11,12 +11,18 @@ def qkeras_model(model):
     "Applys optimization passes to the model, and returns a dummy model that can be transformed into a LBIR model."
     layers = copy.deepcopy(model.layers)  # layers in keras are read-only
 
+    def _rolling_window(list, degree):
+        for i in range(len(list)-degree+1):
+            yield [list[i+o] for o in range(degree)]
+
     # Some layers are wrapped in other layers (pruning layer i.e.) in the first pass we unwrapp it and then
     # we apply other optimizations.
     for _ in range(MAX_PASSES):
-        for i, layer in enumerate(layers):  # TODO: is this safe?
-            opt = qkeras_opt_factory(layer)
-            layers[i:i+opt.num_layers] = opt(layers[i:i+opt.num_layers])
+        for _, opt in __QKERAS_OPT_DICT__.items():
+            for lslice in _rolling_window(layers, opt.num_layers):                  
+                if opt.is_applicable(lslice):
+                    lslice = opt(lslice)  # TODO: is this safe?
+
 
     # Re-create the model
     new_model = tf.keras.models.Sequential()

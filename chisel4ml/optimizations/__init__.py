@@ -1,5 +1,5 @@
 # models.__init__.py
-__all__ = ["qkeras_opt_factory"]
+__all__ = ["__QKERAS_OPT_DICT__"]
 
 from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
 from chisel4ml.optimizations.qkeras_default import QKerasDefaultOptimization

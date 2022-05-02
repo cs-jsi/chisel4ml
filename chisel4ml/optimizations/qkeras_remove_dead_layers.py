@@ -14,3 +14,8 @@ class QKerasRemoveDeadLayersOptimization(QKerasOptimization):
 
     def __call__(self, layers: List[KerasLayer]) -> List[KerasLayer]:
         return []
+
+    def is_applicable(self, layers: List[KerasLayer]) -> bool:
+        return (type(layers[0]) is tf.keras.layers.Dropout or
+               type(layers[0]) is tf.keras.layers.InputLayer)
+
