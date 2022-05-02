@@ -1,4 +1,4 @@
-from chisel4ml.optimizations import __QKERAS_OPT_DICT__
+from chisel4ml.optimizations import qkeras_opt_list
 
 import tensorflow as tf
 
@@ -18,11 +18,11 @@ def qkeras_model(model):
     # Some layers are wrapped in other layers (pruning layer i.e.) in the first pass we unwrapp it and then
     # we apply other optimizations.
     for _ in range(MAX_PASSES):
-        for _, opt in __QKERAS_OPT_DICT__.items():
-            for lslice in _rolling_window(layers, opt.num_layers):                  
+        for opt in qkeras_opt_list:
+            for lslice in _rolling_window(layers, opt.num_layers):
+                assert len(lslice) > 0
                 if opt.is_applicable(lslice):
                     lslice = opt(lslice)  # TODO: is this safe?
-
 
     # Re-create the model
     new_model = tf.keras.models.Sequential()

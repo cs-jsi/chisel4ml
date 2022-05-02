@@ -7,8 +7,7 @@ from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
 from chisel4ml.optimizations import register_qkeras_optimization
 
 
-@register_qkeras_optimization([tf.keras.layers.Dropout,
-                               tf.keras.layers.InputLayer])
+@register_qkeras_optimization
 class QKerasRemoveDeadLayersOptimization(QKerasOptimization):
     num_layers = 1
 
@@ -17,5 +16,4 @@ class QKerasRemoveDeadLayersOptimization(QKerasOptimization):
 
     def is_applicable(self, layers: List[KerasLayer]) -> bool:
         return (type(layers[0]) is tf.keras.layers.Dropout or
-               type(layers[0]) is tf.keras.layers.InputLayer)
-
+                type(layers[0]) is tf.keras.layers.InputLayer)

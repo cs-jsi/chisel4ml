@@ -31,7 +31,6 @@ class QKerasOptimization(ABC):
     def __call__(self, layers: List[KerasLayer]) -> List[KerasLayer]:
         return []
 
-
     @abstractmethod
     def is_applicable(self, layers: List[KerasLayer]) -> bool:
         return False

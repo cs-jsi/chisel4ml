@@ -7,6 +7,7 @@ from tensorflow.keras.datasets import mnist
 import os
 import shutil
 
+
 def test_qkeras_simple_dense_binarized_model_nofixedpoint():
     """
         Build a fully dense binarized model in qkeras, and then runs it through chisel4ml to get an verilog processing
@@ -30,7 +31,7 @@ def test_qkeras_simple_dense_binarized_model_nofixedpoint():
 
 def test_qkeras_dense_binarized_fixedpoint_batchnorm():
     """
-        Build a dense binarized model in qkeras that uses a single fixed-point layer at the start, and batch-norm 
+        Build a dense binarized model in qkeras that uses a single fixed-point layer at the start, and batch-norm
         layers in between the dense layers. The test only checks that verilog file was succesfully generated.
     """
     # Setup train and test splits
@@ -38,7 +39,7 @@ def test_qkeras_dense_binarized_fixedpoint_batchnorm():
 
     # Flatten the images
     image_vector_size = 28*28
-    num_classes = 10 # ten unique digits
+    num_classes = 10  # ten unique digits
     x_train = x_train.reshape(x_train.shape[0], image_vector_size)
     x_test = x_test.reshape(x_test.shape[0], image_vector_size)
 
@@ -57,7 +58,6 @@ def test_qkeras_dense_binarized_fixedpoint_batchnorm():
     model.add(tf.keras.layers.BatchNormalization())
     model.add(qkeras.QActivation(qkeras.binary(alpha=1)))
     model.add(qkeras.QDense(num_classes, kernel_quantizer=qkeras.binary(alpha=1), activation='softmax'))
-
 
     model.compile(optimizer="adam",
                   loss='sparse_categorical_crossentropy',
