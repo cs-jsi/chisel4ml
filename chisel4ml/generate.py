@@ -11,6 +11,9 @@ def hardware(model: tf.keras.Model, gen_dir="./gen/"):
     opt_model = optimize.qkeras_model(model)
     lbir_model = transform.qkeras2lbir(opt_model)
     pbfile = os.path.join(gen_dir, "model.pb")
+    if not os.path.exists(gen_dir):
+        os.makedirs(gen_dir)
+
     with open(pbfile, "wb") as f:
         f.write(lbir_model.SerializeToString())
 
