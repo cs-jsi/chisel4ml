@@ -6,7 +6,7 @@ from tensorflow.math import sqrt
 from tensorflow.math import multiply as mul
 from tensorflow.math import truediv as div
 
-from typing import List
+from typing import Sequence
 import copy
 
 from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
@@ -21,7 +21,7 @@ class QKerasBNQDenseBinaryFuse(QKerasOptimization):
     """
     num_layers = 3
 
-    def __call__(self, layers: List[KerasLayer]) -> List[KerasLayer]:
+    def __call__(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
         new_layers = copy.deepcopy(layers)
         mm = layers[1].moving_mean
         mv = layers[1].moving_variance
@@ -32,7 +32,7 @@ class QKerasBNQDenseBinaryFuse(QKerasOptimization):
         del new_layers[1]
         return new_layers
 
-    def is_applicable(self, layers: List[KerasLayer]) -> bool:
+    def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
         return (type(layers[0]) is qkeras.QDense and
                 type(layers[1]) is BatchNormalization and
                 type(layers[2]) is qkeras.QActivation and

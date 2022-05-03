@@ -2,7 +2,7 @@ from tensorflow.keras.layers import Layer as KerasLayer
 
 from abc import ABC
 from abc import abstractmethod
-from typing import List
+from typing import Sequence
 import logging
 
 
@@ -28,9 +28,9 @@ class QKerasOptimization(ABC):
 
     @abstractmethod
     @_check_num_layers_and_log
-    def __call__(self, layers: List[KerasLayer]) -> List[KerasLayer]:
+    def __call__(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
         return []
 
     @abstractmethod
-    def is_applicable(self, layers: List[KerasLayer]) -> bool:
+    def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
         return False
