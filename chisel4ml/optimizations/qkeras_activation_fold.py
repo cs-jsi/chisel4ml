@@ -1,8 +1,10 @@
 import qkeras
 
 from tensorflow.keras.layers import Layer as KerasLayer
+from tensorflow.keras.activations import linear
 
 from typing import Sequence
+from typing import List
 import copy
 
 from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
@@ -18,13 +20,14 @@ class QKerasActivationFold(QKerasOptimization):
     """
     num_layers = 2
 
-    def __call__(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
-        new_layers = copy.deepcopy(layers)
+    def _call_impl(self, layers: Sequence[KerasLayer]) -> List[KerasLayer]:
+        new_layers = list(copy.deepcopy(layers))
         new_layers[0].activation = layers[1].activation
         del new_layers[1]
+        return new_layers
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
         return (type(layers[0]) is qkeras.QDense and
-                type(layers[0].activation) is None and
+                layers[0].activation is linear and
                 type(layers[1]) is qkeras.QActivation and
                 type(layers[1].activation) is qkeras.quantizers.binary)

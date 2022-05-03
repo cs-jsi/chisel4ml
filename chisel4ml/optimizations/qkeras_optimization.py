@@ -3,6 +3,7 @@ from tensorflow.keras.layers import Layer as KerasLayer
 from abc import ABC
 from abc import abstractmethod
 from typing import Sequence
+from typing import List
 import logging
 
 
@@ -11,7 +12,7 @@ def _check_num_layers_and_log(call_fn):
         assert len(layers) == self.num_layers, \
             f"The number of layers for the {self.__class__} optimizations should be {self.num_layers}. The provided" \
             f" number of layers to the optimizer was {len(layers)}."
-        logging.debug(f"Calling optimization {self.__class__} on layers:{layers}.")
+        logging.info(f"Calling optimization {self.__class__} on layers:{layers}.")
         return call_fn(self, layers)
     return wrap_call_fn
 
@@ -26,9 +27,12 @@ class QKerasOptimization(ABC):
         """
         cls.__call__ = _check_num_layers_and_log(cls.__call__)  # type:ignore
 
-    @abstractmethod
     @_check_num_layers_and_log
-    def __call__(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
+    def __call__(self, layers: Sequence[KerasLayer]) -> List[KerasLayer]:
+        return self._call_impl(layers)
+
+    @abstractmethod
+    def _call_impl(self, layers: Sequence[KerasLayer]) -> List[KerasLayer]:
         return []
 
     @abstractmethod

@@ -24,7 +24,6 @@ def qkeras_model(model):
             window.append(item)
             yield tuple((index, window))
 
-
     # Some layers are wrapped in other layers (pruning layer i.e.) in the first pass we unwrapp it and then
     # we apply other optimizations.
     for _ in range(NUM_ITERATIONS):
