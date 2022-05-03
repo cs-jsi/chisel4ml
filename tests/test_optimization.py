@@ -36,6 +36,6 @@ def test_activation_fold_opt():
     l1 = qkeras.QActivation(qkeras.binary())
     opt = QKerasActivationFold()
     opt_layers = opt([l0, l1])
-    assert (len(opt_layers) == 1 and 
+    assert (len(opt_layers) == 1 and
             type(opt_layers[0]) is qkeras.QDense and
-            type(opt_layers[0].activation) is type(l1.activation))
+            isinstance(opt_layers[0].activation, type(l1.activation)))
