@@ -15,7 +15,7 @@ object Main {
     def main(args: Array[String]): Unit = {
         require(args.size == 2)
         val genDir = Paths.get(args(0))
-        val byteArray = Files.readAllBytes(Path.of(args(0), args(1)))
+        val byteArray = Files.readAllBytes(Path.of(args(1)))
         val lbirModel = lbir.Model.parseFrom(byteArray)
         (new ChiselStage).emitVerilog(new ProcessingPipeline(lbirModel), 
                                       Array("-td", genDir.toAbsolutePath().toString(),
