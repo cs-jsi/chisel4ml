@@ -5,8 +5,10 @@ import tensorflow as tf
 import copy
 import collections
 import itertools
+import os
+import logging
 
-NUM_ITERATIONS = 3  # Some optimizations can only be applied after certain others optimizations have been applied.
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 
 def qkeras_model(model):
@@ -20,21 +22,17 @@ def qkeras_model(model):
             maxlen=size
         )
 
-        for index, item in enumerate(iterable):
+        for item in iterable:
             window.append(item)
-            yield tuple((index, window))
+            yield window
 
     # Some layers are wrapped in other layers (pruning layer i.e.) in the first pass we unwrapp it and then
     # we apply other optimizations.
-    for _ in range(NUM_ITERATIONS):
-        for opt in qkeras_opt_list:
-            for i, lslice in sliding_window(layers, opt.num_layers):
-                if opt.is_applicable(lslice):
-                    layers[i:i+opt.num_layers] = opt(lslice)  # TODO: is this safe?
+    for opt in qkeras_opt_list:
+        for lslice in sliding_window(layers, opt.num_layers):
+            if opt.is_applicable(lslice):
+                lslice = opt(lslice)
 
-    # Re-create the model
-    new_model = tf.keras.models.Sequential()
-    for layer in layers:
-        new_model.add(layer)
+        layers = list(filter(lambda l: not hasattr(l, 'c4ml_remove_layer'), layers))
 
-    return new_model
+    return tf.keras.models.Sequential(layers)

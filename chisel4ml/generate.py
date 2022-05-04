@@ -4,6 +4,9 @@ import tensorflow as tf
 
 import subprocess
 import os
+import logging
+
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 
 def hardware(model: tf.keras.Model, gen_dir="./gen/"):

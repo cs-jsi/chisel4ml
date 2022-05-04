@@ -4,8 +4,10 @@ import qkeras
 import chisel4ml.lbir_python.lbir_pb2 as lbir
 from chisel4ml.transforms import register_qkeras_transform
 
-import logging
 from collections import defaultdict
+import logging
+
+log = logging.getLogger(__name__)
 
 _qkeras2lbir_quantizer_dict = defaultdict(lambda: lbir.Datatype.UNIFORM)  # type: ignore
 _qkeras2lbir_quantizer_dict[qkeras.quantized_bits] = lbir.Datatype.UNIFORM
@@ -14,8 +16,8 @@ _qkeras2lbir_quantizer_dict[qkeras.binary] = lbir.Datatype.BINARY
 
 def _log_transform(fn):
     def wrap_trans_fn(layer):
-        logging.debug(f"Transforming keras layer {layer.__class__} to a LBIR layer with the "
-                      f"{fn.__name__} transform.")
+        log.debug(f"Transforming keras layer {layer.__class__} to a LBIR layer with the "
+                  f"{fn.__name__} transform.")
         return fn(layer)
     return wrap_trans_fn
 

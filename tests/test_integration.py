@@ -6,6 +6,8 @@ from tensorflow.keras.datasets import mnist
 
 import os
 import shutil
+import logging
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 
 def test_qkeras_simple_dense_binarized_model_nofixedpoint():
@@ -34,6 +36,7 @@ def test_qkeras_dense_binarized_fixedpoint_batchnorm():
         Build a dense binarized model in qkeras that uses a single fixed-point layer at the start, and batch-norm
         layers in between the dense layers. The test only checks that verilog file was succesfully generated.
     """
+
     # Setup train and test splits
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -63,7 +66,7 @@ def test_qkeras_dense_binarized_fixedpoint_batchnorm():
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
 
-    model.fit(x_train, y_train, batch_size=64, epochs=5, verbose=False)
+    model.fit(x_train, y_train, batch_size=64, epochs=2, verbose=False)
     # loss, accuracy  = model.evaluate(x_test, y_test, verbose=False)
     generate.hardware(model, gen_dir=os.path.join(os.getcwd(), "gen"))
     assert any(f.endswith(".v") for f in os.listdir("./gen/"))

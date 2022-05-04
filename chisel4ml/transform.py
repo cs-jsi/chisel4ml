@@ -3,6 +3,11 @@ import chisel4ml.lbir_python.lbir_pb2 as lbir
 
 import tensorflow as tf
 
+import os
+import logging
+
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+
 
 def qkeras2lbir(model: tf.keras.Model) -> lbir.Model:
     "Applys transformation to a Keras model, and returns a LBIR model."

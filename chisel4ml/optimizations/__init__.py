@@ -21,3 +21,5 @@ for file in os.listdir(os.path.dirname(__file__)):
     if file.endswith('.py') and not file.startswith('_'):
         module_name = file[:file.find('.py')]
         module = importlib.import_module('chisel4ml.optimizations.' + module_name)
+
+    qkeras_opt_list = sorted(qkeras_opt_list, key=lambda x: x.priority)  # type: ignore

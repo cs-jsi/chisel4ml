@@ -4,8 +4,6 @@ from tensorflow.keras.layers import Layer as KerasLayer
 from tensorflow.keras.activations import linear
 
 from typing import Sequence
-from typing import List
-import copy
 
 from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
 from chisel4ml.optimizations import register_qkeras_optimization
@@ -19,12 +17,12 @@ class QKerasActivationFold(QKerasOptimization):
         activation variable.
     """
     num_layers = 2
+    priority = 3
 
-    def _call_impl(self, layers: Sequence[KerasLayer]) -> List[KerasLayer]:
-        new_layers = list(copy.deepcopy(layers))
-        new_layers[0].activation = layers[1].activation
-        del new_layers[1]
-        return new_layers
+    def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
+        layers[0].activation = layers[1].activation
+        layers[1].c4ml_remove_layer = True
+        return layers
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
         return (type(layers[0]) is qkeras.QDense and

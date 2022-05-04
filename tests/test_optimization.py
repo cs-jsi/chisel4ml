@@ -14,7 +14,8 @@ def test_remove_dead_layer_opt(layer):
         Tests the optimization removes all the inactive layers as it should.
     """
     opt = QKerasRemoveDeadLayersOptimization()
-    assert opt([layer]) == [], f"The optimization {opt} was suppose to optimize away the {layer} layer."
+    assert hasattr(opt([layer])[0], 'c4ml_remove_layer'), \
+        f"The optimization {opt} was suppose to optimize away the {layer} layer."
 
 
 def test_check_num_layers_decorator():
@@ -36,6 +37,6 @@ def test_activation_fold_opt():
     l1 = qkeras.QActivation(qkeras.binary())
     opt = QKerasActivationFold()
     opt_layers = opt([l0, l1])
-    assert (len(opt_layers) == 1 and
+    assert (hasattr(opt_layers[1], 'c4ml_remove_layer') and
             type(opt_layers[0]) is qkeras.QDense and
             isinstance(opt_layers[0].activation, type(l1.activation)))
