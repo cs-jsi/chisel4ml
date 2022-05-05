@@ -11,8 +11,9 @@ from chisel4ml.optimizations import register_qkeras_optimization
 @register_qkeras_optimization
 class QKerasAddInputQuantization(QKerasOptimization):
     """
-        We use pythons flexible typing system to add the input quantization to the layer object. We do this so that
-        the transform later has all the information it needs to transform a qkeras layer into a lbir layer.
+        We use pythons flexible typing system to add (monkey patch) the input quantization to the layer object. 
+        We do this so that the transform later has all the information it needs to transform a qkeras layer into 
+        a lbir layer. This test has low priority because it must not run before the activation fold operation.
     """
     num_layers = 2
     priority = 10
