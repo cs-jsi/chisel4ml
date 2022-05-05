@@ -1,0 +1,51 @@
+CHANGES
+=======
+
+* Added pbr for versioning, releasing v0.0.1
+
+0.0.1
+-----
+
+* Updated some configuration info
+* Changed Paths function in main, seems like its problematic on windows
+* Changed the handling of paths to use absolute paths, this helps with cross-platform compatibility (windows)
+* Restructured optimizer and optimizations, all test passing now. ALSO added the add\_input\_quantization opt
+* Fixed style errors
+* Fixed activation fold optimization, and added a test for it. Also changed type signatures on other optimizations
+* Added new sliding\_window iterator that sort of solves the optimization application problem
+* Moved optimization function prototypes to use Sequence instead of List. This is because we want functions to work with immutable objects (even though they really operate on mutable Lists, the typing is still enforced.)
+* Added docs to bnn fuse optimization
+* Implemented the batchnorm fusing. Not yet tested
+* Resturctured optimize to use a optimization list. Had to rewrite tests as well
+* Restuctured optimize function to not use the qkeras\_optimization\_factory, but instead manually cycle through each optimization
+* generate.py now creats gen dir if it doesn't already exist. Added a more complex integration test (that is failing now) for batch norm, and fixed-point inputs
+* Added sphinx as a dev requirment
+* Fixed small style error
+* Added --no-dce (no dead code elimnation) option to verilog gen, now verilog seems to be correctly generated
+* Added chisel jar
+* Verilog being generated, but not correctly (it is mostly empty)
+* Renamed modules, started restructing scala code
+* Added verilog generation, its not working
+* Added integration test. Its failing as expected, as it expects a generated verilog file which isn't yet implemtned
+* Refactored some scala code, regenrated LBIR. NON WORKING COMMIT
+* Added scalastyle plugin, also modified LICENSE from the generic version
+* Added hwlayer and hwModel from mpbnn repo. They will mostly be changed
+* SBT now autogenerating proto source
+* Style fixes for flake8
+* Updated LBIR, also scala code can now read in a protobuf file from a file given as a command line argument
+* Modified the optimizer so that it takes a variable sized list of layers as an input to the optimization
+* Restructued optimizer to now work on a copy of layers, and then returns a new empty model. This is because the keras model.layers list is immutable. Also added default optimization so, we don't get errors on non-optimizing layers
+* Added the optimizer, remove dead layers optimization now working
+* Fixed small tox issue, which cause mypy to fail on github actions
+* Downgraded tensorflow version to support python 3.6, also added the tensorflow module to pytest ignore, to igore an import deprectation warning
+* Added requirements.txt to tox env
+* Added tests, and fixed errors comming from flake8,pymy,pytest. Also moved lbir\_pb2.py to a seperate directory and added a lbir\_pb2.pyi file, which is used by pymy for type safety
+* Renamed test.yml to tests.yml
+* Added the devops configurations and a LICENSE
+* Remove dead layers optimizations now working, the num\_layers checking is also working
+* Renamed imports to be (pip) package based, in other words they now start from the root
+* Started structuring the project, added a setup.py, and a folder for optimizations and tranforms. Loading in the opimizations module is already working
+* Added basic lbir definition
+* Now compiling to a standalone jar that can be used with a normal java runtime
+* basic scala build working
+* Iniitial commit

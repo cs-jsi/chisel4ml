@@ -1,6 +1,9 @@
 gen/
 .coverage
 
+#pbr
+.eggs/
+
 # tox
 .tox/
 
