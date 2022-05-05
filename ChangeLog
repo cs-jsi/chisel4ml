@@ -1,6 +1,10 @@
 CHANGES
 =======
 
+* Added pbr to setup.cfg aswell
+* We added pbr to the requirements and added some documentation to the add\_input\_quant opt
+* changed win to win32
+* Added pbr artefacts
 * Added pbr for versioning, releasing v0.0.1
 
 0.0.1

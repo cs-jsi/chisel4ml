@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=42.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["pbr>=5.7.0", "setuptools>=42.0", "wheel"]
+build-backend = "pbr.build"
 
 [tool.pytest.ini_options]
 addopts = "--cov=chisel4ml"
