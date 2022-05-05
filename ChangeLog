@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Changed configuration files to be compatible with PBR
 * Added pbr to setup.cfg aswell
 * We added pbr to the requirements and added some documentation to the add\_input\_quant opt
 * changed win to win32
