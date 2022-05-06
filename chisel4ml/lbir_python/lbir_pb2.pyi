@@ -144,11 +144,13 @@ class Activation(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
         BINARY_SIGN: Activation._Function.ValueType  # 0
         RELU: Activation._Function.ValueType  # 1
+        NO_ACTIVATION: Activation._Function.ValueType  # 2
     class Function(_Function, metaclass=_FunctionEnumTypeWrapper):
         pass
 
     BINARY_SIGN: Activation.Function.ValueType  # 0
     RELU: Activation.Function.ValueType  # 1
+    NO_ACTIVATION: Activation.Function.ValueType  # 2
 
     FN_FIELD_NUMBER: builtins.int
     BITWIDTH_FIELD_NUMBER: builtins.int

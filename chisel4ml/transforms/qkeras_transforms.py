@@ -1,17 +1,16 @@
 from tensorflow.keras.layers import Layer as KerasLayer
+from tensorflow.keras.activations import softmax
 import qkeras
 
 import chisel4ml.lbir_python.lbir_pb2 as lbir
 from chisel4ml.transforms import register_qkeras_transform
 
+from typing import Sequence
 from collections import defaultdict
 import logging
+import inspect
 
 log = logging.getLogger(__name__)
-
-_qkeras2lbir_quantizer_dict = defaultdict(lambda: lbir.Datatype.UNIFORM)  # type: ignore
-_qkeras2lbir_quantizer_dict[qkeras.quantized_bits] = lbir.Datatype.UNIFORM
-_qkeras2lbir_quantizer_dict[qkeras.binary] = lbir.Datatype.BINARY
 
 
 def _log_transform(fn):
@@ -21,37 +20,73 @@ def _log_transform(fn):
         return fn(layer)
     return wrap_trans_fn
 
+# We use a defaultdict here because quantizers can also be left unspecified in qkeras.
+_qkeras2lbir_quantizer_dict = defaultdict(lambda: lbir.Datatype.UNIFORM)  # type: ignore
+_qkeras2lbir_quantizer_dict[qkeras.quantized_bits] = lbir.Datatype.UNIFORM
+_qkeras2lbir_quantizer_dict[qkeras.binary] = lbir.Datatype.BINARY
+
+def _qkeras2lbir_activation_transform(keras_act):
+    """ Keras allows both objects and functions as activations. This wrapper function deals with this. """
+    _qkeras2lbir_activation_dict = {
+        qkeras.binary: lbir.Activation.BINARY_SIGN,
+        softmax: lbir.Activation.NO_ACTIVATION
+    }
+    if inspect.isfunction(keras_act):
+        return _qkeras2lbir_activation_dict[keras_act]
+    else:
+        return _qkeras2lbir_activation_dict[keras_act.__class__]
+
+def _qkeras_get_shape(keras_layer: KerasLayer, tensor: str) -> Sequence[int]:
+    if (tensor == 'input' or
+        tensor == 'output'):
+        return keras_layer.__getattribute__(tensor + '_shape')[1:]  # We throw away the batch dimension
+    elif tensor == 'kernel':
+        return keras_layer.weights[0].shape.as_list()
+    elif tensor == 'bias':
+        return keras_layer.bias[0].shape.as_list()
+    else:
+        raise ValueError(f'Function {__name__} invalid tensor string: {tensor}.')
+
+def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTensor:
+    """ 
+        Populates a lbir QTensor. Unfortunately neither keras, nor qkeras hold all the necesssary info in a single
+        field, so we must use some awkward methods to obtain them. The variable tensor should be one of the strings 
+        specified in the assertion (all lower case).
+    """
+    assert(tensor == 'kernel' or
+           tensor == 'bias' or
+           tensor == 'input')
+    qkeras_quantizer = keras_layer.__getattribute__(tensor + '_quantizer')
+    qtensor = lbir.QTensor()
+    qtensor.dtype.quantization = _qkeras2lbir_quantizer_dict[qkeras_quantizer]
+    if hasattr(qkeras_quantizer, 'bits'):
+        qtensor.dtype.bitwidth = qkeras_quantizer.bits
+    else:
+        qtensor.dtype.bitwidth = 32
+    qtensor.dtype.scale = qkeras.get_weight_scale(qkeras_quantizer)
+    qtensor.dtype.offset = 0  # TODO this assumes symmetric quantization.
+    qtensor.shape[:] = _qkeras_get_shape(keras_layer, tensor)  
+    if (hasattr(keras_layer, tensor + '_quantizer_internal') and
+        keras_layer.__getattribute__(tensor + '_quantizer_internal') is not None):
+        quant_internals = keras_layer.__getattribute__(tensor + '_quantizer_internal')
+        qtensor.values[:] = quant_internals(keras_layer.__getattribute__(tensor)).numpy().tobytes()
+    elif tensor == 'bias':
+        # Bias can be folded into the activation in some cases (BNN), so we allow using float biases as well.
+        qtensor.values[:] = keras_layer.bias.numpy().tobytes()
+    return qtensor
 
 def _qkeras_base_transform(keras_layer: KerasLayer) -> lbir.Layer:
     """ The base tranform transform transforms the parts of the layer that are common to all layers. """
     lbir_layer = lbir.Layer()
-
-    lbir_layer.input.dtype.quantization = _qkeras2lbir_quantizer_dict[keras_layer.kernel_quantizer.__class__]
-    lbir_layer.input.dtype.scale = 1
-    lbir_layer.input.dtype.offset = 0
-    lbir_layer.input.shape[:] = keras_layer.input_shape[1:]  # We throw away the batch dimension
-
-    lbir_layer.activation.fn = lbir.Activation.BINARY_SIGN
-    lbir_layer.activation.bitwidth = 1
-
+    lbir_layer.use_bias = keras_layer.use_bias
+    lbir_layer.biases.CopyFrom(_qkeras_transform_tensor(keras_layer, 'bias'))
+    lbir_layer.weights.CopyFrom(_qkeras_transform_tensor(keras_layer, 'kernel'))
+    lbir_layer.input.CopyFrom(_qkeras_transform_tensor(keras_layer, 'input'))
+    lbir_layer.activation.fn = _qkeras2lbir_activation_transform(keras_layer.activation)
+    lbir_layer.activation.bitwidth = 1  # TODO currently only supporting BINARY_SIGN act
     lbir_layer.out_shape[:] = keras_layer.output_shape[1:]
 
-    lbir_layer.weights.dtype.quantization = _qkeras2lbir_quantizer_dict[keras_layer.kernel_quantizer.__class__]
-    lbir_layer.weights.dtype.scale = 1
-    lbir_layer.weights.dtype.offset = 0
-    lbir_layer.weights.values[:] = keras_layer.kernel_quantizer_internal(keras_layer.kernel).numpy().tobytes()
-
-    lbir_layer.use_bias = keras_layer.use_bias
-    if keras_layer.use_bias:
-        lbir_layer.biases.dtype.quantization = _qkeras2lbir_quantizer_dict[keras_layer.bias_quantizer.__class__]
-        lbir_layer.biases.dtype.scale = 1
-        lbir_layer.biases.dtype.offset = 0
-        if keras_layer.bias_quantizer_internal is not None:
-            lbir_layer.biases.values[:] = keras_layer.bias_quantizer_internal(keras_layer.bias).numpy().tobytes()
-        else:
-            lbir_layer.biases.values[:] = keras_layer.bias.numpy().tobytes()
     return lbir_layer
-
 
 @_log_transform
 @register_qkeras_transform(qkeras.QDense)

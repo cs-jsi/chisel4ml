@@ -137,6 +137,7 @@ object Activation extends scalapb.GeneratedMessageCompanion[lbir.Activation] {
     type EnumType = Function
     def isBinarySign: _root_.scala.Boolean = false
     def isRelu: _root_.scala.Boolean = false
+    def isNoActivation: _root_.scala.Boolean = false
     def companion: _root_.scalapb.GeneratedEnumCompanion[Function] = lbir.Activation.Function
     final def asRecognized: _root_.scala.Option[lbir.Activation.Function.Recognized] = if (isUnrecognized) _root_.scala.None else _root_.scala.Some(this.asInstanceOf[lbir.Activation.Function.Recognized])
   }
@@ -159,12 +160,20 @@ object Activation extends scalapb.GeneratedMessageCompanion[lbir.Activation] {
     }
     
     @SerialVersionUID(0L)
+    case object NO_ACTIVATION extends Function(2) with Function.Recognized {
+      val index = 2
+      val name = "NO_ACTIVATION"
+      override def isNoActivation: _root_.scala.Boolean = true
+    }
+    
+    @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int) extends Function(unrecognizedValue) with _root_.scalapb.UnrecognizedEnum
     
-    lazy val values = scala.collection.immutable.Seq(BINARY_SIGN, RELU)
+    lazy val values = scala.collection.immutable.Seq(BINARY_SIGN, RELU, NO_ACTIVATION)
     def fromValue(__value: _root_.scala.Int): Function = __value match {
       case 0 => BINARY_SIGN
       case 1 => RELU
+      case 2 => NO_ACTIVATION
       case __other => Unrecognized(__other)
     }
     def javaDescriptor: _root_.com.google.protobuf.Descriptors.EnumDescriptor = lbir.Activation.javaDescriptor.getEnumTypes().get(0)

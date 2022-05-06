@@ -49,6 +49,7 @@ message Activation {
     enum Function {
         BINARY_SIGN = 0;
         RELU = 1; 
+        NO_ACTIVATION = 2;
     }
     Function fn = 1;
     uint32 bitwidth = 2;
