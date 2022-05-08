@@ -19,8 +19,7 @@ class ProcessingPipeline (model : lbir.Model) extends Module {
   // Instantiate modules for seperate layers, for now we only support DENSE layers
   for (layer <- model.layers) {
       assert(layer.ltype == lbir.Layer.Type.DENSE)
-      //peList += Module(new ProcessingElementFactory(layer))
-      peList += Module(new BinarizedDense(layer))
+      peList += Module(ProcessingElementSimple(layer))
   }
 
   val io = IO(new Bundle {

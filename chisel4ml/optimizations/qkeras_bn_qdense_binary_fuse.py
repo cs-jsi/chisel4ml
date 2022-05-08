@@ -1,4 +1,5 @@
 import qkeras
+import tensorflow as tf
 
 from tensorflow.keras.layers import Layer as KerasLayer
 from tensorflow.keras.layers import BatchNormalization
@@ -16,18 +17,20 @@ from chisel4ml.optimizations import register_qkeras_optimization
 class QKerasBNQDenseBinaryFuse(QKerasOptimization):
     """
         Fuses the BatchNorm and QDense layer with a binary quantizer. For more information read the paper
-        on Binarized Neural networks by Courbariaux and Hubara et al.: https://arxiv.org/pdf/1602.02830.pdf.
+        on Binarized Neural networks by Umuroglu et al.: https://arxiv.org/pdf/1612.07119.pdf.
     """
     num_layers = 3
     priority = 2
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
+        fan_in = layers[0].kernel.shape.as_list()[0]
         mm = layers[1].moving_mean
         mv = layers[1].moving_variance
-        b = layers[1].beta
-        g = layers[1].gamma
+        beta = layers[1].beta
+        gamma = layers[1].gamma
         b = layers[0].bias
-        layers[0].bias = (mm - b) - div(mul(sqrt(mv), b), g)
+        thresh = (mm - b) - div(mul(sqrt(mv), beta), gamma)
+        layers[0].bias = tf.math.floor((fan_in + thresh) / 2)
         layers[1].c4ml_remove_layer = True
         return layers
 

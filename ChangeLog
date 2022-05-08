@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Added NO\_ACT to lbir.proto to handle softmax act function conversion. Renamed input\_quantization to input\_quantizer to be consitant with Keras. Added FixedPoint implementaion in scala, but its not working yet
+* Fixed problem with mypy by ignoring errors related to PEP 561. Might need to fix this later
 * Changed configuration files to be compatible with PBR
 * Added pbr to setup.cfg aswell
 * We added pbr to the requirements and added some documentation to the add\_input\_quant opt
