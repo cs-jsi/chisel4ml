@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Removed chisel4ml jar. It will now be build by github actions
+* Fixed bn fuse optimization, added BinaryWeightLayer hw processing element, also had to create a companion object to ack as a factory method, some fixes for qkeras\_transform, fixed integration test, which had a negative thresh value, which is illegal in a (hw) BNN. Moved MNIST model creation to a test fixture. Added transformation test
 * Added NO\_ACT to lbir.proto to handle softmax act function conversion. Renamed input\_quantization to input\_quantizer to be consitant with Keras. Added FixedPoint implementaion in scala, but its not working yet
 * Fixed problem with mypy by ignoring errors related to PEP 561. Might need to fix this later
 * Changed configuration files to be compatible with PBR
