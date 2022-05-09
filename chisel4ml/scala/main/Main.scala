@@ -18,7 +18,6 @@ object Main {
         val byteArray = Files.readAllBytes(Paths.get(args(1)))
         val lbirModel = lbir.Model.parseFrom(byteArray)
         (new ChiselStage).emitVerilog(new ProcessingPipeline(lbirModel), 
-                                      Array("-td", genDir.toAbsolutePath().toString(),
-                                            "--no-dce"))
+                                      Array("-td", genDir.toAbsolutePath().toString()))
     }
 }

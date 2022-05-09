@@ -25,7 +25,7 @@ lazy val root = (project in file("."))
     name := "chisel4ml",
     libraryDependencies ++= Seq(
       "edu.berkeley.cs" %% "chisel3" % chiselVersion,
-      "edu.berkeley.cs" %% "chiseltest" % "0.5.1" % "test",
+      "edu.berkeley.cs" %% "chiseltest" % "0.5.2" % "test",
       "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
     ),
     scalacOptions ++= Seq(
