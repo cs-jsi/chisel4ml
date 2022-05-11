@@ -1,5 +1,5 @@
 from chisel4ml.transforms import qkeras_transform_factory
-import chisel4ml.lbir_python.lbir_pb2 as lbir
+import chisel4ml.lbir.lbir_pb2 as lbir
 
 import tensorflow as tf
 

@@ -1,5 +1,5 @@
 from chisel4ml import optimize, transform
-import chisel4ml.lbir_python.lbir_pb2 as lbir
+import chisel4ml.lbir.lbir_pb2 as lbir
 
 import os
 import logging

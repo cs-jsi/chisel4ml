@@ -6,7 +6,7 @@ import importlib
 from typing import Dict
 
 from tensorflow.keras.layers import Layer as KerasLayer
-from chisel4ml.lbir_python.lbir_pb2 import Layer as LbirLayer
+from chisel4ml.lbir.lbir_pb2 import Layer as LbirLayer
 
 __QKERAS_TRANSFORM_DICT__: Dict[KerasLayer, LbirLayer] = dict()
 

@@ -2,3 +2,4 @@ lbir_pb2.py
 lbir_pb2_grpc.py
 services_pb2.py
 services_pb2_grpc.py
+*.pyi

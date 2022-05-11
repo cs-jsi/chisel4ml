@@ -2,7 +2,7 @@ from tensorflow.keras.layers import Layer as KerasLayer
 from tensorflow.keras.activations import softmax
 import qkeras
 
-import chisel4ml.lbir_python.lbir_pb2 as lbir
+import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import register_qkeras_transform
 
 from typing import Sequence

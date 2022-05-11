@@ -13,7 +13,9 @@ ThisBuild / assemblyMergeStrategy := {
 }
 
 PB.deleteTargetDirectory := false
-Compile / PB.protoSources := Seq(baseDirectory.value / "chisel4ml")
+PB.additionalDependencies := Nil
+Compile / PB.includePaths := Seq(file(root.base.getAbsolutePath))
+Compile / PB.protoSources := Seq(baseDirectory.value / "chisel4ml" / "lbir")
 Compile / PB.targets := Seq(
   scalapb.gen(flatPackage = true) ->  baseDirectory.value / "chisel4ml" / "scala"
 )
