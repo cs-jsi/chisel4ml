@@ -1,6 +1,6 @@
 .PHONY = protobuf clean
 
-PROTOC = python3 -m grpc_tools.protoc --proto_path=. --python_out=. --grpc_python_out=. --mypy_out=.
+PROTOC = python -m grpc_tools.protoc --proto_path=. --python_out=. --grpc_python_out=. --mypy_out=.
 
 SRCS := $(wildcard chisel4ml/lbir/*.proto)
 BINS := $(SRCS:%.proto=%_pb2.py) 
