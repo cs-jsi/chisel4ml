@@ -7,7 +7,7 @@ BINS := $(SRCS:%.proto=%_pb2.py)
 BINS += $(SRCS:%.proto=%_pb2.pyi) 
 BINS += $(SRCS:%.proto=%_pb2_grpc.py)
 
-all: ${BINS}
+protobuf: ${BINS}
 
 %_pb2.py %_pb2.pyi %_pb2_grpc.py: %.proto
 	${PROTOC} $<

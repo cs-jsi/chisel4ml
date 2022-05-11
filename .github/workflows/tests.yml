@@ -31,5 +31,8 @@ jobs:
     - name: Build scala
       run: |
           sbt assembly
+    - name: Make protobuf
+      run: |
+          make protobuf
     - name: Test with tox
       run: tox
