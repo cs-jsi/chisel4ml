@@ -1,10 +1,9 @@
 syntax = "proto3";
 
-package chisel4ml;
+package lbir;
 
 option java_multiple_files = true;
 option java_package = "lbir";
-option java_outer_classname = "ModelProtos";
 
 message Model {
     string name = 1;

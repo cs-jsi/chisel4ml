@@ -1,0 +1,37 @@
+syntax = "proto3";
+import "lbir.proto";
+
+package services;
+
+option java_multiple_files = true;
+option java_package = "services";
+
+service ModelService {
+  // Sends a greeting
+  rpc Compile (lbir.Model) returns (ModelHandle) {}
+  rpc Run (ModelRunParams) returns (ModelRunReturn) {}
+}
+
+message ModelRunReturn {
+    repeated lbir.QTensor values = 1;
+}
+ 
+message ModelRunParams {
+    ModelHandle modelHandle = 1;
+    repeated lbir.QTensor inputs = 2;
+}
+
+message ModelHandle {
+    string name = 1;
+    string directory = 2;
+    ErrorMsg reply = 3;
+}
+
+message ErrorMsg {
+    enum ErrorId {
+        SUCCESS = 0;
+        FAIL    = 1;
+    }
+    ErrorId err = 1;
+    string msg = 2;
+}

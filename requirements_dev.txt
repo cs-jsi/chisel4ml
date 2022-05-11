@@ -6,3 +6,4 @@ mypy==0.910
 mypy-protobuf==3.2.0
 sphinx==4.5.0
 pbr==5.8.1
+grpcio-tools==1.46.0
