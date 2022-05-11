@@ -1,5 +1,5 @@
 # models.__init__.py
-__all__ = ["qkeras_opt_list"]
+__all__ = ["qkeras_opt_list, register_qkeras_optimization"]
 
 from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
 

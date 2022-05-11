@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+* Added mypy-protobuf to gh actions aswell
+* Readded req\_dev.txt because its refrernced in tox.ini, also added pip install grpcio to github workflow so that it will be available when calling make
+* Removed 3 specifier from makefile python command. So now it calls default python
+* Removed requirements\_dev and added grpcio\_tools to setup.cfg extra requires
+* Added python protobuf building to .github actions
 * Moved to protobuf autogenerating with makefile (for python) and sbt (for scala). Had to disable integration test because they were not wrirtten for the new services based approach. Fiddled around with tox configuration
 * Moving to a protobuf gRPC services based design, moved protobuf files, and deleted generated files from git. They are not autogenerating yet
 * Removed the -no-dce (no deadcode elimination) optimization from verilog emition (its not needed, after the bn\_fuse is working correctly), also bumped chiseltest to 0.5.2
