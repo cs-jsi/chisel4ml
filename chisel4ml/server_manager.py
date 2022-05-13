@@ -1,6 +1,5 @@
 import atexit
 import subprocess
-import os
 import logging
 
 from pathlib import Path
