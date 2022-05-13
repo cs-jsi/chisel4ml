@@ -7,24 +7,24 @@ package services;
 option java_multiple_files = true;
 option java_package = "services";
 
-service ModelService {
+// Pp stands for Processing Pipeline
+service PpService {
   // Sends a greeting
-  rpc Compile (lbir.Model) returns (ModelHandle) {}
-  rpc Run (ModelRunParams) returns (ModelRunReturn) {}
+  rpc Elaborate (lbir.Model) returns (PpHandle) {}
+  rpc Run (PpRunParams) returns (PpRunReturn) {}
 }
 
-message ModelRunReturn {
+message PpRunReturn {
     repeated lbir.QTensor values = 1;
 }
  
-message ModelRunParams {
-    ModelHandle modelHandle = 1;
+message PpRunParams {
+    PpHandle ppHandle = 1;
     repeated lbir.QTensor inputs = 2;
 }
 
-message ModelHandle {
+message PpHandle {
     string name = 1;
-    string directory = 2;
     ErrorMsg reply = 3;
 }
 
