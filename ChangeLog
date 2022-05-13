@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+* Mypy now not following imports so that we can properly ignore server\_manager.py file
+* Added server\_manager.py to mypy ignore also is setup.cfg
+* Added scala logger as a build dependency. Added elaborate.py that will replace generate in services based model (it returns PpHandle to python). Chisel4ml server is now succesfully started from python and we can communicate with gRPC. Added a test for services. Excluded server\_manager.py from mypy type hinting, because it caused problems, and is not really a type critical thing
 * Reconfigured mypy in tox, added reg\_qkeras\_opt to \_\_all\_\_ var
 * Added mypy-protobuf to gh actions aswell
 * Readded req\_dev.txt because its refrernced in tox.ini, also added pip install grpcio to github workflow so that it will be available when calling make

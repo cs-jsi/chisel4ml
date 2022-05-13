@@ -74,7 +74,10 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
             tester = TreadleTester((new ChiselStage).execute(Array(), 
                                     Seq(ChiselGeneratorAnnotation(() => new ProcessingPipeline(lbirModel)))))
             val errReply = ErrorMsg(err = ErrorMsg.ErrorId.SUCCESS, msg="Everything went fine.")
-            val ppHandle = PpHandle(name = "model", reply = Some(errReply))
+            val ppHandle = PpHandle(name = "model", 
+                                    input=lbirModel.layers(0).input,
+                                    outShape=lbirModel.layers.last.outShape,
+                                    reply = Some(errReply))
             Future.successful(ppHandle)
         }
 

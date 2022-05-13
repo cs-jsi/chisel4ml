@@ -9,7 +9,6 @@ option java_package = "services";
 
 // Pp stands for Processing Pipeline
 service PpService {
-  // Sends a greeting
   rpc Elaborate (lbir.Model) returns (PpHandle) {}
   rpc Run (PpRunParams) returns (PpRunReturn) {}
 }
@@ -25,7 +24,9 @@ message PpRunParams {
 
 message PpHandle {
     string name = 1;
-    ErrorMsg reply = 3;
+    lbir.QTensor input = 2;
+    repeated uint32 out_shape = 3;
+    ErrorMsg reply = 4;
 }
 
 message ErrorMsg {
