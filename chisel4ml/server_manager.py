@@ -12,7 +12,6 @@ server = None
 class ServerManager:
     """ Handles the creation of a subprocess, it is used to safely start the chisel4ml server. """
     def __init__(self, command):
-        self.pgid = None
         self.task = None
         self.command = command
 
@@ -28,8 +27,7 @@ class ServerManager:
         self.task = subprocess.Popen(self.command,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE)
-        self.pgid = os.getpgid(self.task.pid)
-        log.info(f"Started task with pgid: {self.pgid} / pid: {self.task.pid}.")
+        log.info(f"Started task with pid: {self.task.pid}.")
         atexit.register(self.stop)  # Here we make sure that the chisel4ml server is shut down.
 
     def is_running(self):
@@ -39,7 +37,7 @@ class ServerManager:
             return self.task.poll() is None
 
     def stop(self):
-        log.info(f"Stoping task with pgid: {self.pgid} / pid: {self.task.pid}.")
+        log.info(f"Stoping task with pid: {self.task.pid}.")
         try:
             self.task.terminate()
         except PermissionError:
