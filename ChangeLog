@@ -1,6 +1,10 @@
 CHANGES
 =======
 
+* Added the python infrastructure to call run on chisel4ml server. For now it returns just -12 as the simulation is'nt configured yet on the scala side
+* Also removed pgid from ServerManager as it is not available on windows
+* Also removed pgid, which is not supported on windows
+* Removed os.setsid because it only works on linux. Plus we don't need the chisel4ml server to be a deamon process
 * Mypy now not following imports so that we can properly ignore server\_manager.py file
 * Added server\_manager.py to mypy ignore also is setup.cfg
 * Added scala logger as a build dependency. Added elaborate.py that will replace generate in services based model (it returns PpHandle to python). Chisel4ml server is now succesfully started from python and we can communicate with gRPC. Added a test for services. Excluded server\_manager.py from mypy type hinting, because it caused problems, and is not really a type critical thing

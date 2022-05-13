@@ -24,7 +24,7 @@ class ElaboratedProcessingPipelineHandle:
         ppRunParams = services.PpRunParams(ppHandle=self.pp, inputs=[qtensor])
         with grpc.insecure_channel('localhost:50051') as channel:
             stub = services_grpc.PpServiceStub(channel)
-            pp_run_return = stub.Run(ppRunParams, wait_for_ready=True)    
+            pp_run_return = stub.Run(ppRunParams, wait_for_ready=True)
         return np.array(pp_run_return.values)
 
 
@@ -36,6 +36,6 @@ def qkeras_model(model: tf.keras.Model):
         stub = services_grpc.PpServiceStub(channel)
         pp_handle = stub.Elaborate(lbir_model, wait_for_ready=True)
 
-    epp_handle = ElaboratedProcessingPipelineHandle(pp = pp_handle,
-                                                    input_quantizer = opt_model.layers[0].input_quantizer)
+    epp_handle = ElaboratedProcessingPipelineHandle(pp=pp_handle,
+                                                    input_quantizer=opt_model.layers[0].input_quantizer)
     return epp_handle
