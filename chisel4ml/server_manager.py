@@ -27,8 +27,7 @@ class ServerManager:
     def launch(self):
         self.task = subprocess.Popen(self.command,
                                      stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE,
-                                     preexec_fn=os.setsid)
+                                     stderr=subprocess.PIPE)
         self.pgid = os.getpgid(self.task.pid)
         log.info(f"Started task with pgid: {self.pgid} / pid: {self.task.pid}.")
         atexit.register(self.stop)  # Here we make sure that the chisel4ml server is shut down.
