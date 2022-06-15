@@ -13,8 +13,9 @@ logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 
 class ElaboratedProcessingPipelineHandle:
-    def __init__(self, pp, input_quantizer):
+    def __init__(self, pp, reply, input_quantizer):
         self.pp = pp
+        self.reply = reply
         self.input_quantizer = input_quantizer
 
     def __call__(self, np_arr):
@@ -25,7 +26,7 @@ class ElaboratedProcessingPipelineHandle:
         with grpc.insecure_channel('localhost:50051') as channel:
             stub = services_grpc.PpServiceStub(channel)
             pp_run_return = stub.Run(ppRunParams, wait_for_ready=True)
-        return np.array(pp_run_return.values)
+        return np.array(pp_run_return.values[0].values)
 
 
 def qkeras_model(model: tf.keras.Model):
@@ -34,8 +35,9 @@ def qkeras_model(model: tf.keras.Model):
     server_manager.start_chisel4ml_server_once()
     with grpc.insecure_channel('localhost:50051') as channel:
         stub = services_grpc.PpServiceStub(channel)
-        pp_handle = stub.Elaborate(lbir_model, wait_for_ready=True)
+        elabRes = stub.Elaborate(lbir_model, wait_for_ready=True)
 
-    epp_handle = ElaboratedProcessingPipelineHandle(pp=pp_handle,
+    epp_handle = ElaboratedProcessingPipelineHandle(pp=elabRes.ppHandle,
+                                                    reply=elabRes.reply,
                                                     input_quantizer=opt_model.layers[0].input_quantizer)
     return epp_handle

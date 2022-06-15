@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Some mypy and flake8 fixes
 * Added the python infrastructure to call run on chisel4ml server. For now it returns just -12 as the simulation is'nt configured yet on the scala side
 * Also removed pgid from ServerManager as it is not available on windows
 * Also removed pgid, which is not supported on windows
