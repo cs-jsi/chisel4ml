@@ -10,6 +10,11 @@ package chisel4ml
 import chisel3._
 import chisel3.util._
 import chisel3.experimental._
+import _root_.lbir.{Layer, Datatype, Activation}
+
+import _root_.org.slf4j.Logger
+import _root_.org.slf4j.LoggerFactory
+
 
 /**
  *  Base class of all ProcessingElements.
@@ -18,7 +23,7 @@ import chisel3.experimental._
  *
  * @param layer Is a layer definition defined by the LBIR format.
  */
-abstract class ProcessingElementSimple(layer: lbir.Layer) extends Module {
+abstract class ProcessingElementSimple(layer: Layer) extends Module {
     val inSize: Int = layer.input.get.shape.reduce(_ * _)  // Number of inputs.
     val inSizeBits: Int = inSize * layer.input.get.dtype.get.bitwidth  // Number of input bits.
     val outSize: Int = layer.outShape.reduce(_ * _)  // Number of outputs.
@@ -42,9 +47,9 @@ abstract class ProcessingElementSimple(layer: lbir.Layer) extends Module {
 
 object ProcessingElementSimple {
     // TODO this is temporary code
-    def apply(layer: lbir.Layer) = layer.input.get.dtype.get.quantization match {
-        case lbir.Datatype.QuantizationType.UNIFORM => new BinaryWeightDense(layer)
-        case lbir.Datatype.QuantizationType.BINARY => new BinarizedDense(layer)
+    def apply(layer: Layer) = layer.input.get.dtype.get.quantization match {
+        case Datatype.QuantizationType.UNIFORM => new BinaryWeightDense(layer)
+        case Datatype.QuantizationType.BINARY => new BinarizedDense(layer)
 
     }
 }
@@ -53,28 +58,35 @@ object ProcessingElementSimple {
  *
  * This layer implements a fully-connected layer as specified in the paper 
  * Hubara et al.: Binarized Neural Networks (https://arxiv.org/abs/1602.02830).
+ * Additionally, for the explaination of the thresh(hold) compensation see the
+ * paper Binarized Neural Networks by Umuroglu et al.: https://arxiv.org/pdf/1612.07119.pdf.
  *   
  */
-class BinarizedDense(layer: lbir.Layer) extends ProcessingElementSimple(layer) {
-    require(layer.ltype == lbir.Layer.Type.DENSE)
-    require(layer.weights.get.dtype.get.quantization == lbir.Datatype.QuantizationType.BINARY)
-    require(layer.input.get.dtype.get.quantization == lbir.Datatype.QuantizationType.BINARY)
-    require(layer.activation.get.fn == lbir.Activation.Function.BINARY_SIGN)
+class BinarizedDense(layer: Layer) extends ProcessingElementSimple(layer) {
+    require(layer.ltype == Layer.Type.DENSE)
+    require(layer.weights.get.dtype.get.quantization == Datatype.QuantizationType.BINARY)
+    require(layer.input.get.dtype.get.quantization == Datatype.QuantizationType.BINARY)
+    require(layer.activation.get.fn == Activation.Function.BINARY_SIGN)
+    require(layer.biases.get.values.map( x => (x+inSize)/2 ).min > 0)
+    val logger = LoggerFactory.getLogger(classOf[BinarizedDense])
+
     // We import the values as UInts and the convert them to Bool Vectors, because
     // in Verilog this results as an Array, instead of a number of individual elements
     // in the interface. (I.e. in[0:2] instead of in_0, in_1 and in_2.)
     val in_int = Wire(Vec(inSize, Bool()))
     val out_int = Wire(Vec(outSize, Bool()))
     
-    val weights: Seq[Seq[Bool]] = layer.weights.get.values.map(_ > 0).map(_.B).sliding(inSize, inSize).toSeq
-    val thresh: Seq[UInt] = layer.biases.get.values.map(_.toInt.U)
+    val weights: Seq[Seq[Bool]] = layer.weights.get.values.map(_ > 0).map(_.B).grouped(outSize).toSeq.transpose
+    val thresh: Seq[UInt] = layer.biases.get.values.map( x => (inSize-x)/2 ).map(_.ceil).map(_.toInt.U)
+    logger.info("Creating new BinarizedDense processing element with weights " + weights + " and threshold " + thresh)
       
     in_int := io.in.asTypeOf(in_int)  
     
     def binarizedNeuron(in:Seq[Bool], weights:Seq[Bool], thresh:UInt) : Bool = {
       require(weights.length == in.length)
+      logger.info("Connecting subsets of weights " + weights + " and threshold " + thresh)
       val act = PopCount((in zip weights).map{ case(a:Bool, b:Bool) => ~(a ^ b) } )
-      act > thresh
+      act >= thresh
     }
     
     for (i <- 0 until outSize) { 
@@ -107,11 +119,11 @@ class BinarizedDense(layer: lbir.Layer) extends ProcessingElementSimple(layer) {
  *
  * @param layer Is a layer definition defined by the LBIR format.
  */
-class BinaryWeightDense(layer: lbir.Layer) extends ProcessingElementSimple(layer) {
-    require(layer.ltype == lbir.Layer.Type.DENSE)
-    require(layer.weights.get.dtype.get.quantization == lbir.Datatype.QuantizationType.BINARY)
-    require(layer.input.get.dtype.get.quantization == lbir.Datatype.QuantizationType.UNIFORM)
-    require(layer.activation.get.fn == lbir.Activation.Function.BINARY_SIGN)
+class BinaryWeightDense(layer: Layer) extends ProcessingElementSimple(layer) {
+    require(layer.ltype == Layer.Type.DENSE)
+    require(layer.weights.get.dtype.get.quantization == Datatype.QuantizationType.BINARY)
+    require(layer.input.get.dtype.get.quantization == Datatype.QuantizationType.UNIFORM)
+    require(layer.activation.get.fn == Activation.Function.BINARY_SIGN)
     // TODO: Add scale/offset requirements
     
     val in_int = Wire(Vec(inSize, SInt(inBitwidth.W))) 

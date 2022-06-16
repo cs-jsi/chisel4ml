@@ -20,4 +20,8 @@ def test_run_service(bnn_simple_model):
     for i in [-1.0, 1.0]:
         for j in [-1.0, 1.0]:
             for k in [-1.0, 1.0]:
-                assert bnn_simple_model.predict(np.array([[i, j, k]])) == epp_handle(np.array([i, j, k]))
+                sw_res = bnn_simple_model.predict(np.array([[i, j, k]]))
+                hw_res = epp_handle(np.array([i, j, k]))
+                assert sw_res == hw_res, \
+                    f"The software model predicted the result {sw_res}, where as the hardware model predicted " \
+                    f"{hw_res}. Something is wrong here. The stated results are for the inputs {i}, {j}, {k}. "

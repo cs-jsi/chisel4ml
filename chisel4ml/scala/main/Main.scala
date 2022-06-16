@@ -63,9 +63,11 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
 
     // TODO move this function somewhere else
     def lbirToBigInt(qtensor: QTensor): BigInt = {
-        val values = qtensor.values
+        val values = qtensor.values.reverse
         val new_vals = values.map(x => (x + 1) / 2) // 1 -> 1, -1 -> 0
-        BigInt(new_vals.map(x => x.toInt).mkString, radix = 2)
+        val big_int = BigInt(new_vals.map(x => x.toInt).mkString, radix = 2)
+        logger.info("Converted lbir.QTensor: " + values + " to BigInt: " + big_int + ".")
+        big_int
     }
 
     def bigIntToLbir(value: BigInt): QTensor = {
@@ -74,8 +76,10 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
                                 scale=1,
                                 offset=0)
         // We substract the 48 because x is an ASCII encoded symbol
-        val lbir_values = value.toString().toList.map(x => x.toFloat - 48).map(x => (x * 2) -1) // 1 -> 1, 0 -> -1
-        QTensor(dtype=Option(dataType), shape = List(value.bitCount), values=lbir_values)
+        val lbir_values = value.toString().toList.map(x=>x.toFloat-48).reverse.map(x => (x * 2) -1) // 1 -> 1, 0 -> -1
+        val qtensor = QTensor(dtype=Option(dataType), shape = List(value.bitCount), values=lbir_values)
+        logger.info("Converted BigInt: " + value + " to lbir.QTensor: " + qtensor + ".")
+        qtensor
     }
 
     private object PpServiceImpl {

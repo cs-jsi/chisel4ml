@@ -1,4 +1,5 @@
 import qkeras
+import numpy as np
 import tensorflow as tf
 
 from tensorflow.keras.layers import Layer as KerasLayer
@@ -28,9 +29,10 @@ class QKerasBNQDenseBinaryFuse(QKerasOptimization):
         mv = layers[1].moving_variance
         beta = layers[1].beta
         gamma = layers[1].gamma
+        assert np.amin(gamma) > 0
         b = layers[0].bias
         thresh = (mm - b) - div(mul(sqrt(mv), beta), gamma)
-        layers[0].bias = tf.math.floor((fan_in + thresh) / 2)
+        layers[0].bias = thresh 
         layers[1].c4ml_remove_layer = True
         return layers
 

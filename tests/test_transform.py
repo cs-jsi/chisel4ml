@@ -40,9 +40,7 @@ def test_qkeras_transform(bnn_mnist_model):
         assert int(lay.biases.dtype.offset) == 0
         assert len(lay.biases.shape) > 0
         assert len(lay.biases.values) > 0
-        for val in lay.biases.values:
-            assert val >= 0, "This should be postive, as in a binarized layer the bias represents a theshold which" \
-                             "can only be positive since we are using a popcount function instead of addition."
+
     assert layers[-1].biases.dtype.quantization is UNIFORM
     assert int(layers[-1].biases.dtype.bitwidth) == 32
     assert int(layers[-1].biases.dtype.scale) == 1
