@@ -1,6 +1,5 @@
 import qkeras
 import numpy as np
-import tensorflow as tf
 
 from tensorflow.keras.layers import Layer as KerasLayer
 from tensorflow.keras.layers import BatchNormalization
@@ -24,7 +23,6 @@ class QKerasBNQDenseBinaryFuse(QKerasOptimization):
     priority = 2
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
-        fan_in = layers[0].kernel.shape.as_list()[0]
         mm = layers[1].moving_mean
         mv = layers[1].moving_variance
         beta = layers[1].beta
@@ -32,7 +30,7 @@ class QKerasBNQDenseBinaryFuse(QKerasOptimization):
         assert np.amin(gamma) > 0
         b = layers[0].bias
         thresh = (mm - b) - div(mul(sqrt(mv), beta), gamma)
-        layers[0].bias = thresh 
+        layers[0].bias = thresh
         layers[1].c4ml_remove_layer = True
         return layers
 
