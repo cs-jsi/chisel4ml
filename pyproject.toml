@@ -22,3 +22,12 @@ warn_return_any = true
 warn_unreachable = true
 warn_unused_configs = true
 no_implicit_reexport = true
+exclude = [
+      '^lbir_pb2\.py$',
+      '^lbir_pb2\.pyi$',
+      '^lbirpb2_grpc\.py$',
+      '^services_pb2\.py$',
+      '^services_pb2\.pyi$',
+      '^services_pb2_grpc\.py$',
+      '^server_manager\.py$',
+    ]
