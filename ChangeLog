@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Fixed flake8 issues
 * PASES simulation tests. Removed the fan\_in calculations from python and moved them to scala. This way the python optimized model is still correct. Fixed many bugs in ProcessingElementSimple layer implementation. Added logging for lbirToBigInt and bigIntToLbir functions
 * Simulation works for binary input and output, but there seems to be some error in the result when testing, so tests are still failing
 * Some mypy and flake8 fixes
