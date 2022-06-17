@@ -35,9 +35,9 @@ def qkeras_model(model: tf.keras.Model):
     server_manager.start_chisel4ml_server_once()
     with grpc.insecure_channel('localhost:50051') as channel:
         stub = services_grpc.PpServiceStub(channel)
-        elabRes = stub.Elaborate(lbir_model, wait_for_ready=True)
+        elab_res = stub.Elaborate(lbir_model, wait_for_ready=True)
 
-    epp_handle = ElaboratedProcessingPipelineHandle(pp=elabRes.ppHandle,
-                                                    reply=elabRes.reply,
+    epp_handle = ElaboratedProcessingPipelineHandle(pp=elab_res.ppHandle,
+                                                    reply=elab_res.reply,
                                                     input_quantizer=opt_model.layers[0].input_quantizer)
     return epp_handle
