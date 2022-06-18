@@ -47,5 +47,5 @@ def start_chisel4ml_server_once():
     global server
 
     if server is None:
-        server = ServerManager(["java", "-jar", str(Path("bin/chisel4ml.jar").absolute())])
+        server = ServerManager(["java", "-jar", str(Path("bin", "chisel4ml.jar").absolute())])
         server.launch()

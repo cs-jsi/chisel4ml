@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Renamed variable to be in proper style
+* Maybe this fixed gh actions
 * Again hoping this fixes gh actions mypy problem
 * Hopefully fixed mypy config for github
 * Fixed flake8 issues

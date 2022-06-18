@@ -11,6 +11,8 @@ import chisel4ml.lbir.services_pb2 as services
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
+GRPC_TIMEOUT = 180  # a 3 minute timeout
+
 
 class ElaboratedProcessingPipelineHandle:
     def __init__(self, pp, reply, input_quantizer):
@@ -25,7 +27,7 @@ class ElaboratedProcessingPipelineHandle:
         ppRunParams = services.PpRunParams(ppHandle=self.pp, inputs=[qtensor])
         with grpc.insecure_channel('localhost:50051') as channel:
             stub = services_grpc.PpServiceStub(channel)
-            pp_run_return = stub.Run(ppRunParams, wait_for_ready=True)
+            pp_run_return = stub.Run(ppRunParams, wait_for_ready=True, timeout=GRPC_TIMEOUT)
         return np.array(pp_run_return.values[0].values)
 
 
@@ -35,7 +37,7 @@ def qkeras_model(model: tf.keras.Model):
     server_manager.start_chisel4ml_server_once()
     with grpc.insecure_channel('localhost:50051') as channel:
         stub = services_grpc.PpServiceStub(channel)
-        elab_res = stub.Elaborate(lbir_model, wait_for_ready=True)
+        elab_res = stub.Elaborate(lbir_model, wait_for_ready=True, timeout=GRPC_TIMEOUT)
 
     epp_handle = ElaboratedProcessingPipelineHandle(pp=elab_res.ppHandle,
                                                     reply=elab_res.reply,
