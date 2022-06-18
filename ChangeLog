@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Added timeouts to grpc calls, fixed issue with Path that caused problems on windows env
 * Renamed variable to be in proper style
 * Maybe this fixed gh actions
 * Again hoping this fixes gh actions mypy problem
