@@ -24,11 +24,18 @@ class ElaboratedProcessingPipelineHandle:
         qtensor = transforms.numpy_transforms.numpy_to_qtensor(np_arr,
                                                                self.input_quantizer,
                                                                self.pp.input)
-        ppRunParams = services.PpRunParams(ppHandle=self.pp, inputs=[qtensor])
+        pp_run_params = services.PpRunParams(ppHandle=self.pp, inputs=[qtensor])
         with grpc.insecure_channel('localhost:50051') as channel:
             stub = services_grpc.PpServiceStub(channel)
-            pp_run_return = stub.Run(ppRunParams, wait_for_ready=True, timeout=GRPC_TIMEOUT)
+            pp_run_return = stub.Run(pp_run_params, wait_for_ready=True, timeout=GRPC_TIMEOUT)
         return np.array(pp_run_return.values[0].values)
+
+    def gen_hw(self, gen_directory=""):
+        gen_params = services.GenerateParams(name=self.pp.name, directory=gen_directory)
+        with grpc.insecure_channel('localhost:50051') as channel:
+            stub = services_grpc.PpServiceStub(channel)
+            gen_return = stub.Generate(gen_params, wait_for_ready=True, timeout=GRPC_TIMEOUT)
+        return gen_return
 
 
 def qkeras_model(model: tf.keras.Model):

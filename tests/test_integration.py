@@ -1,22 +1,26 @@
-import chisel4ml as c4ml
+from chisel4ml import elaborate
+import chisel4ml.lbir.services_pb2 as services
+
 import pytest
 
 import os
 import shutil
 import logging
+from pathlib import Path
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 
-@pytest.mark.skip(reason="cant run this, need to kill the java program.")
 def test_qkeras_simple_dense_binarized_model_nofixedpoint(bnn_simple_model):
     """
         Build a fully dense binarized model in qkeras, and then runs it through chisel4ml to get an verilog processing
         pipeline. This test only checks that we are able to get an verilog file.
     """
-    pp_handle = c4ml.compile.qkeras_model(bnn_simple_model, gen_dir=os.path.join(os.getcwd(), "gen"))
-    pp_handle.generate_verilog('./gen/')
-    assert any(f.endswith(".v") for f in os.listdir("./gen/"))
-    shutil.rmtree("./gen/")
+    epp_handle = elaborate.qkeras_model(bnn_simple_model)
+    assert epp_handle.reply.err == services.ErrorMsg.ErrorId.SUCCESS
+    temp_path = str(Path('.', 'gen_temp').absolute())
+    epp_handle.gen_hw(temp_path)
+    assert any(f.endswith(".v") for f in os.listdir(temp_path))
+    shutil.rmtree(temp_path)
 
 
 @pytest.mark.skip(reason="cant run this, need to kill the java program.")

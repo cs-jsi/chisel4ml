@@ -11,6 +11,7 @@ option java_package = "services";
 service PpService {
   rpc Elaborate (lbir.Model) returns (PpElaborateReturn) {}
   rpc Run (PpRunParams) returns (PpRunReturn) {}
+  rpc Generate (GenerateParams) returns (ErrorMsg) {}
 }
 
 message PpRunReturn {
@@ -31,6 +32,11 @@ message PpHandle {
     string name = 1;
     lbir.QTensor input = 2;
     repeated uint32 out_shape = 3;
+}
+
+message GenerateParams {
+    string name = 1;
+    string directory = 2;
 }
 
 message ErrorMsg {

@@ -11,7 +11,13 @@ import _root_.chisel3.stage._
 import _root_.chisel3._
 
 import _root_.io.grpc.{Server, ServerBuilder}
-import _root_.services.{PpServiceGrpc, PpRunReturn, PpRunParams, PpElaborateReturn, PpHandle, ErrorMsg}
+import _root_.services.{PpServiceGrpc, 
+                        PpRunReturn, 
+                        PpRunParams, 
+                        PpElaborateReturn, 
+                        PpHandle, 
+                        ErrorMsg,
+                        GenerateParams}
 import _root_.lbir.{Model, QTensor, Datatype}
 
 import _root_.treadle.TreadleTester
@@ -83,15 +89,16 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
     }
 
     private object PpServiceImpl {
-        var processingPipeline: ProcessingPipeline = null
+        var model: Model = null
         var tester: TreadleTester = null
     }
 
     private class PpServiceImpl extends PpServiceGrpc.PpService {
-        private[this] var processingPipeline: ProcessingPipeline = null
+        private[this] var model: Model = null
         private[this] var tester: TreadleTester = null
         override def elaborate(lbirModel: Model): Future[PpElaborateReturn] = {
             logger.info("Elaborating model: " + lbirModel.name + " to a processing pipeline circuit.")
+            model = lbirModel
             tester = TreadleTester((new ChiselStage).execute(Array(), 
                                     Seq(ChiselGeneratorAnnotation(() => new ProcessingPipeline(lbirModel)))))
             val errReply = ErrorMsg(err = ErrorMsg.ErrorId.SUCCESS, msg="Everything went fine.")
@@ -108,5 +115,14 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
             tester.poke("io_in", lbirToBigInt(ppRunParams.inputs(0)))
             Future.successful(PpRunReturn(values = List(bigIntToLbir(tester.peek("io_out")))))
         }
+
+        override def generate(genParams: GenerateParams): Future[ErrorMsg] = {
+            logger.info("Generating hardware for circuit id: " + genParams.name + " in directory: " + 
+                         genParams.directory + ".")
+            (new ChiselStage).execute(Array("--target-dir", genParams.directory), 
+                                      Seq(ChiselGeneratorAnnotation(() => new ProcessingPipeline(model))))
+            Future.successful(ErrorMsg(err=ErrorMsg.ErrorId.SUCCESS, msg="Successfully generated verilog"))
+        }
     }
+
 }
