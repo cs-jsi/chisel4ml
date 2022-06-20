@@ -82,7 +82,7 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
                                 scale=1,
                                 offset=0)
         // We substract the 48 because x is an ASCII encoded symbol
-        val lbir_values = value.toString().toList.map(x=>x.toFloat-48).reverse.map(x => (x * 2) -1) // 1 -> 1, 0 -> -1
+        val lbir_values = value.toString(2).toList.map(x=>x.toFloat-48).reverse.map(x => (x * 2) -1) // 1 -> 1, 0 -> -1
         val qtensor = QTensor(dtype=Option(dataType), shape = List(value.bitCount), values=lbir_values)
         logger.info("Converted BigInt: " + value + " to lbir.QTensor: " + qtensor + ".")
         qtensor
