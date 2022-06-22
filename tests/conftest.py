@@ -7,6 +7,29 @@ from tensorflow.keras.datasets import mnist
 
 
 @pytest.fixture(scope='session')
+def bnn_qdense_bn_sign_act() -> tf.keras.Model:
+    l0 = qkeras.QDense(3, kernel_quantizer=qkeras.binary())
+    l1 = tf.keras.layers.BatchNormalization()
+    l2 = qkeras.QActivation(qkeras.binary(alpha=1))
+    model = tf.keras.models.Sequential()
+    model.add(tf.keras.layers.Input(shape=2))
+    model.add(l0)
+    model.add(l1)
+    model.add(l2)
+    model.compile(optimizer="adam",
+                  loss='squared_hinge',
+                  metrics=['accuracy'])
+
+    x_train = [[-1, -1],
+               [-1, +1],
+               [+1, -1],
+               [+1, +1]]
+    y_train = [0, 1, 1, 0]
+    model.fit(x_train, y_train, batch_size=4, epochs=50, verbose=False)
+    return model
+
+
+@pytest.fixture(scope='session')
 def bnn_simple_model() -> tf.keras.Model:
     w1 = np.array([[1, -1, -1, 1], [-1, 1, 1, -1], [-1, -1, 1, 1]])
     b1 = np.array([1, 2, 0, 1])

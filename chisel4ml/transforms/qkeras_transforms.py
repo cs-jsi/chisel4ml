@@ -7,9 +7,8 @@ from chisel4ml.transforms import register_qkeras_transform
 
 from typing import Sequence
 from collections import defaultdict
-import logging
 import inspect
-
+import logging
 log = logging.getLogger(__name__)
 
 

@@ -2,14 +2,9 @@ from chisel4ml import optimize, transform, server_manager, transforms
 import tensorflow as tf
 import numpy as np
 
-import os
-import logging
-
 import grpc
 import chisel4ml.lbir.services_pb2_grpc as services_grpc
 import chisel4ml.lbir.services_pb2 as services
-
-logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 GRPC_TIMEOUT = 180  # a 3 minute timeout
 

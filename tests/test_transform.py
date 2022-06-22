@@ -1,10 +1,6 @@
 from chisel4ml import optimize, transform
 import chisel4ml.lbir.lbir_pb2 as lbir
 
-import os
-import logging
-logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
-
 
 def test_qkeras_transform(bnn_mnist_model):
     opt_model = optimize.qkeras_model(bnn_mnist_model)

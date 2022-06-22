@@ -27,10 +27,11 @@ class QKerasBNQDenseBinaryFuse(QKerasOptimization):
         mv = layers[1].moving_variance
         beta = layers[1].beta
         gamma = layers[1].gamma
+        epsilon = layers[1].epsilon
         assert np.amin(gamma) > 0
         b = layers[0].bias
-        thresh = (mm - b) - div(mul(sqrt(mv), beta), gamma)
-        layers[0].bias = thresh
+        thresh = (mm - b) - div(mul(sqrt(mv + epsilon), beta), gamma)
+        layers[0].bias = -thresh
         layers[1].c4ml_remove_layer = True
         return layers
 

@@ -2,10 +2,6 @@ from chisel4ml import elaborate
 import chisel4ml.lbir.services_pb2 as services
 import numpy as np
 
-import os
-import logging
-logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
-
 
 def test_compile_service(bnn_simple_model):
     """ Test if the compile service is working correctly. """

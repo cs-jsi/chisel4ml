@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+* Fixed bug in BigIntToLbir function, which caused errors in ceratin cases
+* Changed one integration test to be compatible with services based approach
+* Changed path description to fix another windows problem
 * Added timeouts to grpc calls, fixed issue with Path that caused problems on windows env
 * Renamed variable to be in proper style
 * Maybe this fixed gh actions
