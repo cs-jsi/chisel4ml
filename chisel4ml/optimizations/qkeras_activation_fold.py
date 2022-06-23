@@ -17,7 +17,7 @@ class QKerasActivationFold(QKerasOptimization):
         activation variable.
     """
     num_layers = 2
-    priority = 3
+    order = 3
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
         layers[0].activation = layers[1].activation

@@ -13,10 +13,10 @@ class QKerasAddInputQuantization(QKerasOptimization):
     """
         We use pythons flexible typing system to add (monkey patch) the input quantization to the layer object.
         We do this so that the transform later has all the information it needs to transform a qkeras layer into
-        a lbir layer. This test has low priority because it must not run before the activation fold operation.
+        a lbir layer. This must run after the activation fold operation, so its order number is higher.
     """
     num_layers = 2
-    priority = 10
+    order = 4
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
         layers[1].input_quantizer = layers[0].activation

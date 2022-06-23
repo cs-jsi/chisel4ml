@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 
 class QKerasOptimization(ABC):
     num_layers: int
-    priority: int = 0
+    order: int = 0
 
     def __call__(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
         assert len(layers) == self.num_layers, \

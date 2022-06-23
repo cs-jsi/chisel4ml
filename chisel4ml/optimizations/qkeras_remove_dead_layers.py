@@ -10,7 +10,7 @@ from chisel4ml.optimizations import register_qkeras_optimization
 @register_qkeras_optimization
 class QKerasRemoveDeadLayersOptimization(QKerasOptimization):
     num_layers = 1
-    priority = 1
+    order = 1
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
         layers[0].c4ml_remove_layer = True

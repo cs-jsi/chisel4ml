@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* BN fuse now working, main problem was with use of the original model instead of deepcopy
 * Fixed bug in BigIntToLbir function, which caused errors in ceratin cases
 * Changed one integration test to be compatible with services based approach
 * Changed path description to fix another windows problem

@@ -20,7 +20,7 @@ class QKerasBNQDenseBinaryFuse(QKerasOptimization):
         on Binarized Neural networks by Umuroglu et al.: https://arxiv.org/pdf/1612.07119.pdf.
     """
     num_layers = 3
-    priority = 2
+    order = 2
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
         mm = layers[1].moving_mean
