@@ -14,6 +14,7 @@ class ServerManager:
     def __init__(self, command):
         self.task = None
         self.command = command
+        self.log_file = None
 
     @property
     def stdout(self):
@@ -24,9 +25,10 @@ class ServerManager:
         return self.task.stderr.read()
 
     def launch(self):
+        self.log_file = open('chisel4ml_server.log', 'w')
         self.task = subprocess.Popen(self.command,
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
+                                     stdout=self.log_file,
+                                     stderr=self.log_file)
         log.info(f"Started task with pid: {self.task.pid}.")
         atexit.register(self.stop)  # Here we make sure that the chisel4ml server is shut down.
 
@@ -38,6 +40,7 @@ class ServerManager:
 
     def stop(self):
         log.info(f"Stoping task with pid: {self.task.pid}.")
+        self.log_file.close()
         try:
             self.task.terminate()
         except PermissionError:
