@@ -65,26 +65,38 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
       if (server != null) {
         server.awaitTermination()
       }
-    }
+    } 
+
+    def toBinary(i: Int, digits: Int = 8) =
+        String.format("%" + digits + "s", i.toBinaryString).replace(' ', '0')
+
+    def toBinaryB(i: BigInt, digits: Int = 8) =
+        String.format("%" + digits + "s", i.toString(2)).replace(' ', '0')
 
     // TODO move this function somewhere else
     def lbirToBigInt(qtensor: QTensor): BigInt = {
-        val values = qtensor.values.reverse
-        val new_vals = values.map(x => (x + 1) / 2) // 1 -> 1, -1 -> 0
-        val big_int = BigInt(new_vals.map(x => x.toInt).mkString, radix = 2)
-        logger.info("Converted lbir.QTensor: " + values + " to BigInt: " + big_int + ".")
+        var values = qtensor.values.reverse
+        if (qtensor.dtype.get.quantization == Datatype.QuantizationType.BINARY) {
+            values = values.map(x => (x + 1) / 2) // 1 -> 1, -1 -> 0
+        }
+        
+        val string_int = values.map(x => toBinary(x.toInt, qtensor.dtype.get.bitwidth)).mkString 
+        val big_int = BigInt(string_int, radix=2)
+        logger.info("Converted lbir.QTensor: " + qtensor.values + " to BigInt: " + string_int + "." + 
+                    " The number of bits is: " + qtensor.dtype.get.bitwidth + ".")
         big_int
     }
 
-    def bigIntToLbir(value: BigInt): QTensor = {
+    def bigIntToLbir(value: BigInt, outSize: Int): QTensor = {
         val dataType = Datatype(quantization=Datatype.QuantizationType.BINARY,
                                 bitwidth=1,
                                 scale=1,
                                 offset=0)
         // We substract the 48 because x is an ASCII encoded symbol
-        val lbir_values = value.toString(2).toList.map(x=>x.toFloat-48).reverse.map(x => (x * 2) -1) // 1 -> 1, 0 -> -1
-        val qtensor = QTensor(dtype=Option(dataType), shape = List(value.bitCount), values=lbir_values)
-        logger.info("Converted BigInt: " + value + " to lbir.QTensor: " + qtensor + ".")
+        val lbir_values = toBinaryB(value, outSize).toList.map(x=>x.toFloat-48).reverse.map(x => (x * 2) -1) 
+        val qtensor = QTensor(dtype=Option(dataType), shape = List(outSize), values=lbir_values)
+        logger.info("Converted BigInt: " + value + " to lbir.QTensor: " + qtensor + 
+                    ". The number of bits is " + outSize + ".")
         qtensor
     }
 
@@ -96,11 +108,13 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
     private class PpServiceImpl extends PpServiceGrpc.PpService {
         private[this] var model: Model = null
         private[this] var tester: TreadleTester = null
+
         override def elaborate(lbirModel: Model): Future[PpElaborateReturn] = {
             logger.info("Elaborating model: " + lbirModel.name + " to a processing pipeline circuit.")
             model = lbirModel
             tester = TreadleTester((new ChiselStage).execute(Array(), 
                                     Seq(ChiselGeneratorAnnotation(() => new ProcessingPipeline(lbirModel)))))
+
             val errReply = ErrorMsg(err = ErrorMsg.ErrorId.SUCCESS, msg="Everything went fine.")
             val ppHandle = PpHandle(name = "model", 
                                     input=lbirModel.layers(0).input,
@@ -113,7 +127,8 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
         override def run(ppRunParams: PpRunParams): Future[PpRunReturn] = {
             logger.info("Simulating processing pipeline: " + ppRunParams.ppHandle.get.name + " circuit on inputs.")
             tester.poke("io_in", lbirToBigInt(ppRunParams.inputs(0)))
-            Future.successful(PpRunReturn(values = List(bigIntToLbir(tester.peek("io_out")))))
+            Future.successful(PpRunReturn(values = List(bigIntToLbir(tester.peek("io_out"), 
+                                                                     model.layers.last.outShape(0)))))
         }
 
         override def generate(genParams: GenerateParams): Future[ErrorMsg] = {
@@ -124,5 +139,4 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
             Future.successful(ErrorMsg(err=ErrorMsg.ErrorId.SUCCESS, msg="Successfully generated verilog"))
         }
     }
-
 }

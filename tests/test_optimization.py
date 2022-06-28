@@ -1,7 +1,10 @@
 from chisel4ml.optimizations.qkeras_remove_dead_layers import QKerasRemoveDeadLayersOptimization
 from chisel4ml.optimizations.qkeras_activation_fold import QKerasActivationFold
 from chisel4ml.optimizations.qkeras_bn_qdense_binary_fuse import QKerasBNQDenseBinaryFuse
+from chisel4ml import optimize
+
 import tensorflow as tf
+from tensorflow.keras.datasets import mnist
 import numpy as np
 import qkeras
 import pytest
@@ -68,3 +71,18 @@ def test_bn_qdense_binary_fuse_opt(bnn_qdense_bn_sign_act):
                 f"The original parameters are qdense layer:{org_model.layers[0].weights}, {org_model.layers[0].bias}" \
                 f" and for batchnorm: {org_model.layers[1].get_weights()} and the optimized weights are: " \
                 f"{opt_layers[0].weights}, {opt_layers[0].bias}."
+
+
+def test_bnn_mnist_model_opt(bnn_mnist_model):
+    """ The optimization of this model should yield a model that produces the same results. """
+    opt_model = optimize.qkeras_model(bnn_mnist_model)
+    (_, _), (x_test, y_test) = mnist.load_data()
+    image_vector_size = 28*28
+    x_test = x_test.reshape(x_test.shape[0], image_vector_size)
+    x_test = x_test.astype('float32')
+    for i in range(0, 10):
+        org_res = bnn_mnist_model.predict(x_test[i].reshape(1, 784))
+        opt_res = opt_model.predict(x_test[i].reshape(1, 784))
+        assert tf.reduce_all(tf.math.equal(org_res, opt_res)), \
+            f"The original model predicted the result: {org_res}, where as the optimized model predicted: {opt_res}." \
+            f"The results differed on mnist test image index: {i}."

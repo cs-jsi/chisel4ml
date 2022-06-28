@@ -125,25 +125,28 @@ class BinaryWeightDense(layer: Layer) extends ProcessingElementSimple(layer) {
     require(layer.input.get.dtype.get.quantization == Datatype.QuantizationType.UNIFORM)
     require(layer.activation.get.fn == Activation.Function.BINARY_SIGN)
     // TODO: Add scale/offset requirements
+    val logger = LoggerFactory.getLogger(classOf[BinaryWeightDense])
     
-    val in_int = Wire(Vec(inSize, SInt(inBitwidth.W))) 
+    val in_int = Wire(Vec(inSize, UInt(inBitwidth.W))) 
     val out_int = Wire(Vec(outSize, Bool()))
     
-    val weights: Seq[Seq[Bool]] = layer.weights.get.values.map(_ > 0).map(_.B).sliding(inSize, inSize).toSeq
+    val weights: Seq[Seq[Bool]] = layer.weights.get.values.map(_ > 0).map(_.B).grouped(outSize).toSeq.transpose
     val thresh: Seq[SInt] = layer.biases.get.values.map(_.toInt.S)
+    logger.info(s"""Creating new BinaryWeightdDense processing element with weights: ${weights} and threshold: 
+                    ${thresh}""")
     
     // This function approximates the multiplication with 1 and -1. Because these
     // numbers are in twos complement, to get -1*a you just need to invert the bits
     // and add 1. We do not add this extra ONE to save on FPGA area. WARNING!
     // TODO: remove this LSB value from thresh, then the computation will be equivalent.
-    def multiplyXNOR(inFp:SInt, inBool: Bool): SInt = {
-      Mux(inBool, inFp, inFp.asSInt().unary_~())
+    def multiplyXNOR(inFp:UInt, inBool: Bool): SInt = {
+      Mux(inBool, inFp.asSInt, -(inFp.asSInt))
     }  
     
-    def binaryWeightNeuron(in:Seq[SInt], weights:Seq[Bool], thresh:SInt): Bool = {
+    def binaryWeightNeuron(in:Seq[UInt], weights:Seq[Bool], thresh:SInt): Bool = {
       require(weights.length == in.length)
-      val act = (in zip weights).map{ case(a:SInt, b:Bool) => multiplyXNOR(a, b) }.reduce(_+_)
-      act > thresh
+      val act = (in zip weights).map{ case(a:UInt, b:Bool) => multiplyXNOR(a, b) }.reduce(_+_)
+      act >= thresh
     }
     
     in_int := io.in.asTypeOf(in_int)

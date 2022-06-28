@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Rerouted subprocess communication to seperate log file, because it seem to have caused issues on Windows
 * Renamed variable priority to order
 * BN fuse now working, main problem was with use of the original model instead of deepcopy
 * Fixed bug in BigIntToLbir function, which caused errors in ceratin cases
