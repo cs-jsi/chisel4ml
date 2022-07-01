@@ -22,7 +22,7 @@ def _log_transform(fn):
 
 # We use a defaultdict here because quantizers can also be left unspecified in qkeras.
 # TODO: Remove this by adding a pass that forces an quantization on those fields.
-_qkeras2lbir_quantizer_dict = defaultdict(lambda: lbir.Datatype.UNIFORM)  # type: ignore
+_qkeras2lbir_quantizer_dict = {}  # type: ignore
 _qkeras2lbir_quantizer_dict[qkeras.quantized_bits] = lbir.Datatype.UNIFORM
 _qkeras2lbir_quantizer_dict[qkeras.binary] = lbir.Datatype.BINARY
 
@@ -63,7 +63,15 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
            tensor == 'input')
     qkeras_quantizer = keras_layer.__getattribute__(tensor + '_quantizer')
     qtensor = lbir.QTensor()
-    qtensor.dtype.quantization = _qkeras2lbir_quantizer_dict[qkeras_quantizer.__class__]
+    if qkeras_quantizer is not None:
+        qtensor.dtype.quantization = _qkeras2lbir_quantizer_dict[qkeras_quantizer.__class__]
+    elif tensor is 'bias':
+        qtensor.dtype.quantization = lbir.Datatype.UNIFORM
+        log.warning(f'QKeras layer {keras_layer} bias quantzier is not specified. Defaulting to UNIFORM 32-bits.')
+    else:
+        raise ValueError(f'QKeras layer {keras_layer} {tensor} quantizer is not specified. Both input and kernel ' \
+                         f'quantizers must be specified to allow a purely integer based implementation in hardware.')
+
     if hasattr(qkeras_quantizer, 'bits'):
         qtensor.dtype.bitwidth = qkeras_quantizer.bits
     else:

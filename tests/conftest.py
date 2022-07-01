@@ -2,8 +2,12 @@ import pytest
 import tensorflow as tf
 import numpy as np
 import qkeras
-
+from qkeras.utils import load_qmodel, model_save_quantized_weights 
+import os
 from tensorflow.keras.datasets import mnist
+
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 @pytest.fixture(scope='session')
@@ -25,7 +29,9 @@ def bnn_qdense_bn_sign_act() -> tf.keras.Model:
                [+1, -1],
                [+1, +1]]
     y_train = [0, 1, 1, 0]
-    model.fit(x_train, y_train, batch_size=4, epochs=50, verbose=False)
+    #model.fit(x_train, y_train, batch_size=4, epochs=50, verbose=False)
+    #model.save_weights(os.path.join(SCRIPT_DIR, 'bnn_qdense_bn_sign_act.h5'))
+    model.load_weights(os.path.join(SCRIPT_DIR, 'bnn_qdense_bn_sign_act.h5'))
     return model
 
 
@@ -101,5 +107,7 @@ def bnn_mnist_model() -> tf.keras.Model:
                   loss='squared_hinge',
                   metrics=['accuracy'])
 
-    model.fit(x_train, y_train, batch_size=64, epochs=3, verbose=False)
+    #model.fit(x_train, y_train, batch_size=64, epochs=15, verbose=False)
+    #model.save_weights(os.path.join(SCRIPT_DIR, 'bnn_mnist_model.h5'))
+    model.load_weights(os.path.join(SCRIPT_DIR, 'bnn_mnist_model.h5'))
     return model

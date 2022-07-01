@@ -48,7 +48,6 @@ def test_run_service_3(bnn_mnist_model):
     image_vector_size = 28*28
     x_test = x_test.reshape(x_test.shape[0], image_vector_size)
     x_test = x_test.astype('float32')
-    x_test = np.floor(x_test / 2)
     y_test = tf.one_hot(y_test, 10)
     y_test = np.where(y_test < 0.1, -1., 1.)
 
