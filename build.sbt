@@ -6,6 +6,7 @@ Compile / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "main"
 Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "scala" / "lbir"
 Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "scala" / "services"
 
+
 crossTarget := baseDirectory.value / "bin"
 assembly / assemblyJarName  := "chisel4ml.jar"
 ThisBuild / assemblyMergeStrategy := {
