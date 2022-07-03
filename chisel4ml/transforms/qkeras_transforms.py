@@ -65,7 +65,7 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
     qtensor = lbir.QTensor()
     if qkeras_quantizer is not None:
         qtensor.dtype.quantization = _qkeras2lbir_quantizer_dict[qkeras_quantizer.__class__]
-    elif tensor is 'bias':
+    elif tensor == 'bias':
         qtensor.dtype.quantization = lbir.Datatype.UNIFORM
         log.warning(f'QKeras layer {keras_layer} bias quantzier is not specified. Defaulting to UNIFORM 32-bits.')
     else:
