@@ -86,7 +86,9 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
         qtensor.values[:] = quant_internals(keras_layer.__getattribute__(tensor)).numpy().flatten().tolist()
     elif tensor == 'bias':
         # Bias can be folded into the activation in some cases (BNN), so we allow using float biases as well.
-        qtensor.values[:] = keras_layer.bias.numpy().tolist()
+        # We negate bias values because we redefine them as a threshold value. I.e. w*x +b > 0 == w*x > thresh (=-b)
+        thresh_arr = -keras_layer.bias.numpy()
+        qtensor.values[:] = thresh_arr.tolist()
     return qtensor
 
 

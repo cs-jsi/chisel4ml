@@ -7,18 +7,19 @@
 
 package chisel4ml
 
-import chisel3._
-import chisel3.util._
-import chisel3.experimental._
-import scala.collection.mutable._
+import _root_.chisel3._
+import _root_.chisel3.util._
+import _root_.chisel3.experimental._
+import _root_.lbir.{Model, Layer}
+import _root_.scala.collection.mutable._
 
-class ProcessingPipeline(model: lbir.Model) extends Module {
+class ProcessingPipeline(model: Model) extends Module {
     // List of processing elements - one PE per layer
     val peList = new ListBuffer[ProcessingElementSimple]()
 
     // Instantiate modules for seperate layers, for now we only support DENSE layers
     for (layer <- model.layers) {
-        assert(layer.ltype == lbir.Layer.Type.DENSE)
+        assert(layer.ltype == Layer.Type.DENSE)
         peList += Module(ProcessingElementSimple(layer))
     }
 

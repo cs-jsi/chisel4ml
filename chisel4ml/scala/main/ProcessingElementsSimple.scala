@@ -73,7 +73,7 @@ class BinarizedDense(layer: Layer) extends ProcessingElementSimple(layer) {
     val out_int = Wire(Vec(outSize, Bool()))
 
     val weights: Seq[Seq[Bool]] = layer.weights.get.values.map(_ > 0).map(_.B).grouped(outSize).toSeq.transpose
-    val thresh:  Seq[UInt]      = layer.biases.get.values.map(x => (inSize - x) / 2).map(_.ceil).map(_.toInt.U)
+    val thresh:  Seq[UInt]      = layer.biases.get.values.map(x => (inSize + x) / 2).map(_.ceil).map(_.toInt.U)
     logger.info("Creating new BinarizedDense processing element with weights " + weights + " and threshold " + thresh)
 
     in_int := io.in.asTypeOf(in_int)
@@ -133,11 +133,11 @@ class BinaryWeightDense(layer: Layer) extends ProcessingElementSimple(layer) {
     // numbers are in twos complement, to get -1*a you just need to invert the bits
     // and add 1. We do not add this extra ONE to save on FPGA area. WARNING!
     // TODO: remove this LSB value from thresh, then the computation will be equivalent.
-    def multiplyXNOR(inFp: UInt, inBool: Bool): SInt = { Mux(inBool, inFp.asSInt, -(inFp.asSInt)) }
+    def multiplyXNOR(inFp: UInt, inBool: Bool): SInt = { Mux(inBool, inFp.zext, -(inFp.zext)) }
 
     def binaryWeightNeuron(in: Seq[UInt], weights: Seq[Bool], thresh: SInt): Bool = {
         require(weights.length == in.length)
-        val act = (in.zip(weights)).map { case (a: UInt, b: Bool) => multiplyXNOR(a, b) }.reduce(_ + _)
+        val act = (in.zip(weights)).map { case (a: UInt, b: Bool) => multiplyXNOR(a, b) }.reduce(_ +& _)
         act >= thresh
     }
 

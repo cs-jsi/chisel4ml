@@ -29,7 +29,7 @@ def test_run_service_2(bnn_simple_bweight_model):
     """ Tests if the run service (simulation) is working correctly for binary weight layers. """
     epp_handle = elaborate.qkeras_model(bnn_simple_bweight_model)
     assert epp_handle.reply.err == services.ErrorMsg.ErrorId.SUCCESS
-    for inp in [[36, 22, 3], [6, 18, 5], [6, 22, 3], [255, 127, 255]]:
+    for inp in [[36, 22, 3], [6, 18, 5], [6, 22, 3], [255, 127, 255], [0, 0, 0], [255, 255, 255]]:
         sw_res = bnn_simple_bweight_model.predict(np.array([inp]))
         hw_res = epp_handle(np.array(inp))
         assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), \
