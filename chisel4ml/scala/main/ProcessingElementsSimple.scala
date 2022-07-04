@@ -74,13 +74,13 @@ class BinarizedDense(layer: Layer) extends ProcessingElementSimple(layer) {
 
     val weights: Seq[Seq[Bool]] = layer.weights.get.values.map(_ > 0).map(_.B).grouped(outSize).toSeq.transpose
     val thresh:  Seq[UInt]      = layer.biases.get.values.map(x => (inSize + x) / 2).map(_.ceil).map(_.toInt.U)
-    logger.info("Creating new BinarizedDense processing element with weights " + weights + " and threshold " + thresh)
+    logger.info(s"""Creating new BinarizedDense processing element with input shape: ${layer.input.get.shape} and
+                    output shape: ${layer.outShape}.""")
 
     in_int := io.in.asTypeOf(in_int)
 
     def binarizedNeuron(in: Seq[Bool], weights: Seq[Bool], thresh: UInt): Bool = {
         require(weights.length == in.length)
-        logger.info("Connecting subsets of weights " + weights + " and threshold " + thresh)
         val act = PopCount((in.zip(weights)).map { case (a: Bool, b: Bool) => ~(a ^ b) })
         act >= thresh
     }
@@ -126,8 +126,8 @@ class BinaryWeightDense(layer: Layer) extends ProcessingElementSimple(layer) {
 
     val weights: Seq[Seq[Bool]] = layer.weights.get.values.map(_ > 0).map(_.B).grouped(outSize).toSeq.transpose
     val thresh:  Seq[SInt]      = layer.biases.get.values.map(_.toInt.S)
-    logger.info(s"""Creating new BinaryWeightdDense processing element with weights: ${weights} and threshold: 
-                    ${thresh}""")
+    logger.info(s"""Creating new BinaryWeightdDense processing element with input shape: ${layer.input.get.shape} and  
+                    output shape: ${layer.outShape}.""")
 
     // This function approximates the multiplication with 1 and -1. Because these
     // numbers are in twos complement, to get -1*a you just need to invert the bits

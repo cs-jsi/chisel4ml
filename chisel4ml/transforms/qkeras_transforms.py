@@ -6,7 +6,6 @@ import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import register_qkeras_transform
 
 from typing import Sequence
-from collections import defaultdict
 import inspect
 import logging
 log = logging.getLogger(__name__)
@@ -69,7 +68,7 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
         qtensor.dtype.quantization = lbir.Datatype.UNIFORM
         log.warning(f'QKeras layer {keras_layer} bias quantzier is not specified. Defaulting to UNIFORM 32-bits.')
     else:
-        raise ValueError(f'QKeras layer {keras_layer} {tensor} quantizer is not specified. Both input and kernel ' \
+        raise ValueError(f'QKeras layer {keras_layer} {tensor} quantizer is not specified. Both input and kernel '
                          f'quantizers must be specified to allow a purely integer based implementation in hardware.')
 
     if hasattr(qkeras_quantizer, 'bits'):
