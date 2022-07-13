@@ -1,6 +1,10 @@
 CHANGES
 =======
 
+0.0.2
+-----
+
+* Lowered stargin memory for java, hopefully github actions will be happy with this
 * Increased memory for java/chisel server, now all tests passing. Also some stylistic flake8 fixes
 * Negated the value of thresh, to make it logically consistant (thresh=-bias). Now Binary Weight Network seem to work, but tests are failing because of memory issues. Also added couple of test caases for test\_run\_service\_2
 * Replaced is operator with ==
