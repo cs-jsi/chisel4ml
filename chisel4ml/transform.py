@@ -4,7 +4,7 @@ import chisel4ml.lbir.lbir_pb2 as lbir
 import tensorflow as tf
 
 
-def qkeras2lbir(model: tf.keras.Model) -> lbir.Model:
+def qkeras_to_lbir(model: tf.keras.Model) -> lbir.Model:
     "Applys transformation to a Keras model, and returns a LBIR model."
     lbir_model = lbir.Model()
     for i, layer in enumerate(model.layers):

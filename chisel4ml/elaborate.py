@@ -35,7 +35,7 @@ class ElaboratedProcessingPipelineHandle:
 
 def qkeras_model(model: tf.keras.Model):
     opt_model = optimize.qkeras_model(model)
-    lbir_model = transform.qkeras2lbir(opt_model)
+    lbir_model = transform.qkeras_to_lbir(opt_model)
     server_manager.start_chisel4ml_server_once()
     with grpc.insecure_channel('localhost:50051') as channel:
         stub = services_grpc.PpServiceStub(channel)

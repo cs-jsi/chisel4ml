@@ -4,7 +4,7 @@ import chisel4ml.lbir.lbir_pb2 as lbir
 
 def test_qkeras_transform(bnn_mnist_model):
     opt_model = optimize.qkeras_model(bnn_mnist_model)
-    lbir_model = transform.qkeras2lbir(opt_model)
+    lbir_model = transform.qkeras_to_lbir(opt_model)
     layers = lbir_model.layers
 
     UNIFORM = lbir.Datatype.QuantizationType.UNIFORM
