@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Renamed qkeras2lbir fn to qkeras\_to\_lbir to be inline with the naming convention
 * Updated changelog to version 0.0.3. Starting restructuring now
 
 0.0.3
