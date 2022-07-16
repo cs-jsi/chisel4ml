@@ -1,6 +1,5 @@
 syntax = "proto3";
-
-import "chisel4ml/lbir/lbir.proto";
+import "lbir.proto";
 
 package services;
 
