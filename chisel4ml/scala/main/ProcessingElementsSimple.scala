@@ -37,6 +37,8 @@ abstract class ProcessingElementSimple(layer: Layer) extends Module {
      * Determines the input output interface. This gets cast to various data
      * types in Layer implementation classes.
      */
+
+    def qMul(i: Bool, w: Bool): Bool = { ~(i ^ w) }
     val io = IO(new Bundle {
         val in  = Input(UInt(inSizeBits.W))
         val out = Output(UInt(outSizeBits.W))
@@ -81,7 +83,7 @@ class BinarizedDense(layer: Layer) extends ProcessingElementSimple(layer) {
 
     def binarizedNeuron(in: Seq[Bool], weights: Seq[Bool], thresh: UInt): Bool = {
         require(weights.length == in.length)
-        val act = PopCount((in.zip(weights)).map { case (a: Bool, b: Bool) => ~(a ^ b) })
+        val act = PopCount((in zip weights).map{ case (i, w) => qMul(i, w) })
         act >= thresh
     }
 

@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Changed scalaPB settings so that QTensor is now an ArraySeq, not a Seq. This will improve performance as ArraySeq is based on an arrays and has a constant time accesses
+* Renamed server\_manager to chisel4ml\_server and moved elab proc pipeline class to a separate file
 * Renamed qkeras2lbir fn to qkeras\_to\_lbir to be inline with the naming convention
 * Updated changelog to version 0.0.3. Starting restructuring now
 

@@ -1,5 +1,5 @@
 syntax = "proto3";
-import "scalapb/scalapb.proto";
+//import "scalapb/scalapb.proto";
 
 package lbir;
 
@@ -29,7 +29,7 @@ message Layer {
 message QTensor {
     Datatype dtype = 1;
     repeated uint32 shape = 2;
-    repeated float values = 3 [(scalapb.field).collection_type="ArraySeq"];
+    repeated float values = 3; // [(scalapb.field).collection_type="scala.collection.immutable.ArraySeq"];
 }
 
 message Datatype {
