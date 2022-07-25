@@ -100,7 +100,13 @@ def _qkeras_base_transform(keras_layer: KerasLayer) -> lbir.Layer:
     lbir_layer.input.CopyFrom(_qkeras_transform_tensor(keras_layer, 'input'))
     lbir_layer.activation.fn = _qkeras_to_lbir_activation_transform(keras_layer.activation)
     lbir_layer.activation.bitwidth = 1  # TODO currently only supporting BINARY_SIGN act
-    lbir_layer.out_shape[:] = keras_layer.output_shape[1:]
+    lbir_layer.output = lbir.QTensor()
+    lbir_layer.output.dtype = lbir.Datatype()
+    lbir_layer.output.dtype.quantization = lbir.QuantizationType.BINARY
+    lbir_layer.output.dtype.bitwidth = 1
+    lbir_layer.output.dtype.scale = 1
+    lbir_layer.output.dtype.offset = 0
+    lbir_layer.output.shape = keras_layer.output_shape[1:]
 
     return lbir_layer
 

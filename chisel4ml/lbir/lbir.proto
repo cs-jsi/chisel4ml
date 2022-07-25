@@ -22,8 +22,9 @@ message Layer {
     QTensor biases  = 3;
     QTensor weights = 4;
     QTensor input = 5;  // no values, just shape / dtype
-    Activation activation = 6;
-    repeated uint32 out_shape = 7; 
+    QTensor output = 6; 
+    Activation activation = 7;
+
 }
 
 message QTensor {

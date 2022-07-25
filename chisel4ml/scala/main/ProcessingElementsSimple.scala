@@ -11,142 +11,74 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental._
 import _root_.lbir.{Activation, Datatype, Layer}
+import _root_.chisel4ml.util._
 
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
-/** Base class of all ProcessingElements.
-  *
-  * The base class of all ProcessingElements.:
-  *
-  * @param layer
-  *   Is a layer definition defined by the LBIR format.
-  */
+object Neuron {
+    def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](in: Seq[I], 
+                                                                     weights: Seq[W],
+                                                                     thresh: A,
+                                                                     mul: (I, W) => M, 
+                                                                     add: Vec[M] => A,
+                                                                     actFn: (A, A) => O): O = {
+        val muls = VecInit((in zip weights).map{case (a,b) => mul(a,b)})
+        val act = add(muls)
+        actFn(act, thresh)
+    }
+}
+
+
 abstract class ProcessingElementSimple(layer: Layer) extends Module {
-    val inSize:      Int = layer.input.get.shape.reduce(_ * _)         // Number of inputs.
-    val inSizeBits:  Int = inSize * layer.input.get.dtype.get.bitwidth // Number of input bits.
-    val outSize:     Int = layer.outShape.reduce(_ * _)                // Number of outputs.
-    val inBitwidth:  Int = layer.input.get.dtype.get.bitwidth
-    val outBitwidth: Int = layer.activation.get.bitwidth
-
-    /** outSizeBits is the number of output bits. It determines the width of the outgoing UInt.
-      */
-    val outSizeBits: Int = outSize * layer.activation.get.bitwidth
-
-    /*
-     * Determines the input output interface. This gets cast to various data
-     * types in Layer implementation classes.
-     */
-
-    def qMul(i: Bool, w: Bool): Bool = { ~(i ^ w) }
     val io = IO(new Bundle {
-        val in  = Input(UInt(inSizeBits.W))
-        val out = Output(UInt(outSizeBits.W))
+        val in  = Input(UInt(LbirUtil.qtensorTotalBitwidth(layer.input.get).W))
+        val out = Output(UInt(LbirUtil.qtensorTotalBitwidth(layer.output.get).W))
     })
 }
 
 object ProcessingElementSimple {
-    // TODO this is temporary code
+    def signFn(act: UInt, thresh: UInt): Bool = act >= thresh
+    def signFn(act: SInt, thresh: SInt): Bool = act >= thresh
+    def mul(i: Bool, w: Bool): Bool = ~(i ^ w)
+    def mul(i: UInt, w: Bool): SInt = Mux(w, i.zext, -(i.zext)) 
+
     def apply(layer: Layer) = layer.input.get.dtype.get.quantization match {
-        case Datatype.QuantizationType.UNIFORM => new BinaryWeightDense(layer)
-        case Datatype.QuantizationType.BINARY  => new BinarizedDense(layer)
-
+        case Datatype.QuantizationType.UNIFORM => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,     
+                                                                        UInt(layer.input.get.dtype.get.bitwidth.W),
+                                                                        Bool(),
+                                                                        mul,
+                                                                        (x: Vec[SInt]) => x.reduceTree(_ +& _),
+                                                                        signFn
+                                                                        )
+        case Datatype.QuantizationType.BINARY  => new ProcessingElementSimpleDense[Bool, Bool, Bool, UInt, Bool](layer,
+                                                                                                          Bool(),
+                                                                                                          Bool(),
+                                                                                                           mul,
+                                                                                   (x: Vec[Bool]) => PopCount(x),
+                                                                                                          signFn)
     }
 }
 
-/** The BinarizedDense layer implements a fully-connected binarized layer.
-  *
-  * This layer implements a fully-connected layer as specified in the paper Hubara et al.: Binarized Neural Networks
-  * (https://arxiv.org/abs/1602.02830). Additionally, for the explaination of the thresh(hold) compensation see the
-  * paper Binarized Neural Networks by Umuroglu et al.: https://arxiv.org/pdf/1612.07119.pdf.
-  */
-class BinarizedDense(layer: Layer) extends ProcessingElementSimple(layer) {
-    require(layer.ltype == Layer.Type.DENSE)
-    require(layer.weights.get.dtype.get.quantization == Datatype.QuantizationType.BINARY)
-    require(layer.input.get.dtype.get.quantization == Datatype.QuantizationType.BINARY)
-    require(layer.activation.get.fn == Activation.Function.BINARY_SIGN)
-    require(layer.biases.get.values.map(x => (x + inSize) / 2).min > 0)
-    val logger = LoggerFactory.getLogger(classOf[BinarizedDense])
+class ProcessingElementSimpleDense[I <: Bits, 
+                                   W <: Bits : WeightsProvider, 
+                                   M <: Bits, 
+                                   A <: Bits : ThreshProvider, 
+                                   O <: Bits](layer: Layer, 
+                                              genI: I, 
+                                              genO: O,
+                                              mul: (I,W) => M,
+                                              add: Vec[M] => A,
+                                              actFn: (A, A) => O) 
 
-    // We import the values as UInts and the convert them to Bool Vectors, because
-    // in Verilog this results as an Array, instead of a number of individual elements
-    // in the interface. (I.e. in[0:2] instead of in_0, in_1 and in_2.)
-    val in_int  = Wire(Vec(inSize, Bool()))
-    val out_int = Wire(Vec(outSize, Bool()))
+extends ProcessingElementSimple(layer) {
+    val weights: Seq[Seq[W]] = LbirUtil.transformWeights[W](layer.weights.get)
+    val thresh: Seq[A] = LbirUtil.transformThresh[A](layer.biases.get) // A ali kaj drugo?
 
-    val weights: Seq[Seq[Bool]] = layer.weights.get.values.map(_ > 0).map(_.B).grouped(outSize).toSeq.transpose
-    val thresh:  Seq[UInt]      = layer.biases.get.values.map(x => (inSize + x) / 2).map(_.ceil).map(_.toInt.U)
-    logger.info(s"""Creating new BinarizedDense processing element with input shape: ${layer.input.get.shape} and
-                    output shape: ${layer.outShape}.""")
+    val in_int  = Wire(Vec(layer.input.get.shape(0), genI))
+    val out_int = Wire(Vec(layer.output.get.shape(0), genO))
 
-    in_int := io.in.asTypeOf(in_int)
-
-    def binarizedNeuron(in: Seq[Bool], weights: Seq[Bool], thresh: UInt): Bool = {
-        require(weights.length == in.length)
-        val act = PopCount((in zip weights).map{ case (i, w) => qMul(i, w) })
-        act >= thresh
+    for (i <- 0 until layer.output.get.shape(0)) { 
+        out_int(i) := Neuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn) 
     }
-
-    for (i <- 0 until outSize) { out_int(i) := binarizedNeuron(in_int, weights(i), thresh(i)) }
-
-    // The CAT operator reverses the order of bits, so we reverse them
-    // to evenout the reversing (its not pretty but it works).
-    io.out := Cat(out_int.reverse)
-}
-
-/*
- * This is typically an input layer. As described in paper Hubara et al.: Binarized Neural
- * Networks (https://arxiv.org/abs/1602.02830), the first layer of a BNN should no have binarized
- * inputs, as this tends to lead to significantly lower performance. This layer still has binarized
- * weights, but the MAC computation is done in FixedPoint. Luckily, as described in the paper above,
- * this can be done with a serie of XNOR gates.
- *
- *  Example arithmetic:
- *  0.75 * 1
- *    ->      0110 0000 (0.75 in S(0,8) FixedPoint format)
- *    -> XNOR 1111 1111
- *    ->    = 0110 0000 = 2^-1 +2^-2 = 0.75 (0.75 * 1 does indeed equal to 1)
- *  0.75 * (-1)
- *    ->      0110 0000
- *    -> XNOR 0000 0000 (We again use 0 to repesent -1)
- *    ->    = 1001 1111 = -2^0 + 2^-3 + 2^-5 + 2^-6 + 2^-7 = -0.75781 or about -0.75
- *
- *  -> This than needs to be added together and compared with the threshold.
- *
- * @param layer Is a layer definition defined by the LBIR format.
- */
-class BinaryWeightDense(layer: Layer) extends ProcessingElementSimple(layer) {
-    require(layer.ltype == Layer.Type.DENSE)
-    require(layer.weights.get.dtype.get.quantization == Datatype.QuantizationType.BINARY)
-    require(layer.input.get.dtype.get.quantization == Datatype.QuantizationType.UNIFORM)
-    require(layer.activation.get.fn == Activation.Function.BINARY_SIGN)
-    // TODO: Add scale/offset requirements
-    val logger = LoggerFactory.getLogger(classOf[BinaryWeightDense])
-
-    val in_int  = Wire(Vec(inSize, UInt(inBitwidth.W)))
-    val out_int = Wire(Vec(outSize, Bool()))
-
-    val weights: Seq[Seq[Bool]] = layer.weights.get.values.map(_ > 0).map(_.B).grouped(outSize).toSeq.transpose
-    val thresh:  Seq[SInt]      = layer.biases.get.values.map(_.toInt.S)
-    logger.info(s"""Creating new BinaryWeightdDense processing element with input shape: ${layer.input.get.shape} and  
-                    output shape: ${layer.outShape}.""")
-
-    // This function approximates the multiplication with 1 and -1. Because these
-    // numbers are in twos complement, to get -1*a you just need to invert the bits
-    // and add 1. We do not add this extra ONE to save on FPGA area. WARNING!
-    // TODO: remove this LSB value from thresh, then the computation will be equivalent.
-    def multiplyXNOR(inFp: UInt, inBool: Bool): SInt = { Mux(inBool, inFp.zext, -(inFp.zext)) }
-
-    def binaryWeightNeuron(in: Seq[UInt], weights: Seq[Bool], thresh: SInt): Bool = {
-        require(weights.length == in.length)
-        val act = (in.zip(weights)).map { case (a: UInt, b: Bool) => multiplyXNOR(a, b) }.reduce(_ +& _)
-        act >= thresh
-    }
-
-    in_int := io.in.asTypeOf(in_int)
-    for (i <- 0 until outSize) { out_int(i) := binaryWeightNeuron(in_int, weights(i), thresh(i)) }
-
-    // The CAT operator reverses the order of bits, so we reverse them
-    // to evenout the reversing (its not pretty but it works).
-    io.out := Cat(out_int.reverse)
 }

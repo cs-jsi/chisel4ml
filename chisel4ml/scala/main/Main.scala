@@ -104,7 +104,7 @@ class Chisel4mlServer(executionContext: ExecutionContext) {
 
             val errReply          = ErrorMsg(err = ErrorMsg.ErrorId.SUCCESS, msg = "Everything went fine.")
             val ppHandle          =
-                PpHandle(name = "model", input = lbirModel.layers(0).input, outShape = lbirModel.layers.last.outShape)
+                PpHandle(name = "model", input = lbirModel.layers(0).input, outShape = lbirModel.layers.last.output.get.shape)
             val ppElaborateReturn = PpElaborateReturn(ppHandle = Option(ppHandle), reply = Some(errReply))
             Future.successful(ppElaborateReturn)
         }
@@ -113,7 +113,7 @@ class Chisel4mlServer(executionContext: ExecutionContext) {
             logger.info("Simulating processing pipeline: " + ppRunParams.ppHandle.get.name + " circuit on inputs.")
             tester.poke("io_in", lbirToBigInt(ppRunParams.inputs(0)))
             Future.successful(
-              PpRunReturn(values = List(bigIntToLbir(tester.peek("io_out"), model.layers.last.outShape(0))))
+              PpRunReturn(values = List(bigIntToLbir(tester.peek("io_out"), model.layers.last.output.get.shape(0))))
             )
         }
 
