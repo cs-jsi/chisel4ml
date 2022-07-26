@@ -31,6 +31,7 @@ object Neuron {
 
 
 abstract class ProcessingElementSimple(layer: Layer) extends Module {
+    val logger = LoggerFactory.getLogger(classOf[ProcessingElementSimple])
     val io = IO(new Bundle {
         val in  = Input(UInt(LbirUtil.qtensorTotalBitwidth(layer.input.get).W))
         val out = Output(UInt(LbirUtil.qtensorTotalBitwidth(layer.output.get).W))
@@ -73,12 +74,24 @@ class ProcessingElementSimpleDense[I <: Bits,
 
 extends ProcessingElementSimple(layer) {
     val weights: Seq[Seq[W]] = LbirUtil.transformWeights[W](layer.weights.get)
-    val thresh: Seq[A] = LbirUtil.transformThresh[A](layer.biases.get) // A ali kaj drugo?
+    val thresh: Seq[A] = LbirUtil.transformThresh[A](layer.biases.get, layer.input.get.shape(0)) // A ali kaj drugo?
 
     val in_int  = Wire(Vec(layer.input.get.shape(0), genI))
     val out_int = Wire(Vec(layer.output.get.shape(0), genO))
 
+    in_int := io.in.asTypeOf(in_int)
     for (i <- 0 until layer.output.get.shape(0)) { 
         out_int(i) := Neuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn) 
     }
+    
+    // The CAT operator reverses the order of bits, so we reverse them
+    // to evenout the reversing (its not pretty but it works).
+    io.out := Cat(out_int.reverse)
+
+    logger.info(s"""Created new ProcessingElementSimpleDense processing element. It has an input shape: 
+                    | ${layer.input.get.shape} and output shape: ${layer.output.get.shape}. The input bitwidth
+                    | is ${layer.input.get.dtype.get.bitwidth}, the output bitwidth 
+                    | ${layer.output.get.dtype.get.bitwidth}. Thus the total size of the input vector is 
+                    | ${LbirUtil.qtensorTotalBitwidth(layer.input.get)} bits, and the total size of the output vector 
+                    | is ${LbirUtil.qtensorTotalBitwidth(layer.output.get)} bits.""".stripMargin.replaceAll("\n", ""))
 }

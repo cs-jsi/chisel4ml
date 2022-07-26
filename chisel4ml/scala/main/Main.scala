@@ -13,6 +13,7 @@ import _root_.chisel3._
 import _root_.io.grpc.{Server, ServerBuilder}
 import _root_.services.{ErrorMsg, GenerateParams, PpElaborateReturn, PpHandle, PpRunParams, PpRunReturn, PpServiceGrpc}
 import _root_.lbir.{Datatype, Model, QTensor}
+import _root_.chisel4ml.util.LbirUtil
 
 import _root_.treadle.TreadleTester
 import _root_.org.slf4j.Logger
@@ -54,36 +55,6 @@ class Chisel4mlServer(executionContext: ExecutionContext) {
 
     private def blockUntilShutdown(): Unit = { if (server != null) { server.awaitTermination() } }
 
-    def toBinary(i: Int, digits: Int = 8) = String.format("%" + digits + "s", i.toBinaryString).replace(' ', '0')
-
-    def toBinaryB(i: BigInt, digits: Int = 8) = String.format("%" + digits + "s", i.toString(2)).replace(' ', '0')
-
-    // TODO move this function somewhere else
-    def lbirToBigInt(qtensor: QTensor): BigInt = {
-        var values = qtensor.values.reverse
-        if (qtensor.dtype.get.quantization == Datatype.QuantizationType.BINARY) {
-            values = values.map(x => (x + 1) / 2) // 1 -> 1, -1 -> 0
-        }
-
-        val string_int = values.map(x => toBinary(x.toInt, qtensor.dtype.get.bitwidth)).mkString
-        val big_int    = BigInt(string_int, radix = 2)
-        logger.info(
-          "Converted lbir.QTensor: " + qtensor.values + " to BigInt: " + string_int + "." +
-              " The number of bits is: " + qtensor.dtype.get.bitwidth + "."
-        )
-        big_int
-    }
-
-    def bigIntToLbir(value: BigInt, outSize: Int): QTensor = {
-        val dataType    = Datatype(quantization = Datatype.QuantizationType.BINARY, bitwidth = 1, scale = 1, offset = 0)
-        // We substract the 48 because x is an ASCII encoded symbol
-        val lbir_values = toBinaryB(value, outSize).toList.map(x => x.toFloat - 48).reverse.map(x => (x * 2) - 1)
-        val qtensor     = QTensor(dtype = Option(dataType), shape = List(outSize), values = lbir_values)
-        logger.info(
-          "Converted BigInt: " + value + " to lbir.QTensor: " + qtensor + ". The number of bits is " + outSize + "."
-        )
-        qtensor
-    }
 
     private object PpServiceImpl {
         var model:  Model         = null
@@ -111,9 +82,9 @@ class Chisel4mlServer(executionContext: ExecutionContext) {
 
         override def run(ppRunParams: PpRunParams): Future[PpRunReturn] = {
             logger.info("Simulating processing pipeline: " + ppRunParams.ppHandle.get.name + " circuit on inputs.")
-            tester.poke("io_in", lbirToBigInt(ppRunParams.inputs(0)))
+            tester.poke("io_in", LbirUtil.qtensorToBigInt(ppRunParams.inputs(0)))
             Future.successful(
-              PpRunReturn(values = List(bigIntToLbir(tester.peek("io_out"), model.layers.last.output.get.shape(0))))
+              PpRunReturn(values = List(LbirUtil.bigIntToQtensor(tester.peek("io_out"), model.layers.last.output.get.shape(0))))
             )
         }
 

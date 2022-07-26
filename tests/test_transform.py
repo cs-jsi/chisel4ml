@@ -73,4 +73,4 @@ def test_qkeras_transform(bnn_mnist_model):
 
     # out_shape
     for lay in layers:
-        assert len(lay.out_shape) > 0
+        assert len(lay.output.shape) > 0
