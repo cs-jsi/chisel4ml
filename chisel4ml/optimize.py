@@ -1,17 +1,31 @@
 from chisel4ml.optimizations import qkeras_opt_list
 
 import tensorflow as tf
+import qkeras
 
-import copy
 import collections
 import itertools
 import logging
 log = logging.getLogger(__name__)
 
 
+def _replace_model_layers(smodel, nlayers):
+    clayers = []
+    for lay in nlayers:
+        if not hasattr(lay, 'c4ml_remove_layer'):
+            clayers.append(lay)
+
+    for i in range(0, len(smodel.layers)):
+        smodel.pop()
+
+    for lay in clayers:
+        smodel.add(lay)
+
+
 def qkeras_model(model):
     "Applys optimization passes to the model, and returns a dummy model that can be transformed into a LBIR model."
-    layers = copy.deepcopy(model.layers)  # layers in keras are read-only
+    nmodel = qkeras.utils.clone_model(model)
+    smodel = tf.keras.models.Sequential(nmodel.layers)  # We convert any functional models to sequential (needed later)
 
     def sliding_window(iterable, size):
         iterable = iter(iterable)
@@ -26,20 +40,19 @@ def qkeras_model(model):
 
     # Some layers are wrapped in other layers (pruning layer i.e.) in the first pass we unwrapp it and then
     # we apply other optimizations.
-
     for opt in qkeras_opt_list:
         nlayers = []
-        for lslice, item in sliding_window(layers, opt.num_layers):
+        for lslice, item in sliding_window(smodel.layers, opt.num_layers):
             if any(hasattr(x, 'c4ml_remove_layer') for x in lslice):
                 continue
             if opt.is_applicable(lslice):
                 opt(lslice)
-        for lay in layers:
+        for lay in smodel.layers:
             if not hasattr(lay, 'c4ml_remove_layer'):
                 if hasattr(lay, 'SKIP'):
                     delattr(lay, 'SKIP')
                 nlayers.append(lay)
 
-        layers = nlayers
+        _replace_model_layers(smodel, nlayers)
 
-    return tf.keras.models.Sequential(layers)
+    return smodel

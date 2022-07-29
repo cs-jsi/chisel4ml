@@ -19,7 +19,7 @@ class QKerasAddInputQuantization(QKerasOptimization):
     order = 4
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
-        layers[1].input_quantizer = layers[0].activation
+        layers[1].input_quantizer_internal = layers[0].activation
         if isinstance(layers[0], qkeras.QActivation):
             layers[0].c4ml_remove_layer = True
         return layers

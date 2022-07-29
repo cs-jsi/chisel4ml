@@ -60,7 +60,7 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
     assert(tensor == 'kernel' or
            tensor == 'bias' or
            tensor == 'input')
-    qkeras_quantizer = keras_layer.__getattribute__(tensor + '_quantizer')
+    qkeras_quantizer = keras_layer.__getattribute__(tensor + '_quantizer_internal')
     qtensor = lbir.QTensor()
     if qkeras_quantizer is not None:
         qtensor.dtype.quantization = _qkeras_to_lbir_quantizer_dict[qkeras_quantizer.__class__]
@@ -80,7 +80,7 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
     qtensor.shape[:] = _qkeras_get_shape(keras_layer, tensor)
     assert len(qtensor.shape) > 0
     if (hasattr(keras_layer, tensor + '_quantizer_internal') and
-            keras_layer.__getattribute__(tensor + '_quantizer_internal') is not None):
+            keras_layer.__getattribute__(tensor + '_quantizer_internal') is not None and tensor != 'input'):
         quant_internals = keras_layer.__getattribute__(tensor + '_quantizer_internal')
         qtensor.values[:] = quant_internals(keras_layer.__getattribute__(tensor)).numpy().flatten().tolist()
     elif tensor == 'bias':

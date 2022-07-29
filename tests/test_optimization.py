@@ -80,6 +80,7 @@ def test_bnn_mnist_model_opt(bnn_mnist_model):
     image_vector_size = 28*28
     x_test = x_test.reshape(x_test.shape[0], image_vector_size)
     x_test = x_test.astype('float32')
+
     for i in range(0, 10):
         org_res = bnn_mnist_model.predict(x_test[i].reshape(1, 784))
         opt_res = opt_model.predict(x_test[i].reshape(1, 784))

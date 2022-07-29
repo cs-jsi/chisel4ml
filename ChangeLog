@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Added some tests of the qkeras quantizers, to make sure their behaviour is as expected. Also added a new test fixture: a fully dense quantized (non binary) neural network for MNIST
+* Generic implementation now working for Binarized and BWN, added lbirutils to handle lbir to chisel conversion. Changed LBIR.Layer to define output as a a QTensor (without values)
 * Generic version of the ProcessingElementSimple compiles. Full integration test are still erroring
 * Started moving towards a generic dense layer implementation.  Moved back to using lists in lbir, because custom scala options were causing problems with python code generation
 * Changed scalaPB settings so that QTensor is now an ArraySeq, not a Seq. This will improve performance as ArraySeq is based on an arrays and has a constant time accesses
