@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Generation of a (untested, probobly incorrect) version of a dense network with non-binary layers now working. Reorderd some optimiziations, also changed one optimization to work with not just binary layers
+* Added a qrelu bn fuse, but to do that had to restructure the optimizer somewhat, to use clone\_model instead of deepcopy. This also lead to some other changes
 * Added some tests of the qkeras quantizers, to make sure their behaviour is as expected. Also added a new test fixture: a fully dense quantized (non binary) neural network for MNIST
 * Generic implementation now working for Binarized and BWN, added lbirutils to handle lbir to chisel conversion. Changed LBIR.Layer to define output as a a QTensor (without values)
 * Generic version of the ProcessingElementSimple compiles. Full integration test are still erroring
