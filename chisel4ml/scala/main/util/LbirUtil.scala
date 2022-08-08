@@ -47,6 +47,12 @@ object WeightsProvider {
             tensor.values.map(_ > 0).map(_.B).grouped(tensor.shape(1)).toSeq.transpose
         }
     }
+    implicit object WeightsProviderSInt extends WeightsProvider[SInt] {
+        def instance(tensor: QTensor): Seq[Seq[SInt]] = {
+            LbirUtil.logger.info(s"""Transformed input tensor of weights to a Seq[Seq[SInt]].""")
+            tensor.values.map(_.toInt.S).grouped(tensor.shape(1)).toSeq.transpose
+        }
+    }
 }
 
 final class LbirUtil

@@ -17,7 +17,7 @@ class QKerasActivationFold(QKerasOptimization):
         activation variable.
     """
     num_layers = 2
-    order = 3
+    order = 4
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
         layers[0].activation = layers[1].activation
@@ -27,5 +27,4 @@ class QKerasActivationFold(QKerasOptimization):
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
         return (type(layers[0]) is qkeras.QDense and
                 layers[0].activation is linear and
-                type(layers[1]) is qkeras.QActivation and
-                type(layers[1].activation) is qkeras.quantizers.binary)
+                type(layers[1]) is qkeras.QActivation)

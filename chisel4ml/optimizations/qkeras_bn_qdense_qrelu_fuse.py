@@ -16,7 +16,7 @@ class QKerasBNQDenseQReluFuse(QKerasOptimization):
         Fuses the BatchNorm and QDense layer with a quantized_relu activation function.
     """
     num_layers = 3
-    order = 2
+    order = 3
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
         mm = layers[1].moving_mean

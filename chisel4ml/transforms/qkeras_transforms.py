@@ -24,12 +24,14 @@ def _log_transform(fn):
 _qkeras_to_lbir_quantizer_dict = {}  # type: ignore
 _qkeras_to_lbir_quantizer_dict[qkeras.quantized_bits] = lbir.Datatype.UNIFORM
 _qkeras_to_lbir_quantizer_dict[qkeras.binary] = lbir.Datatype.BINARY
+_qkeras_to_lbir_quantizer_dict[qkeras.quantized_relu] = lbir.Datatype.UNIFORM
 
 
 def _qkeras_to_lbir_activation_transform(keras_act):
     """ Keras allows both objects and functions as activations. This wrapper function deals with this. """
     _qkeras_to_lbir_activation_dict = {
         qkeras.binary: lbir.Activation.BINARY_SIGN,
+        qkeras.quantized_relu: lbir.Activation.RELU,
         softmax: lbir.Activation.NO_ACTIVATION
     }
     if inspect.isfunction(keras_act):
@@ -75,7 +77,13 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
         qtensor.dtype.bitwidth = qkeras_quantizer.bits
     else:
         qtensor.dtype.bitwidth = 32
-    qtensor.dtype.scale = qkeras.get_weight_scale(qkeras_quantizer)
+    if (isinstance(qkeras_quantizer, qkeras.quantizers.binary) or
+       isinstance(qkeras_quantizer, qkeras.quantizers.ternary)):
+        qtensor.dtype.scale = qkeras.get_weight_scale(qkeras_quantizer)
+    elif isinstance(qkeras_quantizer, qkeras.quantizers.quantized_bits):
+        qtensor.dtype.scale = 1  # TODO qkeras_quantizer.scale
+    else:
+        qtensor.dtype.scale = 1  # TODO this is for bias without quantizers, but is dangerous
     qtensor.dtype.offset = 0  # TODO this assumes symmetric quantization.
     qtensor.shape[:] = _qkeras_get_shape(keras_layer, tensor)
     assert len(qtensor.shape) > 0
@@ -102,8 +110,17 @@ def _qkeras_base_transform(keras_layer: KerasLayer) -> lbir.Layer:
     lbir_layer.activation.bitwidth = 1  # TODO currently only supporting BINARY_SIGN act
     output = lbir.QTensor()
     dtype = lbir.Datatype()
-    dtype.quantization = lbir.Datatype.BINARY
-    dtype.bitwidth = 1
+    if isinstance(keras_layer.activation, qkeras.quantizers.binary):
+        dtype.quantization = lbir.Datatype.BINARY
+        dtype.bitwidth = 1
+    elif isinstance(keras_layer.activation, qkeras.quantizers.quantized_relu):
+        dtype.quantization = lbir.Datatype.UNIFORM
+        dtype.bitwidth = keras_layer.activation.bits
+    elif keras_layer.activation.__name__ == 'softmax':
+        dtype.quantization = lbir.Datatype.UNIFORM
+        dtype.bitwidth = keras_layer.kernel_quantizer_internal.bits
+    else:
+        raise NotImplementedError
     dtype.scale = 1
     dtype.offset = 0
     output.dtype.CopyFrom(dtype)

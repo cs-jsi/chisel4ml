@@ -11,6 +11,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental._
 import _root_.lbir.{Activation, Datatype, Layer}
+import _root_.lbir.Datatype.QuantizationType._
 import _root_.chisel4ml.util._
 
 import _root_.org.slf4j.Logger
@@ -41,23 +42,34 @@ abstract class ProcessingElementSimple(layer: Layer) extends Module {
 object ProcessingElementSimple {
     def signFn(act: UInt, thresh: UInt): Bool = act >= thresh
     def signFn(act: SInt, thresh: SInt): Bool = act >= thresh
+    def reluFn(act: SInt, thresh: SInt): UInt = Mux((act - thresh) > 0.S, (act-thresh).asUInt, 0.U)
+
     def mul(i: Bool, w: Bool): Bool = ~(i ^ w)
     def mul(i: UInt, w: Bool): SInt = Mux(w, i.zext, -(i.zext)) 
+    def mul(i: UInt, w: SInt): SInt = i * w
 
-    def apply(layer: Layer) = layer.input.get.dtype.get.quantization match {
-        case Datatype.QuantizationType.UNIFORM => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,     
+    def apply(layer: Layer) = (layer.input.get.dtype.get.quantization,
+                               layer.weights.get.dtype.get.quantization) match {
+        case (UNIFORM, UNIFORM) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, UInt](layer,
+                                                                        UInt(layer.input.get.dtype.get.bitwidth.W),
+                                                                        UInt(layer.output.get.dtype.get.bitwidth.W),
+                                                                        mul,
+                                                                        (x: Vec[SInt]) => x.reduceTree(_ +& _),
+                                                                        reluFn
+                                                                        )
+        case (UNIFORM, BINARY) => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,     
                                                                         UInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         Bool(),
                                                                         mul,
                                                                         (x: Vec[SInt]) => x.reduceTree(_ +& _),
                                                                         signFn
                                                                         )
-        case Datatype.QuantizationType.BINARY  => new ProcessingElementSimpleDense[Bool, Bool, Bool, UInt, Bool](layer,
-                                                                                                          Bool(),
-                                                                                                          Bool(),
-                                                                                                           mul,
-                                                                                   (x: Vec[Bool]) => PopCount(x),
-                                                                                                          signFn)
+        case (BINARY, BINARY)  => new ProcessingElementSimpleDense[Bool, Bool, Bool, UInt, Bool](layer,
+                                                                                                 Bool(),
+                                                                                                 Bool(),
+                                                                                                 mul,
+                                                                          (x: Vec[Bool]) => PopCount(x),
+                                                                                                signFn)
     }
 }
 

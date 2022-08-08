@@ -16,7 +16,7 @@ class QKerasAddInputQuantization(QKerasOptimization):
         a lbir layer. This must run after the activation fold operation, so its order number is higher.
     """
     num_layers = 2
-    order = 4
+    order = 5
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
         layers[1].input_quantizer_internal = layers[0].activation
