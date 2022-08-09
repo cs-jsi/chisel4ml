@@ -55,4 +55,5 @@ def qkeras_model(model):
 
         _replace_model_layers(smodel, nlayers)
 
+    smodel.compile(optimizer="adam", loss='categorical_crossentropy', metrics=['accuracy'])
     return smodel
