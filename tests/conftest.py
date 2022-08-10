@@ -138,7 +138,7 @@ def sint_mnist_qdense_relu() -> tf.keras.Model:
     # We don't loose any info here since mnist are 8-bit gray-scale images. we just add this quantization
     # to explicitly encode this for the chisel4ml optimizer.
     model.add(tf.keras.layers.Input(shape=image_vector_size))
-    model.add(qkeras.QActivation(qkeras.quantized_bits(bits=8, integer=8, keep_negative=False, alpha="auto_po2")))
+    model.add(qkeras.QActivation(qkeras.quantized_relu(bits=8, integer=8)))
 
     model.add(qkeras.QDense(32, kernel_quantizer=qkeras.quantized_bits(bits=4, integer=3, keep_negative=True,
                                                                        alpha="auto_po2")))
