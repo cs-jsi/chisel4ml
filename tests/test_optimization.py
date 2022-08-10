@@ -2,6 +2,7 @@ from chisel4ml.optimizations.qkeras_remove_dead_layers import QKerasRemoveDeadLa
 from chisel4ml.optimizations.qkeras_activation_fold import QKerasActivationFold
 from chisel4ml.optimizations.qkeras_bn_qdense_binary_fuse import QKerasBNQDenseBinaryFuse
 from chisel4ml import optimize
+from math import isclose
 
 import tensorflow as tf
 from tensorflow.keras.datasets import mnist
@@ -87,3 +88,19 @@ def test_bnn_mnist_model_opt(bnn_mnist_model):
         assert tf.reduce_all(tf.math.equal(org_res, opt_res)), \
             f"The original model predicted the result: {org_res}, where as the optimized model predicted: {opt_res}." \
             f"The results differed on mnist test image index: {i}."
+
+
+def test_sint_mnist_qdense_relu_opt(sint_mnist_qdense_relu):
+    """ Tests if the model performs (approximatly) as well after optimization, as before optimization. """
+    (_, _), (x_test, y_test) = mnist.load_data()
+    image_vector_size = 28*28
+    x_test = x_test.reshape(x_test.shape[0], image_vector_size)
+    x_test = x_test.astype('float32')
+    y_test = tf.one_hot(y_test, 10)
+    (_, acc) = sint_mnist_qdense_relu.evaluate(x_test, y_test, verbose=0)
+    opt_model = optimize.qkeras_model(sint_mnist_qdense_relu)
+    (_, acc_opt) = opt_model.evaluate(x_test, y_test, verbose=0)
+    assert isclose(acc, acc_opt, abs_tol=0.01), \
+        f"The prediction of the optimized model should be with in 1 percent of the original model. Numerical " \
+        f"instability can account for such small differences, bigger differences are likely some other failure. " \
+        f"The original sint_mnist_qdense_relu model had accuracy of {acc} and the optimized {acc_opt}."
