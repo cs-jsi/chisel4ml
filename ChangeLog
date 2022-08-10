@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Added the compile step to the optimizer, so that you can run predict on the optimized model
+* Fixed small flake8 issue
 * Generation of a (untested, probobly incorrect) version of a dense network with non-binary layers now working. Reorderd some optimiziations, also changed one optimization to work with not just binary layers
 * Added a qrelu bn fuse, but to do that had to restructure the optimizer somewhat, to use clone\_model instead of deepcopy. This also lead to some other changes
 * Added some tests of the qkeras quantizers, to make sure their behaviour is as expected. Also added a new test fixture: a fully dense quantized (non binary) neural network for MNIST
