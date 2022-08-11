@@ -45,8 +45,8 @@ message Datatype {
        In convolutional layers repeated scale factors signifies a per-channel quantization. In dense layers it 
        is per neuron.
     */
-    repeated float scale = 3;
-    repeated float offset = 4;
+    repeated sint32 scale = 3;
+    repeated sint32 offset = 4;
 }
 
 

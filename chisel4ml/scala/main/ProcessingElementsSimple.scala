@@ -25,8 +25,8 @@ object Neuron {
                                                                      add: Vec[M] => A,
                                                                      actFn: (A, A) => O): O = {
         val muls = VecInit((in zip weights).map{case (a,b) => mul(a,b)})
-        val act = add(muls)
-        actFn(act, thresh)
+        val pAct = add(muls)
+        actFn(pAct, thresh)
     }
 }
 
@@ -55,6 +55,7 @@ object ProcessingElementSimple {
                                                                         UInt(layer.output.get.dtype.get.bitwidth.W),
                                                                         mul,
                                                                         (x: Vec[SInt]) => x.reduceTree(_ +& _),
+                                                                        layer.weights.get.dtype.get.scale,
                                                                         reluFn
                                                                         )
         case (UNIFORM, BINARY) => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,     
@@ -62,14 +63,16 @@ object ProcessingElementSimple {
                                                                         Bool(),
                                                                         mul,
                                                                         (x: Vec[SInt]) => x.reduceTree(_ +& _),
+                                                                        layer.weights.get.dtype.get.scale,
                                                                         signFn
                                                                         )
         case (BINARY, BINARY)  => new ProcessingElementSimpleDense[Bool, Bool, Bool, UInt, Bool](layer,
                                                                                                  Bool(),
                                                                                                  Bool(),
-                                                                                                 mul,
+                                                                                                    mul,
                                                                           (x: Vec[Bool]) => PopCount(x),
-                                                                                                signFn)
+                                                                      layer.weights.get.dtype.get.scale,
+                                                                                                 signFn)
     }
 }
 
@@ -82,6 +85,7 @@ class ProcessingElementSimpleDense[I <: Bits,
                                               genO: O,
                                               mul: (I,W) => M,
                                               add: Vec[M] => A,
+                                              scales: Seq[Int],
                                               actFn: (A, A) => O) 
 
 extends ProcessingElementSimple(layer) {
@@ -90,15 +94,25 @@ extends ProcessingElementSimple(layer) {
 
     val in_int  = Wire(Vec(layer.input.get.shape(0), genI))
     val out_int = Wire(Vec(layer.output.get.shape(0), genO))
+    val out_scaled = Wire(Vec(layer.output.get.shape(0), genO))
 
     in_int := io.in.asTypeOf(in_int)
     for (i <- 0 until layer.output.get.shape(0)) { 
         out_int(i) := Neuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn) 
     }
-    
+
+    if (scales.length == out_scaled.length) {
+        out_scaled := (out_int zip scales).map{ case (a, s) => (a >> LbirUtil.log2(s)).asTypeOf(genO) }
+    } else if (scales.length == 1) {
+        out_scaled := out_int.map{ case(a) => (a >> LbirUtil.log2(scales(0))).asTypeOf(genO) }
+    } else {
+        out_scaled := out_int // error? TODO
+        logger.error(s"ProcessingElementSimple has no scaling factors. Something is'nt right here.")
+    }
+
     // The CAT operator reverses the order of bits, so we reverse them
     // to evenout the reversing (its not pretty but it works).
-    io.out := Cat(out_int.reverse)
+    io.out := Cat(out_scaled.reverse)
 
     logger.info(s"""Created new ProcessingElementSimpleDense processing element. It has an input shape: 
                     | ${layer.input.get.shape} and output shape: ${layer.output.get.shape}. The input bitwidth

@@ -10,6 +10,7 @@ import _root_.lbir._
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
+import _root_.scala.math.log
 
 trait ThreshProvider[T <: Bits] {
     def instance(tensor: QTensor, fanIn: Int): Seq[T]
@@ -83,7 +84,10 @@ object LbirUtil {
     }
 
     def bigIntToQtensor(value: BigInt, outSize: Int): QTensor = {
-        val dataType    = Datatype(quantization = Datatype.QuantizationType.BINARY, bitwidth = 1, scale = 1, offset = 0)
+        val dataType    = Datatype(quantization = Datatype.QuantizationType.BINARY, 
+                                   bitwidth = 1, 
+                                   scale = Seq(1), 
+                                   offset = Seq(0))
         // We substract the 48 because x is an ASCII encoded symbol
         val lbir_values = toBinaryB(value, outSize).toList.map(x => x.toFloat - 48).reverse.map(x => (x * 2) - 1)
         val qtensor     = QTensor(dtype = Option(dataType), shape = List(outSize), values = lbir_values)
@@ -92,4 +96,6 @@ object LbirUtil {
         )
         qtensor
     }
+
+    def log2(x: Int): Int = (log(x) / log(2)).toInt
 }

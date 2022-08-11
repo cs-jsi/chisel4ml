@@ -1,6 +1,7 @@
 from tensorflow.keras.layers import Layer as KerasLayer
 from tensorflow.keras.activations import softmax
 import qkeras
+import numpy as np
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import register_qkeras_transform
@@ -73,29 +74,31 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
         raise ValueError(f'QKeras layer {keras_layer} {tensor} quantizer is not specified. Both input and kernel '
                          f'quantizers must be specified to allow a purely integer based implementation in hardware.')
 
+    # We run this so that scale wont be a place holder tensor
+    _ = keras_layer.kernel_quantizer_internal(keras_layer.kernel)
+    
     if hasattr(qkeras_quantizer, 'bits'):
         qtensor.dtype.bitwidth = qkeras_quantizer.bits
     else:
         qtensor.dtype.bitwidth = 32
     if (isinstance(qkeras_quantizer, qkeras.quantizers.binary) or
        isinstance(qkeras_quantizer, qkeras.quantizers.ternary)):
-        qtensor.dtype.scale = qkeras.get_weight_scale(qkeras_quantizer)
+        qtensor.dtype.scale[:] = [int(qkeras.get_weight_scale(qkeras_quantizer))]
     elif isinstance(qkeras_quantizer, qkeras.quantizers.quantized_bits):
-        qtensor.dtype.scale = 1  # TODO qkeras_quantizer.scale
+        qtensor.dtype.scale[:] =  (1 / np.array(qkeras_quantizer.scale)).astype(int).flatten().tolist()
     else:
-        qtensor.dtype.scale = 1  # TODO this is for bias without quantizers, but is dangerous
-    qtensor.dtype.offset = 0  # TODO this assumes symmetric quantization.
+        qtensor.dtype.scale[:] = [1]  # TODO for bias without quantizers, but is dangerous
     qtensor.shape[:] = _qkeras_get_shape(keras_layer, tensor)
     assert len(qtensor.shape) > 0
-    if (hasattr(keras_layer, tensor + '_quantizer_internal') and
-            keras_layer.__getattribute__(tensor + '_quantizer_internal') is not None and tensor != 'input'):
-        quant_internals = keras_layer.__getattribute__(tensor + '_quantizer_internal')
-        qtensor.values[:] = quant_internals(keras_layer.__getattribute__(tensor)).numpy().flatten().tolist()
+    if (tensor == 'kernel'):
+        quant_internals = keras_layer.__getattribute__('kernel_quantizer_internal')
+        qtensor.values[:] = (quant_internals(keras_layer.kernel) / 
+                             keras_layer.kernel_quantizer_internal.scale).numpy().flatten().tolist()
     elif tensor == 'bias':
         # Bias can be folded into the activation in some cases (BNN), so we allow using float biases as well.
         # We negate bias values because we redefine them as a threshold value. I.e. w*x +b > 0 == w*x > thresh (=-b)
         thresh_arr = -keras_layer.bias.numpy()
-        qtensor.values[:] = thresh_arr.tolist()
+        qtensor.values[:] = (thresh_arr / np.array(keras_layer.kernel_quantizer_internal.scale)).flatten().tolist()
     return qtensor
 
 
@@ -121,8 +124,8 @@ def _qkeras_base_transform(keras_layer: KerasLayer) -> lbir.Layer:
         dtype.bitwidth = keras_layer.kernel_quantizer_internal.bits
     else:
         raise NotImplementedError
-    dtype.scale = 1
-    dtype.offset = 0
+    dtype.scale[:] = [1]
+    dtype.offset[:] = [0]
     output.dtype.CopyFrom(dtype)
     output.shape[:] = keras_layer.output_shape[1:]
     lbir_layer.output.CopyFrom(output)
