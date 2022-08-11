@@ -58,3 +58,8 @@ def test_run_service_3(bnn_mnist_model):
         assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), \
             f"The software model predicted the result {sw_res}, where as the hardware model predicted " \
             f"{hw_res}. Something is wrong here. The stated results are for the mnist image index {i}. "
+
+
+def test_run_service_4(sint_mnist_qdense_relu):
+    """ Tests if non-binary quantized network is implemented correctly in hardware (by simulation). """
+    assert False

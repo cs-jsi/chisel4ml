@@ -3,6 +3,7 @@ ThisBuild / version          := "0.1.0"
 ThisBuild / organization     := "JSI"
 
 Compile / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "main"
+Test / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "test"
 Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "scala" / "lbir"
 Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "scala" / "services"
 
@@ -23,6 +24,8 @@ Compile / PB.targets := Seq(
 )
 
 val chiselVersion = "3.5.1"
+val slf4jVersion = "1.7.5"
+val scalatestVersion = "3.2.7"
 lazy val root = (project in file("."))
   .settings(
     name := "chisel4ml",
@@ -33,8 +36,10 @@ lazy val root = (project in file("."))
       "com.thesamet.scalapb"       %% "scalapb-runtime"      % scalapb.compiler.Version.scalapbVersion % "protobuf",
       "io.grpc"                    %  "grpc-netty"           % scalapb.compiler.Version.grpcJavaVersion,
       "com.thesamet.scalapb"       %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
-      "org.slf4j"                  %  "slf4j-api"             % "1.7.5",
-      "org.slf4j"                  %  "slf4j-simple"          % "1.7.5"
+      "org.slf4j"                  %  "slf4j-api"            % slf4jVersion,
+      "org.slf4j"                  %  "slf4j-simple"         % slf4jVersion,
+      "org.scalatest"              %% "scalatest"            % scalatestVersion,
+      "org.scalatest"              %% "scalatest"            % scalatestVersion % "test",
     ),
     scalacOptions ++= Seq(
       "-language:reflectiveCalls",
