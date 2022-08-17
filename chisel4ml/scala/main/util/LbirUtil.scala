@@ -10,7 +10,7 @@ import _root_.lbir._
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
-import _root_.scala.math.log
+import _root_.scala.math.{log, pow}
 
 trait ThreshProvider[T <: Bits] {
     def instance(tensor: QTensor, fanIn: Int): Seq[T]
@@ -31,7 +31,7 @@ object ThreshProvider {
     implicit object ThreshProviderSInt extends ThreshProvider[SInt] {
         def instance(tensor: QTensor, fanIn: Int): Seq[SInt] = {
             LbirUtil.logger.info(s"""Transformed input tensor of thresholds to a Seq[SInt].""")
-            tensor.values.map(_.toInt.S)
+            tensor.values.map(_.toInt.S(tensor.dtype.get.bitwidth.W))
         }
     }
 }
@@ -76,25 +76,30 @@ object LbirUtil {
         }
 
         val string_int = values.map(x => toBinary(x.toInt, qtensor.dtype.get.bitwidth)).mkString
-        val big_int    = BigInt(string_int, radix = 2)
-        logger.info(s"""Converted lbir.QTensor: ${qtensor.values} to BigInt: ${string_int}. 
-              		    | The number of bits is: ${qtensor.dtype.get.bitwidth}."""
-        )
+        val big_int = BigInt(string_int, radix = 2)
         big_int
     }
 
-    def bigIntToQtensor(value: BigInt, outSize: Int): QTensor = {
-        val dataType    = Datatype(quantization = Datatype.QuantizationType.BINARY, 
-                                   bitwidth = 1, 
-                                   scale = Seq(1), 
-                                   offset = Seq(0))
+    def bigIntToQtensor(value: BigInt, stencil: QTensor): QTensor = {
         // We substract the 48 because x is an ASCII encoded symbol
-        val lbir_values = toBinaryB(value, outSize).toList.map(x => x.toFloat - 48).reverse.map(x => (x * 2) - 1)
-        val qtensor     = QTensor(dtype = Option(dataType), shape = List(outSize), values = lbir_values)
-        logger.info(
-          "Converted BigInt: " + value + " to lbir.QTensor: " + qtensor + ". The number of bits is " + outSize + "."
-        )
+        val temp_values = toBinaryB(value, qtensorTotalBitwidth(stencil)).grouped(stencil.dtype.get.bitwidth).toList
+        val temp_values2 = temp_values.map(Integer.parseInt(_,2).toFloat).reverse // .map(x => (x * 2) - 1)
+        val lbir_values = if (stencil.dtype.get.quantization == Datatype.QuantizationType.BINARY) {
+            temp_values2.map(x => (x * 2) - 1)
+        }
+        else {
+            temp_values2.map(signedCorrect(_, stencil.dtype.get))
+        }
+        val qtensor = QTensor(dtype = stencil.dtype, shape = stencil.shape, values = lbir_values)
+        logger.info(s"Converted BigInt: $value with total bitwidth ${qtensorTotalBitwidth(stencil)} to QTensor: $lbir_values.")
         qtensor
+    }
+
+    private def signedCorrect(x: Float, dtype: Datatype): Float = {
+        if (dtype.signed && x > (pow(2,dtype.bitwidth-1) - 1)) 
+            x - pow(2, dtype.bitwidth).toFloat
+        else 
+            x
     }
 
     def log2(x: Int): Int = (log(x) / log(2)).toInt

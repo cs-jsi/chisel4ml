@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+* Added first basic scalatest. Which is passing
+* Changed scale and offsets in lbir to be sint (instead of float). Added scaling logic to hardware (not tested yet on non-1 scales). Because scales are repated qkeras\_transform had to be modified
+* Replaced quantized\_bits with quantized\_relu at entrance, because it recalulates a scaling factor when used, but quantized\_bits does not do that. Also changed lbir field scale and offset fields to be repeated
+* Added an optimization test for non binary networks
+* Added transform test for non binarized nets
 * Added the compile step to the optimizer, so that you can run predict on the optimized model
 * Fixed small flake8 issue
 * Generation of a (untested, probobly incorrect) version of a dense network with non-binary layers now working. Reorderd some optimiziations, also changed one optimization to work with not just binary layers

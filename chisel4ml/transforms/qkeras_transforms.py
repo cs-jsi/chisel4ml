@@ -1,5 +1,6 @@
 from tensorflow.keras.layers import Layer as KerasLayer
 from tensorflow.keras.activations import softmax
+from tensorflow.keras.activations import linear
 import qkeras
 import numpy as np
 
@@ -33,7 +34,8 @@ def _qkeras_to_lbir_activation_transform(keras_act):
     _qkeras_to_lbir_activation_dict = {
         qkeras.binary: lbir.Activation.BINARY_SIGN,
         qkeras.quantized_relu: lbir.Activation.RELU,
-        softmax: lbir.Activation.NO_ACTIVATION
+        softmax: lbir.Activation.NO_ACTIVATION,
+        linear: lbir.Activation.NO_ACTIVATION,
     }
     if inspect.isfunction(keras_act):
         return _qkeras_to_lbir_activation_dict[keras_act]
@@ -69,30 +71,32 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
         qtensor.dtype.quantization = _qkeras_to_lbir_quantizer_dict[qkeras_quantizer.__class__]
     elif tensor == 'bias':
         qtensor.dtype.quantization = lbir.Datatype.UNIFORM
-        log.warning(f'QKeras layer {keras_layer} bias quantzier is not specified. Defaulting to UNIFORM 32-bits.')
     else:
         raise ValueError(f'QKeras layer {keras_layer} {tensor} quantizer is not specified. Both input and kernel '
                          f'quantizers must be specified to allow a purely integer based implementation in hardware.')
 
     # We run this so that scale wont be a place holder tensor
     _ = keras_layer.kernel_quantizer_internal(keras_layer.kernel)
-    
+
     if hasattr(qkeras_quantizer, 'bits'):
         qtensor.dtype.bitwidth = qkeras_quantizer.bits
     else:
         qtensor.dtype.bitwidth = 32
+
     if (isinstance(qkeras_quantizer, qkeras.quantizers.binary) or
        isinstance(qkeras_quantizer, qkeras.quantizers.ternary)):
         qtensor.dtype.scale[:] = [int(qkeras.get_weight_scale(qkeras_quantizer))]
+        qtensor.dtype.signed = True
     elif isinstance(qkeras_quantizer, qkeras.quantizers.quantized_bits):
-        qtensor.dtype.scale[:] =  (1 / np.array(qkeras_quantizer.scale)).astype(int).flatten().tolist()
+        qtensor.dtype.scale[:] = (1 / np.array(qkeras_quantizer.scale)).astype(int).flatten().tolist()
+        qtensor.dtype.signed = qkeras_quantizer.keep_negative
     else:
         qtensor.dtype.scale[:] = [1]  # TODO for bias without quantizers, but is dangerous
     qtensor.shape[:] = _qkeras_get_shape(keras_layer, tensor)
     assert len(qtensor.shape) > 0
     if (tensor == 'kernel'):
         quant_internals = keras_layer.__getattribute__('kernel_quantizer_internal')
-        qtensor.values[:] = (quant_internals(keras_layer.kernel) / 
+        qtensor.values[:] = (quant_internals(keras_layer.kernel) /
                              keras_layer.kernel_quantizer_internal.scale).numpy().flatten().tolist()
     elif tensor == 'bias':
         # Bias can be folded into the activation in some cases (BNN), so we allow using float biases as well.
@@ -116,12 +120,16 @@ def _qkeras_base_transform(keras_layer: KerasLayer) -> lbir.Layer:
     if isinstance(keras_layer.activation, qkeras.quantizers.binary):
         dtype.quantization = lbir.Datatype.BINARY
         dtype.bitwidth = 1
+        dtype.signed = True
     elif isinstance(keras_layer.activation, qkeras.quantizers.quantized_relu):
         dtype.quantization = lbir.Datatype.UNIFORM
         dtype.bitwidth = keras_layer.activation.bits
-    elif keras_layer.activation.__name__ == 'softmax':
+        dtype.signed = False
+    elif (keras_layer.activation.__name__ == 'softmax' or
+          keras_layer.activation.__name__ == 'linear'):
         dtype.quantization = lbir.Datatype.UNIFORM
-        dtype.bitwidth = keras_layer.kernel_quantizer_internal.bits
+        dtype.bitwidth = 8  # TODO: Allow overwrite
+        dtype.signed = True
     else:
         raise NotImplementedError
     dtype.scale[:] = [1]

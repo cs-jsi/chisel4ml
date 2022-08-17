@@ -21,7 +21,7 @@ server = None
 class Chisel4mlServer:
     """ Handles the creation of a subprocess, it is used to safely start the chisel4ml server. """
 
-    def __init__(self, command, host: str = 'localhost', port: int = 50051, grpc_timeout: int = 240):
+    def __init__(self, command, host: str = 'localhost', port: int = 50051, grpc_timeout: int = 600):
         self._server_addr = host + ':' + str(port)
         self._channel = None
         self._stub = None

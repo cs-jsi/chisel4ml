@@ -60,6 +60,24 @@ def test_run_service_3(bnn_mnist_model):
             f"{hw_res}. Something is wrong here. The stated results are for the mnist image index {i}. "
 
 
-def test_run_service_4(sint_mnist_qdense_relu):
+def test_run_service_4(sint_simple_noscale_model):
     """ Tests if non-binary quantized network is implemented correctly in hardware (by simulation). """
-    assert False
+    x_test = np.array([[0, 0, 0],
+                       [0, 1, 2],
+                       [2, 1, 0],
+                       [4, 4, 4],
+                       [15, 15, 15],
+                       [6, 0, 12],
+                       [3, 3, 3],
+                       [15, 0, 0],
+                       [0, 15, 0],
+                       [0, 0, 15]])
+
+    epp_handle = elaborate.qkeras_model(sint_simple_noscale_model)
+    assert epp_handle is not None
+    for i in range(0, 10):
+        sw_res = sint_simple_noscale_model.predict(x_test[i].reshape(1, 3))
+        hw_res = epp_handle(x_test[i])
+        assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), \
+            f"The software model predicted the result {sw_res}, where as the hardware model predicted " \
+            f"{hw_res}. Something is wrong here. The stated results are for the inputs {x_test[i]}. "

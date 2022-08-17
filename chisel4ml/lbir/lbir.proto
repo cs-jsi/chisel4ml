@@ -40,13 +40,14 @@ message Datatype {
         TERNARY = 3;
     }
     QuantizationType quantization = 1;
-    uint32 bitwidth = 2;
+    bool signed = 2;
+    uint32 bitwidth = 3;
     /*
        In convolutional layers repeated scale factors signifies a per-channel quantization. In dense layers it 
        is per neuron.
     */
-    repeated sint32 scale = 3;
-    repeated sint32 offset = 4;
+    repeated sint32 scale = 4;
+    repeated sint32 offset = 5;
 }
 
 
