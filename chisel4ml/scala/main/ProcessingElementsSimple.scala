@@ -125,7 +125,6 @@ extends ProcessingElementSimple(layer) {
 
     val in_int  = Wire(Vec(layer.input.get.shape(0), genI))
     val out_int = Wire(Vec(layer.output.get.shape(0), genO))
-    val out_scaled = Wire(Vec(layer.output.get.shape(0), genO))
 
     in_int := io.in.asTypeOf(in_int)
     for (i <- 0 until layer.output.get.shape(0)) { 
@@ -134,18 +133,10 @@ extends ProcessingElementSimple(layer) {
                                  )
     }
 
-    if (scales.length == out_scaled.length) {
-        out_scaled := (out_int zip scales).map{ case (a, s) => (a >> LbirUtil.log2(s)).asTypeOf(genO) }
-    } else if (scales.length == 1) {
-        out_scaled := out_int.map{ case(a) => (a >> LbirUtil.log2(scales(0))).asTypeOf(genO) }
-    } else {
-        out_scaled := out_int // error? TODO
-        logger.error(s"ProcessingElementSimple has no scaling factors. Something is'nt right here.")
-    }
-
+    
     // The CAT operator reverses the order of bits, so we reverse them
     // to evenout the reversing (its not pretty but it works).
-    io.out := Cat(out_scaled.reverse)
+    io.out := Cat(out_int.reverse)
 
     logger.info(s"""Created new ProcessingElementSimpleDense processing element. It has an input shape: 
                     | ${layer.input.get.shape} and output shape: ${layer.output.get.shape}. The input bitwidth

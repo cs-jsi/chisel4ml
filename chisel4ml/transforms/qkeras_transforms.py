@@ -88,7 +88,7 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
         qtensor.dtype.scale[:] = [int(qkeras.get_weight_scale(qkeras_quantizer))]
         qtensor.dtype.signed = True
     elif isinstance(qkeras_quantizer, qkeras.quantizers.quantized_bits):
-        qtensor.dtype.scale[:] = (1 / np.array(qkeras_quantizer.scale)).astype(int).flatten().tolist()
+        qtensor.dtype.scale[:] = np.log2(np.array(qkeras_quantizer.scale)).astype(int).flatten().tolist()
         qtensor.dtype.signed = qkeras_quantizer.keep_negative
     else:
         qtensor.dtype.scale[:] = [1]  # TODO for bias without quantizers, but is dangerous

@@ -138,6 +138,31 @@ def sint_simple_noscale_model() -> tf.keras.Model:
 
 
 @pytest.fixture(scope='session')
+def sint_simple_model() -> tf.keras.Model:
+    w1 = np.array([[1, 2, 3, 4], [-4, -3, -2, -1], [2, -1, 1, 1]])
+    b1 = np.array([1, 2, 0, 1])
+    w2 = np.array([-1, 4, -3, -1]).reshape(4, 1)
+    b2 = np.array([2])
+
+    x = x_in = tf.keras.layers.Input(shape=3)
+    x = qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=4))(x)
+    x = qkeras.QDense(4, kernel_quantizer=qkeras.quantized_bits(bits=4,
+                                                                integer=3,
+                                                                keep_negative=True,
+                                                                alpha=np.array([0.5, 0.25, 1, 2])))(x)
+    x = qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=4))(x)
+    x = qkeras.QDense(1, kernel_quantizer=qkeras.quantized_bits(bits=4,
+                                                                integer=3,
+                                                                keep_negative=True,
+                                                                alpha=np.array([0.125])))(x)
+    model = tf.keras.Model(inputs=[x_in], outputs=[x])
+    model.compile()
+    model.layers[2].set_weights([w1, b1])
+    model.layers[4].set_weights([w2, b2])
+    return model
+
+
+@pytest.fixture(scope='session')
 def sint_mnist_qdense_relu() -> tf.keras.Model:
     """
         Builds a fully-dense (no conv layers) for mnist. The first layer uses unsigned 8 bit integers as inputs, but
