@@ -1,5 +1,6 @@
 from chisel4ml.optimizations import qkeras_opt_list
 
+from tensorflow_model_optimization.python.core.sparsity.keras import prune
 import tensorflow as tf
 import qkeras
 
@@ -24,8 +25,11 @@ def _replace_model_layers(smodel, nlayers):
 
 def qkeras_model(model):
     "Applys optimization passes to the model, and returns a dummy model that can be transformed into a LBIR model."
-    nmodel = qkeras.utils.clone_model(model)
-    smodel = tf.keras.models.Sequential(nmodel.layers)  # We convert any functional models to sequential (needed later)
+    # We first strip the model of any pruning layers.
+    striped_model = prune.strip_pruning(model)
+
+    # Now we cloned
+    smodel = tf.keras.models.Sequential(striped_model.layers)  # We convert any functional models to sequential (needed later)
 
     def sliding_window(iterable, size):
         iterable = iter(iterable)
