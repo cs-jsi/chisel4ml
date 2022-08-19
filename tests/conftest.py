@@ -298,7 +298,7 @@ def sint_mnist_qdense_relu_pruned() -> tf.keras.Model:
         pruning_callbacks.UpdatePruningStep()
     ]
 
-    model.fit(x_train, y_train, batch_size=32, epochs=30, verbose=False, callbacks=callbacks)
+    # model.fit(x_train, y_train, batch_size=32, epochs=30, verbose=False, callbacks=callbacks)
     # model.save_weights(os.path.join(SCRIPT_DIR, 'sint_mnist_qdense_relu_pruned.h5'))
     model.load_weights(os.path.join(SCRIPT_DIR, 'sint_mnist_qdense_relu_pruned.h5'))
     return model
