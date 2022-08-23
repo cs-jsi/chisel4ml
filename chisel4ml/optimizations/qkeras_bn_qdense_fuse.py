@@ -11,11 +11,11 @@ from chisel4ml.optimizations import register_qkeras_optimization
 
 
 @register_qkeras_optimization
-class QKerasBNQDenseQReluFuse(QKerasOptimization):
+class QKerasBNQDenseFuse(QKerasOptimization):
     """
         Fuses the BatchNorm and QDense layer with a quantized_relu activation function.
     """
-    num_layers = 3
+    num_layers = 2
     order = 3
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
@@ -34,6 +34,4 @@ class QKerasBNQDenseQReluFuse(QKerasOptimization):
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
         return (type(layers[0]) is qkeras.QDense and
-                type(layers[1]) is BatchNormalization and
-                type(layers[2]) is qkeras.QActivation and
-                type(layers[2].activation) is qkeras.quantizers.quantized_relu)
+                type(layers[1]) is BatchNormalization)
