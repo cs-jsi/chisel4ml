@@ -16,12 +16,16 @@ class QKerasAddInputQuantization(QKerasOptimization):
         a lbir layer. This must run after the activation fold operation, so its order number is higher.
     """
     num_layers = 2
-    order = 5
+    order = 6
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
         layers[1].input_quantizer_internal = layers[0].activation
+        if isinstance(layers[0], qkeras.QActivation):
+            layers[0].c4ml_remove_layer = True
         return layers
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
-        return (type(layers[0]) is qkeras.QDense and
-                 type(layers[1]) is qkeras.QDense)
+        return ((type(layers[0]) is qkeras.QDense and
+                 type(layers[1]) is qkeras.QDense) or
+                (type(layers[0]) is qkeras.QActivation and
+                 type(layers[1]) is qkeras.QDense))
