@@ -24,7 +24,7 @@ class QKerasBNQDenseQReluFuse(QKerasOptimization):
         beta = layers[1].beta
         gamma = layers[1].gamma
         epsilon = layers[1].epsilon
-        b = layers[0].bias
+        b = layers[0].bias if layers[0].use_bias == True else 0
         w = layers[0].kernel
         inv = gamma * rsqrt(mv + epsilon)
         layers[0].kernel = inv * w
