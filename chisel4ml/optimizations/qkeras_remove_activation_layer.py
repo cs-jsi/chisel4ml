@@ -9,19 +9,20 @@ from chisel4ml.optimizations import register_qkeras_optimization
 
 
 @register_qkeras_optimization
-class QKerasAddInputQuantization(QKerasOptimization):
+class QKerasRemoveActivationLayer(QKerasOptimization):
     """
-        We use pythons flexible typing system to add (monkey patch) the input quantization to the layer object.
-        We do this so that the transform later has all the information it needs to transform a qkeras layer into
-        a lbir layer. This must run after the activation fold operation, so its order number is higher.
+        We remove activation layers by monkey patching layers around it.
     """
-    num_layers = 2
+    num_layers = 3
     order = 5
 
     def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
-        layers[1].input_quantizer_internal = layers[0].activation
+        layers[0].activation = layers[1].activation
+        layers[2].input_quantizer_internal = layers[1].activation
+        layers[1].c4ml_remove_layer = True
         return layers
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
         return (type(layers[0]) is qkeras.QDense and
-                 type(layers[1]) is qkeras.QDense)
+                type(layers[1]) is qkeras.QActivation and
+                type(layers[2]) is qkeras.QDense)

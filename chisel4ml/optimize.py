@@ -23,7 +23,7 @@ def _replace_model_layers(smodel, nlayers):
         smodel.add(lay)
 
 
-def qkeras_model(model):
+def qkeras_model(model, skip_list=[]):
     "Applys optimization passes to the model, and returns a dummy model that can be transformed into a LBIR model."
     # We first strip the model of any pruning layers.
     #striped_model = prune.strip_pruning(model)
@@ -47,6 +47,8 @@ def qkeras_model(model):
     # Some layers are wrapped in other layers (pruning layer i.e.) in the first pass we unwrapp it and then
     # we apply other optimizations.
     for opt in qkeras_opt_list:
+        if opt.__class__.__name__ in skip_list:
+            continue
         nlayers = []
         for lslice, item in sliding_window(smodel.layers, opt.num_layers):
             if any(hasattr(x, 'c4ml_remove_layer') for x in lslice):
