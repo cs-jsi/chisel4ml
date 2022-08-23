@@ -72,8 +72,8 @@ def test_qkeras_transform(bnn_mnist_model):
         assert len(lay.output.shape) > 0
 
 
-def test_qkeras_transform_2(sint_mnist_qdense_relu):
-    opt_model = optimize.qkeras_model(sint_mnist_qdense_relu)
+def test_qkeras_transform_2(sint_mnist_qdense_noscale_relu):
+    opt_model = optimize.qkeras_model(sint_mnist_qdense_noscale_relu)
     lbir_model = transform.qkeras_to_lbir(opt_model)
     layers = lbir_model.layers
 

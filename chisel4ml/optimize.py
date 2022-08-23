@@ -26,10 +26,12 @@ def _replace_model_layers(smodel, nlayers):
 def qkeras_model(model):
     "Applys optimization passes to the model, and returns a dummy model that can be transformed into a LBIR model."
     # We first strip the model of any pruning layers.
-    striped_model = prune.strip_pruning(model)
+    #striped_model = prune.strip_pruning(model)
 
     # Now we cloned
-    smodel = tf.keras.models.Sequential(striped_model.layers)  # We convert any functional models to sequential (needed later)
+    #smodel = tf.keras.models.Sequential(striped_model.layers)  # We convert any functional models to sequential (needed later)
+    nmodel = qkeras.utils.clone_model(model)
+    smodel = tf.keras.models.Sequential(nmodel.layers)
 
     def sliding_window(iterable, size):
         iterable = iter(iterable)

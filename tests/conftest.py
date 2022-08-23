@@ -141,32 +141,7 @@ def sint_simple_noscale_model() -> tf.keras.Model:
 
 
 @pytest.fixture(scope='session')
-def sint_simple_model() -> tf.keras.Model:
-    w1 = np.array([[1, 2, 3, 4], [-4, -3, -2, -1], [2, -1, 1, 1]])
-    b1 = np.array([1, 2, 0, 1])
-    w2 = np.array([-1, 4, -3, -1]).reshape(4, 1)
-    b2 = np.array([2])
-
-    x = x_in = tf.keras.layers.Input(shape=3)
-    x = qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=4))(x)
-    x = qkeras.QDense(4, kernel_quantizer=qkeras.quantized_bits(bits=4,
-                                                                integer=3,
-                                                                keep_negative=True,
-                                                                alpha=np.array([0.5, 0.25, 1, 2])))(x)
-    x = qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=4))(x)
-    x = qkeras.QDense(1, kernel_quantizer=qkeras.quantized_bits(bits=4,
-                                                                integer=3,
-                                                                keep_negative=True,
-                                                                alpha=np.array([0.125])))(x)
-    model = tf.keras.Model(inputs=[x_in], outputs=[x])
-    model.compile()
-    model.layers[2].set_weights([w1, b1])
-    model.layers[4].set_weights([w2, b2])
-    return model
-
-
-@pytest.fixture(scope='session')
-def sint_mnist_qdense_relu() -> tf.keras.Model:
+def sint_mnist_qdense_noscale_relu() -> tf.keras.Model:
     """
         Builds a fully-dense (no conv layers) for mnist. The first layer uses unsigned 8 bit integers as inputs, but
         the kernels are all quantized to a 4-bit signed integer. The activation functions are all ReLU, except for the
@@ -194,17 +169,17 @@ def sint_mnist_qdense_relu() -> tf.keras.Model:
     model.add(qkeras.QActivation(qkeras.quantized_relu(bits=8, integer=8)))
 
     model.add(qkeras.QDense(32, kernel_quantizer=qkeras.quantized_bits(bits=4, integer=3, keep_negative=True,
-                                                                       alpha="auto_po2")))
+                                                                       alpha=1)))
     model.add(tf.keras.layers.BatchNormalization())
     model.add(qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=3)))
 
     model.add(qkeras.QDense(32, kernel_quantizer=qkeras.quantized_bits(bits=4, integer=3, keep_negative=True,
-                                                                       alpha="auto_po2")))
+                                                                       alpha=1)))
     model.add(tf.keras.layers.BatchNormalization())
     model.add(qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=3)))
 
     model.add(qkeras.QDense(32, kernel_quantizer=qkeras.quantized_bits(bits=4, integer=3, keep_negative=True,
-                                                                       alpha="auto_po2")))
+                                                                       alpha=1)))
     model.add(tf.keras.layers.BatchNormalization())
     model.add(qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=3)))
 
@@ -212,7 +187,7 @@ def sint_mnist_qdense_relu() -> tf.keras.Model:
                             kernel_quantizer=qkeras.quantized_bits(bits=4,
                                                                    integer=3,
                                                                    keep_negative=True,
-                                                                   alpha="auto_po2"),
+                                                                   alpha=1),
                             activation='softmax'))
 
     model.compile(optimizer="adam",
@@ -220,13 +195,13 @@ def sint_mnist_qdense_relu() -> tf.keras.Model:
                   metrics=['accuracy'])
 
     # model.fit(x_train, y_train, batch_size=32, epochs=25, verbose=True)
-    # model.save_weights(os.path.join(SCRIPT_DIR, 'sint_mnist_qdense_relu.h5'))
-    model.load_weights(os.path.join(SCRIPT_DIR, 'sint_mnist_qdense_relu.h5'))
+    # model.save_weights(os.path.join(SCRIPT_DIR, 'sint_mnist_qdense_noscale_relu.h5'))
+    model.load_weights(os.path.join(SCRIPT_DIR, 'sint_mnist_qdense_noscale_relu.h5'))
     return model
 
 
 @pytest.fixture(scope='session')
-def sint_mnist_qdense_relu_pruned() -> tf.keras.Model:
+def sint_mnist_qdense_noscale_relu_pruned() -> tf.keras.Model:
     """
         An MNIST model with only fully-connected layers (no conv) that is pruned with TF model optimization toolkit.
     """
@@ -302,3 +277,30 @@ def sint_mnist_qdense_relu_pruned() -> tf.keras.Model:
     # model.save_weights(os.path.join(SCRIPT_DIR, 'sint_mnist_qdense_relu_pruned.h5'))
     model.load_weights(os.path.join(SCRIPT_DIR, 'sint_mnist_qdense_relu_pruned.h5'))
     return model
+
+
+@pytest.fixture(scope='session')
+def sint_simple_model() -> tf.keras.Model:
+    w1 = np.array([[1, 2, 3, 4], [-4, -3, -2, -1], [2, -1, 1, 1]])
+    b1 = np.array([1, 2, 0, 1])
+    w2 = np.array([-1, 4, -3, -1]).reshape(4, 1)
+    b2 = np.array([2])
+
+    x = x_in = tf.keras.layers.Input(shape=3)
+    x = qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=4))(x)
+    x = qkeras.QDense(4, kernel_quantizer=qkeras.quantized_bits(bits=4,
+                                                                integer=3,
+                                                                keep_negative=True,
+                                                                alpha=np.array([0.5, 0.25, 1, 2])))(x)
+    x = qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=4))(x)
+    x = qkeras.QDense(1, kernel_quantizer=qkeras.quantized_bits(bits=4,
+                                                                integer=3,
+                                                                keep_negative=True,
+                                                                alpha=np.array([0.125])))(x)
+    model = tf.keras.Model(inputs=[x_in], outputs=[x])
+    model.compile()
+    model.layers[2].set_weights([w1, b1])
+    model.layers[4].set_weights([w2, b2])
+    return model
+
+
