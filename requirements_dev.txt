@@ -1,3 +1,4 @@
+typing-extensions~=3.7.4
 flake8>=3.9.2                                                                                                           
 tox>=3.24.3                                                                                                             
 tox-run-before>=0.1                                                                                                     
