@@ -62,9 +62,9 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
         field, so we must use some awkward methods to obtain them. The variable tensor should be one of the strings
         specified in the assertion (all lower case).
     """
-    assert(tensor == 'kernel' or
-           tensor == 'bias' or
-           tensor == 'input')
+    assert (tensor == 'kernel' or
+            tensor == 'bias' or
+            tensor == 'input')
     qkeras_quantizer = keras_layer.__getattribute__(tensor + '_quantizer_internal')
     qtensor = lbir.QTensor()
     if qkeras_quantizer is not None:
