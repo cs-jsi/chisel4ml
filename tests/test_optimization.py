@@ -90,6 +90,7 @@ def test_bnn_mnist_model_opt(bnn_mnist_model):
             f"The results differed on mnist test image index: {i}."
 
 
+@pytest.mark.skip(reason="Not yet implemented.")
 def test_sint_mnist_qdense_noscale_relu_opt(sint_mnist_qdense_noscale_relu):
     """ Tests if the model performs (approximatly) as well after optimization, as before optimization. """
     (_, _), (x_test, y_test) = mnist.load_data()

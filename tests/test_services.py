@@ -85,6 +85,7 @@ def test_run_service_4(sint_simple_noscale_model):
             f"{hw_res}. Something is wrong here. The stated results are for the inputs {x_test[i]}. "
 
 
+@pytest.mark.skip(reason="Not yet implemented.")
 def test_run_service_5(sint_mnist_qdense_noscale_relu):
     """ Test a more complex non-binary model. """
     (_, _), (x_test, y_test) = mnist.load_data()

@@ -1,6 +1,23 @@
 CHANGES
 =======
 
+* CI not running test in all enviroments (#3)
+* Removed the activation from the optimization, as it is not necassery
+* Fixed problem with input activation not being absorbed into a dense layer
+* Update README.md
+* Update requirements\_dev.txt with typing-extensions version
+* Added option for no\_bias. In this case the bias variable simply gets set to 0
+* Added skip\_list option to optimizer, split the add\_input\_quantizer into two cases, as it had a bug
+* changed optimizer (temporarly) back to unpruned version, because it was causing proboblems. Also renamed some tests
+* Forgot to comment out the model.fit function in test
+* Added a test for pruned models, which is currently failing
+* Added a test with scaled kernel weights, but the (quasi) implementation in ProcessingElementSimple was wrong and was removed. The test is now marked as skipped for the time being. Also fixed qkeras transform handling of scale factors
+
+0.0.4
+-----
+
+* Forgot to add processingelement changes
+* A non-binary fully-connected model working
 * Added first basic scalatest. Which is passing
 * Changed scale and offsets in lbir to be sint (instead of float). Added scaling logic to hardware (not tested yet on non-1 scales). Because scales are repated qkeras\_transform had to be modified
 * Replaced quantized\_bits with quantized\_relu at entrance, because it recalulates a scaling factor when used, but quantized\_bits does not do that. Also changed lbir field scale and offset fields to be repeated
