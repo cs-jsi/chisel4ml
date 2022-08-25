@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Another flake8 fix
+* Fixed flake8 issues
 * CI not running test in all enviroments (#3)
 * Removed the activation from the optimization, as it is not necassery
 * Fixed problem with input activation not being absorbed into a dense layer

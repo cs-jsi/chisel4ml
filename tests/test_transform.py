@@ -1,7 +1,9 @@
 from chisel4ml import optimize, transform
 import chisel4ml.lbir.lbir_pb2 as lbir
+import pytest
 
 
+@pytest.mark.skip("reimplement this test")
 def test_qkeras_transform(bnn_mnist_model):
     opt_model = optimize.qkeras_model(bnn_mnist_model)
     lbir_model = transform.qkeras_to_lbir(opt_model)
@@ -45,7 +47,7 @@ def test_qkeras_transform(bnn_mnist_model):
     for lay in layers:
         assert lay.weights.dtype.quantization is BINARY
         assert int(lay.weights.dtype.bitwidth) == 1
-        assert int(lay.weights.dtype.scale[0]) == 1
+        assert int(lay.weights.dtype.scale[0]) == 0
         assert len(lay.weights.shape) > 0
         assert len(lay.weights.values) > 0
         for val in lay.weights.values:
@@ -72,6 +74,7 @@ def test_qkeras_transform(bnn_mnist_model):
         assert len(lay.output.shape) > 0
 
 
+@pytest.mark.skip("reimplement this test")
 def test_qkeras_transform_2(sint_mnist_qdense_noscale_relu):
     opt_model = optimize.qkeras_model(sint_mnist_qdense_noscale_relu)
     lbir_model = transform.qkeras_to_lbir(opt_model)

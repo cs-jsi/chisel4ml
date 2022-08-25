@@ -3,6 +3,7 @@ from tensorflow.keras.activations import softmax
 from tensorflow.keras.activations import linear
 import qkeras
 import numpy as np
+import math
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import register_qkeras_transform
@@ -85,7 +86,8 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
 
     if (isinstance(qkeras_quantizer, qkeras.quantizers.binary) or
        isinstance(qkeras_quantizer, qkeras.quantizers.ternary)):
-        qtensor.dtype.scale[:] = [int(qkeras.get_weight_scale(qkeras_quantizer))]
+        qtensor.dtype.scale[:] = [int(math.log2(qkeras.get_weight_scale(qkeras_quantizer)))] * \
+                                    keras_layer.kernel.shape[1]
         qtensor.dtype.signed = True
     elif isinstance(qkeras_quantizer, qkeras.quantizers.quantized_bits):
         qtensor.dtype.scale[:] = np.log2(np.array(qkeras_quantizer.scale)).astype(int).flatten().tolist()
@@ -102,7 +104,7 @@ def _qkeras_transform_tensor(keras_layer: KerasLayer, tensor: str) -> lbir.QTens
         # Bias can be folded into the activation in some cases (BNN), so we allow using float biases as well.
         # We negate bias values because we redefine them as a threshold value. I.e. w*x +b > 0 == w*x > thresh (=-b)
         thresh_arr = -keras_layer.bias.numpy()
-        qtensor.values[:] = (thresh_arr / np.array(keras_layer.kernel_quantizer_internal.scale)).flatten().tolist()
+        qtensor.values[:] = (thresh_arr).flatten().tolist()
     return qtensor
 
 

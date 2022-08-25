@@ -20,15 +20,27 @@ import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
 object Neuron {
-    def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](in: Seq[I], 
-                                                                     weights: Seq[W],
-                                                                     thresh: A,
-                                                                     mul: (I, W) => M, 
-                                                                     add: Vec[M] => A,
-                                                                     actFn: (A, A) => O): O = {
+    def apply[I <: Bits, 
+              W <: Bits : WeightsProvider, 
+              M <: Bits, 
+              A <: Bits : ThreshProvider, 
+              O <: Bits](in: Seq[I], 
+                         weights: Seq[W],
+                         thresh: A,
+                         mul: (I, W) => M, 
+                         add: Vec[M] => A,
+                         actFn: (A, A) => O,
+                         scale: Int): O = {
         val muls = VecInit((in zip weights).map{case (a,b) => mul(a,b)})
         val pAct = add(muls)
-        actFn(pAct, thresh)
+        val sAct = scale compare 0 match { 
+            case 0 => pAct
+            // We add the "cutt-off" bit to round the same way a convential rounding is done (1 >= 0.5, 0 < 0.5)
+            case -1 => ((pAct >> scale.abs).asSInt + Cat(0.S((pAct.getWidth-1).W), pAct(scale.abs-1)).asSInt).asTypeOf(pAct) 
+            case 1 => (pAct << scale.abs).asTypeOf(pAct)
+            }
+        
+        actFn(sAct, thresh)
     }
 }
 
@@ -122,13 +134,14 @@ extends ProcessingElementSimple(layer) {
     import ProcessingElementSimple.logger
     val weights: Seq[Seq[W]] = LbirUtil.transformWeights[W](layer.weights.get)
     val thresh: Seq[A] = LbirUtil.transformThresh[A](layer.biases.get, layer.input.get.shape(0)) // A ali kaj drugo?
+    val scale: Seq[Int] = layer.weights.get.dtype.get.scale
 
     val in_int  = Wire(Vec(layer.input.get.shape(0), genI))
     val out_int = Wire(Vec(layer.output.get.shape(0), genO))
 
     in_int := io.in.asTypeOf(in_int)
-    for (i <- 0 until layer.output.get.shape(0)) { 
-        out_int(i) := saturateFn(Neuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn),
+    for (i <- 0 until layer.output.get.shape(0)) {
+        out_int(i) := saturateFn(Neuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn, scale(i)),
                                  layer.output.get.dtype.get.bitwidth
                                  )
     }
