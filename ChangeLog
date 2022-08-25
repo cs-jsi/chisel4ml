@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Scale factors now working
 * Another flake8 fix
 * Fixed flake8 issues
 * CI not running test in all enviroments (#3)
