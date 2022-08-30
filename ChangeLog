@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Removed python 3.6 from tox and gh action config, as it is not supported by qkeras
 * Scale factors now working
 * Another flake8 fix
 * Fixed flake8 issues
