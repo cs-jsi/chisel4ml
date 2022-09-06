@@ -1,7 +1,6 @@
 from chisel4ml import elaborate
 import numpy as np
 import tensorflow as tf
-import pytest
 
 from tensorflow.keras.datasets import mnist
 
@@ -133,9 +132,9 @@ def test_run_service_6(sint_mnist_qdense_relu):
 
 
 def test_run_service_7(sint_mnist_qdense_relu_pruned):
-    """ 
-        Tests if a pruned non-binary model works correctly. Note that the optimizations change the model 
-        somewhat, so this test is not really through. 
+    """
+        Tests if a pruned non-binary model works correctly. Note that the optimizations change the model
+        somewhat, so this test is not really through.
     """
     (_, _), (x_test, y_test) = mnist.load_data()
 

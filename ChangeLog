@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Pruned network example working
+* A pruned model optimization test now working
 * Removed python 3.6 from tox and gh action config, as it is not supported by qkeras
 * Scale factors now working
 * Another flake8 fix
