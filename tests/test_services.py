@@ -132,9 +132,11 @@ def test_run_service_6(sint_mnist_qdense_relu):
             f"Something is wrong here. The stated results are for the mnist test image index {i}. "
 
 
-@pytest.mark.skip(reason="Not yet implemented.")
-def test_run_service_7(sint_mnist_qdense_noscale_relu_pruned):
-    """ Tests if a pruned non-binary model works correctly. """
+def test_run_service_7(sint_mnist_qdense_relu_pruned):
+    """ 
+        Tests if a pruned non-binary model works correctly. Note that the optimizations change the model 
+        somewhat, so this test is not really through. 
+    """
     (_, _), (x_test, y_test) = mnist.load_data()
 
     # Flatten the images
@@ -144,10 +146,10 @@ def test_run_service_7(sint_mnist_qdense_noscale_relu_pruned):
     y_test = tf.one_hot(y_test, 10)
     y_test = np.where(y_test < 0.1, -1., 1.)
 
-    epp_handle = elaborate.qkeras_model(sint_mnist_qdense_noscale_relu_pruned)
+    epp_handle = elaborate.qkeras_model(sint_mnist_qdense_relu_pruned)
     assert epp_handle is not None
-    for i in range(0, 10):
-        sw_res = sint_mnist_qdense_noscale_relu_pruned.predict(x_test[i].reshape(1, 784))
+    for i in range(0, 6):
+        sw_res = sint_mnist_qdense_relu_pruned.predict(x_test[i].reshape(1, 784))
         sw_index = np.where(sw_res == np.amax(sw_res))[1][0]
         hw_res = epp_handle(x_test[i])
         hw_index = np.where(hw_res == np.amax(hw_res))[0][0]

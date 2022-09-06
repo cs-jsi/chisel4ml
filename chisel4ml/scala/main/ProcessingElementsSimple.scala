@@ -20,6 +20,7 @@ import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
 object Neuron {
+    val logger = LoggerFactory.getLogger(classOf[ProcessingElementSimple])
     def apply[I <: Bits, 
               W <: Bits : WeightsProvider, 
               M <: Bits, 
@@ -33,10 +34,24 @@ object Neuron {
                          scale: Int): O = {
         val muls = VecInit((in zip weights).map{case (a,b) => mul(a,b)})
         val pAct = add(muls)
+        
+        if (-scale >= pAct.getWidth) {
+
+        }
+
+        logger.info(s"Created new neuron with activation width: ${pAct.getWidth}, and scale: ${scale}.")
         val sAct = scale compare 0 match { 
             case 0 => pAct
-            // We add the "cutt-off" bit to round the same way a convential rounding is done (1 >= 0.5, 0 < 0.5)
-            case -1 => ((pAct >> scale.abs).asSInt + Cat(0.S((pAct.getWidth-1).W), pAct(scale.abs-1)).asSInt).asTypeOf(pAct) 
+            case -1 => { 
+                        // Handles the case when the scale factor basically sets the output to zero always.
+                        if (-scale >= pAct.getWidth) { 
+                            0.U.asTypeOf(pAct) 
+                        }
+                        else {
+                            // We add the "cutt-off" bit to round the same way a convential rounding is done (1 >= 0.5, 0 < 0.5)
+                            ((pAct >> scale.abs).asSInt + Cat(0.S((pAct.getWidth-1).W), pAct(scale.abs-1)).asSInt).asTypeOf(pAct) 
+                        }
+            }
             case 1 => (pAct << scale.abs).asTypeOf(pAct)
             }
         
@@ -71,6 +86,9 @@ object ProcessingElementSimple {
             i.zext
         } else if(w.litValue == -1.S.litValue) {
             -(i.zext)
+        } else if(w.litValue == 0.S.litValue) {
+            logger.info("ASDAWDASDASDSA")
+            0.S
         } else {
             i * w
         }
