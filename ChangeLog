@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+* Added AXIStream bundle
+* Added .ipynb\_checkpoints from (jupyter) and bin/ from sbt to gitignore
+* Fixed flake8 issue
 * Pruned network example working
 * A pruned model optimization test now working
 * Removed python 3.6 from tox and gh action config, as it is not supported by qkeras

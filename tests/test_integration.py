@@ -3,8 +3,10 @@ from chisel4ml import elaborate
 import os
 import shutil
 from pathlib import Path
+import pytest
 
 
+@pytest.mark.skip(reason='Not running while porting to sequential design.')
 def test_qkeras_simple_dense_binarized_model_nofixedpoint(bnn_simple_model):
     """
         Build a fully dense binarized model in qkeras, and then runs it through chisel4ml to get an verilog processing
@@ -18,6 +20,7 @@ def test_qkeras_simple_dense_binarized_model_nofixedpoint(bnn_simple_model):
     shutil.rmtree(temp_path)
 
 
+@pytest.mark.skip(reason='Not running while porting to sequential design.')
 def test_qkeras_dense_binarized_fixedpoint_batchnorm(bnn_mnist_model):
     epp_handle = elaborate.qkeras_model(bnn_mnist_model)
     assert epp_handle is not None
@@ -27,6 +30,7 @@ def test_qkeras_dense_binarized_fixedpoint_batchnorm(bnn_mnist_model):
     shutil.rmtree(temp_path)
 
 
+@pytest.mark.skip(reason='Not running while porting to sequential design.')
 def test_qkeras_sint_mnist_qdense_relu(sint_mnist_qdense_relu):
     epp_handle = elaborate.qkeras_model(sint_mnist_qdense_relu)
     assert epp_handle is not None
