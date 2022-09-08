@@ -4,7 +4,7 @@
  */
 package chisel4ml.util
 import chisel3._
-import chisel4ml.LbirUtil.log2
+import _root_.chisel4ml.util.LbirUtil.log2
 
 
 class SRAM(depth: Int, width: Int = 32) extends Module {
