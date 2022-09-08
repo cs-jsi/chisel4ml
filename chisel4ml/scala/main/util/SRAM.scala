@@ -1,5 +1,5 @@
 /*
- * SYNTHESIZES TO BLOCK RAM (or several block rams)
+ * SYNTHESIZES TO BLOCK RAM (or several block rams, depending on the depth)
  * (tested in vivado 2021.1)
  */
 package chisel4ml.util
