@@ -20,15 +20,16 @@ extends Module {
         val inStream = Flipped(new AXIStream(inputDataWidth))
         val outStream = new AXIStream(outputDataWidth)
     })
-    val memSize = 1024
+    val memSize = 256
     val memSizeWords = memSize / inputDataWidth
 
     val mem = Module(new SRAM(memSizeWords, inputDataWidth))
     val getDataState :: delayState :: pushDataState :: Nil = Enum(3)
     val stateReg = RegInit(getDataState)
     val cntReg = RegInit(0.U((log2(memSizeWords) + 1).W)) // counts the number of bytes
+    //val outStreamDataReg = RegInit(0.U(outputDataWidth.W))
+    //val outStreamLastReg = RegInit(false.B)
 
-    
     // next state logic
     when (stateReg === getDataState) {
         when (io.inStream.last === true.B) {
@@ -45,11 +46,16 @@ extends Module {
     
     // counter logic
     when (stateReg === getDataState) {
+        when (io.inStream.data.valid && io.inStream.data.ready) {
+            cntReg := cntReg + 1.U
+        }
         when (io.inStream.last === true.B) {
             cntReg := 0.U // Reset for new AXI Stream packet
         }
+    } .elsewhen(stateReg === delayState) {
+        cntReg := cntReg + 1.U
     } .otherwise { // stateReg === pushDataState
-        when (io.inStream.data.valid && io.inStream.data.ready) {
+        when (io.outStream.data.valid && io.outStream.data.ready) {
             cntReg := cntReg + 1.U
         }
     }
@@ -58,14 +64,13 @@ extends Module {
     // memory defaults
     mem.io.enable := false.B
     mem.io.write := false.B
-    mem.io.addr := 0.U
+    mem.io.addr := cntReg
     mem.io.dataIn := 0.U
 
     
     // input stream logic
     io.inStream.data.ready := stateReg === getDataState
     when (io.inStream.data.ready && io.inStream.data.valid) {
-        mem.io.addr := cntReg
         mem.io.write := true.B
         mem.io.dataIn := io.inStream.data.bits
         mem.io.enable := true.B
@@ -74,7 +79,6 @@ extends Module {
     
     // output stream logic
     when (stateReg === delayState || stateReg === pushDataState) {
-        mem.io.addr := cntReg
         mem.io.enable := true.B
     }
 
@@ -83,7 +87,7 @@ extends Module {
     io.outStream.last := false.B
     when (io.outStream.data.ready && io.outStream.data.valid) {
         io.outStream.data.bits := mem.io.dataOut
-        when (mem.io.addr === memSizeWords.U) {
+        when (cntReg === memSizeWords.U) {
             io.outStream.last := true.B
         }
     }
