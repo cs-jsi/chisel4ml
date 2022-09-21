@@ -1,6 +1,10 @@
 CHANGES
 =======
 
+* Preliminary implementation of just copying data on axi stream compiles to verilog, but not tested
+* Added SRAM module
+* Added SRAM module
+* AXIStream elements are being connected, via a dummy straight through connection
 * Added AXIStream bundle
 * Added .ipynb\_checkpoints from (jupyter) and bin/ from sbt to gitignore
 * Fixed flake8 issue

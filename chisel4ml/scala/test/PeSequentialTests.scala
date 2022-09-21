@@ -3,7 +3,6 @@ package chisel4ml.tests
 import org.scalatest.flatspec.AnyFlatSpec
 import chisel3._
 import chiseltest._
-import chiseltest.simulator.WriteVcdAnnotation
 import _root_.chisel4ml.ProcessingElementSequential
 import _root_.lbir._
 
@@ -21,7 +20,7 @@ class PeSequentialTests extends AnyFlatSpec with ChiselScalatestTester {
         activation = Option(lbir.Activation())
     )
     it should "move data into SRAM" in {
-        test(new ProcessingElementSequential(lbirLayer)).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+        test(new ProcessingElementSequential(lbirLayer)).withAnnotations(Seq()) { c =>
             c.io.inStream.data.initSource()
             c.io.inStream.data.setSourceClock(c.clock)
             c.io.outStream.data.initSink()
