@@ -21,7 +21,7 @@ class ProcessingPipeline(model: Model, inputDataWidth: Int = 32, outputDataWidth
 
     // Instantiate modules for seperate layers, for now we only support DENSE layers
     for (layer <- model.layers) {
-        peList += Module(new ProcessingElementSequential(layer))
+        peList += Module(ProcessingElementSequential(layer))
     }
 
     val io = IO(new Bundle {

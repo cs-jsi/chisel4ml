@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Removed VCD annotation, its better to annotate the test call to get the VCD if needed
+* Copying data test for one layer working
 * Preliminary implementation of just copying data on axi stream compiles to verilog, but not tested
 * Added SRAM module
 * Added SRAM module
