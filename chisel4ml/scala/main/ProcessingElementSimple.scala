@@ -87,7 +87,6 @@ object ProcessingElementSimple {
         } else if(w.litValue == -1.S.litValue) {
             -(i.zext)
         } else if(w.litValue == 0.S.litValue) {
-            logger.info("ASDAWDASDASDSA")
             0.S
         } else {
             i * w
