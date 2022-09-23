@@ -1,4 +1,4 @@
-from chisel4ml import elaborate
+from chisel4ml import generate, optimize
 import numpy as np
 import tensorflow as tf
 import pytest
@@ -6,17 +6,17 @@ import pytest
 from tensorflow.keras.datasets import mnist
 
 
-@pytest.mark.skip(reason='Not running while porting to sequential design.')
 def test_compile_service(bnn_simple_model):
     """ Test if the compile service is working correctly. """
-    epp_handle = elaborate.qkeras_model(bnn_simple_model)
+    opt_model = optimize.qkeras_model(bnn_simple_model)
+    epp_handle = generate.circuit(opt_model)
     assert epp_handle is not None
 
 
 @pytest.mark.skip(reason='Not running while porting to sequential design.')
 def test_run_service(bnn_simple_model):
     """ Tests if the run service (simulation) is working correctly). """
-    epp_handle = elaborate.qkeras_model(bnn_simple_model)
+    epp_handle = generate.circuit(bnn_simple_model)
     assert epp_handle is not None
     for i in [-1.0, 1.0]:
         for j in [-1.0, 1.0]:
@@ -31,7 +31,7 @@ def test_run_service(bnn_simple_model):
 @pytest.mark.skip(reason='Not running while porting to sequential design.')
 def test_run_service_2(bnn_simple_bweight_model):
     """ Tests if the run service (simulation) is working correctly for binary weight layers. """
-    epp_handle = elaborate.qkeras_model(bnn_simple_bweight_model)
+    epp_handle = generate.circuit(bnn_simple_bweight_model)
     assert epp_handle is not None
     for inp in [[36, 22, 3], [6, 18, 5], [6, 22, 3], [255, 127, 255], [0, 0, 0], [255, 255, 255]]:
         sw_res = bnn_simple_bweight_model.predict(np.array([inp]))
@@ -56,7 +56,7 @@ def test_run_service_3(bnn_mnist_model):
     y_test = tf.one_hot(y_test, 10)
     y_test = np.where(y_test < 0.1, -1., 1.)
 
-    epp_handle = elaborate.qkeras_model(bnn_mnist_model)
+    epp_handle = generate.circuit(bnn_mnist_model)
     assert epp_handle is not None
     for i in range(0, 10):
         sw_res = bnn_mnist_model.predict(x_test[i].reshape(1, 784))
@@ -80,7 +80,7 @@ def test_run_service_4(sint_simple_noscale_model):
                        [0, 15, 0],
                        [0, 0, 15]])
 
-    epp_handle = elaborate.qkeras_model(sint_simple_noscale_model)
+    epp_handle = generate.circuit(sint_simple_noscale_model)
     assert epp_handle is not None
     for i in range(0, 10):
         sw_res = sint_simple_noscale_model.predict(x_test[i].reshape(1, 3))
@@ -104,7 +104,7 @@ def test_run_service_5(sint_simple_model):
                        [0, 15, 0],
                        [0, 0, 15]])
 
-    epp_handle = elaborate.qkeras_model(sint_simple_model)
+    epp_handle = generate.circuit(sint_simple_model)
     assert epp_handle is not None
     for i in range(0, 10):
         sw_res = sint_simple_model.predict(x_test[i].reshape(1, 3))
@@ -125,7 +125,7 @@ def test_run_service_6(sint_mnist_qdense_relu):
     x_test = x_test.astype('float32')
     y_test = tf.one_hot(y_test, 10)
 
-    epp_handle = elaborate.qkeras_model(sint_mnist_qdense_relu)
+    epp_handle = generate.circuit(sint_mnist_qdense_relu)
     assert epp_handle is not None
     for i in range(0, 10):
         sw_res = sint_mnist_qdense_relu.predict(x_test[i].reshape(1, 784))
@@ -154,7 +154,7 @@ def test_run_service_7(sint_mnist_qdense_relu_pruned):
     y_test = tf.one_hot(y_test, 10)
     y_test = np.where(y_test < 0.1, -1., 1.)
 
-    epp_handle = elaborate.qkeras_model(sint_mnist_qdense_relu_pruned)
+    epp_handle = generate.circuit(sint_mnist_qdense_relu_pruned)
     assert epp_handle is not None
     for i in range(0, 6):
         sw_res = sint_mnist_qdense_relu_pruned.predict(x_test[i].reshape(1, 784))

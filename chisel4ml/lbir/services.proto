@@ -6,43 +6,38 @@ package services;
 option java_multiple_files = true;
 option java_package = "services";
 
-// Pp stands for Processing Pipeline
-service PpService {
-  rpc Elaborate (lbir.Model) returns (PpElaborateReturn) {}
-  rpc Run (PpRunParams) returns (PpRunReturn) {}
-  rpc Generate (GenerateParams) returns (ErrorMsg) {}
+service Chisel4mlService {
+  rpc GenerateCircuit (GenerateCircuitParams) returns (GenerateCircuitReturn) {}
+  rpc RunSimulation (RunSimulationParams) returns (RunSimulationReturn) {}
 }
 
-message PpRunReturn {
-    repeated lbir.QTensor values = 1;
+message GenerateCircuitParams {
+    message Options {
+        repeated bool isSimple = 1;
+    }
+    lbir.Model model = 1;
+    Options options = 2;
+    string directory = 3;
 }
- 
-message PpRunParams {
-    PpHandle ppHandle = 1;
+
+message GenerateCircuitReturn {
+    message ErrorMsg {
+        enum ErrorId {
+            SUCCESS = 0;
+            FAIL    = 1;
+        }
+        ErrorId errId = 1;
+        string msg = 2;
+    }
+    uint32 circuitId = 1;
+    ErrorMsg err = 2;
+}
+
+message RunSimulationParams {
+    uint32 circuitId = 1;
     repeated lbir.QTensor inputs = 2;
 }
 
-message PpElaborateReturn {
-    PpHandle ppHandle = 1;
-    ErrorMsg reply = 2;
-}
-
-message PpHandle {
-    string name = 1;
-    lbir.QTensor input = 2;
-    repeated uint32 out_shape = 3;
-}
-
-message GenerateParams {
-    string name = 1;
-    string directory = 2;
-}
-
-message ErrorMsg {
-    enum ErrorId {
-        SUCCESS = 0;
-        FAIL    = 1;
-    }
-    ErrorId err = 1;
-    string msg = 2;
+message RunSimulationReturn {
+    repeated lbir.QTensor values = 1;
 }

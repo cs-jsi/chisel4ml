@@ -11,7 +11,8 @@ import _root_.chisel3.stage._
 import _root_.chisel3._
 
 import _root_.io.grpc.{Server, ServerBuilder}
-import _root_.services.{ErrorMsg, GenerateParams, PpElaborateReturn, PpHandle, PpRunParams, PpRunReturn, PpServiceGrpc}
+import _root_.services._
+import _root_.services.GenerateCircuitReturn.ErrorMsg
 import _root_.lbir.{Datatype, Model, QTensor}
 import _root_.chisel4ml.util.LbirUtil
 
@@ -31,15 +32,14 @@ object Chisel4mlServer {
     }
 }
 
-class Chisel4mlServer(executionContext: ExecutionContext) {
-    self =>
+class Chisel4mlServer(executionContext: ExecutionContext) { self =>
     private[this] var server: Server = null
     val logger = LoggerFactory.getLogger(classOf[Chisel4mlServer])
 
     private def start(): Unit = {
         server = ServerBuilder
             .forPort(Chisel4mlServer.port)
-            .addService(PpServiceGrpc.bindService(new PpServiceImpl, executionContext))
+            .addService(Chisel4mlServiceGrpc.bindService(Chisel4mlServiceImpl, executionContext))
             .build
             .start
         sys.addShutdownHook { self.stop() }
@@ -55,49 +55,33 @@ class Chisel4mlServer(executionContext: ExecutionContext) {
 
     private def blockUntilShutdown(): Unit = { if (server != null) { server.awaitTermination() } }
 
+    private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
+        private var models: Seq[firrtl.AnnotationSeq] = Seq()
+        private var outputs: Seq[QTensor] = Seq()
+        private var testers: Seq[TreadleTester] = Seq()
 
-    private object PpServiceImpl {
-        var model:  Model         = null
-        var tester: TreadleTester = null
-    }
-
-    private class PpServiceImpl extends PpServiceGrpc.PpService {
-        private[this] var model:  Model         = null
-        private[this] var tester: TreadleTester = null
-
-        override def elaborate(lbirModel: Model): Future[PpElaborateReturn] = {
-            logger.info("Elaborating model: " + lbirModel.name + " to a processing pipeline circuit.")
-            model = lbirModel
-            tester = TreadleTester(
-              (new ChiselStage)
-                  .execute(Array(), Seq(ChiselGeneratorAnnotation(() => new ProcessingPipeline(lbirModel))))
+        override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
+            models = models :+ (new ChiselStage).execute(
+              Array("--target-dir", params.directory),
+              Seq(ChiselGeneratorAnnotation(() => new ProcessingPipelineSimple(params.model.get)))
             )
-
-            val errReply = ErrorMsg(err = ErrorMsg.ErrorId.SUCCESS, msg = "Everything went fine.")
-            val ppHandle = PpHandle(name = "model", 
-                                    input = lbirModel.layers(0).input, 
-                                    outShape = lbirModel.layers.last.output.get.shape)
-            val ppElaborateReturn = PpElaborateReturn(ppHandle = Option(ppHandle), reply = Some(errReply))
-            Future.successful(ppElaborateReturn)
+            outputs = outputs :+ params.model.get.layers.last.output.get
+            testers = testers :+ TreadleTester(models.last)
+            logger.info(s"Generating hardware for circuit id:${models.length} in directory:${params.directory}.")
+            Future.successful(GenerateCircuitReturn(circuitId=models.length, 
+                                                    err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS, 
+                                                                        msg = "Successfully generated verilog"))))
         }
 
-        override def run(ppRunParams: PpRunParams): Future[PpRunReturn] = {
-            logger.info("Simulating processing pipeline: " + ppRunParams.ppHandle.get.name + " circuit on inputs.")
-            tester.poke("io_in", LbirUtil.qtensorToBigInt(ppRunParams.inputs(0)))
+        override def runSimulation(params: RunSimulationParams): Future[RunSimulationReturn] = {
+            logger.info(s"Simulating circuit id: ${params.circuitId} circuit on ${params.inputs.length} input/s.")
+            testers(params.circuitId).poke("io_in", LbirUtil.qtensorToBigInt(params.inputs(0)))
             Future.successful(
-              PpRunReturn(values = List(LbirUtil.bigIntToQtensor(tester.peek("io_out"), model.layers.last.output.get)))
+              RunSimulationReturn(values = List(LbirUtil.bigIntToQtensor(testers(params.circuitId).peek("io_out"), 
+                                                                         outputs(params.circuitId))))
             )
         }
 
-        override def generate(genParams: GenerateParams): Future[ErrorMsg] = {
-            logger.info(
-              "Generating hardware for circuit id: " + genParams.name + " in directory: " + genParams.directory + "."
-            )
-            (new ChiselStage).execute(
-              Array("--target-dir", genParams.directory),
-              Seq(ChiselGeneratorAnnotation(() => new ProcessingPipeline(model)))
-            )
-            Future.successful(ErrorMsg(err = ErrorMsg.ErrorId.SUCCESS, msg = "Successfully generated verilog"))
-        }
+
     }
 }

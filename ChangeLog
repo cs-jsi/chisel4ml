@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+* Changed SRAM interface to be inline with recommendations from chisel book
+* Removed debug artefact
+* Basic test of PeSimpleWrap working
 * Removed VCD annotation, its better to annotate the test call to get the VCD if needed
 * Copying data test for one layer working
 * Preliminary implementation of just copying data on axi stream compiles to verilog, but not tested

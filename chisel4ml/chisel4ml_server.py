@@ -11,7 +11,6 @@ from concurrent.futures import ThreadPoolExecutor
 import grpc
 import chisel4ml.lbir.services_pb2_grpc as services_grpc
 import chisel4ml.lbir.services_pb2 as services
-import chisel4ml.lbir.lbir_pb2 as lbir
 
 log = logging.getLogger(__name__)
 
@@ -51,17 +50,15 @@ class Chisel4mlServer:
 
     def create_grpc_channel(self):
         self._channel = grpc.insecure_channel(self._server_addr)
-        self._stub = services_grpc.PpServiceStub(self._channel)
+        self._stub = services_grpc.Chisel4mlServiceStub(self._channel)
         log.info("Created grpc channel.")
 
     def send_grpc_msg(self, msg):
         concurrent.futures.wait([self._future])
-        if isinstance(msg, lbir.Model):
-            ret = self._stub.Elaborate(msg, wait_for_ready=True, timeout=self.GRPC_TIMEOUT)
-        elif isinstance(msg, services.PpRunParams):
-            ret = self._stub.Run(msg, wait_for_ready=True, timeout=self.GRPC_TIMEOUT)
-        elif isinstance(msg, services.GenerateParams):
-            ret = self._stub.Generate(msg, wait_for_ready=True, timeout=self.GRPC_TIMEOUT)
+        if isinstance(msg, services.GenerateCircuitParams):
+            ret = self._stub.GenerateCircuit(msg, wait_for_ready=True, timeout=self.GRPC_TIMEOUT)
+        elif isinstance(msg, services.RunSimulationParams):
+            ret = self._stub.RunSimulation(msg, wait_for_ready=True, timeout=self.GRPC_TIMEOUT)
         else:
             raise ValueError(f"Invalid msg to send via grpc. Message is of type {msg}.")
 
