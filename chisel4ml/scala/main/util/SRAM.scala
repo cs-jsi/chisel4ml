@@ -9,18 +9,19 @@ import _root_.chisel4ml.util.LbirUtil.log2
 
 class SRAM(depth: Int, width: Int = 32) extends Module {
   val io = IO(new Bundle {
-    val enable = Input(Bool())
-    val write = Input(Bool())
-    val addr = Input(UInt(log2(depth).W))
-    val dataIn = Input(UInt(width.W))
-    val dataOut = Output(UInt(width.W))
+    val rdEna = Input(Bool())
+    val rdAddr = Input(UInt(log2(depth).W))
+    val rdData = Output(UInt(width.W))
+    val wrEna = Input(Bool())
+    val wrAddr = Input(UInt(log2(depth).W))
+    val wrData = Input(UInt(width.W))
   })
-
   val mem = SyncReadMem(depth, UInt(width.W))
+
   // Create one write port and one read port
-  when (io.write) {
-    mem.write(io.addr, io.dataIn)
+  when (io.wrEna) {
+    mem.write(io.wrAddr, io.wrData)
   }
-  io.dataOut := mem.read(io.addr, io.enable)
+  io.rdData := mem.read(io.rdAddr, io.rdEna)
 }
 
