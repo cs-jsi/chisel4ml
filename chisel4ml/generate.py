@@ -9,7 +9,6 @@ log = logging.getLogger(__name__)
 
 
 def circuit(opt_model: tf.keras.Model, directory=".", is_simple=False):
-    assert os.path.isdir(directory)
     if not os.path.exists(directory):
         os.makedirs(directory)
     # TODO - add checking that the opt_model is correct
@@ -21,7 +20,7 @@ def circuit(opt_model: tf.keras.Model, directory=".", is_simple=False):
     server = chisel4ml_server.start_server_once()
     gen_circt_ret = server.send_grpc_msg(GenerateCircuitParams(model=lbir_model,
                                                                options=GenerateCircuitParams.Options(
-                                                                            isSimple=[is_simple]),
+                                                                            isSimple=is_simple),
                                                                directory=directory))
     if gen_circt_ret is None:
         return None

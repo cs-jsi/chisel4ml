@@ -13,6 +13,7 @@ import chisel3.experimental._
 import _root_.lbir.{Activation, Datatype, Layer}
 import _root_.lbir.Datatype.QuantizationType._
 import _root_.lbir.Activation.Function._
+import _root_.services.GenerateCircuitParams.Options
 import _root_.chisel4ml.util._
 
 import scala.math.pow

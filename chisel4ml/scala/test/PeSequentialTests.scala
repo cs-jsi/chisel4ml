@@ -3,6 +3,7 @@ package chisel4ml.tests
 import org.scalatest.flatspec.AnyFlatSpec
 import chisel3._
 import chiseltest._
+import _root_.services.GenerateCircuitParams.Options
 import _root_.chisel4ml._
 import _root_.lbir._
 
@@ -57,7 +58,7 @@ class PeSequentialTests extends AnyFlatSpec with ChiselScalatestTester {
         )
 
     it should "Test Sequential behavior for wrapped simple PEs." in {
-        test(new ProcessingElementWrapSimpleToSequential(lbirLayer)) { c =>
+        test(new ProcessingElementWrapSimpleToSequential(lbirLayer, Options())) { c =>
             c.io.inStream.data.initSource()
             c.io.inStream.data.setSourceClock(c.clock)
             c.io.outStream.data.initSink()

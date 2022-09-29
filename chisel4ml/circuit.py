@@ -17,6 +17,7 @@ class Circuit:
     """
     def __init__(self, circuitId: int, input_quantizer, input_qtensor: lbir.QTensor):
         assert circuitId >= 0, f"Invalid circuitId provided. This parameter should be positive, but is {circuitId}."
+        self.circuitId = circuitId
         self.input_quantizer = input_quantizer
         self.input_qtensor = input_qtensor
         self._server = start_server_once()
@@ -25,9 +26,9 @@ class Circuit:
         qtensor = transforms.numpy_transforms.numpy_to_qtensor(np_arr,
                                                                self.input_quantizer,
                                                                self.input_qtensor)
-        pp_run_params = services.PpRunParams(ppHandle=self.pp, inputs=[qtensor])
-        pp_run_return = self._server.send_grpc_msg(pp_run_params)
-        return np.array(pp_run_return.values[0].values)
+        run_sim_params = services.RunSimulationParams(circuitId=self.circuitId, inputs=[qtensor])
+        run_sim_return = self._server.send_grpc_msg(run_sim_params)
+        return np.array(run_sim_return.values[0].values)
 
     def predict(self, np_arr):
         self.__call__(np_arr)

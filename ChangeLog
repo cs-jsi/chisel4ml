@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Started restructuring services code, this includes changes to the main python API, as well as the python-scala api (as defined in services.proto)
 * Changed SRAM interface to be inline with recommendations from chisel book
 * Removed debug artefact
 * Basic test of PeSimpleWrap working

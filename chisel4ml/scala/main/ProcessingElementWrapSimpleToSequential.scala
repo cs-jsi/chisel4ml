@@ -13,12 +13,14 @@ import _root_.chisel4ml.util.bus.AXIStream
 import _root_.chisel4ml.util.SRAM
 import _root_.chisel4ml.util.LbirUtil.{log2, qtensorTotalBitwidth}
 import _root_.lbir.{Layer}
+import _root_.services.GenerateCircuitParams.Options
 import _root_.scala.math
 
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
-class ProcessingElementWrapSimpleToSequential(layer: Layer) extends ProcessingElementSequential {
+class ProcessingElementWrapSimpleToSequential(layer: Layer, options: Options) 
+extends ProcessingElementSequential(layer, options) {
     val logger = LoggerFactory.getLogger(classOf[ProcessingElementWrapSimpleToSequential])
 
     // Input data register
