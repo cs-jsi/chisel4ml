@@ -32,7 +32,6 @@ lazy val root = (project in file("."))
     libraryDependencies ++= Seq(
       "edu.berkeley.cs"            %% "chisel3"              % chiselVersion,
       "edu.berkeley.cs"            %% "chiseltest"           % "0.5.2",
-      "edu.berkeley.cs"            %% "treadle"              % "1.5.3",
       "com.thesamet.scalapb"       %% "scalapb-runtime"      % scalapb.compiler.Version.scalapbVersion % "protobuf",
       "io.grpc"                    %  "grpc-netty"           % scalapb.compiler.Version.grpcJavaVersion,
       "com.thesamet.scalapb"       %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
