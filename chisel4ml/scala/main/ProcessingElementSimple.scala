@@ -36,11 +36,6 @@ object Neuron {
         val muls = VecInit((in zip weights).map{case (a,b) => mul(a,b)})
         val pAct = add(muls)
         
-        if (-scale >= pAct.getWidth) {
-
-        }
-
-        logger.info(s"Created new neuron with activation width: ${pAct.getWidth}, and scale: ${scale}.")
         val sAct = scale compare 0 match { 
             case 0 => pAct
             case -1 => { 

@@ -78,15 +78,12 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
                              Seq(ChiselGeneratorAnnotation(() => new ProcessingPipeline(params.model.get, params.options.get))))
             }
 
-            val sim = TreadleBackendAnnotation.getSimulator
-            val circuit = model.collectFirst { case FirrtlCircuitAnnotation(c) => c }.get
-            val filteredAnnos = model.filterNot(isInternalAnno)
-            val circuitState = firrtl.CircuitState(circuit, filteredAnnos)
-            val tester2 = sim.createContext(circuitState)
+            val tester = new Simulation(params.model.get, 
+                                        params.model.get.layers.last.output.get,
+                                        params.options.get.isSimple)
             circuits = circuits :+ Circuit(model=model, 
-                                           output=params.model.get.layers.last.output.get, 
-                                           tester=tester2, //TreadleTester(model), 
-                                           isSimple=params.options.get.isSimple)
+                                           tester=tester)
+            new Thread(tester).start()
             logger.info(s"Generating hardware for circuit id:${circuits.length-1} in directory:${params.directory} .")
             Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1, 
                                                     err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS, 
@@ -95,28 +92,9 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
 
         override def runSimulation(params: RunSimulationParams): Future[RunSimulationReturn] = {
             logger.info(s"Simulating circuit id: ${params.circuitId} circuit on ${params.inputs.length} input/s.")
-            val tester = circuits(params.circuitId).tester
-            //if (circuits(params.circuitId).isSimple) {
-                tester.poke("io_in", LbirUtil.qtensorToBigInt(params.inputs(0))) // TODO: extend this to n inputs
-                tester.step()
-                Future.successful(RunSimulationReturn(values = List(
-                                    LbirUtil.bigIntToQtensor(circuits(params.circuitId).tester.peek("io_out"), 
-                                    circuits(params.circuitId).output))))
-            /*} else {
-                val inputSeq: Seq[BigInt] = LbirUtil.qtensorToBigIntSeq(params.inputs(0), axiStreamSize=32)
-                for (input <- inputSeq) {
-                    tester.poke("data_bits", input)
-                    tester.poke("data_valid", True)
-                    tester.step()
-                    while(!circuits(params.circuitId).tester.peek("data_ready")) {
-                        tester.step()
-                    }
-                }
-                val outputSeq: Seq[BigInt]
-                while(True) {
-
-                }
-            }*/
+            Future.successful(
+                RunSimulationReturn(values=Seq(circuits(params.circuitId).tester.sim(params.inputs(0))))
+            )
         }
     }
 }
