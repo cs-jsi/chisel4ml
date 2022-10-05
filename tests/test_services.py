@@ -8,20 +8,20 @@ from tensorflow.keras.datasets import mnist
 def test_compile_service(bnn_simple_model):
     """ Test if the compile service is working correctly. """
     opt_model = optimize.qkeras_model(bnn_simple_model)
-    epp_handle = generate.circuit(opt_model, is_simple=True)
-    assert epp_handle is not None
+    circuit = generate.circuit(opt_model, is_simple=True)
+    assert circuit is not None
 
 
 def test_run_service(bnn_simple_model):
     """ Tests if the run service (simulation) is working correctly). """
     opt_model = optimize.qkeras_model(bnn_simple_model)
-    epp_handle = generate.circuit(opt_model, is_simple=True)
-    assert epp_handle is not None
+    circuit = generate.circuit(opt_model, is_simple=True)
+    assert circuit is not None
     for i in [-1.0, 1.0]:
         for j in [-1.0, 1.0]:
             for k in [-1.0, 1.0]:
                 sw_res = opt_model.predict(np.array([[i, j, k]]))
-                hw_res = epp_handle(np.array([i, j, k]))
+                hw_res = circuit(np.array([i, j, k]))
                 assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), \
                     f"The software model predicted the result {sw_res}, where as the hardware model predicted " \
                     f"{hw_res}. Something is wrong here. The stated results are for the inputs {i}, {j}, {k}. "
@@ -30,11 +30,11 @@ def test_run_service(bnn_simple_model):
 def test_run_service_2(bnn_simple_bweight_model):
     """ Tests if the run service (simulation) is working correctly for binary weight layers. """
     opt_model = optimize.qkeras_model(bnn_simple_bweight_model)
-    epp_handle = generate.circuit(opt_model, is_simple=True)
-    assert epp_handle is not None
+    circuit = generate.circuit(opt_model, is_simple=True)
+    assert circuit is not None
     for inp in [[36., 22., 3.], [6., 18., 5.], [6., 22., 3.], [255., 127., 255.], [0., 0., 0.], [255., 255., 255.]]:
         sw_res = opt_model.predict(np.array([inp]))
-        hw_res = epp_handle(np.array(inp))
+        hw_res = circuit(np.array(inp))
         assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), \
             f"The software model predicted the result {sw_res}, where as the hardware model predicted " \
             f"{hw_res}. Something is wrong here. The stated results are for the inputs: {inp}. "
@@ -55,11 +55,11 @@ def test_run_service_3(bnn_mnist_model):
     y_test = np.where(y_test < 0.1, -1., 1.)
 
     opt_model = optimize.qkeras_model(bnn_mnist_model)
-    epp_handle = generate.circuit(opt_model, is_simple=True)
-    assert epp_handle is not None
+    circuit = generate.circuit(opt_model, is_simple=True)
+    assert circuit is not None
     for i in range(0, 10):
         sw_res = opt_model.predict(x_test[i].reshape(1, 784))
-        hw_res = epp_handle(x_test[i])
+        hw_res = circuit(x_test[i])
         assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), \
             f"The software model predicted the result {sw_res}, where as the hardware model predicted " \
             f"{hw_res}. Something is wrong here. The stated results are for the mnist image index {i}. "
@@ -79,11 +79,11 @@ def test_run_service_4(sint_simple_noscale_model):
                        [0., 0., 15.]])
 
     opt_model = optimize.qkeras_model(sint_simple_noscale_model)
-    epp_handle = generate.circuit(opt_model, is_simple=True)
-    assert epp_handle is not None
+    circuit = generate.circuit(opt_model, is_simple=True)
+    assert circuit is not None
     for i in range(0, 10):
         sw_res = opt_model.predict(x_test[i].reshape(1, 3))
-        hw_res = epp_handle(x_test[i])
+        hw_res = circuit(x_test[i])
         assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), \
             f"The software model predicted the result {sw_res}, where as the hardware model predicted " \
             f"{hw_res}. Something is wrong here. The stated results are for the inputs {x_test[i]}. "
@@ -103,11 +103,11 @@ def test_run_service_5(sint_simple_model):
                        [0., 0., 15.]])
 
     opt_model = optimize.qkeras_model(sint_simple_model)
-    epp_handle = generate.circuit(opt_model, is_simple=True)
-    assert epp_handle is not None
+    circuit = generate.circuit(opt_model, is_simple=True)
+    assert circuit is not None
     for i in range(0, 10):
         sw_res = opt_model.predict(x_test[i].reshape(1, 3))
-        hw_res = epp_handle(x_test[i])
+        hw_res = circuit(x_test[i])
         assert tf.reduce_all(np.isclose(sw_res, hw_res, atol=1.0)), \
             f"The software model predicted the result {sw_res}, where as the hardware model predicted " \
             f"{hw_res}. Something is wrong here. The stated results are for the inputs {x_test[i]}. "
@@ -124,12 +124,12 @@ def test_run_service_6(sint_mnist_qdense_relu):
     y_test = tf.one_hot(y_test, 10)
 
     opt_model = optimize.qkeras_model(sint_mnist_qdense_relu)
-    epp_handle = generate.circuit(opt_model, is_simple=True)
-    assert epp_handle is not None
+    circuit = generate.circuit(opt_model, is_simple=True)
+    assert circuit is not None
     for i in range(0, 10):
         sw_res = opt_model.predict(x_test[i].reshape(1, 784))
         sw_index = np.where(sw_res == np.amax(sw_res))[1][0]
-        hw_res = epp_handle(x_test[i])
+        hw_res = circuit(x_test[i])
         hw_index = np.where(hw_res == np.amax(hw_res))[0][0]
         assert sw_index == hw_index, \
             f"The software model predicted the result {sw_res}, where as the hardware model predicted " \
@@ -153,12 +153,12 @@ def test_run_service_7(sint_mnist_qdense_relu_pruned):
     y_test = np.where(y_test < 0.1, -1., 1.)
 
     opt_model = optimize.qkeras_model(sint_mnist_qdense_relu_pruned)
-    epp_handle = generate.circuit(opt_model, is_simple=True)
-    assert epp_handle is not None
+    circuit = generate.circuit(opt_model, is_simple=True)
+    assert circuit is not None
     for i in range(0, 6):
         sw_res = opt_model.predict(x_test[i].reshape(1, 784))
         sw_index = np.where(sw_res == np.amax(sw_res))[1][0]
-        hw_res = epp_handle(x_test[i])
+        hw_res = circuit(x_test[i])
         hw_index = np.where(hw_res == np.amax(hw_res))[0][0]
         assert sw_index == hw_index, \
             f"The software model predicted the result {sw_res}, where as the hardware model predicted " \

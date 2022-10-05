@@ -58,8 +58,8 @@ object Neuron {
 
 abstract class ProcessingElementSimple(layer: Layer) extends Module {
     val io = IO(new Bundle {
-        val in  = Input(UInt(LbirUtil.qtensorTotalBitwidth(layer.input.get).W))
-        val out = Output(UInt(LbirUtil.qtensorTotalBitwidth(layer.output.get).W))
+        val in  = Input(UInt(layer.input.get.totalBitwidth.W))
+        val out = Output(UInt(layer.output.get.totalBitwidth.W))
     })
 }
 
@@ -168,6 +168,6 @@ extends ProcessingElementSimple(layer) {
                     | ${layer.input.get.shape} and output shape: ${layer.output.get.shape}. The input bitwidth
                     | is ${layer.input.get.dtype.get.bitwidth}, the output bitwidth 
                     | ${layer.output.get.dtype.get.bitwidth}. Thus the total size of the input vector is 
-                    | ${LbirUtil.qtensorTotalBitwidth(layer.input.get)} bits, and the total size of the output vector 
-                    | is ${LbirUtil.qtensorTotalBitwidth(layer.output.get)} bits.""".stripMargin.replaceAll("\n", ""))
+                    | ${layer.input.get.totalBitwidth} bits, and the total size of the output vector 
+                    | is ${layer.output.get.totalBitwidth} bits.""".stripMargin.replaceAll("\n", ""))
 }

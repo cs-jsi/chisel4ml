@@ -3,12 +3,13 @@ import logging
 from chisel4ml.circuit import Circuit
 from chisel4ml import chisel4ml_server, transform
 from chisel4ml.lbir.services_pb2 import GenerateCircuitParams, GenerateCircuitReturn
+from pathlib import Path
 import tensorflow as tf
 
 log = logging.getLogger(__name__)
 
 
-def circuit(opt_model: tf.keras.Model, directory=".", is_simple=False):
+def circuit(opt_model: tf.keras.Model, directory="./chisel4ml_circuit/", is_simple=False):
     if not os.path.exists(directory):
         os.makedirs(directory)
     # TODO - add checking that the opt_model is correct
@@ -17,11 +18,12 @@ def circuit(opt_model: tf.keras.Model, directory=".", is_simple=False):
     if lbir_model is None:
         return None
 
+    relDir = Path(directory).absolute().relative_to(Path('.').absolute()).__str__()
     server = chisel4ml_server.start_server_once()
     gen_circt_ret = server.send_grpc_msg(GenerateCircuitParams(model=lbir_model,
                                                                options=GenerateCircuitParams.Options(
                                                                             isSimple=is_simple),
-                                                               directory=directory))
+                                                               directory=relDir))
     if gen_circt_ret is None:
         return None
     elif gen_circt_ret.err.errId != GenerateCircuitReturn.ErrorMsg.SUCCESS:

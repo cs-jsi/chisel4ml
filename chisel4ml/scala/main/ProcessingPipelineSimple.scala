@@ -25,8 +25,8 @@ class ProcessingPipelineSimple(model: Model) extends Module {
     }
 
     val io = IO(new Bundle {
-        val in  = Input(UInt(LbirUtil.qtensorTotalBitwidth(model.layers.head.input.get).W))
-        val out = Output(UInt(LbirUtil.qtensorTotalBitwidth(model.layers.last.output.get).W))
+        val in  = Input(UInt(model.layers.head.input.get.totalBitwidth.W))
+        val out = Output(UInt(model.layers.last.output.get.totalBitwidth.W))
     }) 
 
     // Connect the inputs and outputs of the layers

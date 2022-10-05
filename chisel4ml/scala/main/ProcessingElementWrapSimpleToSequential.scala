@@ -11,7 +11,7 @@ import chisel3.util._
 
 import _root_.chisel4ml.util.bus.AXIStream
 import _root_.chisel4ml.util.SRAM
-import _root_.chisel4ml.util.LbirUtil.{log2, qtensorTotalBitwidth}
+import _root_.chisel4ml.util.LbirUtil.log2
 import _root_.lbir.{Layer}
 import _root_.services.GenerateCircuitParams.Options
 import _root_.scala.math
@@ -24,14 +24,14 @@ extends ProcessingElementSequential(layer, options) {
     val logger = LoggerFactory.getLogger(classOf[ProcessingElementWrapSimpleToSequential])
 
     // Input data register
-    val inSizeBits: Int = qtensorTotalBitwidth(layer.input.get)
+    val inSizeBits: Int = layer.input.get.totalBitwidth
     val numInTrans: Int = math.ceil(inSizeBits.toFloat / inputStreamWidth.toFloat).toInt
     val inReg = RegInit(VecInit(Seq.fill(numInTrans)(0.U(inputStreamWidth.W)))) 
     val inCntReg = RegInit(0.U((log2(numInTrans) + 1).W))
     val inRegFull = inCntReg === numInTrans.U
 
     // Output data register
-    val outSizeBits: Int = qtensorTotalBitwidth(layer.output.get)
+    val outSizeBits: Int = layer.output.get.totalBitwidth
     val numOutTrans: Int = math.ceil(outSizeBits.toFloat / outputStreamWidth.toFloat).toInt
     val outReg = RegInit(VecInit(Seq.fill(numOutTrans)(0.U(outputStreamWidth.W))))
     val outCntReg = RegInit(0.U((log2(numOutTrans) + 1).W))

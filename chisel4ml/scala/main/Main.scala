@@ -12,7 +12,6 @@ import _root_.chisel3._
 import _root_.firrtl.stage.FirrtlCircuitAnnotation  
 import _root_.firrtl.{AnnotationSeq, EmittedCircuitAnnotation}                                                                 
 import _root_.firrtl.annotations.{Annotation, DeletedAnnotation}  
-import logger.LogLevelAnnotation 
 
 import _root_.io.grpc.{Server, ServerBuilder}
 import _root_.services._
@@ -63,27 +62,11 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
     private def blockUntilShutdown(): Unit = { if (server != null) { server.awaitTermination() } }
 
     private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
-        private var circuits: Seq[Circuit] = Seq()
-		private def isInternalAnno(a: Annotation): Boolean = a match {  
-		    case _: FirrtlCircuitAnnotation | _: DesignAnnotation[_] | _: ChiselCircuitAnnotation | _: DeletedAnnotation | 
-		        _: EmittedCircuitAnnotation[_] | _: LogLevelAnnotation =>
-		      true
-		    case _ => false
-		}
+        private var circuits: Seq[Circuit] = Seq() // Holds the circuit and simulation object
         override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
-            val model = params.options.get.isSimple match {
-                case true => (new ChiselStage).execute(Array("--target-dir", params.directory),
-                             Seq(ChiselGeneratorAnnotation(() => new ProcessingPipelineSimple(params.model.get))))
-                case false => (new ChiselStage).execute(Array("--target-dir", params.directory),
-                             Seq(ChiselGeneratorAnnotation(() => new ProcessingPipeline(params.model.get, params.options.get))))
-            }
-
-            val tester = new Simulation(params.model.get, 
-                                        params.model.get.layers.last.output.get,
-                                        params.options.get.isSimple)
-            circuits = circuits :+ Circuit(model=model, 
-                                           tester=tester)
-            new Thread(tester).start()
+            circuits = circuits :+ new Circuit(params.model.get, params.options.get, params.directory)
+            new Thread(circuits.last).start()
+            while(!circuits.last.isGenerated.get) { Thread.sleep(100) }
             logger.info(s"Generating hardware for circuit id:${circuits.length-1} in directory:${params.directory} .")
             Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1, 
                                                     err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS, 
@@ -93,7 +76,7 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
         override def runSimulation(params: RunSimulationParams): Future[RunSimulationReturn] = {
             logger.info(s"Simulating circuit id: ${params.circuitId} circuit on ${params.inputs.length} input/s.")
             Future.successful(
-                RunSimulationReturn(values=Seq(circuits(params.circuitId).tester.sim(params.inputs(0))))
+                RunSimulationReturn(values=Seq(circuits(params.circuitId).sim(params.inputs(0))))
             )
         }
     }
