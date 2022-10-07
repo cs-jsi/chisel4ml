@@ -22,12 +22,13 @@ class Circuit:
         self.input_qtensor = input_qtensor
         self._server = start_server_once()
 
-    def __call__(self, np_arr):
+    def __call__(self, np_arr, sim_timeout_sec=100):
+        "Simulate the circuit, timeout in seconds."
         qtensor = transforms.numpy_transforms.numpy_to_qtensor(np_arr,
                                                                self.input_quantizer,
                                                                self.input_qtensor)
         run_sim_params = services.RunSimulationParams(circuitId=self.circuitId, inputs=[qtensor])
-        run_sim_return = self._server.send_grpc_msg(run_sim_params)
+        run_sim_return = self._server.send_grpc_msg(run_sim_params, timeout=sim_timeout_sec)
         return np.array(run_sim_return.values[0].values)
 
     def predict(self, np_arr):

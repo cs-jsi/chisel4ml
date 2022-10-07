@@ -17,7 +17,7 @@ import _root_.chisel4ml.ProcessingPipelineSimple
 import _root_.lbir.{QTensor, Model}
 import _root_.services.GenerateCircuitParams.Options
 
-import _root_.java.util.concurrent.atomic.AtomicBoolean
+import _root_.java.util.concurrent.CountDownLatch
 import _root_.java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
@@ -30,7 +30,7 @@ extends Runnable {
     val outQueue = new LinkedBlockingQueue[QTensor]()
     val outTensorShape = model.layers.last.output.get
     val isSimple = options.isSimple
-    val isGenerated = new AtomicBoolean(false)
+    val isGenerated = new CountDownLatch(1)
 
     def run() : Unit = {
         var annot: AnnotationSeq = Seq(TargetDirAnnotation(directory)) // TODO - work with .pb instead of .lo.fir
@@ -48,7 +48,7 @@ extends Runnable {
                                         "--start-from", "low", "-E", "sverilog"), 
                                   Seq(TargetDirAnnotation(directory))
                          )
-        isGenerated.set(true)
+        isGenerated.countDown()
         logger.info(s"Generated simple circuit in directory: ${directory}.")
         while(true && isSimple) {
             // inQueue.take() blocks execution until data is available
@@ -64,7 +64,7 @@ extends Runnable {
                                         "--start-from", "low", "-E", "sverilog"), 
                                   Seq(TargetDirAnnotation(directory))
                          )
-        isGenerated.set(true)
+        isGenerated.countDown()
         logger.info(s"Generated sequential circuit in directory: ${directory}.")
         val seqLength: Int = dut.io.inStream.dataWidth 
         val outBitsTotal: Int = model.layers.last.output.get.totalBitwidth

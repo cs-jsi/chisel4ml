@@ -5,6 +5,7 @@
 package chisel4ml
 
 import _root_.java.nio.file.{Files, Paths}
+import _root_.java.util.concurrent.TimeUnit
 import _root_.scala.concurrent.{ExecutionContext, Future}
 
 import _root_.chisel3.stage._
@@ -72,10 +73,15 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
                                                params.useVerilator,
                                                params.writeVcd)
             new Thread(circuits.last).start()
-            while(!circuits.last.isGenerated.get) { Thread.sleep(100) }
-            Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1, 
-                                                    err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS, 
-                                                                        msg = "Successfully generated verilog."))))
+            if (circuits.last.isGenerated.await(params.generationTimeoutSec, TimeUnit.SECONDS)) {
+                Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1, 
+                                                        err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS, 
+                                                                   msg = "Successfully generated verilog."))))
+            } else {
+                Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1, 
+                                                        err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.FAIL, 
+                                                                   msg = "Error generating circuit."))))
+            }
         }
 
         override def runSimulation(params: RunSimulationParams): Future[RunSimulationReturn] = {

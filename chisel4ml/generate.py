@@ -12,8 +12,10 @@ log = logging.getLogger(__name__)
 def circuit(opt_model: tf.keras.Model, 
             directory="./chisel4ml_circuit/", 
             is_simple=False, 
-            use_verilator=False,
-            writeVcd=False):
+            use_verilator=True,
+            write_vcd=False,
+            gen_timeout_sec=600):
+    assert gen_timeout_sec > 5, "Please provide at least a 5 second generation timeout."
     if not os.path.exists(directory):
         os.makedirs(directory)
     # TODO - add checking that the opt_model is correct
@@ -28,7 +30,10 @@ def circuit(opt_model: tf.keras.Model,
                                                                options=GenerateCircuitParams.Options(
                                                                             isSimple=is_simple),
                                                                directory=relDir,
-                                                               useVerilator=use_verilator))
+                                                               useVerilator=use_verilator,
+                                                               writeVcd=write_vcd,
+                                                               generationTimeoutSec=gen_timeout_sec), 
+                                                               gen_timeout_sec+2)
     if gen_circt_ret is None:
         return None
     elif gen_circt_ret.err.errId != GenerateCircuitReturn.ErrorMsg.SUCCESS:

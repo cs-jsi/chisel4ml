@@ -20,11 +20,10 @@ server = None
 class Chisel4mlServer:
     """ Handles the creation of a subprocess, it is used to safely start the chisel4ml server. """
 
-    def __init__(self, command, host: str = 'localhost', port: int = 50051, grpc_timeout: int = 1200):
+    def __init__(self, command, host: str = 'localhost', port: int = 50051):
         self._server_addr = host + ':' + str(port)
         self._channel = None
         self._stub = None
-        self.GRPC_TIMEOUT = grpc_timeout
         self._log_file = open('chisel4ml_server.log', 'w')
         self.task = subprocess.Popen(command,
                                      stdout=self._log_file,
@@ -53,12 +52,12 @@ class Chisel4mlServer:
         self._stub = services_grpc.Chisel4mlServiceStub(self._channel)
         log.info("Created grpc channel.")
 
-    def send_grpc_msg(self, msg):
+    def send_grpc_msg(self, msg, timeout=300):
         concurrent.futures.wait([self._future])
         if isinstance(msg, services.GenerateCircuitParams):
-            ret = self._stub.GenerateCircuit(msg, wait_for_ready=True, timeout=self.GRPC_TIMEOUT)
+            ret = self._stub.GenerateCircuit(msg, wait_for_ready=True, timeout=timeout)
         elif isinstance(msg, services.RunSimulationParams):
-            ret = self._stub.RunSimulation(msg, wait_for_ready=True, timeout=self.GRPC_TIMEOUT)
+            ret = self._stub.RunSimulation(msg, wait_for_ready=True, timeout=timeout)
         else:
             raise ValueError(f"Invalid msg to send via grpc. Message is of type {msg}.")
 

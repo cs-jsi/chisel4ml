@@ -20,6 +20,7 @@ message GenerateCircuitParams {
     string directory = 3;
     bool useVerilator = 4;
     bool writeVcd = 5;
+    uint32 generationTimeoutSec = 6;
 }
 
 message GenerateCircuitReturn {
