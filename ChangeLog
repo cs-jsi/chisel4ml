@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Simple example of simulation with chiseltest working
 * Moved to using the chiselTest simulationContext abstraction to run simulation (instead of threadle). This enables easy portability between simulator and some other helpfull apis
 
 0.1.0

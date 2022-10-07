@@ -64,10 +64,15 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
     private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
         private var circuits: Seq[Circuit] = Seq() // Holds the circuit and simulation object
         override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
-            circuits = circuits :+ new Circuit(params.model.get, params.options.get, params.directory)
+            logger.info(s"""Started generating hardware for circuit id:${circuits.length-1} in directory: 
+                        |${params.directory} .""".stripMargin.replaceAll("\n", ""))
+            circuits = circuits :+ new Circuit(params.model.get, 
+                                               params.options.get, 
+                                               params.directory, 
+                                               params.useVerilator,
+                                               params.writeVcd)
             new Thread(circuits.last).start()
             while(!circuits.last.isGenerated.get) { Thread.sleep(100) }
-            logger.info(s"Generating hardware for circuit id:${circuits.length-1} in directory:${params.directory} .")
             Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1, 
                                                     err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS, 
                                                                         msg = "Successfully generated verilog."))))

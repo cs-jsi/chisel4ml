@@ -1,3 +1,4 @@
+gen_temp/
 chisel4ml_circuit/
 
 test_run_dir/

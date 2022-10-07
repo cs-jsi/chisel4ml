@@ -18,6 +18,8 @@ message GenerateCircuitParams {
     lbir.Model model = 1;
     Options options = 2;
     string directory = 3;
+    bool useVerilator = 4;
+    bool writeVcd = 5;
 }
 
 message GenerateCircuitReturn {
