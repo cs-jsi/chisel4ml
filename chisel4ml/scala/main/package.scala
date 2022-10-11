@@ -13,9 +13,9 @@ import _root_.scala.math.pow
 package object chisel4ml {
     val logger = LoggerFactory.getLogger("chisel4ml")
     
-    def toBinary(i: Int, digits: Int = 8) = String.format(s"%${digits}s", 
+    def toBinary(i: Int, digits: Int = 8): String = String.format(s"%${digits}s", 
                                                             i.toBinaryString.takeRight(digits)).replace(' ', '0')
-    def toBinaryB(i: BigInt, digits: Int = 8) = String.format("%" + digits + "s", i.toString(2)).replace(' ', '0')
+    def toBinaryB(i: BigInt, digits: Int = 8): String = String.format("%" + digits + "s", i.toString(2)).replace(' ', '0')
 	def signedCorrect(x: Float, dtype: Datatype): Float = {
         if (dtype.signed && x > (pow(2,dtype.bitwidth-1) - 1)) 
             x - pow(2, dtype.bitwidth).toFloat
@@ -37,6 +37,14 @@ package object chisel4ml {
         def totalBitwidth: Int = qt.dtype.get.bitwidth * qt.shape.reduce(_ * _)
     }
 
+    implicit class BigIntSeqToUInt(x: Seq[BigInt]) {
+        def toUInt(busWidth:Int): UInt = {
+            logger.debug(s"Converting Seq[BigInt] to an UInt.")
+            val totalWidth = busWidth * x.length
+            "b".concat(x.map( (a:BigInt) => toBinaryB(a, busWidth) ).mkString).U(totalWidth.W)
+        }
+    }
+
     // And vice versa
     implicit class UIntToQTensor(x: UInt) {
         def toQTensor(stencil: QTensor) = {
@@ -55,5 +63,14 @@ package object chisel4ml {
                     shape = stencil.shape,
                     values = valuesMod)
         }
+
+        def toUIntSeq(busWidth: Int): Seq[UInt] = {
+            val numOfBusTrans = math.ceil(x.getWidth.toFloat / busWidth.toFloat).toInt
+            val temp0 = toBinaryB(x.litValue, x.getWidth)
+            val temp1 = temp0.grouped(busWidth).toList
+            temp1.map("b".concat(_).U(busWidth.W))
+        }
     }
+
+
 }

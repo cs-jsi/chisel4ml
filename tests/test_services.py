@@ -8,14 +8,14 @@ from tensorflow.keras.datasets import mnist
 def test_compile_service(bnn_simple_model):
     """ Test if the compile service is working correctly. """
     opt_model = optimize.qkeras_model(bnn_simple_model)
-    circuit = generate.circuit(opt_model, is_simple=True)
+    circuit = generate.circuit(opt_model, is_simple=False)
     assert circuit is not None
 
 
 def test_run_service(bnn_simple_model):
     """ Tests if the run service (simulation) is working correctly). """
     opt_model = optimize.qkeras_model(bnn_simple_model)
-    circuit = generate.circuit(opt_model, is_simple=True)
+    circuit = generate.circuit(opt_model, is_simple=False)
     assert circuit is not None
     for i in [-1.0, 1.0]:
         for j in [-1.0, 1.0]:
@@ -30,7 +30,7 @@ def test_run_service(bnn_simple_model):
 def test_run_service_2(bnn_simple_bweight_model):
     """ Tests if the run service (simulation) is working correctly for binary weight layers. """
     opt_model = optimize.qkeras_model(bnn_simple_bweight_model)
-    circuit = generate.circuit(opt_model, is_simple=True)
+    circuit = generate.circuit(opt_model, is_simple=False)
     assert circuit is not None
     for inp in [[36., 22., 3.], [6., 18., 5.], [6., 22., 3.], [255., 127., 255.], [0., 0., 0.], [255., 255., 255.]]:
         sw_res = opt_model.predict(np.array([inp]))
@@ -55,7 +55,7 @@ def test_run_service_3(bnn_mnist_model):
     y_test = np.where(y_test < 0.1, -1., 1.)
 
     opt_model = optimize.qkeras_model(bnn_mnist_model)
-    circuit = generate.circuit(opt_model, is_simple=True)
+    circuit = generate.circuit(opt_model, is_simple=False)
     assert circuit is not None
     for i in range(0, 10):
         sw_res = opt_model.predict(x_test[i].reshape(1, 784))
@@ -79,7 +79,7 @@ def test_run_service_4(sint_simple_noscale_model):
                        [0., 0., 15.]])
 
     opt_model = optimize.qkeras_model(sint_simple_noscale_model)
-    circuit = generate.circuit(opt_model, is_simple=True)
+    circuit = generate.circuit(opt_model, is_simple=False)
     assert circuit is not None
     for i in range(0, 10):
         sw_res = opt_model.predict(x_test[i].reshape(1, 3))
@@ -103,7 +103,7 @@ def test_run_service_5(sint_simple_model):
                        [0., 0., 15.]])
 
     opt_model = optimize.qkeras_model(sint_simple_model)
-    circuit = generate.circuit(opt_model, is_simple=True)
+    circuit = generate.circuit(opt_model, is_simple=False)
     assert circuit is not None
     for i in range(0, 10):
         sw_res = opt_model.predict(x_test[i].reshape(1, 3))
@@ -124,7 +124,7 @@ def test_run_service_6(sint_mnist_qdense_relu):
     y_test = tf.one_hot(y_test, 10)
 
     opt_model = optimize.qkeras_model(sint_mnist_qdense_relu)
-    circuit = generate.circuit(opt_model, is_simple=True)
+    circuit = generate.circuit(opt_model, is_simple=False)
     assert circuit is not None
     for i in range(0, 10):
         sw_res = opt_model.predict(x_test[i].reshape(1, 784))
@@ -153,7 +153,7 @@ def test_run_service_7(sint_mnist_qdense_relu_pruned):
     y_test = np.where(y_test < 0.1, -1., 1.)
 
     opt_model = optimize.qkeras_model(sint_mnist_qdense_relu_pruned)
-    circuit = generate.circuit(opt_model, is_simple=True)
+    circuit = generate.circuit(opt_model, is_simple=False)
     assert circuit is not None
     for i in range(0, 6):
         sw_res = opt_model.predict(x_test[i].reshape(1, 784))

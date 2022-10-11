@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 def circuit(opt_model: tf.keras.Model, 
             directory="./chisel4ml_circuit/", 
             is_simple=False, 
-            use_verilator=True,
+            use_verilator=False,
             write_vcd=False,
             gen_timeout_sec=600):
     assert gen_timeout_sec > 5, "Please provide at least a 5 second generation timeout."

@@ -64,29 +64,31 @@ extends Runnable {
                                         "--start-from", "low", "-E", "sverilog"), 
                                   Seq(TargetDirAnnotation(directory))
                          )
-        isGenerated.countDown()
+        isGenerated.countDown() // Let the main thread now that the dut has been succesfully generated
         logger.info(s"Generated sequential circuit in directory: ${directory}.")
-        val seqLength: Int = dut.io.inStream.dataWidth 
         val outBitsTotal: Int = model.layers.last.output.get.totalBitwidth
-        val outTrans: Int = math.ceil(outBitsTotal.toFloat / dut.io.outStream.dataWidth.toFloat).toInt
+        val outTrans: Int = dut.peList.last.numOutTrans
         
         dut.io.inStream.data.initSource()
         dut.io.inStream.data.setSourceClock(dut.clock)
-        dut.io.outStream.data.initSource()
-        dut.io.outStream.data.setSourceClock(dut.clock)
+        dut.io.outStream.data.initSink()
+        dut.io.outStream.data.setSinkClock(dut.clock)
         while(true && !isSimple) {
             // inQueue.take() blocks execution until data is available
-            val testSeq: Seq[UInt] = LbirUtil.toUIntSeq(inQueue.take().toUInt, seqLength)
+            val testSeq: Seq[UInt] = inQueue.take().toUInt.toUIntSeq(dut.io.inStream.dataWidth)
             logger.info(s"Simulating a sequential circuit on a new input.")
-            var outSeq: Seq[UInt] = Seq()
+            var outSeq: Seq[BigInt] = Seq()
 
             dut.io.inStream.data.enqueueSeq(testSeq)
             dut.io.inStream.last.poke(true.B)
+            dut.clock.step()
+            dut.io.inStream.last.poke(false.B)
+            dut.io.outStream.data.ready.poke(true.B)
             for (_ <- 0 until outTrans){
                 dut.io.outStream.data.waitForValid()
-                outSeq = outSeq :+ dut.io.outStream.data.bits
+                outSeq = outSeq :+ dut.io.outStream.data.bits.peek().litValue
             }
-            outQueue.put(LbirUtil.mergeUIntSeq(outSeq).toQTensor(outTensorShape))
+            outQueue.put(outSeq.toUInt(dut.io.outStream.dataWidth).toQTensor(outTensorShape))
         }
     }
     

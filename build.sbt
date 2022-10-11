@@ -23,7 +23,7 @@ Compile / PB.targets := Seq(
   scalapb.gen(flatPackage = true) ->  baseDirectory.value / "chisel4ml" / "scala"
 )
 
-val chiselVersion = "3.5.1"
+val chiselVersion = "3.5.4"
 val slf4jVersion = "1.7.5"
 val scalatestVersion = "3.2.7"
 lazy val root = (project in file("."))
@@ -31,7 +31,7 @@ lazy val root = (project in file("."))
     name := "chisel4ml",
     libraryDependencies ++= Seq(
       "edu.berkeley.cs"            %% "chisel3"              % chiselVersion,
-      "edu.berkeley.cs"            %% "chiseltest"           % "0.5.2",
+      "edu.berkeley.cs"            %% "chiseltest"           % "0.5.4",
       "com.thesamet.scalapb"       %% "scalapb-runtime"      % scalapb.compiler.Version.scalapbVersion % "protobuf",
       "io.grpc"                    %  "grpc-netty"           % scalapb.compiler.Version.grpcJavaVersion,
       "com.thesamet.scalapb"       %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,

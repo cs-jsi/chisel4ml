@@ -74,15 +74,5 @@ object LbirUtil {
         ThreshProvider.transformThresh[T](tensor, fanIn)
     }
 
-    // Creates a sequence of UInts of size busWidth
-    def toUIntSeq(x: UInt, busWidth: Int): Seq[UInt] = {
-        val numOfBusTrans = math.ceil(x.getWidth.toFloat / busWidth.toFloat).toInt
-        x.asTypeOf(Vec(numOfBusTrans, UInt(busWidth.W)))
-    }
-
-    def mergeUIntSeq(x: Seq[UInt]): UInt = {
-        VecInit(x).asUInt
-    }
-
     def log2(x: Int): Int = (log(x) / log(2)).toInt
 }

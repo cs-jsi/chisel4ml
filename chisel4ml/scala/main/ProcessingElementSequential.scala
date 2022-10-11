@@ -19,6 +19,12 @@ abstract class ProcessingElementSequential(layer: Layer, options: Options) exten
     val inputStreamWidth = 32
     val outputStreamWidth = 32
 
+    val inSizeBits: Int = layer.input.get.totalBitwidth
+    val numInTrans: Int = math.ceil(inSizeBits.toFloat / inputStreamWidth.toFloat).toInt
+
+    val outSizeBits: Int = layer.output.get.totalBitwidth
+    val numOutTrans: Int = math.ceil(outSizeBits.toFloat / outputStreamWidth.toFloat).toInt
+
     val io = IO(new Bundle {
         val inStream = Flipped(new AXIStream(inputStreamWidth))
         val outStream = new AXIStream(outputStreamWidth)

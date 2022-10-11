@@ -24,16 +24,16 @@ extends ProcessingElementSequential(layer, options) {
     val logger = LoggerFactory.getLogger(classOf[ProcessingElementWrapSimpleToSequential])
 
     // Input data register
-    val inSizeBits: Int = layer.input.get.totalBitwidth
-    val numInTrans: Int = math.ceil(inSizeBits.toFloat / inputStreamWidth.toFloat).toInt
     val inReg = RegInit(VecInit(Seq.fill(numInTrans)(0.U(inputStreamWidth.W)))) 
     val inCntReg = RegInit(0.U((log2(numInTrans) + 1).W))
     val inRegFull = inCntReg === numInTrans.U
 
     // Output data register
-    val outSizeBits: Int = layer.output.get.totalBitwidth
-    val numOutTrans: Int = math.ceil(outSizeBits.toFloat / outputStreamWidth.toFloat).toInt
+    logger.info(s"""Creating new ProcessingElementWrapSimpleToSequential with inSizeBits: $inSizeBits,
+                    | numInTrans: $numInTrans, outSizeBits: $outSizeBits, numOutTrans: $numOutTrans
+                    .""".stripMargin.replaceAll("\n",""))
     val outReg = RegInit(VecInit(Seq.fill(numOutTrans)(0.U(outputStreamWidth.W))))
+    val outRegUInt = Wire(UInt((numOutTrans*outputStreamWidth).W))
     val outCntReg = RegInit(0.U((log2(numOutTrans) + 1).W))
     val outRegFullReg = RegInit(false.B)
 
@@ -66,10 +66,16 @@ extends ProcessingElementSequential(layer, options) {
     peSimple.io.in := inReg.asUInt
 
     // write data to the output registers
+    for (i <- 0 until numOutTrans) outReg(i) := outRegUInt((i+1)*outputStreamWidth - 1, i*outputStreamWidth)
     when(inRegFull && !outRegFullReg) {
-        val outRegUInt = outReg.asUInt
-        outRegUInt := 0.U((outReg.getWidth - outSizeBits).W) ## peSimple.io.out 
+        if (outRegUInt.getWidth - outSizeBits == 0) {
+            outRegUInt :=  peSimple.io.out
+        } else {
+            outRegUInt := 0.U((outRegUInt.getWidth - outSizeBits).W) ## peSimple.io.out
+        }
         outRegFullReg := true.B
         inCntReg := 0.U
+    } .otherwise {
+        outRegUInt := 0.U
     }
 }
