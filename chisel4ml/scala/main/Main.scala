@@ -41,6 +41,7 @@ object Chisel4mlServer {
 
 class Chisel4mlServer(executionContext: ExecutionContext) { self =>
     private[this] var server: Server = null
+    private var circuits: Seq[Circuit] = Seq() // Holds the circuit and simulation object
     val logger = LoggerFactory.getLogger(classOf[Chisel4mlServer])
 
     private def start(): Unit = {
@@ -55,6 +56,7 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
 
     private def stop(): Unit = {
         if (server != null) {
+            circuits.map(_.stopSimulation())
             logger.info("Shutting down chisel4ml server.")
             server.shutdown()
         } else { logger.error("Attempted to shut down server that was not created.") }
@@ -63,21 +65,23 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
     private def blockUntilShutdown(): Unit = { if (server != null) { server.awaitTermination() } }
 
     private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
-        private var circuits: Seq[Circuit] = Seq() // Holds the circuit and simulation object
+
         override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
-            logger.info(s"""Started generating hardware for circuit id:${circuits.length-1} in directory: 
-                        |${params.directory} .""".stripMargin.replaceAll("\n", ""))
             circuits = circuits :+ new Circuit(params.model.get, 
                                                params.options.get, 
                                                params.directory, 
                                                params.useVerilator,
                                                params.writeVcd)
+            logger.info(s"""Started generating hardware for circuit id:${circuits.length-1} in directory: 
+                        |${params.directory} .""".stripMargin.replaceAll("\n", ""))
             new Thread(circuits.last).start()
             if (circuits.last.isGenerated.await(params.generationTimeoutSec, TimeUnit.SECONDS)) {
+                logger.info("Succesfully generated circuit.")
                 Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1, 
                                                         err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS, 
                                                                    msg = "Successfully generated verilog."))))
             } else {
+                logger.error("Circuit generation timed-out, please try again with a longer timeout.")
                 Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1, 
                                                         err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.FAIL, 
                                                                    msg = "Error generating circuit."))))
