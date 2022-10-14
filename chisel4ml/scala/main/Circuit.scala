@@ -18,6 +18,7 @@ import _root_.lbir.{QTensor, Model}
 import _root_.services.GenerateCircuitParams.Options
 
 import _root_.scala.util.control.Breaks._
+import _root_.java.nio.file.{Path, Paths}
 import _root_.java.util.concurrent.TimeUnit
 import _root_.java.util.concurrent.CountDownLatch
 import _root_.java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
@@ -25,7 +26,7 @@ import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
 
-class Circuit(model: Model, options: Options, directory: String, useVerilator: Boolean, writeVcd: Boolean) 
+class Circuit(model: Model, options: Options, directory: Path, useVerilator: Boolean, genVcd: Boolean) 
 extends Runnable {
     case class ValidQTensor(qtensor: QTensor, valid: Boolean)
     val logger = LoggerFactory.getLogger(classOf[Circuit])
@@ -35,9 +36,10 @@ extends Runnable {
     val isSimple = options.isSimple
     val isGenerated = new CountDownLatch(1)
     val isStoped = new CountDownLatch(1)
+    val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString 
     
-    var annot: AnnotationSeq = Seq(TargetDirAnnotation(directory)) // TODO - work with .pb instead of .lo.fir
-    if (writeVcd) annot = annot :+ WriteVcdAnnotation
+    var annot: AnnotationSeq = Seq(TargetDirAnnotation(relDir)) // TODO - work with .pb instead of .lo.fir
+    if (genVcd) annot = annot :+ WriteVcdAnnotation
     if (useVerilator) annot = annot :+ VerilatorBackendAnnotation
     
     def stopSimulation(): Unit = {
@@ -57,7 +59,7 @@ extends Runnable {
 
     private def runSimple(dut: ProcessingPipelineSimple): Unit = {
         if (!useVerilator) {
-            (new FirrtlStage).execute(Array("--input-file", s"$directory/ProcessingPipelineSimple.lo.fir",
+            (new FirrtlStage).execute(Array("--input-file", s"$relDir/ProcessingPipelineSimple.lo.fir",
                                             "--start-from", "low", "-E", "sverilog"), annot)
         }
         isGenerated.countDown()
@@ -75,7 +77,7 @@ extends Runnable {
 
     private def runSequential(dut: ProcessingPipeline): Unit = {
         if (!useVerilator) {
-            (new FirrtlStage).execute(Array("--input-file", s"$directory/ProcessingPipeline.lo.fir",
+            (new FirrtlStage).execute(Array("--input-file", s"$relDir/ProcessingPipeline.lo.fir",
                                             "--start-from", "low", "-E", "sverilog"), annot)
         }
         isGenerated.countDown() // Let the main thread now that the dut has been succesfully generated

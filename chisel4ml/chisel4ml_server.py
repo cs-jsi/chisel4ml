@@ -1,9 +1,11 @@
+import os
 import atexit
 import signal
 import subprocess
 import logging
-
+import tempfile
 from pathlib import Path
+import shutil
 
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
@@ -20,12 +22,16 @@ server = None
 class Chisel4mlServer:
     """ Handles the creation of a subprocess, it is used to safely start the chisel4ml server. """
 
-    def __init__(self, command, host: str = 'localhost', port: int = 50051):
+    def __init__(self, command, temp_dir, host: str = 'localhost', port: int = 50051):
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+        os.mkdir(temp_dir)
+
         self._server_addr = host + ':' + str(port)
         self._channel = None
         self._stub = None
-        self._log_file = open('chisel4ml_server.log', 'w')
-        self.task = subprocess.Popen(command,
+        self._log_file = open(os.path.join(temp_dir, 'chisel4ml_server.log'), 'w+')
+        self.task = subprocess.Popen(command + [temp_dir],
                                      stdout=self._log_file,
                                      stderr=self._log_file)
         log.info(f"Started task with pid: {self.task.pid}.")
@@ -80,6 +86,7 @@ def start_server_once():
     global server
 
     if server is None:
-        server = Chisel4mlServer(command=['java', '-Xms6500M', '-jar', str(Path('bin', 'chisel4ml.jar'))])
+        server = Chisel4mlServer(command=['java', '-Xms6500M', '-jar', str(Path('bin', 'chisel4ml.jar'))],
+                                 temp_dir=os.path.join(tempfile.gettempdir(), "chisel4ml"))
 
     return server

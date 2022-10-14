@@ -4,7 +4,7 @@
  */
 package chisel4ml
 
-import _root_.java.nio.file.{Files, Paths}
+import _root_.java.nio.file.{Files, Path, Paths}
 import _root_.java.util.concurrent.TimeUnit
 import _root_.scala.concurrent.{ExecutionContext, Future}
 
@@ -31,15 +31,17 @@ import _root_.org.slf4j.LoggerFactory
   */
 object Chisel4mlServer {
     private val port = 50051
-
+   
     def main(args: Array[String]): Unit = {
-        val server = new Chisel4mlServer(ExecutionContext.global)
+        require(args.length > 0, "No argument list, you should provide an argument as a directory.")
+        require(Files.exists(Paths.get(args(0))), "Provided directory doesn't exist.")
+        val server = new Chisel4mlServer(ExecutionContext.global, tempDir=args(0))
         server.start()
         server.blockUntilShutdown()
     }
 }
 
-class Chisel4mlServer(executionContext: ExecutionContext) { self =>
+class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { self =>
     private[this] var server: Server = null
     private var circuits: Seq[Circuit] = Seq() // Holds the circuit and simulation object
     val logger = LoggerFactory.getLogger(classOf[Chisel4mlServer])
@@ -65,15 +67,14 @@ class Chisel4mlServer(executionContext: ExecutionContext) { self =>
     private def blockUntilShutdown(): Unit = { if (server != null) { server.awaitTermination() } }
 
     private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
-
         override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
-            circuits = circuits :+ new Circuit(params.model.get, 
-                                               params.options.get, 
-                                               params.directory, 
-                                               params.useVerilator,
-                                               params.writeVcd)
-            logger.info(s"""Started generating hardware for circuit id:${circuits.length-1} in directory: 
-                        |${params.directory} .""".stripMargin.replaceAll("\n", ""))
+            val circuitId = circuits.length 
+            circuits = circuits :+ new Circuit(model = params.model.get, 
+                                               options = params.options.get, 
+                                               directory = Path.of(tempDir, s"circuit$circuitId"), 
+                                               useVerilator = params.useVerilator,
+                                               genVcd = params.genVcd)
+            logger.info(s"Started generating hardware for circuit id:$circuitId in temporary directory.")
             new Thread(circuits.last).start()
             if (circuits.last.isGenerated.await(params.generationTimeoutSec, TimeUnit.SECONDS)) {
                 logger.info("Succesfully generated circuit.")

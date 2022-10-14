@@ -64,6 +64,7 @@ object WeightsProvider {
 
 final class LbirUtil
 object LbirUtil {
+    var cnt = 0
     val logger = LoggerFactory.getLogger(classOf[LbirUtil])
     
     def transformWeights[T <: Bits : WeightsProvider](tensor: QTensor): Seq[Seq[T]] = {
@@ -75,4 +76,10 @@ object LbirUtil {
     }
 
     def log2(x: Int): Int = (log(x) / log(2)).toInt
+
+    def createHexMemoryFile(tensor: QTensor): String = {
+        val ret = f"mem$cnt.hex"
+        cnt = cnt + 1
+        ret
+    }
 }
