@@ -27,7 +27,7 @@ object ThreshProvider {
     // Binarized neurons
     implicit object ThreshProviderUInt extends ThreshProvider[UInt] {
         def instance(tensor: QTensor, fanIn: Int): Seq[UInt] = {
-            LbirUtil.logger.info(s"""Transformed input tensor of thresholds to a Seq[UInt]. The input fan-in is
+            LbirUtil.logger.debug(s"""Transformed input tensor of thresholds to a Seq[UInt]. The input fan-in is
                                      | fanIn""".stripMargin.replaceAll("\n", ""))
             tensor.values.map(x => (fanIn + x) / 2).map(_.ceil).map(_.toInt.U)
         }
@@ -35,7 +35,7 @@ object ThreshProvider {
     
     implicit object ThreshProviderSInt extends ThreshProvider[SInt] {
         def instance(tensor: QTensor, fanIn: Int): Seq[SInt] = {
-            LbirUtil.logger.info(s"""Transformed input tensor of thresholds to a Seq[SInt].""")
+            LbirUtil.logger.debug(s"""Transformed input tensor of thresholds to a Seq[SInt].""")
             tensor.values.map(_.toInt.S(tensor.dtype.get.bitwidth.W))
         }
     }
@@ -52,14 +52,14 @@ object WeightsProvider {
     
     implicit object WeightsProviderBool extends WeightsProvider[Bool] {
         def instance(tensor: QTensor): Seq[Seq[Bool]] = {
-            LbirUtil.logger.info(s"""Transformed input tensor of weights to a Seq[Seq[Bool]].""")
+            LbirUtil.logger.debug(s"""Transformed input tensor of weights to a Seq[Seq[Bool]].""")
             tensor.values.map(_ > 0).map(_.B).grouped(tensor.shape(1)).toSeq.transpose
         }
     }
     
     implicit object WeightsProviderSInt extends WeightsProvider[SInt] {
         def instance(tensor: QTensor): Seq[Seq[SInt]] = {
-            LbirUtil.logger.info(s"""Transformed input tensor of weights to a Seq[Seq[SInt]].""")
+            LbirUtil.logger.debug(s"""Transformed input tensor of weights to a Seq[Seq[SInt]].""")
             tensor.values.map(_.toInt.S).grouped(tensor.shape(1)).toSeq.transpose
         }
     }
@@ -93,6 +93,7 @@ object LbirUtil {
         val writer = new BufferedWriter(new FileWriter(fPath.toString))
         writer.write(tensor.toHexStr)
         writer.close()
+        logger.debug(s"Created new memory file: ${fPath.toString}.")
         cnt = cnt + 1
         relPath.toString
     }

@@ -8,7 +8,7 @@ import _root_.chisel4ml._
 import _root_.lbir._
 
 
-class PeSequentialTests extends AnyFlatSpec with ChiselScalatestTester {
+class PeSequentialTestsTemp extends AnyFlatSpec with ChiselScalatestTester {
     behavior of "ProcessingElementSequential"
 
     val lbirLayer = lbir.Layer(
@@ -57,19 +57,24 @@ class PeSequentialTests extends AnyFlatSpec with ChiselScalatestTester {
         activation = Option(lbir.Activation(lbir.Activation.Function.RELU))
         )
 
-    it should "Test Sequential behavior for wrapped simple PEs." in {
-        test(new ProcessingElementWrapSimpleToSequential(lbirLayer, Options())) { c =>
+    it should "send data through the pipeline." in {
+   		test(new ProcessingElementSequentialConv(lbirLayer, Options())).withAnnotations(Seq(VerilatorBackendAnnotation)) { c =>
             c.io.inStream.data.initSource()
             c.io.inStream.data.setSourceClock(c.clock)
             c.io.outStream.data.initSink()
             c.io.outStream.data.setSinkClock(c.clock)
             
-            c.io.inStream.last.poke(true.B)
-            c.io.inStream.data.enqueue("b0001_0001_0001".U)
-            c.io.inStream.last.poke(false.B)
 
-            c.io.outStream.data.expectDequeue("b0010_0010_0010_0010".U)
-        }
+            c.io.inStream.data.enqueue(3.U(32.W))
+            c.io.inStream.data.enqueue(6.U(32.W))
+            c.io.inStream.data.enqueue(9.U(32.W))
+            c.io.inStream.last.poke(true.B)
+            c.io.inStream.data.enqueue(12.U(32.W))
+            c.io.inStream.last.poke(false.B)
+            c.clock.step()
+            c.clock.step()
+            c.clock.step()
+        } 
     }
     // test(new ProcessingPipeline(new lbirModel)) TODO
 }

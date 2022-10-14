@@ -17,18 +17,9 @@ import _root_.lbir.{Layer}
 import _root_.services.GenerateCircuitParams.Options
 import _root_.scala.math
 
-import _root_.org.slf4j.Logger
-import _root_.org.slf4j.LoggerFactory
 
-
-class ProcessingElementSequentialSIMD(layer: Layer, options: Options) 
-extends ProcessingElementSequential(layer, options) {
-    val logger = LoggerFactory.getLogger(classOf[ProcessingElementSequentialSIMD])
-    // Output data register
-    logger.info(s"""Creating new ProcessingElementSequentialSIMD with inSizeBits: $inSizeBits,
-                    | numInTrans: $numInTrans, outSizeBits: $outSizeBits, numOutTrans: $numOutTrans
-                    .""".stripMargin.replaceAll("\n",""))
-                    
+class ProcessingElementSequentialConv(layer: Layer, options: Options) 
+extends ProcessingElementSequential(layer, options) {                    
     val inReg = RegInit(0.U(inputStreamWidth.W))
     
     val sramMemDepth = 4

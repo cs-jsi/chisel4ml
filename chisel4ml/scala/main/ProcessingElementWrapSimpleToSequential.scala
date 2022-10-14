@@ -16,22 +16,14 @@ import _root_.lbir.{Layer}
 import _root_.services.GenerateCircuitParams.Options
 import _root_.scala.math
 
-import _root_.org.slf4j.Logger
-import _root_.org.slf4j.LoggerFactory
 
 class ProcessingElementWrapSimpleToSequential(layer: Layer, options: Options) 
 extends ProcessingElementSequential(layer, options) {
-    val logger = LoggerFactory.getLogger(classOf[ProcessingElementWrapSimpleToSequential])
-
     // Input data register
     val inReg = RegInit(VecInit(Seq.fill(numInTrans)(0.U(inputStreamWidth.W)))) 
     val inCntReg = RegInit(0.U((log2(numInTrans) + 1).W))
     val inRegFull = inCntReg === numInTrans.U
 
-    // Output data register
-    logger.info(s"""Creating new ProcessingElementWrapSimpleToSequential with inSizeBits: $inSizeBits,
-                    | numInTrans: $numInTrans, outSizeBits: $outSizeBits, numOutTrans: $numOutTrans
-                    .""".stripMargin.replaceAll("\n",""))
     val outReg = RegInit(VecInit(Seq.fill(numOutTrans)(0.U(outputStreamWidth.W))))
     val outRegUInt = Wire(UInt((numOutTrans*outputStreamWidth).W))
     val outCntReg = RegInit(0.U((log2(numOutTrans) + 1).W))

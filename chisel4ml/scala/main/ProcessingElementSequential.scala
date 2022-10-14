@@ -15,7 +15,12 @@ import _root_.chisel4ml.util.LbirUtil.log2
 import _root_.lbir.{Layer}
 import _root_.services.GenerateCircuitParams.Options
 
+import _root_.org.slf4j.LoggerFactory
+
+
 abstract class ProcessingElementSequential(layer: Layer, options: Options) extends Module {
+    val logger = LoggerFactory.getLogger(this.getClass())
+                    
     val inputStreamWidth = 32
     val outputStreamWidth = 32
 
@@ -29,6 +34,11 @@ abstract class ProcessingElementSequential(layer: Layer, options: Options) exten
         val inStream = Flipped(new AXIStream(inputStreamWidth))
         val outStream = new AXIStream(outputStreamWidth)
     })
+    
+    logger.info(s"""Created new ProcessingElementSequentialConv with inSizeBits: $inSizeBits,
+                | numInTrans: $numInTrans, outSizeBits: $outSizeBits, numOutTrans: $numOutTrans,
+                | inputStreamWidth: $inputStreamWidth, outputStreamWidth: $outputStreamWidth.
+                |""".stripMargin.replaceAll("\n",""))
 }
 
 object ProcessingElementSequential {
