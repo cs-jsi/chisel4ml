@@ -35,6 +35,13 @@ package object chisel4ml {
         }
 
         def totalBitwidth: Int = qt.dtype.get.bitwidth * qt.shape.reduce(_ * _)
+
+        def toHexStr: String = {
+            """abcd
+0123
+4444
+ffff"""
+        }
     }
 
     implicit class BigIntSeqToUInt(x: Seq[BigInt]) {

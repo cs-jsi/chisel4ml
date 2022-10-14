@@ -5,8 +5,11 @@
 package chisel4ml.util
 
 import chisel3._
+import chisel4ml._
 import _root_.lbir._
 
+import _root_.java.nio.file.{Path, Paths}
+import _root_.java.io.{BufferedWriter, FileWriter}
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
@@ -64,7 +67,14 @@ object WeightsProvider {
 
 final class LbirUtil
 object LbirUtil {
-    var cnt = 0
+    var cnt: Int = 0
+    var directory: Path = Paths.get("")
+
+    def setDirectory(dir: Path) = {
+        directory = dir
+        cnt = 0
+    }
+
     val logger = LoggerFactory.getLogger(classOf[LbirUtil])
     
     def transformWeights[T <: Bits : WeightsProvider](tensor: QTensor): Seq[Seq[T]] = {
@@ -78,8 +88,12 @@ object LbirUtil {
     def log2(x: Int): Int = (log(x) / log(2)).toInt
 
     def createHexMemoryFile(tensor: QTensor): String = {
-        val ret = f"mem$cnt.hex"
+        val fPath = Path.of(directory.toString, s"mem$cnt.hex").toAbsolutePath()
+        val relPath = Paths.get("").toAbsolutePath().relativize(fPath)
+        val writer = new BufferedWriter(new FileWriter(fPath.toString))
+        writer.write(tensor.toHexStr)
+        writer.close()
         cnt = cnt + 1
-        ret
+        relPath.toString
     }
 }

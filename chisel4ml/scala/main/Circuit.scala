@@ -36,7 +36,8 @@ extends Runnable {
     val isSimple = options.isSimple
     val isGenerated = new CountDownLatch(1)
     val isStoped = new CountDownLatch(1)
-    val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString 
+    val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString
+    LbirUtil.setDirectory(directory)
     
     var annot: AnnotationSeq = Seq(TargetDirAnnotation(relDir)) // TODO - work with .pb instead of .lo.fir
     if (genVcd) annot = annot :+ WriteVcdAnnotation
