@@ -26,7 +26,11 @@ import _root_.lbir.{Layer}
 import _root_.services.GenerateCircuitParams.Options
 import _root_.scala.math
 
-
+/** A sequential processing element for convolutions.
+ *
+ *  This hardware module can handle two-dimensional convolutions of various types, and also can adjust
+ *  the aritmetic units depending on the quantization type. It does not take advantage of sparsity.
+ */
 class ProcessingElementSequentialConv(layer: Layer, options: Options) 
 extends ProcessingElementSequential(layer, options) {                    
     val inReg = RegInit(0.U(inputStreamWidth.W))
