@@ -31,3 +31,6 @@ exclude = [
       '^services_pb2_grpc\.py$',
       '^server_manager\.py$',
     ]
+
+[tool.black]
+skip-string-normalization = true
