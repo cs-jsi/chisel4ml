@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+package chisel4ml
+
 import _root_.chisel3._
 import _root_.lbir.{QTensor, Datatype}
 import _root_.lbir.Datatype.QuantizationType.BINARY
@@ -22,7 +23,7 @@ import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 import _root_.scala.math.pow
 
-package object chisel4ml {
+package object implicits {
     val logger = LoggerFactory.getLogger("chisel4ml")
     
     def toBinary(i: Int, digits: Int = 8): String = String.format(s"%${digits}s", 

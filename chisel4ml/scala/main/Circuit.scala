@@ -24,6 +24,7 @@ import _root_.chiseltest._
 import _root_.chiseltest.simulator.WriteVcdAnnotation
 
 import _root_.chisel4ml.util.LbirUtil
+import _root_.chisel4ml.implicits._
 import _root_.chisel4ml.ProcessingPipelineSimple
 import _root_.lbir.{QTensor, Model}
 import _root_.services.GenerateCircuitParams.Options

@@ -5,6 +5,7 @@ import _root_.chisel4ml.util.LbirUtil
 import _root_.lbir.{QTensor, Datatype}
 import _root_.lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
 import _root_.chisel4ml._
+import _root_.chisel4ml.implicits._
 import _root_.chisel3._
 
 class LbirChiselConversionTests extends AnyFunSuite {

@@ -38,11 +38,10 @@ import _root_.treadle.TreadleTester
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
-/** 
- * Contains the main function.
+/** Contains the main function.
  *
- * Contains the main function that is the main entry point to the the software, and it starts a chisel4ml 
- * server instance.
+ *  Contains the main function that is the main entry point to the the software, and it starts a chisel4ml 
+ *  server instance.
  */
 object Chisel4mlServer {
     private val port = 50051
@@ -56,6 +55,11 @@ object Chisel4mlServer {
     }
 }
 
+/** The server implementation based on gRPC.
+ *
+ *  Implementation of the gRPC based Chisel4ml server.  It implements the services as defined by gRPC in the
+ *  service.proto file. It also has conveinance functions for starting and stoping the server.
+ */
 class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { self =>
     private[this] var server: Server = null
     private var circuits: Seq[Circuit] = Seq() // Holds the circuit and simulation object

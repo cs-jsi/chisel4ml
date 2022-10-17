@@ -18,6 +18,7 @@ package chisel4ml
 import chisel3._
 import chisel3.util._
 
+import _root_.chisel4ml.implicits._
 import _root_.chisel4ml.util.bus.AXIStream
 import _root_.chisel4ml.util.SRAM
 import _root_.chisel4ml.util.LbirUtil.log2

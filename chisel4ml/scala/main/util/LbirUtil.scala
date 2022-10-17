@@ -16,7 +16,8 @@
 package chisel4ml.util
 
 import chisel3._
-import chisel4ml._
+import _root_.chisel4ml._
+import _root_.chisel4ml.implicits._
 import _root_.lbir._
 
 import _root_.java.nio.file.{Path, Paths}

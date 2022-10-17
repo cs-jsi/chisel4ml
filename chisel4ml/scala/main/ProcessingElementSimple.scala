@@ -23,6 +23,7 @@ import _root_.lbir.Datatype.QuantizationType._
 import _root_.lbir.Activation.Function._
 import _root_.services.GenerateCircuitParams.Options
 import _root_.chisel4ml.util._
+import _root_.chisel4ml.implicits._
 
 import scala.math.pow
 import _root_.org.slf4j.Logger

@@ -29,6 +29,7 @@ val scalatestVersion = "3.2.7"
 lazy val root = (project in file("."))
   .settings(
     name := "chisel4ml",
+    Compile / doc / scalacOptions := Seq("-groups", "-implicits"),
     libraryDependencies ++= Seq(
       "edu.berkeley.cs"            %% "chisel3"              % chiselVersion,
       "edu.berkeley.cs"            %% "chiseltest"           % "0.5.4",
