@@ -22,8 +22,7 @@ import tensorflow as tf
 
 def qkeras_to_lbir(model: tf.keras.Model, name="chisel4ml_model") -> lbir.Model:
     "Applys transformation to a Keras model, and returns a LBIR model."
-    nmodel = qkeras.utils.clone_model(model)
-    xlayers = nmodel.layers
+    xlayers = model.layers
 
     lbir_model = lbir.Model()
     lbir_model.name = name
@@ -33,13 +32,12 @@ def qkeras_to_lbir(model: tf.keras.Model, name="chisel4ml_model") -> lbir.Model:
         while r < len(xlayers):
             assert r > l
             if trans.is_applicable(xlayers[l:r]):
-                xlayers[l:r] = opt(xlayers[l:r])
+                xlayers[l:r] = trans(xlayers[l:r])
             else:
                 l = l + 1
                 r = r + 1
-    return xlayers
-    #for lay in layer:
-    #    assert isinstance(lay, lbir.Layer)
-    #lbir_model.layers.extend(xlayers)
-    #assert is_valid_lbir_model(lbir_model)
-    #return lbir_model
+    for lay in layer:
+        assert isinstance(lay, lbir.Layer)
+    lbir_model.layers.extend(xlayers)
+    assert is_valid_lbir_model(lbir_model)
+    return lbir_model

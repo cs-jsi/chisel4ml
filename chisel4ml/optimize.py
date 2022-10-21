@@ -15,8 +15,10 @@
 from chisel4ml.optimizations import qkeras_opt_list
 from tensorflow_model_optimization.python.core.sparsity.keras import prune
 
+from tensorflow.keras.layers import Input
 import tensorflow as tf
 import qkeras
+import copy
 
 import collections
 import itertools
@@ -47,7 +49,9 @@ def qkeras_model(model, skip_list=[]):
                 l = l + 1
                 r = r + 1
 	
-    nmodel = tf.keras.models.Sequential(xlayers)
+    nmodel = tf.keras.models.Sequential([Input(shape=784)] + xlayers)
     nmodel.build(input_shape=model.input_shape)
-    nmodel.compile(loss=model.loss, metrics=['accuracy'])
+    nmodel.compile(optimizer=model.optimizer,
+                   loss=model.loss,
+                   metrics=['accuracy'])
     return nmodel

@@ -30,7 +30,8 @@ class QKerasQDenseQActFuse(QKerasTransform):
     order = 1
 
     def _call_impl(self, layers):
-        assert (layers[0].activation is None) or isinstance(layers[0].activation, linear), \
+        # linear is a function, not a class (hence the is)
+        assert (layers[0].activation is None) or (layers[0].activation is linear), \
                 f"""The QDense layer {layer} has an activation that is not linear, and is followed by a different 
                     activation. The activation in qdense is {layers[0].activation} and the sepereate activation is 
                     {layers[1]}."""
