@@ -11,19 +11,6 @@ import qkeras
 import pytest
 
 
-@pytest.mark.parametrize("layer", [
-    tf.keras.layers.Dropout(0.5),
-    tf.keras.layers.InputLayer()
-    ])
-def test_remove_dead_layer_opt(layer):
-    """
-        Tests the optimization removes all the inactive layers as it should.
-    """
-    opt = QKerasRemoveDeadLayersOptimization()
-    assert hasattr(opt([layer])[0], 'c4ml_remove_layer'), \
-        f"The optimization {opt} was suppose to optimize away the {layer} layer."
-
-
 def test_check_num_layers_functionality():
     """
         The optimization for the input layer expects a list of length one. This test makes sure whether the
@@ -33,19 +20,6 @@ def test_check_num_layers_functionality():
     opt = QKerasRemoveDeadLayersOptimization()
     with pytest.raises(AssertionError):
         opt([layer, layer])
-
-
-def test_activation_fold_opt():
-    """
-        The activation fold in the seperate activation layer into the active layer.
-    """
-    l0 = qkeras.QDense(64, kernel_quantizer=qkeras.binary())
-    l1 = qkeras.QActivation(qkeras.binary())
-    opt = QKerasActivationFold()
-    opt_layers = opt([l0, l1])
-    assert (hasattr(opt_layers[1], 'c4ml_remove_layer') and
-            type(opt_layers[0]) is qkeras.QDense and
-            isinstance(opt_layers[0].activation, type(l1.activation)))
 
 
 def test_bn_qdense_binary_fuse_opt(bnn_qdense_bn_sign_act):

@@ -46,11 +46,10 @@ class QKerasBNQDenseBinaryFuse(QKerasOptimization):
         b = layers[0].bias
         thresh = (mm - b) - div(mul(sqrt(mv + epsilon), beta), gamma)
         layers[0].bias = -thresh
-        layers[1].c4ml_remove_layer = True
-        return layers
+        return [layers[0], layers[2]]
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
-        return (type(layers[0]) is qkeras.QDense and
-                type(layers[1]) is BatchNormalization and
-                type(layers[2]) is qkeras.QActivation and
-                type(layers[2].activation) is qkeras.quantizers.binary)
+        return (isinstance(layers[0], qkeras.QDense) and
+                isinstance(layers[1], BatchNormalization) and
+                isinstance(layers[2], qkeras.QActivation) and
+                isinstance(layers[2].activation, qkeras.quantizers.binary))

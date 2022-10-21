@@ -43,9 +43,8 @@ class QKerasBNQDenseFuse(QKerasOptimization):
         inv = gamma * rsqrt(mv + epsilon)
         layers[0].kernel = inv * w
         layers[0].bias = (inv * (b - mm)) + beta
-        layers[1].c4ml_remove_layer = True
-        return layers
+        return [layers[0]]
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
-        return (type(layers[0]) is qkeras.QDense and
-                type(layers[1]) is BatchNormalization)
+        return (isinstance(layers[0], qkeras.QDense) and
+                isinstance(layers[1], BatchNormalization))

@@ -44,14 +44,13 @@ message Layer {
 message QTensor {
     Datatype dtype = 1;
     repeated uint32 shape = 2;
-    repeated float values = 3; // [(scalapb.field).collection_type="scala.collection.immutable.ArraySeq"];
+    repeated float values = 3; 
 }
 
 message Datatype {
     enum QuantizationType {
         UNIFORM = 0;
         BINARY = 1;
-        TERNARY = 3;
     }
     QuantizationType quantization = 1;
     bool signed = 2;
