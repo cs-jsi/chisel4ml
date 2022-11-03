@@ -16,6 +16,7 @@ from chisel4ml.optimizations import qkeras_opt_list
 from tensorflow_model_optimization.python.core.sparsity.keras import prune
 
 from tensorflow.keras.layers import Input
+from tensorflow.keras.models import Model
 import tensorflow as tf
 import qkeras
 import copy
@@ -28,30 +29,18 @@ log = logging.getLogger(__name__)
 
 def qkeras_model(model, skip_list=[]):
     "Applys optimizations to the model."
-    nmodel = qkeras.utils.clone_model(model)
-
-    # We first strip the model of any pruning layers.
-    nmodel = prune.strip_pruning(nmodel)
-    
-    # We convert any functional models to sequential. Only sequential models are supported currently
-    xlayers = nmodel.layers
-
+    new_model = qkeras.utils.clone_model(model) 
     for opt in qkeras_opt_list:
         if opt.__class__.__name__ in skip_list:
             continue
         l = 0
         r = opt.num_layers
-        while r < len(xlayers):
+        while r < len(new_model.layers):
             assert r > l
-            if opt.is_applicable(xlayers[l:r]):
-                xlayers[l:r] = opt(xlayers[l:r])
+            if opt.is_applicable(new_model.layers[l:r]):
+                new_model = opt(new_model, new_model.layers[l:r])
             else:
                 l = l + 1
                 r = r + 1
-	
-    nmodel = tf.keras.models.Sequential([Input(shape=784)] + xlayers)
-    nmodel.build(input_shape=model.input_shape)
-    nmodel.compile(optimizer=model.optimizer,
-                   loss=model.loss,
-                   metrics=['accuracy'])
-    return nmodel
+
+    return new_model

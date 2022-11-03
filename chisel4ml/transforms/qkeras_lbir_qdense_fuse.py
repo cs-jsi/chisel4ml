@@ -27,10 +27,10 @@ class QKerasLbirQDenseFuse(QKerasTransform):
     order = 2
 
     def _call_impl(self, layers):
-        assert not isinstance(layers[1].activation, linear)
+        assert not layers[1].activation is linear
         lbir_layer = lbir.Layer()
-        lbir_layer = qkeras_base_transform(layers[1])
-        lbir_layer = qkeras_add_input_tensor(layers[0])
+        #lbir_layer = qkeras_base_transform(layers[1])
+        #lbir_layer = qkeras_add_input_tensor(layers[0])
         return [lbir_layer]
         
     def is_applicable(self, layers) -> bool:

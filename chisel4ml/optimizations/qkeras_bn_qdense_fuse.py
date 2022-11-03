@@ -16,10 +16,12 @@ import qkeras
 
 from tensorflow.keras.layers import Layer as KerasLayer
 from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.models import Model as KerasModel
 from tensorflow.math import rsqrt
 
 from typing import Sequence
 
+from tf2kerassurgeon.operations import delete_layer
 from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
 from chisel4ml.optimizations import register_qkeras_optimization
 
@@ -32,7 +34,7 @@ class QKerasBNQDenseFuse(QKerasOptimization):
     num_layers = 2
     order = 3
 
-    def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
+    def _call_impl(self, model: KerasModel, layers: Sequence[KerasLayer]) -> KerasModel:
         mm = layers[1].moving_mean
         mv = layers[1].moving_variance
         beta = layers[1].beta
@@ -43,7 +45,7 @@ class QKerasBNQDenseFuse(QKerasOptimization):
         inv = gamma * rsqrt(mv + epsilon)
         layers[0].kernel = inv * w
         layers[0].bias = (inv * (b - mm)) + beta
-        return [layers[0]]
+        return delete_layer(model, layers[1], copy=False)
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
         return (isinstance(layers[0], qkeras.QDense) and
