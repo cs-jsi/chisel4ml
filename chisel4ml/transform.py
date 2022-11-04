@@ -24,8 +24,7 @@ import tensorflow as tf
 
 def qkeras_to_lbir(model: tf.keras.Model, name="chisel4ml_model") -> lbir.Model:
     "Applys transformation to a Keras model, and returns a LBIR model."
-    orig_cfg = copy.deepcopy(model.get_config())
-
+    model_copy = qkeras.utils.clone_model(model)
     lbir_model = lbir.Model()
     lbir_model.name = name
     for trans in qkeras_trans_list:

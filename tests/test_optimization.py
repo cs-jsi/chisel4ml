@@ -1,5 +1,3 @@
-from chisel4ml.optimizations.qkeras_remove_dead_layers import QKerasRemoveDeadLayersOptimization
-from chisel4ml.optimizations.qkeras_activation_fold import QKerasActivationFold
 from chisel4ml.optimizations.qkeras_bn_qdense_binary_fuse import QKerasBNQDenseBinaryFuse
 from chisel4ml import optimize
 from math import isclose
@@ -9,17 +7,6 @@ from tensorflow.keras.datasets import mnist
 import numpy as np
 import qkeras
 import pytest
-
-
-def test_check_num_layers_functionality():
-    """
-        The optimization for the input layer expects a list of length one. This test makes sure whether the
-        the optimizations check for this.
-    """
-    layer = tf.keras.layers.InputLayer()
-    opt = QKerasRemoveDeadLayersOptimization()
-    with pytest.raises(AssertionError):
-        opt([layer, layer])
 
 
 def test_bn_qdense_binary_fuse_opt(bnn_qdense_bn_sign_act):
@@ -73,6 +60,7 @@ def test_sint_mnist_qdense_relu_opt(sint_mnist_qdense_relu):
     y_test = tf.one_hot(y_test, 10)
     (_, acc) = sint_mnist_qdense_relu.evaluate(x_test, y_test, verbose=0)
     opt_model = optimize.qkeras_model(sint_mnist_qdense_relu)
+    opt_model.compile(optimizer="adam", loss='categorical_crossentropy', metrics=['accuracy'])
     (_, acc_opt) = opt_model.evaluate(x_test, y_test, verbose=0)
     assert isclose(acc, acc_opt, abs_tol=0.03), \
         f"The prediction of the optimized model should be with in 3 percent of the original model. Numerical " \

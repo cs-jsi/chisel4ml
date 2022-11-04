@@ -14,6 +14,7 @@
 
 import qkeras
 
+import tensorflow as tf
 from tensorflow.keras.layers import Layer as KerasLayer
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.models import Model as KerasModel
@@ -43,8 +44,15 @@ class QKerasBNQDenseFuse(QKerasOptimization):
         b = layers[0].bias if layers[0].use_bias else 0
         w = layers[0].kernel
         inv = gamma * rsqrt(mv + epsilon)
-        layers[0].kernel = inv * w
-        layers[0].bias = (inv * (b - mm)) + beta
+        layers[0].kernel.assign(w * inv)
+        if not layers[0].use_bias:
+            layers[0].use_bias = True
+            layers[0].bias = layers[0].add_weight("bias",
+								 shape=[layers[0].units,],
+          						 dtype=layers[0].dtype,
+          						 trainable=True)
+            layers[0].build(input_shape=layers[0]._build_input_shape[1:])
+        layers[0].bias.assign(((b - mm) * inv) + beta)
         return delete_layer(model, layers[1], copy=False)
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
