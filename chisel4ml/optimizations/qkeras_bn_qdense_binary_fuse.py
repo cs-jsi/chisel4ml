@@ -16,6 +16,7 @@ import qkeras
 import numpy as np
 
 from tensorflow.keras.layers import Layer as KerasLayer
+from tensorflow.keras.models import Model as KerasModel
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.math import sqrt
 from tensorflow.math import multiply as mul
@@ -23,6 +24,7 @@ from tensorflow.math import truediv as div
 
 from typing import Sequence
 
+from tf2kerassurgeon.operations import delete_layer
 from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
 from chisel4ml.optimizations import register_qkeras_optimization
 
@@ -36,7 +38,7 @@ class QKerasBNQDenseBinaryFuse(QKerasOptimization):
     num_layers = 3
     order = 2
 
-    def _call_impl(self, layers: Sequence[KerasLayer]) -> Sequence[KerasLayer]:
+    def _call_impl(self, model: KerasModel, layers: Sequence[KerasLayer]) -> KerasModel:
         mm = layers[1].moving_mean
         mv = layers[1].moving_variance
         beta = layers[1].beta
@@ -45,8 +47,8 @@ class QKerasBNQDenseBinaryFuse(QKerasOptimization):
         assert np.amin(gamma) > 0
         b = layers[0].bias
         thresh = (mm - b) - div(mul(sqrt(mv + epsilon), beta), gamma)
-        layers[0].bias = -thresh
-        return [layers[0], layers[2]]
+        layers[0].bias.assign(-thresh)
+        return delete_layer(model, layers[1], copy=False)
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
         return (isinstance(layers[0], qkeras.QDense) and

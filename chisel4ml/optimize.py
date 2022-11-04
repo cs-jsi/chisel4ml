@@ -29,7 +29,9 @@ log = logging.getLogger(__name__)
 
 def qkeras_model(model, skip_list=[]):
     "Applys optimizations to the model."
-    new_model = qkeras.utils.clone_model(model) 
+    new_model = prune.strip_pruning(model) 
+    new_model = qkeras.utils.clone_model(new_model)
+
     for opt in qkeras_opt_list:
         if opt.__class__.__name__ in skip_list:
             continue

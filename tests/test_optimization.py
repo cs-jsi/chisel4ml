@@ -12,21 +12,19 @@ import pytest
 def test_bn_qdense_binary_fuse_opt(bnn_qdense_bn_sign_act):
     """ Tests the fusing of binary qdense layer with a batch normalization layer. """
     org_model = bnn_qdense_bn_sign_act
-    new_model = tf.keras.models.clone_model(bnn_qdense_bn_sign_act)
-    new_model.build((None, 2))
+    new_model = qkeras.utils.clone_model(bnn_qdense_bn_sign_act)
     new_model.compile(optimizer='adam', loss='squared_hinge')
-    new_model.set_weights(org_model.get_weights())
     l0 = new_model.layers[0]
     l1 = new_model.layers[1]
     l2 = new_model.layers[2]
     opt = QKerasBNQDenseBinaryFuse()
     assert opt.is_applicable([l0, l1, l2])
-    opt_layers = opt([l0, l1, l2])
-    assert hasattr(opt_layers[1], 'c4ml_remove_layer')
+    new_model = opt(new_model, [l0, l1, l2])
+    assert not isinstance(new_model.layers[1], tf.keras.layers.BatchNormalization)
     for i0 in [+1., -1.]:
         for i1 in [+1., -1.]:
             org_res = org_model.predict(np.array([i0, i1]).reshape(1, 2))
-            opt_res = opt_layers[2](opt_layers[0](np.array([i0, i1]).reshape(1, 2)))
+            opt_res = new_model.predict(np.array([i0, i1]).reshape(1, 2))
             assert tf.reduce_all(tf.math.equal(org_res, opt_res)), \
                 "There seems to be a problem with the BatchNorm fuse operation for binary kerenels. The original " \
                 f"model predicted {org_res} but the optimized version predicted {opt_res} for inputs [{i0},{i1}]." \
@@ -77,6 +75,7 @@ def test_sint_mnist_qdense_relu_pruned_opt(sint_mnist_qdense_relu_pruned):
     y_test = tf.one_hot(y_test, 10)
     (_, acc) = sint_mnist_qdense_relu_pruned.evaluate(x_test, y_test, verbose=0)
     opt_model = optimize.qkeras_model(sint_mnist_qdense_relu_pruned)
+    opt_model.compile(optimizer="adam", loss='categorical_crossentropy', metrics=['accuracy'])
     (_, acc_opt) = opt_model.evaluate(x_test, y_test, verbose=0)
     assert isclose(acc, acc_opt, abs_tol=0.05), \
         f"The prediction of the optimized model should be with in 5 percent of the original model. Numerical " \
