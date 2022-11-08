@@ -30,15 +30,18 @@ message Layer {
         DENSE  = 0;
         CONV2D = 1;
     }
+    enum Activation {
+        BINARY_SIGN = 0;
+        RELU = 1; 
+        NO_ACTIVATION = 2;
+    }
 
     Type ltype = 1; // type is a python keyword
-    bool use_bias = 2;
-    QTensor biases  = 3;
-    QTensor weights = 4;
-    QTensor input = 5;  // no values, just shape / dtype
-    QTensor output = 6; 
-    Activation activation = 7;
-
+    QTensor biases  = 2;
+    QTensor weights = 3;
+    QTensor input = 4;  // no values, just shape / dtype
+    QTensor output = 5; 
+    Activation activation = 6;
 }
 
 message QTensor {
@@ -56,20 +59,9 @@ message Datatype {
     bool signed = 2;
     uint32 bitwidth = 3;
     /*
-       In convolutional layers repeated scale factors signifies a per-channel quantization. In dense layers it 
+       In convolutional layers repeated shift(scale) factors signifies a per-channel quantization. In dense layers it 
        is per neuron.
     */
-    repeated sint32 scale = 4;
+    repeated sint32 shift = 4;
     repeated sint32 offset = 5;
-}
-
-
-message Activation {
-    enum Function {
-        BINARY_SIGN = 0;
-        RELU = 1; 
-        NO_ACTIVATION = 2;
-    }
-    Function fn = 1;
-    uint32 bitwidth = 2;
 }

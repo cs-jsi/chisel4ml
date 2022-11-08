@@ -22,28 +22,29 @@ import qkeras
 import tensorflow as tf
 
 
-def qkeras_to_lbir(model: tf.keras.Model, name="chisel4ml_model") -> lbir.Model:
+def qkeras_to_lbir(model: tf.keras.Model, 
+                   name="chisel4ml_model", 
+                   custom_trans_list=[]) -> lbir.Model:
     "Applys transformation to a Keras model, and returns a LBIR model."
     model_copy = qkeras.utils.clone_model(model)
     lbir_model = lbir.Model()
     lbir_model.name = name
-    for trans in qkeras_trans_list:
+    xlayers = model_copy.layers
+    trans_list = qkeras_trans_list if len(custom_trans_list) == 0 else custom_trans_list
+    for trans in trans_list:
         l = 0
         r = trans.num_layers
-        while r < len(xlayers):
+        while r <= len(xlayers):
             assert r > l
             if trans.is_applicable(xlayers[l:r]):
                 xlayers[l:r] = trans(xlayers[l:r])
             else:
                 l = l + 1
                 r = r + 1
-    new_cfg = model.get_config()
-    # This makes sure we don't change the original model. Cloning the model, is causing wierd behavior so this design
-    # was chosen.
-    return orig_cfg, new_cfg
-    #assert orig_cfg == new_cfg, "It appears that a transformation changed the original model. This is a sign of a bug."
-    #for lay in layer:
-    #    assert isinstance(lay, lbir.Layer)
-    #lbir_model.layers.extend(xlayers)
-    #assert is_valid_lbir_model(lbir_model)
-    #return lbir_model
+
+    for layer in xlayers:
+        assert isinstance(layer, lbir.Layer), (f"Transformation to lbir model failed. Not all layers were able to be " 
+                                               f"transformed to lbir layers.")
+    lbir_model.layers.extend(xlayers)
+    assert is_valid_lbir_model(lbir_model)
+    return lbir_model

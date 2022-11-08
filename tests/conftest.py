@@ -288,12 +288,12 @@ def sint_simple_model() -> tf.keras.Model:
     b2 = np.array([2])
 
     x = x_in = tf.keras.layers.Input(shape=3)
-    x = qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=4))(x)
+    x = qkeras.QActivation(qkeras.quantized_bits(bits=4, integer=3, keep_negative=True))(x)
     x = qkeras.QDense(4, kernel_quantizer=qkeras.quantized_bits(bits=4,
                                                                 integer=3,
                                                                 keep_negative=True,
                                                                 alpha=np.array([0.5, 0.25, 1, 0.25])))(x)
-    x = qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=4))(x)
+    x = qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3))(x)
     x = qkeras.QDense(1, kernel_quantizer=qkeras.quantized_bits(bits=4,
                                                                 integer=3,
                                                                 keep_negative=True,

@@ -27,17 +27,13 @@ class QKerasQDenseQActFuse(QKerasTransform):
         This transform simplifies further transformations.
     """
     num_layers = 2
-    order = 1
+    order = 2
 
     def _call_impl(self, layers):
-        # linear is a function, not a class (hence the is)
-        assert (layers[0].activation is None) or (layers[0].activation is linear), \
-                f"""The QDense layer {layer} has an activation that is not linear, and is followed by a different 
-                    activation. The activation in qdense is {layers[0].activation} and the sepereate activation is 
-                    {layers[1]}."""
-        layers[0].activation = layers[1]
+        layers[0].activation = layers[1].activation
         return [layers[0]]
         
     def is_applicable(self, layers) -> bool:
         return (isinstance(layers[0], qkeras.QDense) and
+                (layers[0].activation is None or layers[0].activation is linear) and
                 isinstance(layers[1], qkeras.QActivation))

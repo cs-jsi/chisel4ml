@@ -26,11 +26,9 @@ def is_valid_lbir_model(model):
 	is_valid = is_valid and model.name != ""
 	is_valid = is_valid and len(model.layers) > 0
 	for layer in model.layers:
-		if layer.use_bias:
-			is_valid = is_valid and layer.HasField('biases')
+		is_valid = is_valid and layer.HasField('biases')
 		is_valid = is_valid and layer.HasField('weights')
 		is_valid = is_valid and layer.HasField('input')
 		is_valid = is_valid and layer.HasField('output')
-		is_valid = is_valid and layer.HasField('activation')
 
 	return is_valid

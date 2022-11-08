@@ -13,25 +13,22 @@
 # limitations under the License.
 
 import qkeras
-from tensorflow.keras.activations import linear
 
-from chisel4ml.transforms.qkeras_util import _qkeras_base_transform_no_inp
+import tensorflow as tf
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from chisel4ml.transforms import register_qkeras_transform
 import chisel4ml.lbir.lbir_pb2 as lbir
 
 
 @register_qkeras_transform
-class QKerasLbirQDenseFuse(QKerasTransform):
-    """ Takes the sequeunce: LbirLayer, QDense (with QActivation). And outputs a Sequence of two lbir layers."""
-    num_layers = 2
-    order = 4
+class QKerasRemoveDeadLayers(QKerasTransform):
+    " Removes unnecassary layers. "
+    num_layers = 1
+    order = 1
 
     def _call_impl(self, layers):
-        lbir_layer = _qkeras_base_transform_no_inp(layers[1])
-        lbir_layer.input.CopyFrom(layers[0].output)
-        return [layers[0], lbir_layer]
+        return []
         
     def is_applicable(self, layers) -> bool:
-        return (isinstance(layers[0], lbir.Layer) and
-                isinstance(layers[1], qkeras.QDense))
+        return (isinstance(layers[0], tf.keras.layers.Dropout) or
+                isinstance(layers[0], tf.keras.layers.InputLayer))

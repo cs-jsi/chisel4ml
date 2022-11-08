@@ -31,7 +31,7 @@ class QKerasTransform(ABC):
         assert len(layers) == self.num_layers, \
             f"The number of layers for the {self.__class__} transformations should be {self.num_layers}. The provided" \
             f" number of layers to the optimizer was {len(layers)}."
-        log.info(f"Calling transformation {self.__class__} on layers:{layers}.")
+        log.info(f"Calling transformation {self.__class__} on layers:{list(map(type, layers))}.")
         return self._call_impl(layers)
 
     @abstractmethod
