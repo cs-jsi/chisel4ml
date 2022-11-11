@@ -38,7 +38,7 @@ class QKerasQActQDenseFuse(QKerasTransform):
                                     quantization = _qact_to_qtype(layers[0].activation),
                                     signed = _qact_to_sign(layers[0].activation),
                                     bitwidth = _qact_to_bitwidth(layers[0].activation),
-                                    shift = _qact_to_shift(layers[0].activation), 
+                                    shift = _qact_to_shift(layers[0].activation, layers[0].get_output_shape_at(0)[1:]), 
                                     offset = [0] 
                                 ),
                                 shape = layers[0].get_output_shape_at(0)[1:]  # 1st arg for nodes, 2nd batch dims

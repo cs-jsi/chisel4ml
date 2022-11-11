@@ -15,6 +15,7 @@
 import os
 import logging
 from chisel4ml.circuit import Circuit
+from chisel4ml.transforms.qkeras_util import get_input_quantization
 from chisel4ml import chisel4ml_server, transform
 from chisel4ml.lbir.services_pb2 import GenerateCircuitParams, GenerateCircuitReturn
 from pathlib import Path
@@ -51,6 +52,6 @@ def circuit(opt_model: tf.keras.Model,
         return None
 
     circuit = Circuit(gen_circt_ret.circuitId,
-                      opt_model.layers[0].input_quantizer_internal,
+                      get_input_quantization(opt_model),
                       lbir_model.layers[0].input)
     return circuit

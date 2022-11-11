@@ -9,16 +9,16 @@ def test_sint_simple_model_transform(sint_simple_model):
         layers = [
             lbir.Layer(
                 ltype = lbir.Layer.Type.DENSE,
-                biases = lbir.QTensor(
+                thresh = lbir.QTensor(
                     dtype = lbir.Datatype(
                         quantization = lbir.Datatype.QuantizationType.UNIFORM,
                         signed = True,
                         bitwidth = 32,
-                        shift = [0],
+                        shift = [0] * 4,
                         offset = [0]
                     ),
                     shape = [4],
-                    values = [1, 2, 0, 1]
+                    values = [-1, -2, -0, -1]
                 ),
                 weights = lbir.QTensor(
                     dtype = lbir.Datatype(
@@ -38,7 +38,7 @@ def test_sint_simple_model_transform(sint_simple_model):
                         quantization = lbir.Datatype.QuantizationType.UNIFORM,
                         signed = True,
                         bitwidth = 4,
-                        shift = [0],
+                        shift = [0] * 3,
                         offset = [0]
                     ),
                     shape = [3]
@@ -48,7 +48,7 @@ def test_sint_simple_model_transform(sint_simple_model):
                         quantization = lbir.Datatype.QuantizationType.UNIFORM,
                         signed = False,
                         bitwidth = 3,
-                        shift = [0],
+                        shift = [0] * 4,
                         offset = [0]
                     ),
                     shape = [4]
@@ -57,7 +57,7 @@ def test_sint_simple_model_transform(sint_simple_model):
             ),
             lbir.Layer(
                 ltype = lbir.Layer.Type.DENSE,
-                biases = lbir.QTensor(
+                thresh = lbir.QTensor(
                     dtype = lbir.Datatype(
                         quantization = lbir.Datatype.QuantizationType.UNIFORM,
                         signed = True,
@@ -66,7 +66,7 @@ def test_sint_simple_model_transform(sint_simple_model):
                         offset = [0]
                     ),
                     shape = [1],
-                    values = [2]
+                    values = [-2]
                 ),
                 weights = lbir.QTensor(
                     dtype = lbir.Datatype(
@@ -84,7 +84,7 @@ def test_sint_simple_model_transform(sint_simple_model):
                         quantization = lbir.Datatype.QuantizationType.UNIFORM,
                         signed = False,
                         bitwidth = 3,
-                        shift = [0],
+                        shift = [0] * 4,
                         offset = [0]
                     ),
                     shape = [4]
@@ -100,6 +100,109 @@ def test_sint_simple_model_transform(sint_simple_model):
                     shape = [1]
                 ),
                 activation = lbir.Layer.Activation.NO_ACTIVATION
+            )
+        ]
+    )
+    assert lbir_model == lbir_ref
+
+def test_bnn_simple_model_transform(bnn_simple_model):
+    lbir_model = transform.qkeras_to_lbir(bnn_simple_model)
+    lbir_ref = lbir.Model(
+        name = lbir_model.name,
+        layers = [
+            lbir.Layer(
+                ltype = lbir.Layer.Type.DENSE,
+                thresh = lbir.QTensor(
+                    dtype = lbir.Datatype(
+                        quantization = lbir.Datatype.QuantizationType.UNIFORM,
+                        signed = True,
+                        bitwidth = 32,
+                        shift = [0] * 4,
+                        offset = [0] 
+                    ),
+                    shape = [4],
+                    values = [-1., -2., -0., -1.]
+                ),
+                weights = lbir.QTensor(
+                    dtype = lbir.Datatype(
+                        quantization = lbir.Datatype.QuantizationType.BINARY,
+                        signed = True,
+                        bitwidth = 1,
+                        shift = [0] * 4,
+                        offset = [0]
+                    ),
+                    shape = [3, 4],
+                    values = [ 1, -1, -1,  1,
+                              -1,  1,  1, -1,
+                              -1, -1,  1,  1]
+                ),
+                input = lbir.QTensor(
+                    dtype = lbir.Datatype(
+                        quantization = lbir.Datatype.QuantizationType.BINARY,
+                        signed = True,
+                        bitwidth = 1,
+                        shift = [0] * 3,
+                        offset = [0]
+                    ),
+                    shape = [3]
+                ),
+                output = lbir.QTensor(
+                    dtype = lbir.Datatype(
+                        quantization = lbir.Datatype.QuantizationType.BINARY,
+                        signed = True,
+                        bitwidth = 1,
+                        shift = [0] * 4,
+                        offset = [0]
+                    ),
+                    shape = [4]
+                ),
+                activation = lbir.Layer.Activation.BINARY_SIGN
+            ),
+            lbir.Layer(
+                ltype = lbir.Layer.Type.DENSE,
+                thresh = lbir.QTensor(
+                    dtype = lbir.Datatype(
+                        quantization = lbir.Datatype.QuantizationType.UNIFORM,
+                        signed = True,
+                        bitwidth = 32,
+                        shift = [0],
+                        offset = [0]
+                    ),
+                    shape = [1],
+                    values = [-1]
+                ),
+                weights = lbir.QTensor(
+                    dtype = lbir.Datatype(
+                        quantization = lbir.Datatype.QuantizationType.BINARY,
+                        signed = True,
+                        bitwidth = 1,
+                        shift = [0],
+                        offset= [0]
+                    ),
+                    shape = [4, 1],
+                    values = [-1, 1, -1, -1]
+                ),
+                input = lbir.QTensor(
+                    dtype = lbir.Datatype(
+                        quantization = lbir.Datatype.QuantizationType.BINARY,
+                        signed = True,
+                        bitwidth = 1,
+                        shift = [0]*4,
+                        offset= [0]
+                    ),
+                    shape = [4],
+                ),
+                output = lbir.QTensor(
+                    dtype = lbir.Datatype(
+                        quantization = lbir.Datatype.QuantizationType.BINARY,
+                        signed = True,
+                        bitwidth = 1,
+                        shift = [0],
+                        offset= [0]
+                    ),
+                    shape = [1],
+                ),
+                activation = lbir.Layer.Activation.BINARY_SIGN
             )
         ]
     )

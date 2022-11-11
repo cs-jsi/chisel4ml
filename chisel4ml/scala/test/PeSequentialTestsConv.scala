@@ -13,13 +13,12 @@ class PeSequentialTestsTemp extends AnyFlatSpec with ChiselScalatestTester {
 
     val lbirLayer = lbir.Layer(
         ltype = lbir.Layer.Type.DENSE,
-        useBias = true,
-        biases = Option(lbir.QTensor(
+        thresh = Option(lbir.QTensor(
                             Option(lbir.Datatype(
                                 quantization = lbir.Datatype.QuantizationType.UNIFORM,
                                 signed = true,
                                 bitwidth = 32,
-                                scale = Seq(1),
+                                shift = Seq(0),
                                 offset = Seq(0)
                                 )),
                             shape = Seq(4),
@@ -30,7 +29,7 @@ class PeSequentialTestsTemp extends AnyFlatSpec with ChiselScalatestTester {
                                 quantization = lbir.Datatype.QuantizationType.UNIFORM,
                                 signed = true,
                                 bitwidth = 4,
-                                scale = Seq(-1, -2, 0, -2),
+                                shift = Seq(-1, -2, 0, -2),
                                 offset = Seq(0, 0, 0, 0)
                                 )),
                             shape = Seq(3, 4),
@@ -42,7 +41,7 @@ class PeSequentialTestsTemp extends AnyFlatSpec with ChiselScalatestTester {
                                             quantization = lbir.Datatype.QuantizationType.UNIFORM,
                                             signed = true,
                                             bitwidth = 4,
-                                            scale = Seq(1),
+                                            shift = Seq(0),
                                             offset = Seq(0)
                                     )),
                                     shape = Seq(3))),
@@ -50,11 +49,11 @@ class PeSequentialTestsTemp extends AnyFlatSpec with ChiselScalatestTester {
                                             quantization = lbir.Datatype.QuantizationType.UNIFORM,
                                             signed = true,
                                             bitwidth = 4,
-                                            scale = Seq(1),
+                                            shift = Seq(0),
                                             offset = Seq(0)
                                     )),
                                     shape = Seq(4))),
-        activation = Option(lbir.Activation(lbir.Activation.Function.RELU))
+        activation = lbir.Layer.Activation.RELU
         )
 
     it should "send data through the pipeline." in {

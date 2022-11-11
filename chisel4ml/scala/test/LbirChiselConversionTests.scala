@@ -12,7 +12,7 @@ class LbirChiselConversionTests extends AnyFunSuite {
     val binaryDatatype = Some(new Datatype(quantization=BINARY,
                                            bitwidth=1,
                                            signed=true,
-                                           scale=Seq(1),
+                                           shift=Seq(0),
                                            offset=Seq(0)))
 
     // QTENSOR -> UInt
@@ -36,7 +36,7 @@ class LbirChiselConversionTests extends AnyFunSuite {
         val uniformFourBitNoscaleType = Some(new Datatype(quantization=UNIFORM,
                                                    signed=false,
                                                    bitwidth=4,
-                                                   scale=Seq(1),
+                                                   shift=Seq(0),
                                                    offset=Seq(0)))
         val qtensor = new QTensor(dtype = uniformFourBitNoscaleType,
                                   shape = Seq(4),
@@ -50,7 +50,7 @@ class LbirChiselConversionTests extends AnyFunSuite {
         val uniformFourBitNoscaleType = Some(new Datatype(quantization=UNIFORM,
                                                    signed=false,
                                                    bitwidth=4,
-                                                   scale=Seq(1),
+                                                   shift=Seq(0),
                                                    offset=Seq(0)))
 
         val stencil = new QTensor(dtype = uniformFourBitNoscaleType,
@@ -69,7 +69,7 @@ class LbirChiselConversionTests extends AnyFunSuite {
         val uniformFourBitNoscaleType = Some(new Datatype(quantization=UNIFORM,
                                                    signed=true,
                                                    bitwidth=4,
-                                                   scale=Seq(1),
+                                                   shift=Seq(0),
                                                    offset=Seq(0)))
 
         val stencil = new QTensor(dtype = uniformFourBitNoscaleType,

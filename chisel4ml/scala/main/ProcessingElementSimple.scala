@@ -20,7 +20,7 @@ import chisel3.util._
 import chisel3.experimental._
 import _root_.lbir.{Activation, Datatype, Layer}
 import _root_.lbir.Datatype.QuantizationType._
-import _root_.lbir.Activation.Function._
+import _root_.lbir.Layer.Activation._
 import _root_.services.GenerateCircuitParams.Options
 import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
@@ -41,23 +41,23 @@ object Neuron {
                          mul: (I, W) => M, 
                          add: Vec[M] => A,
                          actFn: (A, A) => O,
-                         scale: Int): O = {
+                         shift: Int): O = {
         val muls = VecInit((in zip weights).map{case (a,b) => mul(a,b)})
         val pAct = add(muls)
         
-        val sAct = scale compare 0 match { 
+        val sAct = shift compare 0 match { 
             case 0 => pAct
             case -1 => { 
-                        // Handles the case when the scale factor basically sets the output to zero always.
-                        if (-scale >= pAct.getWidth) { 
+                        // Handles the case when the scale factor (shift) basically sets the output to zero always.
+                        if (-shift >= pAct.getWidth) { 
                             0.U.asTypeOf(pAct) 
                         }
                         else {
                             // We add the "cutt-off" bit to round the same way a convential rounding is done (1 >= 0.5, 0 < 0.5)
-                            ((pAct >> scale.abs).asSInt + Cat(0.S((pAct.getWidth-1).W), pAct(scale.abs-1)).asSInt).asTypeOf(pAct) 
+                            ((pAct >> shift.abs).asSInt + Cat(0.S((pAct.getWidth-1).W), pAct(shift.abs-1)).asSInt).asTypeOf(pAct) 
                         }
             }
-            case 1 => (pAct << scale.abs).asTypeOf(pAct)
+            case 1 => (pAct << shift.abs).asTypeOf(pAct)
             }
         
         actFn(sAct, thresh)
@@ -76,7 +76,7 @@ object ProcessingElementSimple {
     val logger = LoggerFactory.getLogger(classOf[ProcessingElementSimple])
     def signFn(act: UInt, thresh: UInt): Bool = act >= thresh
     def signFn(act: SInt, thresh: SInt): Bool = act >= thresh
-    def reluFn(act: SInt, thresh: SInt): UInt = Mux((act - thresh) > 0.S, (act-thresh).asUInt, 0.U)
+    def reluFn(act: SInt, thresh: SInt): UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
     def linFn(act: SInt, thresh: SInt): SInt = act - thresh
     def noSaturate(x: Bool, bitwidth: Int): Bool = x
     def noSaturate(x: SInt, bitwidth: Int): SInt = Mux(x > (pow(2, bitwidth-1)-1).toInt.S, (pow(2, bitwidth-1)-1).toInt.S,
@@ -100,13 +100,13 @@ object ProcessingElementSimple {
 
     def apply(layer: Layer) = (layer.input.get.dtype.get.quantization,
                                layer.weights.get.dtype.get.quantization,
-                               layer.activation.get.fn) match {
+                               layer.activation) match {
         case (UNIFORM, UNIFORM, RELU) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, UInt](layer,
                                                                         UInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         UInt(layer.output.get.dtype.get.bitwidth.W),
                                                                         mul,
                                                                         (x: Vec[SInt]) => x.reduceTree(_ +& _),
-                                                                        layer.weights.get.dtype.get.scale,
+                                                                        layer.weights.get.dtype.get.shift,
                                                                         reluFn,
                                                                         saturate
                                                                         )
@@ -115,7 +115,7 @@ object ProcessingElementSimple {
                                                                         SInt(layer.output.get.dtype.get.bitwidth.W),
                                                                         mul,
                                                                         (x: Vec[SInt]) => x.reduceTree(_ +& _),
-                                                                        layer.weights.get.dtype.get.scale,
+                                                                        layer.weights.get.dtype.get.shift,
                                                                         linFn,
                                                                         noSaturate
                                                                         )
@@ -124,7 +124,7 @@ object ProcessingElementSimple {
                                                                         Bool(),
                                                                         mul,
                                                                         (x: Vec[SInt]) => x.reduceTree(_ +& _),
-                                                                        layer.weights.get.dtype.get.scale,
+                                                                        layer.weights.get.dtype.get.shift,
                                                                         signFn,
                                                                         noSaturate
                                                                         )
@@ -133,7 +133,7 @@ object ProcessingElementSimple {
                                                                                                  Bool(),
                                                                                                     mul,
                                                                           (x: Vec[Bool]) => PopCount(x),
-                                                                      layer.weights.get.dtype.get.scale,
+                                                                      layer.weights.get.dtype.get.shift,
                                                                                                  signFn,
                                                                                                  noSaturate)
     }
@@ -148,22 +148,23 @@ class ProcessingElementSimpleDense[I <: Bits,
                                               genO: O,
                                               mul: (I,W) => M,
                                               add: Vec[M] => A,
-                                              scales: Seq[Int],
+                                              shifts: Seq[Int],
                                               actFn: (A, A) => O,
                                               saturateFn: (O, Int) => O) 
 
 extends ProcessingElementSimple(layer) {
     import ProcessingElementSimple.logger
     val weights: Seq[Seq[W]] = LbirUtil.transformWeights[W](layer.weights.get)
-    val thresh: Seq[A] = LbirUtil.transformThresh[A](layer.biases.get, layer.input.get.shape(0)) // A ali kaj drugo?
-    val scale: Seq[Int] = layer.weights.get.dtype.get.scale
+    val thresh: Seq[A] = LbirUtil.transformThresh[A](layer.thresh.get, layer.input.get.shape(0))
+    val shift: Seq[Int] = layer.weights.get.dtype.get.shift
 
     val in_int  = Wire(Vec(layer.input.get.shape(0), genI))
     val out_int = Wire(Vec(layer.output.get.shape(0), genO))
 
     in_int := io.in.asTypeOf(in_int)
     for (i <- 0 until layer.output.get.shape(0)) {
-        out_int(i) := saturateFn(Neuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn, scale(i)),
+        //
+        out_int(i) := saturateFn(Neuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn, shift(i)),
                                  layer.output.get.dtype.get.bitwidth
                                  )
     }

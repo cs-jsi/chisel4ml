@@ -37,7 +37,7 @@ message Layer {
     }
 
     Type ltype = 1; // type is a python keyword
-    QTensor biases  = 2;
+    QTensor thresh  = 2;
     QTensor weights = 3;
     QTensor input = 4;  // no values, just shape / dtype
     QTensor output = 5; 

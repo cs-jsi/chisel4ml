@@ -98,9 +98,12 @@ class Chisel4mlServer:
 
 def start_server_once():
     global server
-
+    jar_file = Path(Path(__file__).parent, '..', 'bin', 'chisel4ml.jar').resolve()
+    temp_dir = Path(tempfile.gettempdir(), 'chisel4ml')
     if server is None:
-        server = Chisel4mlServer(command=['java', '-Xms6500M', '-jar', str(Path('bin', 'chisel4ml.jar'))],
-                                 temp_dir=os.path.join(tempfile.gettempdir(), "chisel4ml"))
+        server = Chisel4mlServer(command=['java', 
+                                          '-Xms6500M', 
+                                          '-jar', str(jar_file)],
+                                 temp_dir=str(temp_dir))
 
     return server
