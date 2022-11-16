@@ -19,6 +19,7 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Sequence
 import logging
+
 log = logging.getLogger(__name__)
 
 
@@ -27,9 +28,11 @@ class QKerasOptimization(ABC):
     order: int = 0
 
     def __call__(self, model: KerasModel, layers: Sequence[KerasLayer]) -> KerasModel:
-        assert len(layers) == self.num_layers, \
-            f"The number of layers for the {self.__class__} optimizations should be {self.num_layers}. The provided" \
-            f" number of layers to the optimizer was {len(layers)}."
+        assert len(layers) == self.num_layers, (
+            f"The number of layers for the {self.__class__} optimizations should be"
+            f" {self.num_layers}. The provided number of layers to the optimizer was"
+            f" {len(layers)}."
+        )
         log.info(f"Calling optimization {self.__class__} on layers:{layers}.")
         return self._call_impl(model, layers)
 

@@ -93,7 +93,8 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
                                                directory = Path.of(tempDir, s"circuit$circuitId"), 
                                                useVerilator = params.useVerilator,
                                                genVcd = params.genVcd)
-            logger.info(s"Started generating hardware for circuit id:$circuitId in temporary directory.")
+            logger.info(s"""Started generating hardware for circuit id:$circuitId in temporary directory with a
+                           | timeout of ${params.generationTimeoutSec} seconds.""".stripMargin.replaceAll("\n", ""))
             new Thread(circuits.last).start()
             if (circuits.last.isGenerated.await(params.generationTimeoutSec, TimeUnit.SECONDS)) {
                 logger.info("Succesfully generated circuit.")

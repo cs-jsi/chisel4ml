@@ -32,9 +32,11 @@ from chisel4ml.optimizations import register_qkeras_optimization
 @register_qkeras_optimization
 class QKerasBNQDenseBinaryFuse(QKerasOptimization):
     """
-        Fuses the BatchNorm and QDense layer with a binary quantizer. For more information read the paper
-        on Binarized Neural networks by Umuroglu et al.: https://arxiv.org/pdf/1612.07119.pdf.
+    Fuses the BatchNorm and QDense layer with a binary quantizer. For more information
+    read the paper on Binarized Neural networks by Umuroglu et al.:
+    https://arxiv.org/pdf/1612.07119.pdf.
     """
+
     num_layers = 3
     order = 2
 
@@ -51,7 +53,9 @@ class QKerasBNQDenseBinaryFuse(QKerasOptimization):
         return delete_layer(model, layers[1], copy=False)
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
-        return (isinstance(layers[0], qkeras.QDense) and
-                isinstance(layers[1], BatchNormalization) and
-                isinstance(layers[2], qkeras.QActivation) and
-                isinstance(layers[2].activation, qkeras.quantizers.binary))
+        return (
+            isinstance(layers[0], qkeras.QDense)
+            and isinstance(layers[1], BatchNormalization)
+            and isinstance(layers[2], qkeras.QActivation)
+            and isinstance(layers[2].activation, qkeras.quantizers.binary)
+        )

@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion     := "2.13.8"
+ThisBuild / scalaVersion     := "2.13.10"
 ThisBuild / version          := "0.1.0"
 ThisBuild / organization     := "JSI"
 
@@ -23,7 +23,7 @@ Compile / PB.targets := Seq(
   scalapb.gen(flatPackage = true) ->  baseDirectory.value / "chisel4ml" / "scala"
 )
 
-val chiselVersion = "3.5.4"
+val chiselVersion = "3.5.5"
 val slf4jVersion = "1.7.5"
 val scalatestVersion = "3.2.7"
 lazy val root = (project in file("."))

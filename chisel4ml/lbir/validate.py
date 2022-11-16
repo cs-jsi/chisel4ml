@@ -19,16 +19,18 @@ log = logging.getLogger(__name__)
 
 _exception_list = []
 
-def is_valid_lbir_model(model):
-	"Validates a lbir model to see if all of the fields that should be present are present."
-	is_valid = True
-	is_valid = is_valid and isinstance(model, lbir.Model)
-	is_valid = is_valid and model.name != ""
-	is_valid = is_valid and len(model.layers) > 0
-	for layer in model.layers:
-		is_valid = is_valid and layer.HasField('thresh')
-		is_valid = is_valid and layer.HasField('weights')
-		is_valid = is_valid and layer.HasField('input')
-		is_valid = is_valid and layer.HasField('output')
 
-	return is_valid
+def is_valid_lbir_model(model):
+    """Validates a lbir model to see if all of the fields that should be present are
+    present."""
+    is_valid = True
+    is_valid = is_valid and isinstance(model, lbir.Model)
+    is_valid = is_valid and model.name != ""
+    is_valid = is_valid and len(model.layers) > 0
+    for layer in model.layers:
+        is_valid = is_valid and layer.HasField("thresh")
+        is_valid = is_valid and layer.HasField("weights")
+        is_valid = is_valid and layer.HasField("input")
+        is_valid = is_valid and layer.HasField("output")
+
+    return is_valid

@@ -14,35 +14,28 @@
 
 from chisel4ml.optimizations import qkeras_opt_list
 from tensorflow_model_optimization.python.core.sparsity.keras import prune
-
-from tensorflow.keras.layers import Input
-from tensorflow.keras.models import Model
-import tensorflow as tf
 import qkeras
-import copy
-
-import collections
-import itertools
 import logging
+
 log = logging.getLogger(__name__)
 
 
 def qkeras_model(model, skip_list=[]):
     "Applys optimizations to the model."
-    new_model = prune.strip_pruning(model) 
+    new_model = prune.strip_pruning(model)
     new_model = qkeras.utils.clone_model(new_model)
 
     for opt in qkeras_opt_list:
         if opt.__class__.__name__ in skip_list:
             continue
-        l = 0
-        r = opt.num_layers
-        while r < len(new_model.layers):
-            assert r > l
-            if opt.is_applicable(new_model.layers[l:r]):
-                new_model = opt(new_model, new_model.layers[l:r])
+        left = 0
+        right = opt.num_layers
+        while right < len(new_model.layers):
+            assert right > left
+            if opt.is_applicable(new_model.layers[left:right]):
+                new_model = opt(new_model, new_model.layers[left:right])
             else:
-                l = l + 1
-                r = r + 1
+                left = left + 1
+                right = right + 1
 
     return new_model

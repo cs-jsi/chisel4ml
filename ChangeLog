@@ -1,6 +1,25 @@
 CHANGES
 =======
 
+* New optimizer and Transformer now WORKING./test.sh  Replaced bias with thresh in QTensor, replaced scale with shift in QTensor, shift now should not be only 1 element long (This simplifies the chisel code
+* Succesfully generating lbir model, one test of such model also passing. Transform now seems to work (further testing needed though)
+* Fixed also binary bn fuse to be compatible with new optimizer, all optimization tests now passing
+* The returned optimized model can now be cloned
+* Restructured optimizer to use tf2-keras-surgeon. This seems to be working now, moving to resturcting transform.py
+* Optimization now working, but transform only works in-place
+* Restructured optimizer, it seems to work, half way through restructuring of transform module
+* Added description to PeSeqConv class
+* added pre-commit hooks for black/flake8
+* Moved implicits to a sepereate subpackage chisel4ml.implicits
+* Changed license to Apache 2.0, and added license identifiers to all files
+* Moved loggin of sequential PE to abstract class, to simplify and unify reporting in the children
+* Added some infrastructure for generating memory files at the proper location
+* Moved file generation to a temporary directory, packacing functionality tba
+* Simulation now stops properly, and generates the VCD file also
+* Sequential simulation seems to work now, performance issues still a problem. Moving to more elaborate sequential designs next
+* Replaced AtomicBoolean with a CountDownLatch synronizer, also added a generation timeout
+* Fixed dependency hell, added options to use Verilator and genererate Vcd files
+* Verilog generated only by the chiseltest tester to speed up everything. Simulation using chiseltest now works on all examples for simple pipeline
 * Simple example of simulation with chiseltest working
 * Moved to using the chiselTest simulationContext abstraction to run simulation (instead of threadle). This enables easy portability between simulator and some other helpfull apis
 

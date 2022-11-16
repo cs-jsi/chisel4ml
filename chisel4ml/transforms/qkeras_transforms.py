@@ -15,23 +15,30 @@
 from abc import ABC
 from abc import abstractmethod
 import logging
+
 log = logging.getLogger(__name__)
 
 
 class QKerasTransform(ABC):
     """
-        QKeras transformation returns a sequence of lbir layers posibly, mixed with keras layers. The structure is 
-        similar to the QKerasOptimization class, but it seperated because optimizations must always return a valid
-        QKeras object.
+    QKeras transformation returns a sequence of lbir layers posibly, mixed with keras
+    layers. The structure is similar to the QKerasOptimization class, but it seperated
+    because optimizations must always return a valid QKeras object.
     """
+
     num_layers: int
     order: int = 0
 
     def __call__(self, layers):
-        assert len(layers) == self.num_layers, \
-            f"The number of layers for the {self.__class__} transformations should be {self.num_layers}. The provided" \
-            f" number of layers to the optimizer was {len(layers)}."
-        log.info(f"Calling transformation {self.__class__} on layers:{list(map(type, layers))}.")
+        assert len(layers) == self.num_layers, (
+            f"The number of layers for the {self.__class__} transformations should be"
+            f" {self.num_layers}. The provided number of layers to the optimizer was"
+            f" {len(layers)}."
+        )
+        log.info(
+            f"Calling transformation {self.__class__} on"
+            f" layers:{list(map(type, layers))}."
+        )
         return self._call_impl(layers)
 
     @abstractmethod

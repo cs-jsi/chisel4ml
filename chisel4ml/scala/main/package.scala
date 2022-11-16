@@ -44,7 +44,8 @@ package object implicits {
             if (qt.dtype.get.quantization == BINARY) {
                 values = values.map(x => (x + 1) / 2) // 1 -> 1, -1 -> 0
             }
-            "b".concat(values.map(_.toInt).map(toBinary(_, qt.dtype.get.bitwidth)).mkString).U
+            val binaryString = "b".concat(values.map(_.toInt).map(toBinary(_, qt.dtype.get.bitwidth)).mkString)
+            binaryString.U(qt.totalBitwidth.W)
         }
 
         def totalBitwidth: Int = qt.dtype.get.bitwidth * qt.shape.reduce(_ * _)

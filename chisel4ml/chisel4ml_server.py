@@ -34,20 +34,22 @@ server = None
 
 
 class Chisel4mlServer:
-    """ Handles the creation of a subprocess, it is used to safely start the chisel4ml server. """
+    """Handles the creation of a subprocess, it is used to safely start the chisel4ml
+    server.
+    """
 
-    def __init__(self, command, temp_dir, host: str = 'localhost', port: int = 50051):
+    def __init__(self, command, temp_dir, host: str = "localhost", port: int = 50051):
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
         os.mkdir(temp_dir)
 
-        self._server_addr = host + ':' + str(port)
+        self._server_addr = host + ":" + str(port)
         self._channel = None
         self._stub = None
-        self._log_file = open(os.path.join(temp_dir, 'chisel4ml_server.log'), 'w+')
-        self.task = subprocess.Popen(command + [temp_dir],
-                                     stdout=self._log_file,
-                                     stderr=self._log_file)
+        self._log_file = open(os.path.join(temp_dir, "chisel4ml_server.log"), "w+")
+        self.task = subprocess.Popen(
+            command + [temp_dir], stdout=self._log_file, stderr=self._log_file
+        )
         log.info(f"Started task with pid: {self.task.pid}.")
 
         # We start a process to create the grpc stub (this can take some time).
@@ -56,7 +58,9 @@ class Chisel4mlServer:
 
         # Here we make sure that the chisel4ml server is shut down.
         atexit.register(self.stop)
-        signal.signal(signal.SIGTERM, self.stop)  # This ensures kill pid also close the server.
+        signal.signal(
+            signal.SIGTERM, self.stop
+        )  # This ensures kill pid also close the server.
         signal.signal(signal.SIGINT, self.stop)
 
     @property
@@ -98,12 +102,11 @@ class Chisel4mlServer:
 
 def start_server_once():
     global server
-    jar_file = Path(Path(__file__).parent, '..', 'bin', 'chisel4ml.jar').resolve()
-    temp_dir = Path(tempfile.gettempdir(), 'chisel4ml')
+    jar_file = Path(Path(__file__).parent, "..", "bin", "chisel4ml.jar").resolve()
+    temp_dir = Path(tempfile.gettempdir(), "chisel4ml")
     if server is None:
-        server = Chisel4mlServer(command=['java', 
-                                          '-Xms6500M', 
-                                          '-jar', str(jar_file)],
-                                 temp_dir=str(temp_dir))
+        server = Chisel4mlServer(
+            command=["java", "-Xms6500M", "-jar", str(jar_file)], temp_dir=str(temp_dir)
+        )
 
     return server

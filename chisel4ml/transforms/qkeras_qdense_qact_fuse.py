@@ -17,23 +17,25 @@ from tensorflow.keras.activations import linear
 
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from chisel4ml.transforms import register_qkeras_transform
-import chisel4ml.lbir.lbir_pb2 as lbir
 
 
 @register_qkeras_transform
 class QKerasQDenseQActFuse(QKerasTransform):
     """
-        Takes the sequence: QDense, QActivations and merges the QActivation to the QDense.activation parameter. 
-        This transform simplifies further transformations.
+    Takes the sequence: QDense, QActivations and merges the QActivation to the
+    QDense.activation parameter. This transform simplifies further transformations.
     """
+
     num_layers = 2
     order = 2
 
     def _call_impl(self, layers):
         layers[0].activation = layers[1].activation
         return [layers[0]]
-        
+
     def is_applicable(self, layers) -> bool:
-        return (isinstance(layers[0], qkeras.QDense) and
-                (layers[0].activation is None or layers[0].activation is linear) and
-                isinstance(layers[1], qkeras.QActivation))
+        return (
+            isinstance(layers[0], qkeras.QDense)
+            and (layers[0].activation is None or layers[0].activation is linear)
+            and isinstance(layers[1], qkeras.QActivation)
+        )

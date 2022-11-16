@@ -14,7 +14,6 @@
 
 import qkeras
 
-import tensorflow as tf
 from tensorflow.keras.layers import Layer as KerasLayer
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.models import Model as KerasModel
@@ -30,8 +29,9 @@ from chisel4ml.optimizations import register_qkeras_optimization
 @register_qkeras_optimization
 class QKerasBNQDenseFuse(QKerasOptimization):
     """
-        Fuses the BatchNorm and QDense layer with a quantized_relu activation function.
+    Fuses the BatchNorm and QDense layer with a quantized_relu activation function.
     """
+
     num_layers = 2
     order = 3
 
@@ -47,14 +47,19 @@ class QKerasBNQDenseFuse(QKerasOptimization):
         layers[0].kernel.assign(w * inv)
         if not layers[0].use_bias:
             layers[0].use_bias = True
-            layers[0].bias = layers[0].add_weight("bias",
-								 shape=[layers[0].units,],
-          						 dtype=layers[0].dtype,
-          						 trainable=True)
+            layers[0].bias = layers[0].add_weight(
+                "bias",
+                shape=[
+                    layers[0].units,
+                ],
+                dtype=layers[0].dtype,
+                trainable=True,
+            )
             layers[0].build(input_shape=layers[0]._build_input_shape[1:])
         layers[0].bias.assign(((b - mm) * inv) + beta)
         return delete_layer(model, layers[1], copy=False)
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
-        return (isinstance(layers[0], qkeras.QDense) and
-                isinstance(layers[1], BatchNormalization))
+        return isinstance(layers[0], qkeras.QDense) and isinstance(
+            layers[1], BatchNormalization
+        )

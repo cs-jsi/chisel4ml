@@ -22,16 +22,17 @@ from typing import List
 
 qkeras_trans_list: List[QKerasTransform] = list()
 
+
 def register_qkeras_transform(cls):
     if not issubclass(cls, QKerasTransform):
-        raise ValueError(f"Class {cls} is not a subclass of {QKerasTransformation}!")
+        raise ValueError(f"Class {cls} is not a subclass of {QKerasTransform}!")
     qkeras_trans_list.append(cls())
     return cls
 
 
 for file in os.listdir(os.path.dirname(__file__)):
-    if file.endswith('.py') and not file.startswith('_'):
-        module_name = file[:file.find('.py')]
-        module = importlib.import_module('chisel4ml.transforms.' + module_name)
+    if file.endswith(".py") and not file.startswith("_"):
+        module_name = file[: file.find(".py")]
+        module = importlib.import_module("chisel4ml.transforms." + module_name)
 
     qkeras_trans_list = sorted(qkeras_trans_list, key=lambda x: x.order)

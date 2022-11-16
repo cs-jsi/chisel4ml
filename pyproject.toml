@@ -32,5 +32,5 @@ exclude = [
       '^server_manager\.py$',
     ]
 
-[tool.black]
-skip-string-normalization = true
+#[tool.black]
+#skip-string-normalization = true

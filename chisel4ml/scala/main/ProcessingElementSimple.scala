@@ -18,7 +18,7 @@ package chisel4ml
 import chisel3._
 import chisel3.util._
 import chisel3.experimental._
-import _root_.lbir.{Activation, Datatype, Layer}
+import _root_.lbir.{Datatype, Layer}
 import _root_.lbir.Datatype.QuantizationType._
 import _root_.lbir.Layer.Activation._
 import _root_.services.GenerateCircuitParams.Options

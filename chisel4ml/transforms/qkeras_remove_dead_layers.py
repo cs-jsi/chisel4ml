@@ -12,23 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import qkeras
-
 import tensorflow as tf
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from chisel4ml.transforms import register_qkeras_transform
-import chisel4ml.lbir.lbir_pb2 as lbir
 
 
 @register_qkeras_transform
 class QKerasRemoveDeadLayers(QKerasTransform):
-    " Removes unnecassary layers. "
+    "Removes unnecassary layers."
     num_layers = 1
     order = 1
 
     def _call_impl(self, layers):
         return []
-        
+
     def is_applicable(self, layers) -> bool:
-        return (isinstance(layers[0], tf.keras.layers.Dropout) or
-                isinstance(layers[0], tf.keras.layers.InputLayer))
+        return isinstance(layers[0], tf.keras.layers.Dropout) or isinstance(
+            layers[0], tf.keras.layers.InputLayer
+        )

@@ -16,37 +16,48 @@ import qkeras
 
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from chisel4ml.transforms import register_qkeras_transform
-from chisel4ml.transforms.qkeras_util import _qact_to_qtype, _qact_to_sign, _qact_to_bitwidth, _qact_to_shift
+from chisel4ml.transforms.qkeras_util import (
+    _qact_to_qtype,
+    _qact_to_sign,
+    _qact_to_bitwidth,
+    _qact_to_shift,
+)
 from chisel4ml.transforms.qkeras_util import _qkeras_base_transform_no_inp
 import chisel4ml.lbir.lbir_pb2 as lbir
 
 
 @register_qkeras_transform
 class QKerasQActQDenseFuse(QKerasTransform):
+    """Takes the sequence: QActivation, QDense and transforms it to a lbir.Layer. A
+    QActivation before QDense is needed to determine the input quantization. This
+    transform comes after running a fuse qdense, Qact sequence transform, thus
+    qdense.activation should be populated. This transform should only take effect at
+    the input (so first two layers).
     """
-        Takes the sequence: QActivation, QDense and transforms it to a lbir.Layer. A QActivation before QDense is 
-        needed to determine the input quantization. This transform comes after running a fuse qdense, Qact sequence
-        transform, thus qdense.activation should be populated. This transform should only take effect at the input 
-        (so first two layers). 
-    """
+
     num_layers = 2
     order = 3
 
     def _call_impl(self, layers):
         input_tensor = lbir.QTensor(
-                                dtype = lbir.Datatype(
-                                    quantization = _qact_to_qtype(layers[0].activation),
-                                    signed = _qact_to_sign(layers[0].activation),
-                                    bitwidth = _qact_to_bitwidth(layers[0].activation),
-                                    shift = _qact_to_shift(layers[0].activation, layers[0].get_output_shape_at(0)[1:]), 
-                                    offset = [0] 
-                                ),
-                                shape = layers[0].get_output_shape_at(0)[1:]  # 1st arg for nodes, 2nd batch dims
-                            )
+            dtype=lbir.Datatype(
+                quantization=_qact_to_qtype(layers[0].activation),
+                signed=_qact_to_sign(layers[0].activation),
+                bitwidth=_qact_to_bitwidth(layers[0].activation),
+                shift=_qact_to_shift(
+                    layers[0].activation, layers[0].get_output_shape_at(0)[1:]
+                ),
+                offset=[0],
+            ),
+            shape=layers[0].get_output_shape_at(0)[
+                1:
+            ],  # 1st arg for nodes, 2nd batch dims
+        )
         lbir_layer = _qkeras_base_transform_no_inp(layers[1])
         lbir_layer.input.CopyFrom(input_tensor)
         return [lbir_layer]
-        
+
     def is_applicable(self, layers) -> bool:
-        return (isinstance(layers[0], qkeras.QActivation) and
-                isinstance(layers[1], qkeras.QDense))
+        return isinstance(layers[0], qkeras.QActivation) and isinstance(
+            layers[1], qkeras.QDense
+        )
