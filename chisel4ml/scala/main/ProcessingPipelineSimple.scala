@@ -20,7 +20,7 @@ import _root_.chisel3.util._
 import _root_.chisel3.experimental._
 import _root_.lbir.{Model, Layer}
 import _root_.chisel4ml.implicits._
-import _root_.chisel4ml.util.LbirUtil 
+import _root_.chisel4ml.util.LbirUtil
 import _root_.chisel4ml.util.bus.AXIStream
 import _root_.scala.collection.mutable._
 
@@ -36,7 +36,7 @@ class ProcessingPipelineSimple(model: Model) extends Module {
     val io = IO(new Bundle {
         val in  = Input(UInt(model.layers.head.input.get.totalBitwidth.W))
         val out = Output(UInt(model.layers.last.output.get.totalBitwidth.W))
-    }) 
+    })
 
     // Connect the inputs and outputs of the layers
     peList(0).io.in := io.in
@@ -45,4 +45,3 @@ class ProcessingPipelineSimple(model: Model) extends Module {
     }
     io.out := peList.last.io.out
 }
-

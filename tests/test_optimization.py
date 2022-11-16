@@ -1,13 +1,14 @@
+from math import isclose
+
+import numpy as np
+import qkeras
+import tensorflow as tf
+from tensorflow.keras.datasets import mnist
+
+from chisel4ml import optimize
 from chisel4ml.optimizations.qkeras_bn_qdense_binary_fuse import (
     QKerasBNQDenseBinaryFuse,
 )
-from chisel4ml import optimize
-from math import isclose
-
-import tensorflow as tf
-from tensorflow.keras.datasets import mnist
-import numpy as np
-import qkeras
 
 
 def test_bn_qdense_binary_fuse_opt(bnn_qdense_bn_sign_act):

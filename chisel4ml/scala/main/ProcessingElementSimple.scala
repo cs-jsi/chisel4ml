@@ -31,35 +31,35 @@ import _root_.org.slf4j.LoggerFactory
 
 object Neuron {
     val logger = LoggerFactory.getLogger(classOf[ProcessingElementSimple])
-    def apply[I <: Bits, 
-              W <: Bits : WeightsProvider, 
-              M <: Bits, 
-              A <: Bits : ThreshProvider, 
-              O <: Bits](in: Seq[I], 
+    def apply[I <: Bits,
+              W <: Bits : WeightsProvider,
+              M <: Bits,
+              A <: Bits : ThreshProvider,
+              O <: Bits](in: Seq[I],
                          weights: Seq[W],
                          thresh: A,
-                         mul: (I, W) => M, 
+                         mul: (I, W) => M,
                          add: Vec[M] => A,
                          actFn: (A, A) => O,
                          shift: Int): O = {
         val muls = VecInit((in zip weights).map{case (a,b) => mul(a,b)})
         val pAct = add(muls)
-        
-        val sAct = shift compare 0 match { 
+
+        val sAct = shift compare 0 match {
             case 0 => pAct
-            case -1 => { 
+            case -1 => {
                         // Handles the case when the scale factor (shift) basically sets the output to zero always.
-                        if (-shift >= pAct.getWidth) { 
-                            0.U.asTypeOf(pAct) 
+                        if (-shift >= pAct.getWidth) {
+                            0.U.asTypeOf(pAct)
                         }
                         else {
                             // We add the "cutt-off" bit to round the same way a convential rounding is done (1 >= 0.5, 0 < 0.5)
-                            ((pAct >> shift.abs).asSInt + Cat(0.S((pAct.getWidth-1).W), pAct(shift.abs-1)).asSInt).asTypeOf(pAct) 
+                            ((pAct >> shift.abs).asSInt + Cat(0.S((pAct.getWidth-1).W), pAct(shift.abs-1)).asSInt).asTypeOf(pAct)
                         }
             }
             case 1 => (pAct << shift.abs).asTypeOf(pAct)
             }
-        
+
         actFn(sAct, thresh)
     }
 }
@@ -85,7 +85,7 @@ object ProcessingElementSimple {
     def saturate(x: UInt, bitwidth: Int): UInt = Mux(x > (pow(2, bitwidth)-1).toInt.U, (pow(2, bitwidth)-1).toInt.U, x) // TODO
 
     def mul(i: Bool, w: Bool): Bool = ~(i ^ w)
-    def mul(i: UInt, w: Bool): SInt = Mux(w, i.zext, -(i.zext)) 
+    def mul(i: UInt, w: Bool): SInt = Mux(w, i.zext, -(i.zext))
     def mul(i: UInt, w: SInt): SInt = {
         if (w.litValue == 1.S.litValue) {
             i.zext
@@ -119,7 +119,7 @@ object ProcessingElementSimple {
                                                                         linFn,
                                                                         noSaturate
                                                                         )
-        case (UNIFORM, BINARY, BINARY_SIGN) => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,     
+        case (UNIFORM, BINARY, BINARY_SIGN) => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,
                                                                         UInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         Bool(),
                                                                         mul,
@@ -139,18 +139,18 @@ object ProcessingElementSimple {
     }
 }
 
-class ProcessingElementSimpleDense[I <: Bits, 
-                                   W <: Bits : WeightsProvider, 
-                                   M <: Bits, 
-                                   A <: Bits : ThreshProvider, 
-                                   O <: Bits](layer: Layer, 
-                                              genI: I, 
+class ProcessingElementSimpleDense[I <: Bits,
+                                   W <: Bits : WeightsProvider,
+                                   M <: Bits,
+                                   A <: Bits : ThreshProvider,
+                                   O <: Bits](layer: Layer,
+                                              genI: I,
                                               genO: O,
                                               mul: (I,W) => M,
                                               add: Vec[M] => A,
                                               shifts: Seq[Int],
                                               actFn: (A, A) => O,
-                                              saturateFn: (O, Int) => O) 
+                                              saturateFn: (O, Int) => O)
 
 extends ProcessingElementSimple(layer) {
     import ProcessingElementSimple.logger
@@ -169,15 +169,15 @@ extends ProcessingElementSimple(layer) {
                                  )
     }
 
-    
+
     // The CAT operator reverses the order of bits, so we reverse them
     // to evenout the reversing (its not pretty but it works).
     io.out := Cat(out_int.reverse)
 
-    logger.info(s"""Created new ProcessingElementSimpleDense processing element. It has an input shape: 
+    logger.info(s"""Created new ProcessingElementSimpleDense processing element. It has an input shape:
                     | ${layer.input.get.shape} and output shape: ${layer.output.get.shape}. The input bitwidth
-                    | is ${layer.input.get.dtype.get.bitwidth}, the output bitwidth 
-                    | ${layer.output.get.dtype.get.bitwidth}. Thus the total size of the input vector is 
-                    | ${layer.input.get.totalBitwidth} bits, and the total size of the output vector 
+                    | is ${layer.input.get.dtype.get.bitwidth}, the output bitwidth
+                    | ${layer.output.get.dtype.get.bitwidth}. Thus the total size of the input vector is
+                    | ${layer.input.get.totalBitwidth} bits, and the total size of the output vector
                     | is ${layer.output.get.totalBitwidth} bits.""".stripMargin.replaceAll("\n", ""))
 }

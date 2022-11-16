@@ -1,9 +1,11 @@
-from chisel4ml import generate, optimize
-
 import os
 import shutil
 from pathlib import Path
+
 import pytest
+
+from chisel4ml import generate
+from chisel4ml import optimize
 
 
 @pytest.mark.skip(reason="waiting for directory functionality to be added")

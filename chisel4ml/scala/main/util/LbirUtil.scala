@@ -35,7 +35,7 @@ object ThreshProvider {
     def transformThresh[T <: Bits : ThreshProvider](tensor: QTensor, fanIn: Int): Seq[T] = {
         implicitly[ThreshProvider[T]].instance(tensor, fanIn)
     }
-    
+
     // Binarized neurons
     implicit object ThreshProviderUInt extends ThreshProvider[UInt] {
         def instance(tensor: QTensor, fanIn: Int): Seq[UInt] = {
@@ -44,7 +44,7 @@ object ThreshProvider {
             tensor.values.map(x => (fanIn + x) / 2).map(_.ceil).map(_.toInt.U)
         }
     }
-    
+
     implicit object ThreshProviderSInt extends ThreshProvider[SInt] {
         def instance(tensor: QTensor, fanIn: Int): Seq[SInt] = {
             LbirUtil.logger.debug(s"""Transformed input tensor of thresholds to a Seq[SInt].""")
@@ -61,14 +61,14 @@ object WeightsProvider {
     def transformWeights[T <: Bits : WeightsProvider](tensor: QTensor): Seq[Seq[T]] = {
         implicitly[WeightsProvider[T]].instance(tensor)
     }
-    
+
     implicit object WeightsProviderBool extends WeightsProvider[Bool] {
         def instance(tensor: QTensor): Seq[Seq[Bool]] = {
             LbirUtil.logger.debug(s"""Transformed input tensor of weights to a Seq[Seq[Bool]].""")
             tensor.values.map(_ > 0).map(_.B).grouped(tensor.shape(1)).toSeq.transpose
         }
     }
-    
+
     implicit object WeightsProviderSInt extends WeightsProvider[SInt] {
         def instance(tensor: QTensor): Seq[Seq[SInt]] = {
             LbirUtil.logger.debug(s"""Transformed input tensor of weights to a Seq[Seq[SInt]].""")
@@ -88,11 +88,11 @@ object LbirUtil {
     }
 
     val logger = LoggerFactory.getLogger(classOf[LbirUtil])
-    
+
     def transformWeights[T <: Bits : WeightsProvider](tensor: QTensor): Seq[Seq[T]] = {
         WeightsProvider.transformWeights[T](tensor)
     }
-    
+
     def transformThresh[T <: Bits : ThreshProvider](tensor: QTensor, fanIn: Int): Seq[T] = {
         ThreshProvider.transformThresh[T](tensor, fanIn)
     }

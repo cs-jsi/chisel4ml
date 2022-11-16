@@ -19,7 +19,7 @@
  */
 package chisel4ml.util
 import _root_.chisel3._
-import _root_.chisel3.util.experimental.loadMemoryFromFileInline 
+import _root_.chisel3.util.experimental.loadMemoryFromFileInline
 import _root_.chisel4ml.util.LbirUtil.log2
 
 import _root_.java.io.File
@@ -33,7 +33,6 @@ class ROM(depth: Int, width: Int = 32, memFile:String) extends Module {
     })
     val mem = SyncReadMem(depth, UInt(width.W))
     io.rdData := mem.read(io.rdAddr, io.rdEna)
-    
+
     loadMemoryFromFileInline(mem, memFile)
 }
-

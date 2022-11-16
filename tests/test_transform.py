@@ -1,5 +1,5 @@
-from chisel4ml import transform
 import chisel4ml.lbir.lbir_pb2 as lbir
+from chisel4ml import transform
 
 
 def test_sint_simple_model_transform(sint_simple_model):

@@ -1,32 +1,27 @@
 # Copyright 2022 Computer Systems Department, Jozef Stefan Insitute
-
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-
 #  https://www.apache.org/licenses/LICENSE-2.0
-
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import qkeras
-import numpy as np
-
-from tensorflow.keras.layers import Layer as KerasLayer
-from tensorflow.keras.models import Model as KerasModel
-from tensorflow.keras.layers import BatchNormalization
-from tensorflow.math import sqrt
-from tensorflow.math import multiply as mul
-from tensorflow.math import truediv as div
-
 from typing import Sequence
 
+import numpy as np
+import qkeras
+from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.layers import Layer as KerasLayer
+from tensorflow.keras.models import Model as KerasModel
+from tensorflow.math import multiply as mul
+from tensorflow.math import sqrt
+from tensorflow.math import truediv as div
 from tf2kerassurgeon.operations import delete_layer
-from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
+
 from chisel4ml.optimizations import register_qkeras_optimization
+from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
 
 
 @register_qkeras_optimization

@@ -31,7 +31,7 @@ class LbirChiselConversionTests extends AnyFunSuite {
 
         assert(qtensor.toUInt.litValue == "b0111".U.litValue)
     }
-    
+
     test("Uniformly quantized tensor to 4-bits conversion test 0") {
         val uniformFourBitNoscaleType = Some(new Datatype(quantization=UNIFORM,
                                                    signed=false,
@@ -61,7 +61,7 @@ class LbirChiselConversionTests extends AnyFunSuite {
                                   values = Seq(4, 3, 2, 1))
 
         assert(qtensor.toUInt.toQTensor(stencil).values == qtensor.values,
-            s"""QTensor was first converted to ${qtensor.toUInt}, with total bitwidth ${qtensor.totalBitwidth} and 
+            s"""QTensor was first converted to ${qtensor.toUInt}, with total bitwidth ${qtensor.totalBitwidth} and
             | then back to a qtensor: ${qtensor.toUInt.toQTensor(stencil).values}.""".stripMargin.replaceAll("\n", ""))
     }
 
@@ -80,7 +80,7 @@ class LbirChiselConversionTests extends AnyFunSuite {
                                   values = Seq(-4, -3, 2, 1))
 
         assert(qtensor.toUInt.toQTensor(stencil).values == qtensor.values,
-            s"""QTensor was first converted to ${qtensor.toUInt}, with total bitwidth ${qtensor.totalBitwidth} and 
+            s"""QTensor was first converted to ${qtensor.toUInt}, with total bitwidth ${qtensor.totalBitwidth} and
             | then back to a qtensor: ${qtensor.toUInt.toQTensor(stencil).values}.""".stripMargin.replaceAll("\n", ""))
     }
 }

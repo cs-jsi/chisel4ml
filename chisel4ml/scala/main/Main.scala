@@ -21,9 +21,9 @@ import _root_.scala.concurrent.{ExecutionContext, Future}
 
 import _root_.chisel3.stage._
 import _root_.chisel3._
-import _root_.firrtl.stage.FirrtlCircuitAnnotation  
-import _root_.firrtl.{AnnotationSeq, EmittedCircuitAnnotation}                                                                 
-import _root_.firrtl.annotations.{Annotation, DeletedAnnotation}  
+import _root_.firrtl.stage.FirrtlCircuitAnnotation
+import _root_.firrtl.{AnnotationSeq, EmittedCircuitAnnotation}
+import _root_.firrtl.annotations.{Annotation, DeletedAnnotation}
 
 import _root_.io.grpc.{Server, ServerBuilder}
 import _root_.services._
@@ -40,12 +40,12 @@ import _root_.org.slf4j.LoggerFactory
 
 /** Contains the main function.
  *
- *  Contains the main function that is the main entry point to the the software, and it starts a chisel4ml 
+ *  Contains the main function that is the main entry point to the the software, and it starts a chisel4ml
  *  server instance.
  */
 object Chisel4mlServer {
     private val port = 50051
-   
+
     def main(args: Array[String]): Unit = {
         require(args.length > 0, "No argument list, you should provide an argument as a directory.")
         require(Files.exists(Paths.get(args(0))), "Provided directory doesn't exist.")
@@ -87,10 +87,10 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
 
     private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
         override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
-            val circuitId = circuits.length 
-            circuits = circuits :+ new Circuit(model = params.model.get, 
-                                               options = params.options.get, 
-                                               directory = Path.of(tempDir, s"circuit$circuitId"), 
+            val circuitId = circuits.length
+            circuits = circuits :+ new Circuit(model = params.model.get,
+                                               options = params.options.get,
+                                               directory = Path.of(tempDir, s"circuit$circuitId"),
                                                useVerilator = params.useVerilator,
                                                genVcd = params.genVcd)
             logger.info(s"""Started generating hardware for circuit id:$circuitId in temporary directory with a
@@ -98,13 +98,13 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
             new Thread(circuits.last).start()
             if (circuits.last.isGenerated.await(params.generationTimeoutSec, TimeUnit.SECONDS)) {
                 logger.info("Succesfully generated circuit.")
-                Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1, 
-                                                        err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS, 
+                Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1,
+                                                        err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS,
                                                                    msg = "Successfully generated verilog."))))
             } else {
                 logger.error("Circuit generation timed-out, please try again with a longer timeout.")
-                Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1, 
-                                                        err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.FAIL, 
+                Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1,
+                                                        err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.FAIL,
                                                                    msg = "Error generating circuit."))))
             }
         }

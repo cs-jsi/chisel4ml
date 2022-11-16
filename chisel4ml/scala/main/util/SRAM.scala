@@ -32,11 +32,10 @@ class SRAM(depth: Int, width: Int = 32) extends Module {
         val wrData = Input(UInt(width.W))
     })
     val mem = SyncReadMem(depth, UInt(width.W))
-    
+
     // Create one write port and one read port
     when (io.wrEna) {
         mem.write(io.wrAddr, io.wrData)
     }
     io.rdData := mem.read(io.rdAddr, io.rdEna)
 }
-

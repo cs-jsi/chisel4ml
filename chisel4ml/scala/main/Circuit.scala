@@ -38,7 +38,7 @@ import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
 
-class Circuit(model: Model, options: Options, directory: Path, useVerilator: Boolean, genVcd: Boolean) 
+class Circuit(model: Model, options: Options, directory: Path, useVerilator: Boolean, genVcd: Boolean)
 extends Runnable {
     case class ValidQTensor(qtensor: QTensor, valid: Boolean)
     val logger = LoggerFactory.getLogger(classOf[Circuit])
@@ -50,11 +50,11 @@ extends Runnable {
     val isStoped = new CountDownLatch(1)
     val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString
     LbirUtil.setDirectory(directory)
-    
+
     var annot: AnnotationSeq = Seq(TargetDirAnnotation(relDir)) // TODO - work with .pb instead of .lo.fir
     if (genVcd) annot = annot :+ WriteVcdAnnotation
     if (useVerilator) annot = annot :+ VerilatorBackendAnnotation
-    
+
     def stopSimulation(): Unit = {
         inQueue.put(ValidQTensor(QTensor(), false))
         isStoped.await(5, TimeUnit.SECONDS)
@@ -97,7 +97,7 @@ extends Runnable {
         logger.info(s"Generated sequential circuit in directory: ${directory}.")
         val outBitsTotal: Int = model.layers.last.output.get.totalBitwidth
         val outTrans: Int = dut.peList.last.numOutTrans
-        
+
         dut.io.inStream.data.initSource()
         dut.io.inStream.data.setSourceClock(dut.clock)
         dut.io.outStream.data.initSink()
@@ -123,7 +123,7 @@ extends Runnable {
         }
         }
     }
-    
+
     def sim(x: QTensor): QTensor = {
         inQueue.put(ValidQTensor(x, true))
         outQueue.take() // .take() is a blocking call

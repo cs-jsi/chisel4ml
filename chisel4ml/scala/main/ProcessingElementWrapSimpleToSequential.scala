@@ -26,10 +26,10 @@ import _root_.services.GenerateCircuitParams.Options
 import _root_.scala.math
 
 
-class ProcessingElementWrapSimpleToSequential(layer: Layer, options: Options) 
+class ProcessingElementWrapSimpleToSequential(layer: Layer, options: Options)
 extends ProcessingElementSequential(layer, options) {
     // Input data register
-    val inReg = RegInit(VecInit(Seq.fill(numInTrans)(0.U(inputStreamWidth.W)))) 
+    val inReg = RegInit(VecInit(Seq.fill(numInTrans)(0.U(inputStreamWidth.W))))
     val inCntReg = RegInit(0.U((log2(numInTrans) + 1).W))
     val inRegFull = inCntReg === numInTrans.U
 
@@ -40,7 +40,7 @@ extends ProcessingElementSequential(layer, options) {
 
     // (combinational) computational module
     val peSimple = Module(ProcessingElementSimple(layer))
-    
+
 
     /***** INPUT DATA INTERFACE *****/
     io.inStream.data.ready := !inRegFull

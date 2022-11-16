@@ -25,14 +25,14 @@ import _root_.scala.math.pow
 
 package object implicits {
     val logger = LoggerFactory.getLogger("chisel4ml")
-    
-    def toBinary(i: Int, digits: Int = 8): String = String.format(s"%${digits}s", 
+
+    def toBinary(i: Int, digits: Int = 8): String = String.format(s"%${digits}s",
                                                             i.toBinaryString.takeRight(digits)).replace(' ', '0')
     def toBinaryB(i: BigInt, digits: Int = 8): String = String.format("%" + digits + "s", i.toString(2)).replace(' ', '0')
 	def signedCorrect(x: Float, dtype: Datatype): Float = {
-        if (dtype.signed && x > (pow(2,dtype.bitwidth-1) - 1)) 
+        if (dtype.signed && x > (pow(2,dtype.bitwidth-1) - 1))
             x - pow(2, dtype.bitwidth).toFloat
-        else 
+        else
             x
     }
 
@@ -40,7 +40,7 @@ package object implicits {
     implicit class QTensorAddOns(qt: QTensor) {
         def toUInt: UInt = {
             logger.debug(s"Converting QTensor to an UInt.")
-            var values = qt.values.reverse 
+            var values = qt.values.reverse
             if (qt.dtype.get.quantization == BINARY) {
                 values = values.map(x => (x + 1) / 2) // 1 -> 1, -1 -> 0
             }
@@ -77,7 +77,7 @@ ffff"""
             } else {
                 values.map(signedCorrect(_, stencil.dtype.get))
             }
-            logger.debug(s"""Converted UInt to QTensor. ValuesString: $valuesString, values: $values, 
+            logger.debug(s"""Converted UInt to QTensor. ValuesString: $valuesString, values: $values,
 							 | valuesMod: $valuesMod. Uint val: $x, LitValue: ${x.litValue}, Binary string:
                              | ${toBinaryB(x.litValue, stencil.totalBitwidth)}""".stripMargin.replaceAll("\n", ""))
             QTensor(dtype = stencil.dtype,

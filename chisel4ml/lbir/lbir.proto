@@ -32,7 +32,7 @@ message Layer {
     }
     enum Activation {
         BINARY_SIGN = 0;
-        RELU = 1; 
+        RELU = 1;
         NO_ACTIVATION = 2;
     }
 
@@ -40,14 +40,14 @@ message Layer {
     QTensor thresh  = 2;
     QTensor weights = 3;
     QTensor input = 4;  // no values, just shape / dtype
-    QTensor output = 5; 
+    QTensor output = 5;
     Activation activation = 6;
 }
 
 message QTensor {
     Datatype dtype = 1;
     repeated uint32 shape = 2;
-    repeated float values = 3; 
+    repeated float values = 3;
 }
 
 message Datatype {
@@ -59,7 +59,7 @@ message Datatype {
     bool signed = 2;
     uint32 bitwidth = 3;
     /*
-       In convolutional layers repeated shift(scale) factors signifies a per-channel quantization. In dense layers it 
+       In convolutional layers repeated shift(scale) factors signifies a per-channel quantization. In dense layers it
        is per neuron.
     */
     repeated sint32 shift = 4;

@@ -33,7 +33,7 @@ class PeSequentialTestsTemp extends AnyFlatSpec with ChiselScalatestTester {
                                 offset = Seq(0, 0, 0, 0)
                                 )),
                             shape = Seq(3, 4),
-                            values = Seq( 1,   2,   3,   4, 
+                            values = Seq( 1,   2,   3,   4,
                                          -4,  -3,  -2,  -1,
                                           2,  -1,   1,   1)
                             )),
@@ -62,7 +62,7 @@ class PeSequentialTestsTemp extends AnyFlatSpec with ChiselScalatestTester {
             c.io.inStream.data.setSourceClock(c.clock)
             c.io.outStream.data.initSink()
             c.io.outStream.data.setSinkClock(c.clock)
-            
+
 
             c.io.inStream.data.enqueue(3.U(32.W))
             c.io.inStream.data.enqueue(6.U(32.W))
@@ -73,7 +73,7 @@ class PeSequentialTestsTemp extends AnyFlatSpec with ChiselScalatestTester {
             c.clock.step()
             c.clock.step()
             c.clock.step()
-        } 
+        }
     }
     // test(new ProcessingPipeline(new lbirModel)) TODO
 }

@@ -22,6 +22,7 @@ warn_return_any = true
 warn_unreachable = true
 warn_unused_configs = true
 no_implicit_reexport = true
+no_namespace_packages = true
 exclude = [
       '^lbir_pb2\.py$',
       '^lbir_pb2\.pyi$',

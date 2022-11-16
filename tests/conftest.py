@@ -1,14 +1,14 @@
-import pytest
-import tensorflow as tf
-import numpy as np
-import qkeras
 import os
-from tensorflow.keras.datasets import mnist
 
+import numpy as np
+import pytest
+import qkeras
+import tensorflow as tf
+from tensorflow.keras.datasets import mnist
 from tensorflow_model_optimization.python.core.sparsity.keras import prune
+from tensorflow_model_optimization.python.core.sparsity.keras import pruning_schedule
 
 # from tensorflow_model_optimization.python.core.sparsity.keras import pruning_callbacks
-from tensorflow_model_optimization.python.core.sparsity.keras import pruning_schedule
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 

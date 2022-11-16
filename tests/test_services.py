@@ -1,9 +1,10 @@
-from chisel4ml import generate, optimize
 import numpy as np
-import tensorflow as tf
-
-from tensorflow.keras.datasets import mnist
 import pytest
+import tensorflow as tf
+from tensorflow.keras.datasets import mnist
+
+from chisel4ml import generate
+from chisel4ml import optimize
 
 
 def test_compile_service(bnn_simple_model):

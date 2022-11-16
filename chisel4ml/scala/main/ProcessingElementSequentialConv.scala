@@ -31,10 +31,10 @@ import _root_.scala.math
  *  This hardware module can handle two-dimensional convolutions of various types, and also can adjust
  *  the aritmetic units depending on the quantization type. It does not take advantage of sparsity.
  */
-class ProcessingElementSequentialConv(layer: Layer, options: Options) 
-extends ProcessingElementSequential(layer, options) {                    
+class ProcessingElementSequentialConv(layer: Layer, options: Options)
+extends ProcessingElementSequential(layer, options) {
     val inReg = RegInit(0.U(inputStreamWidth.W))
-    
+
     val sramMemDepth = 4
     val sram = Module(new SRAM(depth=sramMemDepth, width=32))
     val sramAddr = RegInit(0.U((log2(sramMemDepth) + 1).W))
