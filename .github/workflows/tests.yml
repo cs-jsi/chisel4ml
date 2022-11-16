@@ -35,7 +35,8 @@ jobs:
 
     - name: Build scala
       run: |
-          sbt assembly
+          sbt --no-colors protocGenerate
+          sbt --no-colors assembly
     - name: Make protobuf
       run: |
           make protobuf

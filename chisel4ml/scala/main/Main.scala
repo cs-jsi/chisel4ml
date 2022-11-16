@@ -90,7 +90,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
             val circuitId = circuits.length
             circuits = circuits :+ new Circuit(model = params.model.get,
                                                options = params.options.get,
-                                               directory = Path.of(tempDir, s"circuit$circuitId"),
+                                               directory = Paths.get(tempDir, s"circuit$circuitId"),
                                                useVerilator = params.useVerilator,
                                                genVcd = params.genVcd)
             logger.info(s"""Started generating hardware for circuit id:$circuitId in temporary directory with a

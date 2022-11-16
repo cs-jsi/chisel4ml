@@ -100,7 +100,7 @@ object LbirUtil {
     def log2(x: Int): Int = (log(x) / log(2)).toInt
 
     def createHexMemoryFile(tensor: QTensor): String = {
-        val fPath = Path.of(directory.toString, s"mem$cnt.hex").toAbsolutePath()
+        val fPath = Paths.get(directory.toString, s"mem$cnt.hex").toAbsolutePath()
         val relPath = Paths.get("").toAbsolutePath().relativize(fPath)
         val writer = new BufferedWriter(new FileWriter(fPath.toString))
         writer.write(tensor.toHexStr)

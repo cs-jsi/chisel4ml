@@ -1,6 +1,14 @@
 CHANGES
 =======
 
+* Installed pre-commit hooks. They reorderded import, removed trailing whitespace etc.. No semantic changes in this commit
+* Fixed problem in gh-actions config
+* Updated gh-actions config to only run on push to master
+* Added black, fix those issues. All test GREEN again. Fixed issue with conversion of qtensor to UInt (zero padding)
+
+0.1.1
+-----
+
 * New optimizer and Transformer now WORKING./test.sh  Replaced bias with thresh in QTensor, replaced scale with shift in QTensor, shift now should not be only 1 element long (This simplifies the chisel code
 * Succesfully generating lbir model, one test of such model also passing. Transform now seems to work (further testing needed though)
 * Fixed also binary bn fuse to be compatible with new optimizer, all optimization tests now passing
