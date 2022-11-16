@@ -1,7 +1,8 @@
 name: Tests
 
 on:
-  - push
+  - push:
+        branches: [master]
   - pull_request
 
 jobs:
@@ -20,7 +21,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools tox
         pip install tox tox-gh-actions 
         pip install grpcio==1.46.0 
         pip install grpcio-tools==1.46.0
@@ -38,4 +39,4 @@ jobs:
       run: |
           make protobuf
     - name: Test with tox
-      run: tox
+      run: tox -e py
