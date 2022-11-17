@@ -27,6 +27,7 @@ import chisel4ml.lbir.services_pb2_grpc as services_grpc
 log = logging.getLogger(__name__)
 
 server = None
+_custom_temp_dir = None
 
 
 class Chisel4mlServer:
@@ -35,10 +36,6 @@ class Chisel4mlServer:
     """
 
     def __init__(self, command, temp_dir, host: str = "localhost", port: int = 50051):
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
-        os.mkdir(temp_dir)
-
         self._server_addr = host + ":" + str(port)
         self._channel = None
         self._stub = None
@@ -72,7 +69,7 @@ class Chisel4mlServer:
         self._stub = services_grpc.Chisel4mlServiceStub(self._channel)
         log.info("Created grpc channel.")
 
-    def send_grpc_msg(self, msg, timeout=300):
+    def send_grpc_msg(self, msg, timeout=60):
         concurrent.futures.wait([self._future])
         if isinstance(msg, services.GenerateCircuitParams):
             ret = self._stub.GenerateCircuit(msg, wait_for_ready=True, timeout=timeout)
@@ -98,11 +95,26 @@ class Chisel4mlServer:
 
 def start_server_once():
     global server
-    jar_file = Path(Path(__file__).parent, "..", "bin", "chisel4ml.jar").resolve()
-    temp_dir = Path(tempfile.gettempdir(), "chisel4ml")
     if server is None:
+        jar_file = Path(Path(__file__).parent, "..", "bin", "chisel4ml.jar").resolve()
+        if _custom_temp_dir is not None:
+            temp_dir_root = _custom_temp_dir
+        else:
+            temp_dir_root = tempfile.gettempdir()
+        temp_dir = Path(temp_dir_root, ".chisel4ml").resolve()
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+        os.mkdir(temp_dir)
+        # We move to the temp dir because chisels TargetDirAnotation works with
+        # relative dirs, which can cause a problem on Windows, if your working dir is
+        # not on the same disk as the temp_dir (can't get a proper relative directory)
+        os.chdir(temp_dir)
         server = Chisel4mlServer(
-            command=["java", "-Xms6500M", "-jar", str(jar_file)], temp_dir=str(temp_dir)
+            command=["java", "-jar", str(jar_file)], temp_dir=str(temp_dir)
         )
-
     return server
+
+
+def set_custom_temp_path(path):
+    global _custom_temp_dir
+    _custom_temp_dir = path
