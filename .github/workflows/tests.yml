@@ -45,5 +45,7 @@ jobs:
     - name: Make protobuf
       run: |
           make protobuf
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
     - name: Test with tox
       run: tox -e py
