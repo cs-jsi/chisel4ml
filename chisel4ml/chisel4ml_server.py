@@ -102,7 +102,7 @@ def start_server_once():
     temp_dir = Path(tempfile.gettempdir(), "chisel4ml")
     if server is None:
         server = Chisel4mlServer(
-            command=["java", "-Xms6500M", "-jar", str(jar_file)], temp_dir=str(temp_dir)
+            command=["java", "-jar", str(jar_file)], temp_dir=str(temp_dir)
         )
 
     return server
