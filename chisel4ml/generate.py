@@ -27,7 +27,7 @@ def circuit(
     is_simple=False,
     use_verilator=False,
     gen_vcd=False,
-    gen_timeout_sec=600,
+    gen_timeout_sec=100,
 ):
     assert gen_timeout_sec > 5, "Please provide at least a 5 second generation timeout."
     # TODO - add checking that the opt_model is correct
