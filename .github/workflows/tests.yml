@@ -3,7 +3,7 @@ name: Tests
 on:
   pull_request:
   push:
-        branches: [master]
+        branches: [win_ci_fix]
 
 
 jobs:
@@ -11,8 +11,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ['3.7', '3.8', '3.9']
+        os: [windows-latest]
+        python-version: ['3.8']
 
     steps:
     - uses: actions/checkout@v2
@@ -37,6 +37,11 @@ jobs:
       run: |
           sbt --no-colors protocGenerate
           sbt --no-colors assembly
+    - name: "Check File existance"
+      uses: andstor/file-existence-action@v2
+      with:
+        files: "bin/chisel4ml.jar, chisel4ml/scala/lbir/QTensor.scala"
+        fail: true
     - name: Make protobuf
       run: |
           make protobuf
