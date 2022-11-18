@@ -15,7 +15,9 @@
  */
 package chisel4ml
 
+import _root_.java.io.{File, IOException, RandomAccessFile}
 import _root_.java.nio.file.{Files, Path, Paths}
+import _root_.java.nio.channels.{FileLock, FileChannel}
 import _root_.java.util.concurrent.TimeUnit
 import _root_.scala.concurrent.{ExecutionContext, Future}
 
@@ -45,13 +47,45 @@ import _root_.org.slf4j.LoggerFactory
  */
 object Chisel4mlServer {
     private val port = 50051
+    var f: File = _
+    var fRwChannel: FileChannel = _
+    var lock: FileLock = _
 
     def main(args: Array[String]): Unit = {
         require(args.length > 0, "No argument list, you should provide an argument as a directory.")
         require(Files.exists(Paths.get(args(0))), "Provided directory doesn't exist.")
-        val server = new Chisel4mlServer(ExecutionContext.global, tempDir=args(0))
+        val tempDir = args(0)
+        val lockFile = Paths.get(tempDir, ".lockfile")
+        // We use lockfiles to ensure only one instance of a chisel4ml server is running.
+        try {
+            f = new File(lockFile.toString)
+            if (f.exists()) {
+                f.delete() // We try deleting it, if it exists
+            }
+            fRwChannel = new RandomAccessFile(f, "rw").getChannel()
+            lock = fRwChannel.tryLock()
+            if (lock == null) {
+                // Lock occupied by other instance
+                fRwChannel.close()
+                throw new RuntimeException("Only one instance of chisel4ml server may run at a time.")
+            }
+            // We add a shutdown hook to release the lock on shutdown
+            sys.addShutdownHook { closeFileLockHook() }
+        }
+        catch {
+            case e: IOException => throw new RuntimeException("Could not aquire lock to start a new instace of server.", e)
+        }
+
+
+        val server = new Chisel4mlServer(ExecutionContext.global, tempDir=tempDir)
         server.start()
         server.blockUntilShutdown()
+    }
+
+    private def closeFileLockHook(): Unit = {
+        lock.release()
+        fRwChannel.close()
+        f.delete()
     }
 }
 
@@ -77,6 +111,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
 
     private def stop(): Unit = {
         if (server != null) {
+            // we stop all simulations properly to get vcd files
             circuits.map(_.stopSimulation())
             logger.info("Shutting down chisel4ml server.")
             server.shutdown()
