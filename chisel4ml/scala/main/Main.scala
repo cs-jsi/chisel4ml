@@ -71,15 +71,13 @@ object Chisel4mlServer {
             }
             // We add a shutdown hook to release the lock on shutdown
             sys.addShutdownHook { closeFileLockHook() }
+            val server = new Chisel4mlServer(ExecutionContext.global, tempDir=tempDir)
+            server.start()
+            server.blockUntilShutdown()
         }
         catch {
             case e: IOException => throw new RuntimeException("Could not aquire lock to start a new instace of server.", e)
         }
-
-
-        val server = new Chisel4mlServer(ExecutionContext.global, tempDir=tempDir)
-        server.start()
-        server.blockUntilShutdown()
     }
 
     private def closeFileLockHook(): Unit = {
@@ -128,8 +126,8 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
                                                directory = Paths.get(tempDir, s"circuit$circuitId"),
                                                useVerilator = params.useVerilator,
                                                genVcd = params.genVcd)
-            logger.info(s"""Started generating hardware for circuit id:$circuitId in temporary directory with a
-                           | timeout of ${params.generationTimeoutSec} seconds.""".stripMargin.replaceAll("\n", ""))
+            logger.info(s"""Started generating hardware for circuit id:$circuitId in temporary directory $tempDir
+                | with a timeout of ${params.generationTimeoutSec} seconds.""".stripMargin.replaceAll("\n", ""))
             new Thread(circuits.last).start()
             if (circuits.last.isGenerated.await(params.generationTimeoutSec, TimeUnit.SECONDS)) {
                 logger.info("Succesfully generated circuit.")

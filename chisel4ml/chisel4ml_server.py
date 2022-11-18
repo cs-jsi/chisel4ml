@@ -36,16 +36,16 @@ class Chisel4mlServer:
     """
 
     def __init__(self, command, temp_dir, host: str = "localhost", port: int = 50051):
-        # We start a new instance of the server. It will check if there is an instance
-        # already running, and if so will simply close itself.
-        _log_file = open(os.path.join(temp_dir, "chisel4ml_server.log"), "w+")
-        self.task = subprocess.Popen(
-            command + [temp_dir], stdout=_log_file, stderr=_log_file
-        )
         self._server_addr = host + ":" + str(port)
         self._channel = None
         self._stub = None
 
+        # We start a new instance of the server. It will check if there is an instance
+        # already running, and if so will simply close itself.
+        self._log_file = open(os.path.join(temp_dir, "chisel4ml_server.log"), "w+")
+        self.task = subprocess.Popen(
+            command + [temp_dir], stdout=self._log_file, stderr=self._log_file
+        )
         log.info(f"Started task with pid: {self.task.pid}.")
 
         # We start a process to create the grpc stub (this can take some time).
