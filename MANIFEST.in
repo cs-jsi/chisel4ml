@@ -1,0 +1,6 @@
+include chisel4ml/bin/chisel4ml.jar
+include README.md
+include LICENSE
+global-exclude *.scala
+global-exclude *.gitignore
+global-exclude *.proto

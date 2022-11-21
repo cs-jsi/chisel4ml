@@ -99,7 +99,7 @@ class Chisel4mlServer:
 def start_server_once():
     global server
     if server is None:
-        jar_file = Path(Path(__file__).parent, "..", "bin", "chisel4ml.jar").resolve()
+        jar_file = Path(Path(__file__).parent, "bin", "chisel4ml.jar").resolve()
         if _custom_temp_dir is not None:
             temp_dir_root = _custom_temp_dir
         else:

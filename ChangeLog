@@ -1,6 +1,21 @@
 CHANGES
 =======
 
+* Added the server creation inside the try block to make sure only one can be created
+* Added a lockfile to scala, prevent several instance of server being opened
+* renamed tests to make gh actions badge reflect that it only runs on master
+* Added the branch specifier to the badge, as tests are only run on master now
+* Changed badge to point to cs-jsi repo
+
+0.1.3
+-----
+
+* added option for custom temp path, chdir to temp path to make relativ paths work on windows, and removed the memory flag from java
+
+0.1.2
+-----
+
+* Fixed a problem with paths on windows
 * Installed pre-commit hooks. They reorderded import, removed trailing whitespace etc.. No semantic changes in this commit
 * Fixed problem in gh-actions config
 * Updated gh-actions config to only run on push to master

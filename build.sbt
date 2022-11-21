@@ -8,7 +8,7 @@ Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "sca
 Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "scala" / "services"
 
 
-crossTarget := baseDirectory.value / "bin"
+crossTarget := baseDirectory.value / "chisel4ml" / "bin"
 assembly / assemblyJarName  := "chisel4ml.jar"
 ThisBuild / assemblyMergeStrategy := {
     case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
