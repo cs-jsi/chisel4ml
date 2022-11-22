@@ -21,7 +21,7 @@ from chisel4ml.transforms.qkeras_util import _qkeras_base_transform_no_inp
 
 
 @register_qkeras_transform
-class QKerasQActQDenseFuse(QKerasTransform):
+class QKerasQActActiveFuse(QKerasTransform):
     """Takes the sequence: QActivation, QDense and transforms it to a lbir.Layer. A
     QActivation before QDense is needed to determine the input quantization. This
     transform comes after running a fuse qdense, Qact sequence transform, thus
@@ -53,5 +53,5 @@ class QKerasQActQDenseFuse(QKerasTransform):
 
     def is_applicable(self, layers) -> bool:
         return isinstance(layers[0], qkeras.QActivation) and isinstance(
-            layers[1], qkeras.QDense
+            layers[1], (qkeras.QDense, qkeras.QConv2D)
         )

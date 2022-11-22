@@ -16,7 +16,9 @@ from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 
 @register_qkeras_transform
 class QKerasRemoveDeadLayers(QKerasTransform):
-    "Removes unnecassary layers."
+    """Removes unnecassary layers. Note that LBIR assumes that no memory transformation
+    happens, and thus in hardware the dimensions of the array can simply be omited."""
+
     num_layers = 1
     order = 1
 
@@ -25,5 +27,5 @@ class QKerasRemoveDeadLayers(QKerasTransform):
 
     def is_applicable(self, layers) -> bool:
         return isinstance(layers[0], tf.keras.layers.Dropout) or isinstance(
-            layers[0], tf.keras.layers.InputLayer
+            layers[0], (tf.keras.layers.InputLayer, tf.keras.layers.Flatten)
         )

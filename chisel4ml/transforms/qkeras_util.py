@@ -89,6 +89,13 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
 def _layer_to_weight_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
     # We run this so that scale wont be a place holder tensor
     _ = keras_layer.kernel_quantizer_internal(keras_layer.kernel)
+
+    kernel_vals = np.empty(shape=keras_layer.kernel.shape)
+    if isinstance(keras_layer, qkeras.QConv2D):
+        kernel_vals = np.moveaxis(keras_layer.kernel, [0, 1, 2, 3], [2, 3, 1, 0])
+    else:
+        kernel_vals = keras_layer.kernel
+
     return lbir.QTensor(
         dtype=lbir.Datatype(
             quantization=_quantizer_to_qtype(keras_layer.kernel_quantizer_internal),
@@ -99,14 +106,24 @@ def _layer_to_weight_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
             ),
             offset=[0],
         ),
-        shape=keras_layer.kernel.shape.as_list(),
-        values=get_integer_values(
-            keras_layer.kernel, keras_layer.kernel_quantizer_internal
-        )
+        shape=_layer_to_shape(keras_layer),
+        values=get_integer_values(kernel_vals, keras_layer.kernel_quantizer_internal)
         .numpy()
         .flatten()
         .tolist(),
     )
+
+
+def _layer_to_shape(keras_layer: KerasLayer) -> list[int]:
+    if isinstance(keras_layer, qkeras.QDense):
+        return keras_layer.kernel.shape.as_list()
+    elif isinstance(keras_layer, qkeras.QConv2D):
+        return list(np.moveaxis(keras_layer.kernel, [0, 1, 2, 3], [3, 2, 1, 0]).shape)
+    else:
+        raise ValueError(
+            f"Invalid layer of type: {keras_layer.__class}. Only the QDense and QConv2D"
+            " active layers may be used with chisel4ml."
+        )
 
 
 def _layer_to_output_tensor(keras_layer: KerasLayer) -> lbir.QTensor:

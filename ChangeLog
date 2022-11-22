@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Moved jar bin to chisel4ml package for easier packaging with setuptools
 * Added the server creation inside the try block to make sure only one can be created
 * Added a lockfile to scala, prevent several instance of server being opened
 * renamed tests to make gh actions badge reflect that it only runs on master

@@ -8,31 +8,35 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import qkeras
-from tensorflow.keras.activations import linear
+from functools import reduce
 
+import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 
 
 @register_qkeras_transform
-class QKerasActiveQActFuse(QKerasTransform):
-    """
-    Takes the sequence: QDense (or QConv2D), QActivations and merges the QActivation to
-    the QDense/QConv2D  activation parameter. This transform simplifies further
-    transformations.
+class LbirFlattenShapeConvDense(QKerasTransform):
+    """Takes the sequeunce: LbirLayer.Type.Conv2D, Lbir.Layer.type.Dense And flattens a
+    the input shape of Dense. Note that this is just flattening of the shape values, no
+    memory rearangement is actually done.
     """
 
     num_layers = 2
-    order = 2
+    order = 5
 
     def _call_impl(self, layers):
-        layers[0].activation = layers[1].activation
-        return [layers[0]]
+        layers[1].input.shape[:] = [
+            reduce(lambda x, y: x * y, layers[0].output.shape),
+            1,
+        ]
+        return layers
 
     def is_applicable(self, layers) -> bool:
         return (
-            isinstance(layers[0], (qkeras.QDense, qkeras.QConv2D))
-            and (layers[0].activation is None or layers[0].activation is linear)
-            and isinstance(layers[1], qkeras.QActivation)
+            isinstance(layers[0], lbir.Layer)
+            and isinstance(layers[1], lbir.Layer)
+            and layers[0].ltype == lbir.Layer.Type.CONV2D
+            and layers[1].ltype == lbir.Layer.Type.DENSE
+            and len(layers[1].input.shape) > 2
         )

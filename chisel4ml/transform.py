@@ -35,7 +35,6 @@ def qkeras_to_lbir(
             else:
                 left = left + 1
                 right = right + 1
-
     for layer in xlayers:
         assert isinstance(layer, lbir.Layer), (
             "Transformation to lbir model failed. Not all layers were able to be "
