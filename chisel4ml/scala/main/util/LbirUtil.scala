@@ -98,6 +98,7 @@ object LbirUtil {
     }
 
     def log2(x: Int): Int = (log(x) / log(2)).toInt
+    def log2(x: Float): Float = (log(x) / log(2.0)).toFloat
 
     def createHexMemoryFile(tensor: QTensor): String = {
         val fPath = Paths.get(directory.toString, s"mem$cnt.hex").toAbsolutePath()
