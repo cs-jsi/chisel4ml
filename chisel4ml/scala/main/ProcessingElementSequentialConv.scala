@@ -30,11 +30,48 @@ import _root_.scala.math
  *
  *  This hardware module can handle two-dimensional convolutions of various types, and also can adjust
  *  the aritmetic units depending on the quantization type. It does not take advantage of sparsity.
+ *  It uses the filter stationary approach and streams in the activations for each filter sequentialy.
  */
 class ProcessingElementSequentialConv(layer: Layer, options: Options)
 extends ProcessingElementSequential(layer, options) {
-    val inReg = RegInit(0.U(inputStreamWidth.W))
+    val memWordWidth: Int = 32
 
+    /****************************/
+    /* KERNEL MEMORY            */
+    /****************************/
+    val kernelParamSize: Int = layer.weights.get.dtype.get.bitwidth
+    val kernelParamsPerWord: Int = memWordWidth / kernelParamSize
+    val kernelNumParams: Int = layer.weights.get.shape.reduce(_ * _)
+    val kernelMemDepth: Int = math.ceil(kernelNumParams.toFloat / kernelParamsPerWord.toFloat).toInt
+    val kernelMem = Module(new ROM(depth=kernelMemDepth,
+                                   width=memWordWidth,
+                                   memFile=LbirUtil.createHexMemoryFile(layer.weights.get)
+                               )
+                    )
+
+    /****************************/
+    /* ACTIVATION MEMORY        */
+    /****************************/
+    val actParamSize: Int = layer.input.get.dtype.get.bitwidth
+    val actParamsPerWord: Int = memWordWidth / actParamSize
+    val actNumParams: Int = layer.input.get.shape.reduce(_ * _)
+    val actMemDepth: Int = math.ceil(actNumParams.toFloat / actParamsPerWord.toFloat).toInt
+    val actMem = Module(new SRAM(depth=actMemDepth, width=memWordWidth))
+
+    /****************************/
+    /* KERNEL REGISTERS         */
+    /****************************/
+    val numOfKernels: Int = layer.weights.get.shape(0)
+    val bitsPerKernel: Int = layer.weights.get.totalBitwidth / numOfKernels
+    val kernelReg = RegInit(0.U(math.ceil(log2(bitsPerKernel.toFloat))).W)
+
+    /****************************/
+    /* ACTIVATION REGISTERS     */
+    /****************************/
+    val actRegs = RegInit(VecInit(Seq.fill(36-1)(0.U(actParamSize.W)))
+
+////////////////////////////////////////////////////////////////////////////////////////////
+    val inReg = RegInit(0.U(inputStreamWidth.W))
     val sramMemDepth = 4
     val sram = Module(new SRAM(depth=sramMemDepth, width=32))
     val sramAddr = RegInit(0.U((log2(sramMemDepth) + 1).W))
