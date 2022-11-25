@@ -39,6 +39,7 @@ class Chisel4mlServer:
         self._server_addr = host + ":" + str(port)
         self._channel = None
         self._stub = None
+        self._temp_dir = temp_dir
 
         # We start a new instance of the server. It will check if there is an instance
         # already running, and if so will simply close itself.
@@ -58,6 +59,10 @@ class Chisel4mlServer:
             signal.SIGTERM, self.stop
         )  # This ensures kill pid also close the server.
         signal.signal(signal.SIGINT, self.stop)
+
+    @property
+    def temp_dir(self):
+        return self._temp_dir
 
     @property
     def stdout(self):

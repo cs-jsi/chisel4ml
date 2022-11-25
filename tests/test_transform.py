@@ -13,7 +13,7 @@ def test_sint_simple_conv_model_transform(sint_simple_conv_model):
                     dtype=lbir.Datatype(
                         quantization=lbir.Datatype.QuantizationType.UNIFORM,
                         signed=True,
-                        bitwidth=8,
+                        bitwidth=16,
                         shift=[0] * 2,
                         offset=[0],
                     ),
@@ -58,7 +58,7 @@ def test_sint_simple_conv_model_transform(sint_simple_conv_model):
                     dtype=lbir.Datatype(
                         quantization=lbir.Datatype.QuantizationType.UNIFORM,
                         signed=True,
-                        bitwidth=8,
+                        bitwidth=16,
                         shift=[0],
                         offset=[0],
                     ),
@@ -114,7 +114,7 @@ def test_sint_simple_model_transform(sint_simple_model):
                     dtype=lbir.Datatype(
                         quantization=lbir.Datatype.QuantizationType.UNIFORM,
                         signed=True,
-                        bitwidth=8,
+                        bitwidth=16,
                         shift=[0] * 4,
                         offset=[0],
                     ),
@@ -160,7 +160,7 @@ def test_sint_simple_model_transform(sint_simple_model):
                     dtype=lbir.Datatype(
                         quantization=lbir.Datatype.QuantizationType.UNIFORM,
                         signed=True,
-                        bitwidth=8,
+                        bitwidth=16,
                         shift=[0],
                         offset=[0],
                     ),
@@ -216,7 +216,7 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                     dtype=lbir.Datatype(
                         quantization=lbir.Datatype.QuantizationType.UNIFORM,
                         signed=True,
-                        bitwidth=8,
+                        bitwidth=16,
                         shift=[0] * 4,
                         offset=[0],
                     ),
@@ -262,7 +262,7 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                     dtype=lbir.Datatype(
                         quantization=lbir.Datatype.QuantizationType.UNIFORM,
                         signed=True,
-                        bitwidth=8,
+                        bitwidth=16,
                         shift=[0],
                         offset=[0],
                     ),

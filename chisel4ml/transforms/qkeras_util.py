@@ -54,10 +54,10 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
     )
     if keras_layer.bias_quantizer_internal is None:
         keras_layer.bias_quantizer_internal = qkeras.quantized_bits(
-            bits=8, integer=7, keep_negative=True, alpha=1
+            bits=16, integer=15, keep_negative=True, alpha=1
         )
         log.warning(
-            "The bias tensor was left unquantized. Adding 8-bit signed integer"
+            "The bias tensor was left unquantized. Adding 16-bit signed integer"
             " quantization."
         )
     else:

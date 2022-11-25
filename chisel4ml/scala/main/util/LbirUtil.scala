@@ -48,7 +48,7 @@ object ThreshProvider {
     implicit object ThreshProviderSInt extends ThreshProvider[SInt] {
         def instance(tensor: QTensor, fanIn: Int): Seq[SInt] = {
             LbirUtil.logger.debug(s"""Transformed input tensor of thresholds to a Seq[SInt].""")
-            tensor.values.map(_.toInt.S(tensor.dtype.get.bitwidth.W))
+            tensor.values.map(_.toInt.S)
         }
     }
 }

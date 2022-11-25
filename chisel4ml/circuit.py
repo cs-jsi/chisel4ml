@@ -9,6 +9,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
+import shutil
+from pathlib import Path
 
 import numpy as np
 
@@ -51,3 +54,15 @@ class Circuit:
 
     def predict(self, np_arr):
         self.__call__(np_arr)
+
+    def package(self, directory=None, name="ProcessingPipeline"):
+        if directory is None:
+            raise ValueError("Directory parameter missing.")
+        temp_dir = self._server.temp_dir
+        temp_circuit_dir = os.path.join(temp_dir, f"circuit{self.circuitId}")
+        temp_circuit_file = Path(temp_circuit_dir).glob("*.sv").__next__()
+        dest_file = directory
+        os.makedirs(Path(directory).absolute(), exist_ok=True)
+        if os.path.isdir(directory):
+            dest_file = os.path.join(directory, f"{name}.sv")
+        shutil.copyfile(temp_circuit_file, dest_file)
