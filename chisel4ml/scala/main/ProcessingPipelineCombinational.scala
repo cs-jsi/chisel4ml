@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml
+package chisel4ml.combinational
 
 import _root_.chisel3._
 import _root_.chisel3.util._
@@ -24,13 +24,13 @@ import _root_.chisel4ml.util.LbirUtil
 import _root_.chisel4ml.util.bus.AXIStream
 import _root_.scala.collection.mutable._
 
-class ProcessingPipelineSimple(model: Model) extends Module {
+class ProcessingPipelineCombinational(model: Model) extends Module {
     // List of processing elements - one PE per layer
-    val peList = new ListBuffer[ProcessingElementSimple]()
+    val peList = new ListBuffer[ProcessingElementCombinational]()
 
     // Instantiate modules for seperate layers, for now we only support DENSE layers
     for (layer <- model.layers) {
-        peList += Module(ProcessingElementSimple(layer))
+        peList += Module(ProcessingElementCombinational(layer))
     }
 
     val io = IO(new Bundle {

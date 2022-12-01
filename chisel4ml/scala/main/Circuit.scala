@@ -25,7 +25,8 @@ import _root_.chiseltest.simulator.WriteVcdAnnotation
 
 import _root_.chisel4ml.util.LbirUtil
 import _root_.chisel4ml.implicits._
-import _root_.chisel4ml.ProcessingPipelineSimple
+import _root_.chisel4ml.combinational.ProcessingPipelineCombinational
+import _root_.chisel4ml.sequential.ProcessingPipeline
 import _root_.lbir.{QTensor, Model}
 import _root_.services.GenerateCircuitParams.Options
 
@@ -45,7 +46,7 @@ extends Runnable {
     val inQueue = new LinkedBlockingQueue[ValidQTensor]()
     val outQueue = new LinkedBlockingQueue[QTensor]()
     val outTensorShape = model.layers.last.output.get
-    val isSimple = options.isSimple
+    val isCombinational = options.isSimple
     val isGenerated = new CountDownLatch(1)
     val isStoped = new CountDownLatch(1)
     val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString
@@ -62,27 +63,27 @@ extends Runnable {
 
     def run() : Unit = {
         logger.info(s"Used annotations for generated circuit are: ${annot.map(_.toString)}.")
-        if (isSimple) {
-            RawTester.test(new ProcessingPipelineSimple(model), annot)(this.runSimple(_))
+        if (isCombinational) {
+            RawTester.test(new ProcessingPipelineCombinational(model), annot)(this.runCombinational(_))
         } else {
             RawTester.test(new ProcessingPipeline(model, options), annot)(this.runSequential(_))
         }
         isStoped.countDown()
     }
 
-    private def runSimple(dut: ProcessingPipelineSimple): Unit = {
+    private def runCombinational(dut: ProcessingPipelineCombinational): Unit = {
         if (!useVerilator) {
-            (new FirrtlStage).execute(Array("--input-file", s"$relDir/ProcessingPipelineSimple.lo.fir",
+            (new FirrtlStage).execute(Array("--input-file", s"$relDir/ProcessingPipelineCombinational.lo.fir",
                                             "--start-from", "low", "-E", "sverilog"), annot)
         }
         isGenerated.countDown()
-        logger.info(s"Generated simple circuit in directory: ${directory}.")
-        while(true && isSimple) {
+        logger.info(s"Generated combinational circuit in directory: ${directory}.")
+        while(true && isCombinational) {
             // inQueue.take() blocks execution until data is available
             val validQTensor = inQueue.take()
             if (validQTensor.valid == false) break()
             dut.io.in.poke(validQTensor.qtensor.toUInt)
-            logger.info(s"Simulating a simple circuit on a new input.")
+            logger.info(s"Simulating a combinational circuit on a new input.")
             dut.clock.step()
             outQueue.put(dut.io.out.peek().toQTensor(outTensorShape))
         }
@@ -102,7 +103,7 @@ extends Runnable {
         dut.io.inStream.data.setSourceClock(dut.clock)
         dut.io.outStream.data.initSink()
         dut.io.outStream.data.setSinkClock(dut.clock)
-        breakable { while(true && !isSimple) {
+        breakable { while(true && !isCombinational) {
             // inQueue.take() blocks execution until data is available
             val validQTensor = inQueue.take()
             if (validQTensor.valid == false) break()

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml
+package chisel4ml.combinational
 
 import chisel3._
 import chisel3.util._
@@ -30,7 +30,7 @@ import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
 object Neuron {
-    val logger = LoggerFactory.getLogger(classOf[ProcessingElementSimple])
+    val logger = LoggerFactory.getLogger(classOf[ProcessingElementCombinational])
     def apply[I <: Bits,
               W <: Bits : WeightsProvider,
               M <: Bits,
@@ -65,15 +65,15 @@ object Neuron {
 }
 
 
-abstract class ProcessingElementSimple(layer: Layer) extends Module {
+abstract class ProcessingElementCombinational(layer: Layer) extends Module {
     val io = IO(new Bundle {
         val in  = Input(UInt(layer.input.get.totalBitwidth.W))
         val out = Output(UInt(layer.output.get.totalBitwidth.W))
     })
 }
 
-object ProcessingElementSimple {
-    val logger = LoggerFactory.getLogger(classOf[ProcessingElementSimple])
+object ProcessingElementCombinational {
+    val logger = LoggerFactory.getLogger(classOf[ProcessingElementCombinational])
     def signFn(act: UInt, thresh: UInt): Bool = act >= thresh
     def signFn(act: SInt, thresh: SInt): Bool = act >= thresh
     def reluFn(act: SInt, thresh: SInt): UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
@@ -101,7 +101,7 @@ object ProcessingElementSimple {
     def apply(layer: Layer) = (layer.input.get.dtype.get.quantization,
                                layer.weights.get.dtype.get.quantization,
                                layer.activation) match {
-        case (UNIFORM, UNIFORM, RELU) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, UInt](layer,
+        case (UNIFORM, UNIFORM, RELU) => new ProcessingElementCombinationalDense[UInt, SInt, SInt, SInt, UInt](layer,
                                                                         UInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         UInt(layer.output.get.dtype.get.bitwidth.W),
                                                                         mul,
@@ -110,7 +110,7 @@ object ProcessingElementSimple {
                                                                         reluFn,
                                                                         saturate
                                                                         )
-        case (UNIFORM, UNIFORM, NO_ACTIVATION) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, SInt](layer,
+        case (UNIFORM, UNIFORM, NO_ACTIVATION) => new ProcessingElementCombinationalDense[UInt, SInt, SInt, SInt, SInt](layer,
                                                                         UInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         SInt(layer.output.get.dtype.get.bitwidth.W),
                                                                         mul,
@@ -119,7 +119,7 @@ object ProcessingElementSimple {
                                                                         linFn,
                                                                         noSaturate
                                                                         )
-        case (UNIFORM, BINARY, BINARY_SIGN) => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,
+        case (UNIFORM, BINARY, BINARY_SIGN) => new ProcessingElementCombinationalDense[UInt, Bool, SInt, SInt, Bool](layer,
                                                                         UInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         Bool(),
                                                                         mul,
@@ -128,7 +128,7 @@ object ProcessingElementSimple {
                                                                         signFn,
                                                                         noSaturate
                                                                         )
-        case (BINARY, BINARY, BINARY_SIGN)  => new ProcessingElementSimpleDense[Bool, Bool, Bool, UInt, Bool](layer,
+        case (BINARY, BINARY, BINARY_SIGN)  => new ProcessingElementCombinationalDense[Bool, Bool, Bool, UInt, Bool](layer,
                                                                                                  Bool(),
                                                                                                  Bool(),
                                                                                                     mul,
@@ -139,7 +139,7 @@ object ProcessingElementSimple {
     }
 }
 
-class ProcessingElementSimpleDense[I <: Bits,
+class ProcessingElementCombinationalDense[I <: Bits,
                                    W <: Bits : WeightsProvider,
                                    M <: Bits,
                                    A <: Bits : ThreshProvider,
@@ -152,8 +152,8 @@ class ProcessingElementSimpleDense[I <: Bits,
                                               actFn: (A, A) => O,
                                               saturateFn: (O, Int) => O)
 
-extends ProcessingElementSimple(layer) {
-    import ProcessingElementSimple.logger
+extends ProcessingElementCombinational(layer) {
+    import ProcessingElementCombinational.logger
     val weights: Seq[Seq[W]] = LbirUtil.transformWeights[W](layer.weights.get)
     val thresh: Seq[A] = LbirUtil.transformThresh[A](layer.thresh.get, layer.input.get.shape(0))
     val shift: Seq[Int] = layer.weights.get.dtype.get.shift
@@ -174,7 +174,7 @@ extends ProcessingElementSimple(layer) {
     // to evenout the reversing (its not pretty but it works).
     io.out := Cat(out_int.reverse)
 
-    logger.info(s"""Created new ProcessingElementSimpleDense processing element. It has an input shape:
+    logger.info(s"""Created new ProcessingElementCombinationalDense processing element. It has an input shape:
                     | ${layer.input.get.shape} and output shape: ${layer.output.get.shape}. The input bitwidth
                     | is ${layer.input.get.dtype.get.bitwidth}, the output bitwidth
                     | ${layer.output.get.dtype.get.bitwidth}. Thus the total size of the input vector is

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml
+package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
@@ -22,6 +22,7 @@ import _root_.chisel4ml.util.bus.AXIStream
 import _root_.chisel4ml.util.{SRAM, ROM}
 import _root_.chisel4ml.util.LbirUtil.log2
 import _root_.chisel4ml.util.LbirUtil
+import _root_.chisel4ml.implicits._
 import _root_.lbir.{Layer}
 import _root_.services.GenerateCircuitParams.Options
 import _root_.scala.math
@@ -63,12 +64,12 @@ extends ProcessingElementSequential(layer, options) {
     /****************************/
     val numOfKernels: Int = layer.weights.get.shape(0)
     val bitsPerKernel: Int = layer.weights.get.totalBitwidth / numOfKernels
-    val kernelReg = RegInit(0.U(math.ceil(log2(bitsPerKernel.toFloat))).W)
+    val kernelReg = RegInit(0.U(math.ceil(log2(bitsPerKernel.toFloat)).toInt.W))
 
     /****************************/
     /* ACTIVATION REGISTERS     */
     /****************************/
-    val actRegs = RegInit(VecInit(Seq.fill(36-1)(0.U(actParamSize.W)))
+    val actRegs = RegInit(VecInit(Seq.fill(36-1)(0.U(actParamSize.W))))
 
 ////////////////////////////////////////////////////////////////////////////////////////////
     val inReg = RegInit(0.U(inputStreamWidth.W))

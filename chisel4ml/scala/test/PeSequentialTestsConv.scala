@@ -5,6 +5,8 @@ import chisel3._
 import chiseltest._
 import _root_.services.GenerateCircuitParams.Options
 import _root_.chisel4ml._
+import _root_.chisel4ml.sequential._
+import _root_.chisel4ml.combinational._
 import _root_.lbir._
 
 

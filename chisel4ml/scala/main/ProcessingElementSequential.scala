@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml
+package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
@@ -52,5 +52,5 @@ abstract class ProcessingElementSequential(layer: Layer, options: Options) exten
 }
 
 object ProcessingElementSequential {
-    def apply(layer: Layer, options: Options) = new ProcessingElementWrapSimpleToSequential(layer, options)
+    def apply(layer: Layer, options: Options) = new ProcessingElementSequentialWrapCombinational(layer, options)
 }
