@@ -32,11 +32,13 @@ import _root_.scala.math
  *  This hardware module can handle two-dimensional convolutions of various types, and also can adjust
  *  the aritmetic units depending on the quantization type. It does not take advantage of sparsity.
  *  It uses the filter stationary approach and streams in the activations for each filter sequentialy.
+ *  The compute unit computes one whole neuron at once. The reason for this is that it simplifies the
+ *  design, which would otherwise require complex control logic / program code. This design, of course,
+ *  comes at a price of utilization of the arithmetic units, which is low. But thanks to the low
+ *  bitwidths of parameters this should be an acceptable trade-off.
  */
 class ProcessingElementSequentialConv(layer: Layer, options: Options)
 extends ProcessingElementSequential(layer, options) {
-    val memWordWidth: Int = 32
-
     /****************************/
     /* KERNEL MEMORY            */
     /****************************/
@@ -64,54 +66,62 @@ extends ProcessingElementSequential(layer, options) {
     /****************************/
     val numOfKernels: Int = layer.weights.get.shape(0)
     val bitsPerKernel: Int = layer.weights.get.totalBitwidth / numOfKernels
-    val kernelReg = RegInit(0.U(math.ceil(log2(bitsPerKernel.toFloat)).toInt.W))
+    //val kernelRegFile = RegInit(Vec(Seq.fill(kernelNumParams)(0.U(kernelParamSize.W))))
 
     /****************************/
     /* ACTIVATION REGISTERS     */
     /****************************/
-    val actRegs = RegInit(VecInit(Seq.fill(36-1)(0.U(actParamSize.W))))
+    val actRegs = RegInit(VecInit(Seq.fill(kernelNumParams)(0.U(actParamSize.W))))
 
-////////////////////////////////////////////////////////////////////////////////////////////
-    val inReg = RegInit(0.U(inputStreamWidth.W))
-    val sramMemDepth = 4
-    val sram = Module(new SRAM(depth=sramMemDepth, width=32))
-    val sramAddr = RegInit(0.U((log2(sramMemDepth) + 1).W))
+}
 
-    val romMemDepth = 4
-    val rom = Module(new ROM(depth=romMemDepth, width=32, memFile=LbirUtil.createHexMemoryFile(layer.weights.get)))
-    val romAddr = RegInit(0.U((log2(romMemDepth) + 1).W))
+/** A register file for storing the kernel of a convotional layer.
+ *
+ *  kernelSize: Int - Signifies one dimension of a square kernel (If its a 3x3 kernel then kernelSize=3)
+ *  kernelDepth: Int - The depth of the kernel (number of input channels)
+ *  actParamSize: Int - The activation parameterSize in bits.
+ */
+class KernelRegisterFile(kernelSize: Int, kernelDepth:Int, kernelParamSize: Int) extends Module {
+    val totalNumOfElements: Int = kernelSize * kernelSize * kernelDepth
+    val kernelNumOfElements: Int = kernelSize * kernelSize
+    val outDataSize: Int = kernelSize*kernelSize*kernelDepth*kernelParamSize
+    val wrDataWidth: Int = kernelSize * kernelParamSize
+    val kernelAddrWidth: Int = math.floor(log2(kernelDepth.toFloat)).toInt + 1
+    val rowAddrWidth: Int = math.ceil(log2(kernelSize.toFloat)).toInt
 
-    /***** INPUT DATA INTERFACE *****/
-    io.inStream.data.ready := sramAddr < sramMemDepth.U
-    when(io.inStream.data.ready && io.inStream.data.valid) {
-        inReg := io.inStream.data.bits
-        sramAddr := sramAddr + 1.U
-    }
+    val io = IO(new Bundle {
+        val flushRegs = Input(Bool())
+        val shiftRegs = Input(Bool())
+        val rowWriteMode = Input(Bool())
+        val rowAddr = Input(UInt(rowAddrWidth.W))
+        val kernelAddr = Input(UInt(kernelAddrWidth.W))
+        val inData = Input(UInt(wrDataWidth.W))
+        val inValid = Input(Bool())
+        val outData = Output(UInt(outDataSize.W))
+    })
 
-    // Handles the SRAM memory
-    val wasInputTrans = RegNext(io.inStream.data.ready && io.inStream.data.valid)
-    sram.io.wrEna := false.B
-    sram.io.wrAddr := 0.U
-    sram.io.wrData := inReg
-    sram.io.rdEna := false.B
-    sram.io.rdAddr := 0.U
-    when(wasInputTrans) {
-        sram.io.wrEna := true.B
-        sram.io.wrAddr := sramAddr
-    }
+    val kernelRegFile = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(kernelParamSize.W)))
+    //val kernelRegFile = RegInit(VecInit(Array.fill[UInt](kernelDepth, kernelSize, kernelSize)(0.U)))
+    //val rowGroupedRegFile: Vec[UInt] = kernelRegFile.grouped(kernelSize).toVec
+    io.outData := kernelRegFile.asUInt
 
+    when (io.inValid) {
+        when (io.rowWriteMode === true.B) {
+            kernelRegFile(io.kernelAddr)(io.rowAddr) := io.inData.asTypeOf(kernelRegFile(0)(0))
+        }.otherwise {
+            for (i <- 0 until kernelSize) {
+                kernelRegFile(io.kernelAddr)(i)(kernelSize-1) := io.inData.asTypeOf(kernelRegFile(0)(0))(i)
+            }
 
-    /***** OUTPUT DATA INTERFACE *****/
-    io.outStream.data.valid := (romAddr > 0.U) && (romAddr <= romMemDepth.U)
-    io.outStream.data.bits := rom.io.rdData
-    io.outStream.last := romAddr === (romMemDepth - 1).U
-
-    // Handle ROM memory
-    rom.io.rdEna := true.B
-    rom.io.rdAddr := romAddr
-
-    // Addr counter
-    when(romAddr <= romMemDepth.U) {
-        romAddr := romAddr + 1.U
+            when (io.shiftRegs === true.B) {
+                for (i <- 0 until kernelDepth) {
+                    for (j <- 0 until kernelSize) {
+                        for (k <- 1 until kernelSize) {
+                            kernelRegFile(i)(j)(k-1) := kernelRegFile(i)(j)(k)
+                        }
+                    }
+                }
+            }
+        }
     }
 }

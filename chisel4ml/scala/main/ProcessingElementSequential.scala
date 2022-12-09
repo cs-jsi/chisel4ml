@@ -33,6 +33,7 @@ abstract class ProcessingElementSequential(layer: Layer, options: Options) exten
 
     val inputStreamWidth = 32
     val outputStreamWidth = 32
+    val memWordWidth = 32
 
     val inSizeBits: Int = layer.input.get.totalBitwidth
     val numInTrans: Int = math.ceil(inSizeBits.toFloat / inputStreamWidth.toFloat).toInt
@@ -45,7 +46,7 @@ abstract class ProcessingElementSequential(layer: Layer, options: Options) exten
         val outStream = new AXIStream(outputStreamWidth)
     })
 
-    logger.info(s"""Created new ProcessingElementSequentialConv with inSizeBits: $inSizeBits,
+    logger.info(s"""Created new ProcessingElementSequential with inSizeBits: $inSizeBits,
                 | numInTrans: $numInTrans, outSizeBits: $outSizeBits, numOutTrans: $numOutTrans,
                 | inputStreamWidth: $inputStreamWidth, outputStreamWidth: $outputStreamWidth.
                 |""".stripMargin.replaceAll("\n",""))
