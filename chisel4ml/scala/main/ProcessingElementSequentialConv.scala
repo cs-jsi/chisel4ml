@@ -90,7 +90,6 @@ class KernelRegisterFile(kernelSize: Int, kernelDepth:Int, kernelParamSize: Int)
     val rowAddrWidth: Int = math.ceil(log2(kernelSize.toFloat)).toInt
 
     val io = IO(new Bundle {
-        val flushRegs = Input(Bool())
         val shiftRegs = Input(Bool())
         val rowWriteMode = Input(Bool())
         val rowAddr = Input(UInt(rowAddrWidth.W))
@@ -101,8 +100,6 @@ class KernelRegisterFile(kernelSize: Int, kernelDepth:Int, kernelParamSize: Int)
     })
 
     val kernelRegFile = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(kernelParamSize.W)))
-    //val kernelRegFile = RegInit(VecInit(Array.fill[UInt](kernelDepth, kernelSize, kernelSize)(0.U)))
-    //val rowGroupedRegFile: Vec[UInt] = kernelRegFile.grouped(kernelSize).toVec
     io.outData := kernelRegFile.asUInt
 
     when (io.inValid) {

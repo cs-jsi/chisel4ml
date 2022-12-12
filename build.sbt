@@ -40,6 +40,8 @@ lazy val root = (project in file("."))
       "org.slf4j"                  %  "slf4j-simple"         % slf4jVersion,
       "org.scalatest"              %% "scalatest"            % scalatestVersion,
       "org.scalatest"              %% "scalatest"            % scalatestVersion % "test",
+      "org.nd4j"                   % "nd4j-native"           % "0.5.0",
+      "org.nd4j"                   % "nd4j-native"           % "0.5.0"
     ),
     scalacOptions ++= Seq(
       "-language:reflectiveCalls",

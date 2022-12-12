@@ -20,12 +20,23 @@ import chisel3._
 import chiseltest._
 
 import _root_.chisel4ml.sequential._
+import _root_.chisel4ml.implicits._
+
+import org.nd4j.linalg.factory.Nd4j
+import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.indexing.NDArrayIndex
+import org.nd4j.linalg.ops.transforms.Transforms
+
+import _root_.org.slf4j.Logger
+import _root_.org.slf4j.LoggerFactory
+
 
 class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
+    val logger = LoggerFactory.getLogger(classOf[KernelRegisterFileTests])
+
     behavior of "KernelRegisterFile module"
     it should "show appropirate window as it cycles through the input image" in {
         test(new KernelRegisterFile(2, 1, 4)) { dut =>
-            dut.io.flushRegs.poke(false.B)
             dut.io.shiftRegs.poke(false.B)
             dut.io.rowWriteMode.poke(true.B)
             dut.io.kernelAddr.poke(0.U)
@@ -68,4 +79,73 @@ class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
             dut.io.inValid.poke(false.B)
         }
     }
+
+    val rand = new scala.util.Random(seed=42)
+    Nd4j.getRandom().setSeed(42)
+    def ndArrayToBinaryString(arr: INDArray, bits: Int): String = {
+        val flatArr = Nd4j.toFlattened(arr)
+        var binaryString = ""
+        for (i <- 0 until arr.length) {
+            binaryString = toBinary(flatArr.getDouble(i).toInt, bits) + binaryString
+        }
+        "b" + binaryString
+    }
+    for (testCaseId <- 0 until 50) { // 50 test should do it
+        val randKernSize = rand.between(2, 7+1) // rand.between(inclusive, exclusive)
+        val randKernDepth = rand.between(1, 16+1)
+        val randKernParamBitwidth = rand.between(1, 8+1)
+        val randImageSize = rand.between(randKernSize+1, randKernSize+7)
+        val randImageNormal = Nd4j.rand(Array(randKernDepth, randImageSize, randImageSize))
+        val randImage = Transforms.round(randImageNormal.mul(scala.math.pow(2, randKernParamBitwidth)-1))
+        it should s"""work with random params: kernelSize: $randKernSize, kernelDepth: $randKernDepth, kernelBitwidth:
+                     |$randKernParamBitwidth, imageSize: $randImageSize.""".stripMargin.replaceAll("\n","") in {
+            test(new KernelRegisterFile(randKernSize, randKernDepth, randKernParamBitwidth)) { dut =>
+                println(s"Simulating test case for random image:\n $randImage.")
+                for (i <- 0 until randImageSize-randKernSize+1) {
+                    for (j <- 0 until randImageSize-randKernSize+1) {
+                        var window = randImage.get(NDArrayIndex.all(), // kernel
+                                                   NDArrayIndex.interval(i, i+randKernSize), // row
+                                                   NDArrayIndex.interval(j, j+randKernSize)) // col
+                        logger.debug(s"Simulating convolution subwindow:\n $window.")
+                        if (j == 0) {
+                            fillWindow(window)
+                        } else {
+                            fillAdded(window.get(NDArrayIndex.all(),
+                                                 NDArrayIndex.all(),
+                                                 NDArrayIndex.point(randKernSize-1)))
+                        }
+                        dut.io.outData.expect(ndArrayToBinaryString(window, randKernParamBitwidth).U)
+                    }
+                }
+
+                def fillAdded(added: INDArray): Unit = {
+                    println(s"Filling only added registers:\n $added.")
+                    dut.io.inValid.poke(true.B)
+                    dut.io.shiftRegs.poke(true.B)
+                    dut.io.rowWriteMode.poke(false.B)
+                    for (i <- 0 until added.shape()(0)) { // kernelDepth
+                        dut.io.inData.poke(ndArrayToBinaryString(added.getRow(i), randKernParamBitwidth).U)
+                        dut.clock.step()
+                    }
+                }
+
+                def fillWindow(window: INDArray): Unit = {
+                    println(s"Refilling entire register file with window:\n $window.")
+                    dut.io.rowWriteMode.poke(true.B)
+                    dut.io.shiftRegs.poke(false.B)
+                    dut.io.inValid.poke(true.B)
+                    for (i <- 0 until window.shape()(0)) { // kernelDepth
+                        dut.io.kernelAddr.poke(i.U)
+                        for (j <- 0 until window.shape()(2)) { // kernelSize
+                            dut.io.rowAddr.poke(j.U)
+                            dut.io.inData.poke(ndArrayToBinaryString(window.get(NDArrayIndex.point(i),
+                                                                                NDArrayIndex.point(j)),
+                                                                    randKernParamBitwidth).U)
+                            dut.clock.step()
+                        }
+                    }
+                }
+            } // end test
+        } // end it should "work..."
+    } // end test cases for loop
 }
