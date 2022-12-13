@@ -30,11 +30,10 @@ import org.nd4j.linalg.ops.transforms.Transforms
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
-
 class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
     val logger = LoggerFactory.getLogger(classOf[KernelRegisterFileTests])
 
-    behavior of "KernelRegisterFile module"
+    behavior.of("KernelRegisterFile module")
     it should "show appropirate window as it cycles through the input image" in {
         test(new KernelRegisterFile(2, 1, 4)) { dut =>
             dut.io.shiftRegs.poke(false.B)
@@ -80,10 +79,10 @@ class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
         }
     }
 
-    val rand = new scala.util.Random(seed=42)
+    val rand = new scala.util.Random(seed = 42)
     Nd4j.getRandom().setSeed(42)
     def ndArrayToBinaryString(arr: INDArray, bits: Int): String = {
-        val flatArr = Nd4j.toFlattened(arr)
+        val flatArr      = Nd4j.toFlattened(arr)
         var binaryString = ""
         for (i <- 0 until arr.length) {
             binaryString = toBinary(flatArr.getDouble(i).toInt, bits) + binaryString
@@ -91,27 +90,29 @@ class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
         "b" + binaryString
     }
     for (testCaseId <- 0 until 10) { // Set this number to a bigger one for more exhaustive tests
-        val randKernSize = rand.between(2, 7+1) // rand.between(inclusive, exclusive)
-        val randKernDepth =  rand.between(1, 16+1)
-        val randKernParamBitwidth = rand.between(1, 8+1)
-        val randImageSize = rand.between(randKernSize+1, randKernSize+7)
-        val randImageNormal = Nd4j.rand(Array(randKernDepth, randImageSize, randImageSize))
-        val randImage = Transforms.round(randImageNormal.mul(scala.math.pow(2, randKernParamBitwidth)-1))
+        val randKernSize          = rand.between(2, 7 + 1) // rand.between(inclusive, exclusive)
+        val randKernDepth         = rand.between(1, 16 + 1)
+        val randKernParamBitwidth = rand.between(1, 8 + 1)
+        val randImageSize         = rand.between(randKernSize + 1, randKernSize + 7)
+        val randImageNormal       = Nd4j.rand(Array(randKernDepth, randImageSize, randImageSize))
+        val randImage             = Transforms.round(randImageNormal.mul(scala.math.pow(2, randKernParamBitwidth) - 1))
         it should s"""work with random params: kernelSize: $randKernSize, kernelDepth: $randKernDepth, kernelBitwidth:
-                     |$randKernParamBitwidth, imageSize: $randImageSize.""".stripMargin.replaceAll("\n","") in {
+                     |$randKernParamBitwidth, imageSize: $randImageSize.""".stripMargin.replaceAll("\n", "") in {
             test(new KernelRegisterFile(randKernSize, randKernDepth, randKernParamBitwidth)) { dut =>
                 logger.debug(s"Simulating test case for random image:\n $randImage.")
-                for (i <- 0 until randImageSize-randKernSize+1) {
-                    for (j <- 0 until randImageSize-randKernSize+1) {
-                        var window = randImage.get(NDArrayIndex.all(), // kernel
-                                                   NDArrayIndex.interval(i, i+randKernSize), // row
-                                                   NDArrayIndex.interval(j, j+randKernSize)) // col
+                for (i <- 0 until randImageSize - randKernSize + 1) {
+                    for (j <- 0 until randImageSize - randKernSize + 1) {
+                        var window = randImage.get(
+                          NDArrayIndex.all(),                         // kernel
+                          NDArrayIndex.interval(i, i + randKernSize), // row
+                          NDArrayIndex.interval(j, j + randKernSize)
+                        ) // col
                         if (j == 0) {
                             fillWindow(window)
                         } else {
-                            fillAdded(window.get(NDArrayIndex.all(),
-                                                 NDArrayIndex.all(),
-                                                 NDArrayIndex.point(randKernSize-1)))
+                            fillAdded(
+                              window.get(NDArrayIndex.all(), NDArrayIndex.all(), NDArrayIndex.point(randKernSize - 1))
+                            )
                         }
                         dut.io.outData.expect(ndArrayToBinaryString(window, randKernParamBitwidth).U)
                     }
@@ -120,13 +121,15 @@ class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
                 def fillAdded(added: INDArray): Unit = {
                     logger.debug(s"Filling only added registers:\n $added.")
                     dut.io.inValid.poke(false.B)
-                    dut.clock.step(rand.between(0,3)) // random delay to see that there is no timing dependency
+                    dut.clock.step(rand.between(0, 3)) // random delay to see that there is no timing dependency
                     dut.io.inValid.poke(true.B)
                     dut.io.shiftRegs.poke(true.B)
                     dut.io.rowWriteMode.poke(false.B)
                     for (i <- 0 until added.shape()(0)) { // kernelDepth
                         dut.io.kernelAddr.poke(i.U)
-                        logger.debug(s"row: ${added.getRow(i)} -> ${ndArrayToBinaryString(added.getRow(i), randKernParamBitwidth)}")
+                        logger.debug(
+                          s"row: ${added.getRow(i)} -> ${ndArrayToBinaryString(added.getRow(i), randKernParamBitwidth)}"
+                        )
                         dut.io.inData.poke(ndArrayToBinaryString(added.getRow(i), randKernParamBitwidth).U)
                         dut.clock.step()
                         dut.io.shiftRegs.poke(false.B)
@@ -136,7 +139,7 @@ class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
                 def fillWindow(window: INDArray): Unit = {
                     logger.debug(s"Refilling entire register file with window:\n $window.")
                     dut.io.inValid.poke(false.B)
-                    dut.clock.step(rand.between(0,3)) // random delay to see there is no timing dependency
+                    dut.clock.step(rand.between(0, 3)) // random delay to see there is no timing dependency
                     dut.io.rowWriteMode.poke(true.B)
                     dut.io.shiftRegs.poke(false.B)
                     dut.io.inValid.poke(true.B)
@@ -144,9 +147,12 @@ class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
                         dut.io.kernelAddr.poke(i.U)
                         for (j <- 0 until window.shape()(2)) { // kernelSize
                             dut.io.rowAddr.poke(j.U)
-                            dut.io.inData.poke(ndArrayToBinaryString(window.get(NDArrayIndex.point(i),
-                                                                                NDArrayIndex.point(j)),
-                                                                    randKernParamBitwidth).U)
+                            dut.io.inData.poke(
+                              ndArrayToBinaryString(
+                                window.get(NDArrayIndex.point(i), NDArrayIndex.point(j)),
+                                randKernParamBitwidth
+                              ).U
+                            )
                             dut.clock.step()
                         }
                     }

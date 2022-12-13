@@ -18,12 +18,11 @@ package chisel4ml.sequential
 import _root_.chisel3._
 import _root_.chisel3.util._
 import _root_.chisel3.experimental._
-import _root_.lbir.{Model, Layer}
+import _root_.lbir.{Layer, Model}
 import _root_.chisel4ml.util.LbirUtil
 import _root_.chisel4ml.util.bus.AXIStream
 import _root_.services.GenerateCircuitParams.Options
 import _root_.scala.collection.mutable._
-
 
 class ProcessingPipeline(model: Model, options: Options) extends Module {
     // List of processing elements - one PE per layer
@@ -35,7 +34,7 @@ class ProcessingPipeline(model: Model, options: Options) extends Module {
     }
 
     val io = IO(new Bundle {
-        val inStream = Flipped(new AXIStream(32))
+        val inStream  = Flipped(new AXIStream(32))
         val outStream = new AXIStream(32)
     })
 

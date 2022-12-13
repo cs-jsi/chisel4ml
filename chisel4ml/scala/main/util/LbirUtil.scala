@@ -32,7 +32,7 @@ trait ThreshProvider[T <: Bits] {
 }
 
 object ThreshProvider {
-    def transformThresh[T <: Bits : ThreshProvider](tensor: QTensor, fanIn: Int): Seq[T] = {
+    def transformThresh[T <: Bits: ThreshProvider](tensor: QTensor, fanIn: Int): Seq[T] = {
         implicitly[ThreshProvider[T]].instance(tensor, fanIn)
     }
 
@@ -58,7 +58,7 @@ trait WeightsProvider[T <: Bits] {
 }
 
 object WeightsProvider {
-    def transformWeights[T <: Bits : WeightsProvider](tensor: QTensor): Seq[Seq[T]] = {
+    def transformWeights[T <: Bits: WeightsProvider](tensor: QTensor): Seq[Seq[T]] = {
         implicitly[WeightsProvider[T]].instance(tensor)
     }
 
@@ -79,7 +79,7 @@ object WeightsProvider {
 
 final class LbirUtil
 object LbirUtil {
-    var cnt: Int = 0
+    var cnt:       Int  = 0
     var directory: Path = Paths.get("")
 
     def setDirectory(dir: Path) = {
@@ -89,21 +89,21 @@ object LbirUtil {
 
     val logger = LoggerFactory.getLogger(classOf[LbirUtil])
 
-    def transformWeights[T <: Bits : WeightsProvider](tensor: QTensor): Seq[Seq[T]] = {
+    def transformWeights[T <: Bits: WeightsProvider](tensor: QTensor): Seq[Seq[T]] = {
         WeightsProvider.transformWeights[T](tensor)
     }
 
-    def transformThresh[T <: Bits : ThreshProvider](tensor: QTensor, fanIn: Int): Seq[T] = {
+    def transformThresh[T <: Bits: ThreshProvider](tensor: QTensor, fanIn: Int): Seq[T] = {
         ThreshProvider.transformThresh[T](tensor, fanIn)
     }
 
-    def log2(x: Int): Int = (log(x) / log(2)).toInt
+    def log2(x: Int):   Int   = (log(x) / log(2)).toInt
     def log2(x: Float): Float = (log(x) / log(2.0)).toFloat
 
     def createHexMemoryFile(tensor: QTensor): String = {
-        val fPath = Paths.get(directory.toString, s"mem$cnt.hex").toAbsolutePath()
+        val fPath   = Paths.get(directory.toString, s"mem$cnt.hex").toAbsolutePath()
         val relPath = Paths.get("").toAbsolutePath().relativize(fPath)
-        val writer = new BufferedWriter(new FileWriter(fPath.toString))
+        val writer  = new BufferedWriter(new FileWriter(fPath.toString))
         writer.write(tensor.toHexStr)
         writer.close()
         logger.debug(s"Created new memory file: ${fPath.toString}.")

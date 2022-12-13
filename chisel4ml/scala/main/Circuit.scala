@@ -27,7 +27,7 @@ import _root_.chisel4ml.util.LbirUtil
 import _root_.chisel4ml.implicits._
 import _root_.chisel4ml.combinational.ProcessingPipelineCombinational
 import _root_.chisel4ml.sequential.ProcessingPipeline
-import _root_.lbir.{QTensor, Model}
+import _root_.lbir.{Model, QTensor}
 import _root_.services.GenerateCircuitParams.Options
 
 import _root_.scala.util.control.Breaks._
@@ -38,18 +38,17 @@ import _root_.java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
-
 class Circuit(model: Model, options: Options, directory: Path, useVerilator: Boolean, genVcd: Boolean)
-extends Runnable {
+    extends Runnable {
     case class ValidQTensor(qtensor: QTensor, valid: Boolean)
-    val logger = LoggerFactory.getLogger(classOf[Circuit])
-    val inQueue = new LinkedBlockingQueue[ValidQTensor]()
-    val outQueue = new LinkedBlockingQueue[QTensor]()
-    val outTensorShape = model.layers.last.output.get
+    val logger          = LoggerFactory.getLogger(classOf[Circuit])
+    val inQueue         = new LinkedBlockingQueue[ValidQTensor]()
+    val outQueue        = new LinkedBlockingQueue[QTensor]()
+    val outTensorShape  = model.layers.last.output.get
     val isCombinational = options.isSimple
-    val isGenerated = new CountDownLatch(1)
-    val isStoped = new CountDownLatch(1)
-    val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString
+    val isGenerated     = new CountDownLatch(1)
+    val isStoped        = new CountDownLatch(1)
+    val relDir          = Paths.get("").toAbsolutePath().relativize(directory).toString
     LbirUtil.setDirectory(directory)
 
     var annot: AnnotationSeq = Seq(TargetDirAnnotation(relDir)) // TODO - work with .pb instead of .lo.fir
@@ -61,7 +60,7 @@ extends Runnable {
         isStoped.await(5, TimeUnit.SECONDS)
     }
 
-    def run() : Unit = {
+    def run(): Unit = {
         logger.info(s"Used annotations for generated circuit are: ${annot.map(_.toString)}.")
         if (isCombinational) {
             RawTester.test(new ProcessingPipelineCombinational(model), annot)(this.runCombinational(_))
@@ -73,12 +72,21 @@ extends Runnable {
 
     private def runCombinational(dut: ProcessingPipelineCombinational): Unit = {
         if (!useVerilator) {
-            (new FirrtlStage).execute(Array("--input-file", s"$relDir/ProcessingPipelineCombinational.lo.fir",
-                                            "--start-from", "low", "-E", "sverilog"), annot)
+            (new FirrtlStage).execute(
+              Array(
+                "--input-file",
+                s"$relDir/ProcessingPipelineCombinational.lo.fir",
+                "--start-from",
+                "low",
+                "-E",
+                "sverilog"
+              ),
+              annot
+            )
         }
         isGenerated.countDown()
         logger.info(s"Generated combinational circuit in directory: ${directory}.")
-        while(true && isCombinational) {
+        while (true && isCombinational) {
             // inQueue.take() blocks execution until data is available
             val validQTensor = inQueue.take()
             if (validQTensor.valid == false) break()
@@ -91,37 +99,40 @@ extends Runnable {
 
     private def runSequential(dut: ProcessingPipeline): Unit = {
         if (!useVerilator) {
-            (new FirrtlStage).execute(Array("--input-file", s"$relDir/ProcessingPipeline.lo.fir",
-                                            "--start-from", "low", "-E", "sverilog"), annot)
+            (new FirrtlStage).execute(
+              Array("--input-file", s"$relDir/ProcessingPipeline.lo.fir", "--start-from", "low", "-E", "sverilog"),
+              annot
+            )
         }
         isGenerated.countDown() // Let the main thread now that the dut has been succesfully generated
         logger.info(s"Generated sequential circuit in directory: ${directory}.")
         val outBitsTotal: Int = model.layers.last.output.get.totalBitwidth
-        val outTrans: Int = dut.peList.last.numOutTrans
+        val outTrans:     Int = dut.peList.last.numOutTrans
 
         dut.io.inStream.data.initSource()
         dut.io.inStream.data.setSourceClock(dut.clock)
         dut.io.outStream.data.initSink()
         dut.io.outStream.data.setSinkClock(dut.clock)
-        breakable { while(true && !isCombinational) {
-            // inQueue.take() blocks execution until data is available
-            val validQTensor = inQueue.take()
-            if (validQTensor.valid == false) break()
-            val testSeq: Seq[UInt] = validQTensor.qtensor.toUInt.toUIntSeq(dut.io.inStream.dataWidth)
-            logger.info(s"Simulating a sequential circuit on a new input.")
-            var outSeq: Seq[BigInt] = Seq()
+        breakable {
+            while (true && !isCombinational) {
+                // inQueue.take() blocks execution until data is available
+                val validQTensor = inQueue.take()
+                if (validQTensor.valid == false) break()
+                val testSeq: Seq[UInt]   = validQTensor.qtensor.toUInt.toUIntSeq(dut.io.inStream.dataWidth)
+                logger.info(s"Simulating a sequential circuit on a new input.")
+                var outSeq:  Seq[BigInt] = Seq()
 
-            dut.io.inStream.data.enqueueSeq(testSeq)
-            dut.io.inStream.last.poke(true.B)
-            dut.clock.step()
-            dut.io.inStream.last.poke(false.B)
-            dut.io.outStream.data.ready.poke(true.B)
-            for (_ <- 0 until outTrans){
-                dut.io.outStream.data.waitForValid()
-                outSeq = outSeq :+ dut.io.outStream.data.bits.peek().litValue
+                dut.io.inStream.data.enqueueSeq(testSeq)
+                dut.io.inStream.last.poke(true.B)
+                dut.clock.step()
+                dut.io.inStream.last.poke(false.B)
+                dut.io.outStream.data.ready.poke(true.B)
+                for (_ <- 0 until outTrans) {
+                    dut.io.outStream.data.waitForValid()
+                    outSeq = outSeq :+ dut.io.outStream.data.bits.peek().litValue
+                }
+                outQueue.put(outSeq.toUInt(dut.io.outStream.dataWidth).toQTensor(outTensorShape))
             }
-            outQueue.put(outSeq.toUInt(dut.io.outStream.dataWidth).toQTensor(outTensorShape))
-        }
         }
     }
 

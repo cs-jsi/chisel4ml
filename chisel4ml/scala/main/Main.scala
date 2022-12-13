@@ -17,7 +17,7 @@ package chisel4ml
 
 import _root_.java.io.{File, IOException, RandomAccessFile}
 import _root_.java.nio.file.{Files, Path, Paths}
-import _root_.java.nio.channels.{FileLock, FileChannel}
+import _root_.java.nio.channels.{FileChannel, FileLock}
 import _root_.java.util.concurrent.TimeUnit
 import _root_.scala.concurrent.{ExecutionContext, Future}
 
@@ -41,20 +41,20 @@ import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
 /** Contains the main function.
- *
- *  Contains the main function that is the main entry point to the the software, and it starts a chisel4ml
- *  server instance.
- */
+  *
+  * Contains the main function that is the main entry point to the the software, and it starts a chisel4ml server
+  * instance.
+  */
 object Chisel4mlServer {
     private val port = 50051
-    var f: File = _
+    var f:          File        = _
     var fRwChannel: FileChannel = _
-    var lock: FileLock = _
+    var lock:       FileLock    = _
 
     def main(args: Array[String]): Unit = {
         require(args.length > 0, "No argument list, you should provide an argument as a directory.")
         require(Files.exists(Paths.get(args(0))), "Provided directory doesn't exist.")
-        val tempDir = args(0)
+        val tempDir  = args(0)
         val lockFile = Paths.get(tempDir, ".lockfile")
         // We use lockfiles to ensure only one instance of a chisel4ml server is running.
         try {
@@ -71,12 +71,12 @@ object Chisel4mlServer {
             }
             // We add a shutdown hook to release the lock on shutdown
             sys.addShutdownHook { closeFileLockHook() }
-            val server = new Chisel4mlServer(ExecutionContext.global, tempDir=tempDir)
+            val server = new Chisel4mlServer(ExecutionContext.global, tempDir = tempDir)
             server.start()
             server.blockUntilShutdown()
-        }
-        catch {
-            case e: IOException => throw new RuntimeException("Could not aquire lock to start a new instace of server.", e)
+        } catch {
+            case e: IOException =>
+                throw new RuntimeException("Could not aquire lock to start a new instace of server.", e)
         }
     }
 
@@ -88,13 +88,13 @@ object Chisel4mlServer {
 }
 
 /** The server implementation based on gRPC.
- *
- *  Implementation of the gRPC based Chisel4ml server.  It implements the services as defined by gRPC in the
- *  service.proto file. It also has conveinance functions for starting and stoping the server.
- */
+  *
+  * Implementation of the gRPC based Chisel4ml server. It implements the services as defined by gRPC in the
+  * service.proto file. It also has conveinance functions for starting and stoping the server.
+  */
 class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { self =>
-    private[this] var server: Server = null
-    private var circuits: Seq[Circuit] = Seq() // Holds the circuit and simulation object
+    private[this] var server: Server       = null
+    private var circuits:     Seq[Circuit] = Seq() // Holds the circuit and simulation object
     val logger = LoggerFactory.getLogger(classOf[Chisel4mlServer])
 
     private def start(): Unit = {
@@ -121,31 +121,41 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
     private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
         override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
             val circuitId = circuits.length
-            circuits = circuits :+ new Circuit(model = params.model.get,
-                                               options = params.options.get,
-                                               directory = Paths.get(tempDir, s"circuit$circuitId"),
-                                               useVerilator = params.useVerilator,
-                                               genVcd = params.genVcd)
-            logger.info(s"""Started generating hardware for circuit id:$circuitId in temporary directory $tempDir
-                | with a timeout of ${params.generationTimeoutSec} seconds.""".stripMargin.replaceAll("\n", ""))
+            circuits = circuits :+ new Circuit(
+              model = params.model.get,
+              options = params.options.get,
+              directory = Paths.get(tempDir, s"circuit$circuitId"),
+              useVerilator = params.useVerilator,
+              genVcd = params.genVcd
+            )
+            logger.info(
+              s"""Started generating hardware for circuit id:$circuitId in temporary directory $tempDir
+                 | with a timeout of ${params.generationTimeoutSec} seconds.""".stripMargin.replaceAll("\n", "")
+            )
             new Thread(circuits.last).start()
             if (circuits.last.isGenerated.await(params.generationTimeoutSec, TimeUnit.SECONDS)) {
                 logger.info("Succesfully generated circuit.")
-                Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1,
-                                                        err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS,
-                                                                   msg = "Successfully generated verilog."))))
+                Future.successful(
+                  GenerateCircuitReturn(
+                    circuitId = circuits.length - 1,
+                    err = Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS, msg = "Successfully generated verilog."))
+                  )
+                )
             } else {
                 logger.error("Circuit generation timed-out, please try again with a longer timeout.")
-                Future.successful(GenerateCircuitReturn(circuitId=circuits.length-1,
-                                                        err=Option(ErrorMsg(errId = ErrorMsg.ErrorId.FAIL,
-                                                                   msg = "Error generating circuit."))))
+                Future.successful(
+                  GenerateCircuitReturn(
+                    circuitId = circuits.length - 1,
+                    err = Option(ErrorMsg(errId = ErrorMsg.ErrorId.FAIL, msg = "Error generating circuit."))
+                  )
+                )
             }
         }
 
         override def runSimulation(params: RunSimulationParams): Future[RunSimulationReturn] = {
             logger.info(s"Simulating circuit id: ${params.circuitId} circuit on ${params.inputs.length} input/s.")
             Future.successful(
-                RunSimulationReturn(values=Seq(circuits(params.circuitId).sim(params.inputs(0))))
+              RunSimulationReturn(values = Seq(circuits(params.circuitId).sim(params.inputs(0))))
             )
         }
     }
