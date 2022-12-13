@@ -90,9 +90,9 @@ class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
         }
         "b" + binaryString
     }
-    for (testCaseId <- 0 until 50) { // 50 test should do it
+    for (testCaseId <- 0 until 10) { // Set this number to a bigger one for more exhaustive tests
         val randKernSize = rand.between(2, 7+1) // rand.between(inclusive, exclusive)
-        val randKernDepth = rand.between(1, 16+1)
+        val randKernDepth =  rand.between(1, 16+1)
         val randKernParamBitwidth = rand.between(1, 8+1)
         val randImageSize = rand.between(randKernSize+1, randKernSize+7)
         val randImageNormal = Nd4j.rand(Array(randKernDepth, randImageSize, randImageSize))
@@ -100,13 +100,12 @@ class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
         it should s"""work with random params: kernelSize: $randKernSize, kernelDepth: $randKernDepth, kernelBitwidth:
                      |$randKernParamBitwidth, imageSize: $randImageSize.""".stripMargin.replaceAll("\n","") in {
             test(new KernelRegisterFile(randKernSize, randKernDepth, randKernParamBitwidth)) { dut =>
-                println(s"Simulating test case for random image:\n $randImage.")
+                logger.debug(s"Simulating test case for random image:\n $randImage.")
                 for (i <- 0 until randImageSize-randKernSize+1) {
                     for (j <- 0 until randImageSize-randKernSize+1) {
                         var window = randImage.get(NDArrayIndex.all(), // kernel
                                                    NDArrayIndex.interval(i, i+randKernSize), // row
                                                    NDArrayIndex.interval(j, j+randKernSize)) // col
-                        logger.debug(s"Simulating convolution subwindow:\n $window.")
                         if (j == 0) {
                             fillWindow(window)
                         } else {
@@ -119,18 +118,25 @@ class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
                 }
 
                 def fillAdded(added: INDArray): Unit = {
-                    println(s"Filling only added registers:\n $added.")
+                    logger.debug(s"Filling only added registers:\n $added.")
+                    dut.io.inValid.poke(false.B)
+                    dut.clock.step(rand.between(0,3)) // random delay to see that there is no timing dependency
                     dut.io.inValid.poke(true.B)
                     dut.io.shiftRegs.poke(true.B)
                     dut.io.rowWriteMode.poke(false.B)
                     for (i <- 0 until added.shape()(0)) { // kernelDepth
+                        dut.io.kernelAddr.poke(i.U)
+                        logger.debug(s"row: ${added.getRow(i)} -> ${ndArrayToBinaryString(added.getRow(i), randKernParamBitwidth)}")
                         dut.io.inData.poke(ndArrayToBinaryString(added.getRow(i), randKernParamBitwidth).U)
                         dut.clock.step()
+                        dut.io.shiftRegs.poke(false.B)
                     }
                 }
 
                 def fillWindow(window: INDArray): Unit = {
-                    println(s"Refilling entire register file with window:\n $window.")
+                    logger.debug(s"Refilling entire register file with window:\n $window.")
+                    dut.io.inValid.poke(false.B)
+                    dut.clock.step(rand.between(0,3)) // random delay to see there is no timing dependency
                     dut.io.rowWriteMode.poke(true.B)
                     dut.io.shiftRegs.poke(false.B)
                     dut.io.inValid.poke(true.B)

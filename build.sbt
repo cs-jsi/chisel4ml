@@ -23,8 +23,17 @@ Compile / PB.targets := Seq(
   scalapb.gen(flatPackage = true) ->  baseDirectory.value / "chisel4ml" / "scala"
 )
 
+Test / logBuffered := false
+Test / parallelExecution := true
+
+testOptions += Tests.Setup( cl =>
+   cl.loadClass("org.slf4j.LoggerFactory").
+     getMethod("getLogger",cl.loadClass("java.lang.String")).
+     invoke(null,"ROOT")
+)
+
 val chiselVersion = "3.5.5"
-val slf4jVersion = "1.7.5"
+val slf4jVersion = "2.0.5"
 val scalatestVersion = "3.2.7"
 lazy val root = (project in file("."))
   .settings(

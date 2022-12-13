@@ -104,17 +104,16 @@ class KernelRegisterFile(kernelSize: Int, kernelDepth:Int, kernelParamSize: Int)
 
     when (io.inValid) {
         when (io.rowWriteMode === true.B) {
-            kernelRegFile(io.kernelAddr)(io.rowAddr) := io.inData.asTypeOf(kernelRegFile(0)(0))
+            kernelRegFile(io.kernelAddr)(io.rowAddr) := io.inData.asTypeOf(Vec(kernelSize, UInt(kernelParamSize.W)))
         }.otherwise {
             for (i <- 0 until kernelSize) {
-                kernelRegFile(io.kernelAddr)(i)(kernelSize-1) := io.inData.asTypeOf(kernelRegFile(0)(0))(i)
+                kernelRegFile(io.kernelAddr)(i)(kernelSize-1) := io.inData.asTypeOf(Vec(kernelSize, UInt(kernelParamSize.W)))(i)
             }
-
             when (io.shiftRegs === true.B) {
                 for (i <- 0 until kernelDepth) {
-                    for (j <- 0 until kernelSize) {
-                        for (k <- 1 until kernelSize) {
-                            kernelRegFile(i)(j)(k-1) := kernelRegFile(i)(j)(k)
+                    for (k <- 0 until kernelSize-1) {
+                        for (j <- 0 until kernelSize) {
+                            kernelRegFile(i)(j)(k) := kernelRegFile(i)(j)(k+1)
                         }
                     }
                 }
