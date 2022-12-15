@@ -18,10 +18,9 @@ package chisel4ml.sequential
 import chisel3._
 import chisel3.util._
 
-import _root_.chisel4ml.util.bus.AXIStream
-import _root_.chisel4ml.util.{ROM, SRAM}
-import _root_.chisel4ml.util.LbirUtil.log2
-import _root_.chisel4ml.util.LbirUtil
+import _root_.chisel4ml.bus.AXIStream
+import _root_.chisel4ml.memory.{ROM, SRAM}
+import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
 import _root_.lbir.Layer
 import _root_.services.GenerateCircuitParams.Options
@@ -39,92 +38,40 @@ import _root_.scala.math
 class ProcessingElementSequentialConv(layer: Layer, options: Options)
     extends ProcessingElementSequential(layer, options) {
 
-    /** *************************
-      */
-    /* KERNEL MEMORY            */
-    /** *************************
-      */
+    // KERNEL MEMORY
     val kernelParamSize:     Int = layer.weights.get.dtype.get.bitwidth
     val kernelParamsPerWord: Int = memWordWidth / kernelParamSize
     val kernelNumParams:     Int = layer.weights.get.shape.reduce(_ * _)
     val kernelMemDepth:      Int = math.ceil(kernelNumParams.toFloat / kernelParamsPerWord.toFloat).toInt
     val kernelMem = Module(
-      new ROM(depth = kernelMemDepth, width = memWordWidth, memFile = LbirUtil.createHexMemoryFile(layer.weights.get))
+      new ROM(
+        depth = kernelMemDepth,
+        width = memWordWidth,
+        memFile = genHexMemoryFile(layer.weights.get, layout = "CDHW")
+      )
     )
 
-    /** *************************
-      */
-    /* ACTIVATION MEMORY        */
-    /** *************************
-      */
+    // ACTIVATION MEMORY
     val actParamSize:     Int = layer.input.get.dtype.get.bitwidth
     val actParamsPerWord: Int = memWordWidth / actParamSize
     val actNumParams:     Int = layer.input.get.shape.reduce(_ * _)
     val actMemDepth:      Int = math.ceil(actNumParams.toFloat / actParamsPerWord.toFloat).toInt
     val actMem = Module(new SRAM(depth = actMemDepth, width = memWordWidth))
 
-    /** *************************
-      */
-    /* KERNEL REGISTERS         */
-    /** *************************
-      */
-    val numOfKernels:  Int = layer.weights.get.shape(0)
-    val bitsPerKernel: Int = layer.weights.get.totalBitwidth / numOfKernels
-    // val kernelRegFile = RegInit(Vec(Seq.fill(kernelNumParams)(0.U(kernelParamSize.W))))
+    // RESULT MEMORY
+    val resParamSize:     Int = layer.output.get.dtype.get.bitwidth
+    val resParamsPerWord: Int = memWordWidth / resParamSize
+    val resNumParams:     Int = layer.output.get.shape.reduce(_ * _)
+    val resMemDepth:      Int = math.ceil(resNumParams.toFloat / resParamsPerWord.toFloat).toInt
+    val resMem = Module(new SRAM(depth = resMemDepth, width = memWordWidth))
 
-    /** *************************
-      */
-    /* ACTIVATION REGISTERS     */
-    /** *************************
-      */
-    val actRegs = RegInit(VecInit(Seq.fill(kernelNumParams)(0.U(actParamSize.W))))
+    // KERNEL REGISTERS
+    val numOfKernels: Int = layer.weights.get.shape(0)
+    val kernelDepth:  Int = layer.weights.get.shape(1)
+    val kernelSize:   Int = layer.weights.get.shape(2)
+    // val kernelRegFile = Module(new KernelRegisterFile(kernelSize, kernelDepth, kernelParamSize))
 
-}
+    // ACTIVATION REGISTERS
+    val actRegFile = Module(new RollingRegisterFile(kernelSize, kernelDepth, kernelParamSize))
 
-/** A register file for storing the kernel of a convotional layer.
-  *
-  * kernelSize: Int - Signifies one dimension of a square kernel (If its a 3x3 kernel then kernelSize=3) kernelDepth:
-  * Int - The depth of the kernel (number of input channels) actParamSize: Int - The activation parameterSize in bits.
-  */
-class KernelRegisterFile(kernelSize: Int, kernelDepth: Int, kernelParamSize: Int) extends Module {
-    val totalNumOfElements:  Int = kernelSize * kernelSize * kernelDepth
-    val kernelNumOfElements: Int = kernelSize * kernelSize
-    val outDataSize:         Int = kernelSize * kernelSize * kernelDepth * kernelParamSize
-    val wrDataWidth:         Int = kernelSize * kernelParamSize
-    val kernelAddrWidth:     Int = math.floor(log2(kernelDepth.toFloat)).toInt + 1
-    val rowAddrWidth:        Int = math.ceil(log2(kernelSize.toFloat)).toInt
-
-    val io = IO(new Bundle {
-        val shiftRegs    = Input(Bool())
-        val rowWriteMode = Input(Bool())
-        val rowAddr      = Input(UInt(rowAddrWidth.W))
-        val kernelAddr   = Input(UInt(kernelAddrWidth.W))
-        val inData       = Input(UInt(wrDataWidth.W))
-        val inValid      = Input(Bool())
-        val outData      = Output(UInt(outDataSize.W))
-    })
-
-    val kernelRegFile = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(kernelParamSize.W)))
-    io.outData := kernelRegFile.asUInt
-
-    when(io.inValid) {
-        when(io.rowWriteMode === true.B) {
-            kernelRegFile(io.kernelAddr)(io.rowAddr) := io.inData.asTypeOf(Vec(kernelSize, UInt(kernelParamSize.W)))
-        }.otherwise {
-            for (i <- 0 until kernelSize) {
-                kernelRegFile(io.kernelAddr)(i)(kernelSize - 1) := io.inData.asTypeOf(
-                  Vec(kernelSize, UInt(kernelParamSize.W))
-                )(i)
-            }
-            when(io.shiftRegs === true.B) {
-                for (i <- 0 until kernelDepth) {
-                    for (k <- 0 until kernelSize - 1) {
-                        for (j <- 0 until kernelSize) {
-                            kernelRegFile(i)(j)(k) := kernelRegFile(i)(j)(k + 1)
-                        }
-                    }
-                }
-            }
-        }
-    }
 }

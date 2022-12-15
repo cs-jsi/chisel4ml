@@ -24,43 +24,11 @@ import _root_.lbir.Layer.Activation._
 import _root_.services.GenerateCircuitParams.Options
 import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
+import _root_.chisel4ml.lbir._
 
 import scala.math.pow
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
-
-object Neuron {
-    val logger = LoggerFactory.getLogger(classOf[ProcessingElementCombinational])
-    def apply[I <: Bits, W <: Bits: WeightsProvider, M <: Bits, A <: Bits: ThreshProvider, O <: Bits](
-        in:      Seq[I],
-        weights: Seq[W],
-        thresh:  A,
-        mul:     (I, W) => M,
-        add:     Vec[M] => A,
-        actFn:   (A, A) => O,
-        shift:   Int
-      ): O = {
-        val muls = VecInit((in.zip(weights)).map { case (a, b) => mul(a, b) })
-        val pAct = add(muls)
-
-        val sAct = shift.compare(0) match {
-            case 0  => pAct
-            case -1 => {
-                // Handles the case when the scale factor (shift) basically sets the output to zero always.
-                if (-shift >= pAct.getWidth) {
-                    0.U.asTypeOf(pAct)
-                } else {
-                    // We add the "cutt-off" bit to round the same way a convential rounding is done (1 >= 0.5, 0 < 0.5)
-                    ((pAct >> shift.abs).asSInt + Cat(0.S((pAct.getWidth - 1).W), pAct(shift.abs - 1)).asSInt)
-                        .asTypeOf(pAct)
-                }
-            }
-            case 1  => (pAct << shift.abs).asTypeOf(pAct)
-        }
-
-        actFn(sAct, thresh)
-    }
-}
 
 abstract class ProcessingElementCombinational(layer: Layer) extends Module {
     val io = IO(new Bundle {
@@ -70,35 +38,6 @@ abstract class ProcessingElementCombinational(layer: Layer) extends Module {
 }
 
 object ProcessingElementCombinational {
-    val logger = LoggerFactory.getLogger(classOf[ProcessingElementCombinational])
-    def signFn(act: UInt, thresh: UInt):    Bool = act >= thresh
-    def signFn(act: SInt, thresh: SInt):    Bool = act >= thresh
-    def reluFn(act: SInt, thresh: SInt):    UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
-    def linFn(act: SInt, thresh: SInt):     SInt = act - thresh
-    def noSaturate(x: Bool, bitwidth: Int): Bool = x
-    def noSaturate(x: SInt, bitwidth: Int): SInt = Mux(
-      x > (pow(2, bitwidth - 1) - 1).toInt.S,
-      (pow(2, bitwidth - 1) - 1).toInt.S,
-      Mux(x < -pow(2, bitwidth - 1).toInt.S, -pow(2, bitwidth - 1).toInt.S, x)
-    )
-
-    def saturate(x: UInt, bitwidth: Int): UInt =
-        Mux(x > (pow(2, bitwidth) - 1).toInt.U, (pow(2, bitwidth) - 1).toInt.U, x) // TODO
-
-    def mul(i: Bool, w: Bool): Bool = ~(i ^ w)
-    def mul(i: UInt, w: Bool): SInt = Mux(w, i.zext, -(i.zext))
-    def mul(i: UInt, w: SInt): SInt = {
-        if (w.litValue == 1.S.litValue) {
-            i.zext
-        } else if (w.litValue == -1.S.litValue) {
-            -(i.zext)
-        } else if (w.litValue == 0.S.litValue) {
-            0.S
-        } else {
-            i * w
-        }
-    }
-
     def apply(layer: Layer) =
         (layer.input.get.dtype.get.quantization, layer.weights.get.dtype.get.quantization, layer.activation) match {
             case (UNIFORM, UNIFORM, RELU)          =>
@@ -163,9 +102,9 @@ class ProcessingElementCombinationalDense[
     actFn:      (A, A) => O,
     saturateFn: (O, Int) => O)
     extends ProcessingElementCombinational(layer) {
-    import ProcessingElementCombinational.logger
-    val weights: Seq[Seq[W]] = LbirUtil.transformWeights[W](layer.weights.get)
-    val thresh:  Seq[A]      = LbirUtil.transformThresh[A](layer.thresh.get, layer.input.get.shape(0))
+    val logger = LoggerFactory.getLogger(classOf[ProcessingElementCombinational])
+    val weights: Seq[Seq[W]] = LbirDataTransforms.transformWeights[W](layer.weights.get)
+    val thresh:  Seq[A]      = LbirDataTransforms.transformThresh[A](layer.thresh.get, layer.input.get.shape(0))
     val shift:   Seq[Int]    = layer.weights.get.dtype.get.shift
 
     val in_int  = Wire(Vec(layer.input.get.shape(0), genI))
@@ -173,9 +112,8 @@ class ProcessingElementCombinationalDense[
 
     in_int := io.in.asTypeOf(in_int)
     for (i <- 0 until layer.output.get.shape(0)) {
-        //
         out_int(i) := saturateFn(
-          Neuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn, shift(i)),
+          StaticNeuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn, shift(i)),
           layer.output.get.dtype.get.bitwidth
         )
     }

@@ -31,7 +31,6 @@ import _root_.io.grpc.{Server, ServerBuilder}
 import _root_.services._
 import _root_.services.GenerateCircuitReturn.ErrorMsg
 import _root_.lbir.{Datatype, Model, QTensor}
-import _root_.chisel4ml.util.LbirUtil
 import _root_.chisel4ml.Circuit
 
 import _root_.chiseltest.simulator._

@@ -17,9 +17,9 @@
  * SYNTHESIZES TO BLOCK RAM (or several block rams, depending on the depth)
  * (tested in vivado 2021.1)
  */
-package chisel4ml.util
+package chisel4ml.memory
 import chisel3._
-import _root_.chisel4ml.util.LbirUtil.log2
+import _root_.chisel4ml.util.log2
 
 class SRAM(depth: Int, width: Int = 32) extends Module {
     val io  = IO(new Bundle {

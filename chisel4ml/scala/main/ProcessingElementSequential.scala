@@ -19,9 +19,9 @@ import chisel3._
 import chisel3.util._
 
 import _root_.chisel4ml.implicits._
-import _root_.chisel4ml.util.bus.AXIStream
-import _root_.chisel4ml.util.SRAM
-import _root_.chisel4ml.util.LbirUtil.log2
+import _root_.chisel4ml.bus.AXIStream
+import _root_.chisel4ml.memory.SRAM
+import _root_.chisel4ml.util.log2
 import _root_.lbir.Layer
 import _root_.services.GenerateCircuitParams.Options
 

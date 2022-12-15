@@ -30,12 +30,12 @@ import org.nd4j.linalg.ops.transforms.Transforms
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
-class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
-    val logger = LoggerFactory.getLogger(classOf[KernelRegisterFileTests])
+class RollingRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
+    val logger = LoggerFactory.getLogger(classOf[RollingRegisterFileTests])
 
-    behavior.of("KernelRegisterFile module")
+    behavior.of("RollingRegisterFile module")
     it should "show appropirate window as it cycles through the input image" in {
-        test(new KernelRegisterFile(2, 1, 4)) { dut =>
+        test(new RollingRegisterFile(2, 1, 4)) { dut =>
             dut.io.shiftRegs.poke(false.B)
             dut.io.rowWriteMode.poke(true.B)
             dut.io.kernelAddr.poke(0.U)
@@ -98,7 +98,7 @@ class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
         val randImage             = Transforms.round(randImageNormal.mul(scala.math.pow(2, randKernParamBitwidth) - 1))
         it should s"""work with random params: kernelSize: $randKernSize, kernelDepth: $randKernDepth, kernelBitwidth:
                      |$randKernParamBitwidth, imageSize: $randImageSize.""".stripMargin.replaceAll("\n", "") in {
-            test(new KernelRegisterFile(randKernSize, randKernDepth, randKernParamBitwidth)) { dut =>
+            test(new RollingRegisterFile(randKernSize, randKernDepth, randKernParamBitwidth)) { dut =>
                 logger.debug(s"Simulating test case for random image:\n $randImage.")
                 for (i <- 0 until randImageSize - randKernSize + 1) {
                     for (j <- 0 until randImageSize - randKernSize + 1) {

@@ -23,7 +23,7 @@ import _root_.firrtl.stage.{FirrtlStage, OutputFileAnnotation}
 import _root_.chiseltest._
 import _root_.chiseltest.simulator.WriteVcdAnnotation
 
-import _root_.chisel4ml.util.LbirUtil
+import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
 import _root_.chisel4ml.combinational.ProcessingPipelineCombinational
 import _root_.chisel4ml.sequential.ProcessingPipeline
@@ -49,7 +49,7 @@ class Circuit(model: Model, options: Options, directory: Path, useVerilator: Boo
     val isGenerated     = new CountDownLatch(1)
     val isStoped        = new CountDownLatch(1)
     val relDir          = Paths.get("").toAbsolutePath().relativize(directory).toString
-    LbirUtil.setDirectory(directory)
+    setDirectory(directory)
 
     var annot: AnnotationSeq = Seq(TargetDirAnnotation(relDir)) // TODO - work with .pb instead of .lo.fir
     if (genVcd) annot = annot :+ WriteVcdAnnotation

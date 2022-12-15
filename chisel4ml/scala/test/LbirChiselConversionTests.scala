@@ -16,7 +16,6 @@
 package chisel4ml.tests
 
 import org.scalatest.funsuite.AnyFunSuite
-import _root_.chisel4ml.util.LbirUtil
 import _root_.lbir.{Datatype, QTensor}
 import _root_.lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
 import _root_.chisel4ml._
