@@ -24,9 +24,8 @@ import _root_.chisel4ml.lbir._
 
 class DynamicNeuron[I <: Bits, W <: Bits: WeightsProvider, M <: Bits, A <: Bits: ThreshProvider, O <: Bits](
     genIn:      I,
-    numIn:      Int,
+    numSynaps:  Int,
     genWeights: W,
-    numWeights: Int,
     genThresh:  A,
     genOut:     O,
     mul:        (I, W) => M,
@@ -45,8 +44,8 @@ class DynamicNeuron[I <: Bits, W <: Bits: WeightsProvider, M <: Bits, A <: Bits:
     }
 
     val io = IO(new Bundle {
-        val in:        Vec[I] = Input(Vec(numIn, genIn))
-        val weights:   Vec[W] = Input(Vec(numWeights, genWeights))
+        val in:        Vec[I] = Input(Vec(numSynaps, genIn))
+        val weights:   Vec[W] = Input(Vec(numSynaps, genWeights))
         val thresh:    A      = Input(genThresh)
         val shift:     UInt   = Input(UInt(8.W)) // TODO: bitwidth?
         val shiftLeft: Bool   = Input(Bool())
@@ -56,5 +55,5 @@ class DynamicNeuron[I <: Bits, W <: Bits: WeightsProvider, M <: Bits, A <: Bits:
     val muls = VecInit((io.in.zip(io.weights)).map { case (a, b) => mul(a, b) })
     val pAct = add(muls)
     val sAct = shiftAndRound(pAct, io.shift, io.shiftLeft, genThresh)
-    actFn(sAct, io.thresh)
+    io.out := actFn(sAct, io.thresh)
 }

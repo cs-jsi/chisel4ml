@@ -70,7 +70,6 @@ ffff"""
     // And vice versa
     implicit class UIntToQTensor(x: UInt) {
         def toQTensor(stencil: QTensor) = {
-
             val valuesString = toBinaryB(x.litValue, stencil.totalBitwidth).grouped(stencil.dtype.get.bitwidth).toList
             val values       = valuesString.map(Integer.parseInt(_, 2).toFloat).reverse
             val valuesMod    = if (stencil.dtype.get.quantization == BINARY) {

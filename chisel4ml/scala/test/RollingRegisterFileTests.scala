@@ -105,8 +105,8 @@ class RollingRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
                         var window = randImage.get(
                           NDArrayIndex.all(),                         // kernel
                           NDArrayIndex.interval(i, i + randKernSize), // row
-                          NDArrayIndex.interval(j, j + randKernSize)
-                        ) // col
+                          NDArrayIndex.interval(j, j + randKernSize)  // col
+                        )
                         if (j == 0) {
                             fillWindow(window)
                         } else {
