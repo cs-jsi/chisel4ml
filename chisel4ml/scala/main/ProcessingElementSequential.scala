@@ -21,7 +21,7 @@ import chisel3.util._
 import _root_.chisel4ml.implicits._
 import _root_.chisel4ml.bus.AXIStream
 import _root_.chisel4ml.memory.SRAM
-import _root_.chisel4ml.util.log2
+import _root_.chisel4ml.util.reqWidth
 import _root_.lbir.Layer
 import _root_.services.GenerateCircuitParams.Options
 
@@ -35,10 +35,10 @@ abstract class ProcessingElementSequential(layer: Layer, options: Options) exten
     val memWordWidth      = 32
 
     val inSizeBits: Int = layer.input.get.totalBitwidth
-    val numInTrans: Int = math.ceil(inSizeBits.toFloat / inputStreamWidth.toFloat).toInt
+    val numInTrans: Int = reqWidth(inSizeBits.toFloat / inputStreamWidth.toFloat)
 
     val outSizeBits: Int = layer.output.get.totalBitwidth
-    val numOutTrans: Int = math.ceil(outSizeBits.toFloat / outputStreamWidth.toFloat).toInt
+    val numOutTrans: Int = reqWidth(outSizeBits.toFloat / outputStreamWidth.toFloat)
 
     val io = IO(new Bundle {
         val inStream  = Flipped(new AXIStream(inputStreamWidth))

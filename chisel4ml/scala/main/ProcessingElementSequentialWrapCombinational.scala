@@ -20,7 +20,7 @@ import chisel3.util._
 
 import _root_.chisel4ml.bus.AXIStream
 import _root_.chisel4ml.memory.SRAM
-import _root_.chisel4ml.util.log2
+import _root_.chisel4ml.util.reqWidth
 import _root_.chisel4ml.combinational.ProcessingElementCombinational
 import _root_.lbir.Layer
 import _root_.services.GenerateCircuitParams.Options
@@ -30,12 +30,12 @@ class ProcessingElementSequentialWrapCombinational(layer: Layer, options: Option
     extends ProcessingElementSequential(layer, options) {
     // Input data register
     val inReg     = RegInit(VecInit(Seq.fill(numInTrans)(0.U(inputStreamWidth.W))))
-    val inCntReg  = RegInit(0.U((log2(numInTrans) + 1).W))
+    val inCntReg  = RegInit(0.U(reqWidth(numInTrans).W))
     val inRegFull = inCntReg === numInTrans.U
 
     val outReg        = RegInit(VecInit(Seq.fill(numOutTrans)(0.U(outputStreamWidth.W))))
     val outRegUInt    = Wire(UInt((numOutTrans * outputStreamWidth).W))
-    val outCntReg     = RegInit(0.U((log2(numOutTrans) + 1).W))
+    val outCntReg     = RegInit(0.U(reqWidth(numOutTrans).W))
     val outRegFullReg = RegInit(false.B)
 
     // (combinational) computational module

@@ -18,7 +18,7 @@ package chisel4ml.sequential
 import chisel3._
 import chisel3.util._
 
-import _root_.chisel4ml.util.log2
+import _root_.chisel4ml.util.reqWidth
 import _root_.chisel4ml.implicits._
 
 /** A register file for storing the inputs (activations or iamge) of a convotional layer.
@@ -26,33 +26,33 @@ import _root_.chisel4ml.implicits._
   * kernelSize: Int - Signifies one dimension of a square kernel (If its a 3x3 kernel then kernelSize=3) kernelDepth:
   * Int - The depth of the kernel (number of input channels) actParamSize: Int - The activation parameterSize in bits.
   */
-class RollingRegisterFile(kernelSize: Int, kernelDepth: Int, kernelParamSize: Int) extends Module {
+class RollingRegisterFile(kernelSize: Int, kernelDepth: Int, paramSize: Int) extends Module {
     val totalNumOfElements:  Int = kernelSize * kernelSize * kernelDepth
     val kernelNumOfElements: Int = kernelSize * kernelSize
-    val outDataSize:         Int = kernelSize * kernelSize * kernelDepth * kernelParamSize
-    val wrDataWidth:         Int = kernelSize * kernelParamSize
-    val kernelAddrWidth:     Int = math.floor(log2(kernelDepth.toFloat)).toInt + 1
-    val rowAddrWidth:        Int = math.ceil(log2(kernelSize.toFloat)).toInt
+    val outDataSize:         Int = kernelSize * kernelSize * kernelDepth * paramSize
+    val wrDataWidth:         Int = kernelSize * paramSize
+    val chAddrWidth:         Int = reqWidth(kernelDepth)
+    val rowAddrWidth:        Int = reqWidth(kernelSize)
 
     val io = IO(new Bundle {
         val shiftRegs    = Input(Bool())
         val rowWriteMode = Input(Bool())
         val rowAddr      = Input(UInt(rowAddrWidth.W))
-        val kernelAddr   = Input(UInt(kernelAddrWidth.W))
+        val chAddr       = Input(UInt(chAddrWidth.W))
         val inData       = Input(UInt(wrDataWidth.W))
         val inValid      = Input(Bool())
         val outData      = Output(UInt(outDataSize.W))
     })
 
-    val regs = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(kernelParamSize.W)))
+    val regs = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(paramSize.W)))
     io.outData := regs.asUInt
 
     when(io.inValid) {
         when(io.rowWriteMode === true.B) {
-            regs(io.kernelAddr)(io.rowAddr) := io.inData.asTypeOf(Vec(kernelSize, UInt(kernelParamSize.W)))
+            regs(io.chAddr)(io.rowAddr) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))
         }.otherwise {
             for (i <- 0 until kernelSize) {
-                regs(io.kernelAddr)(i)(kernelSize - 1) := io.inData.asTypeOf(Vec(kernelSize, UInt(kernelParamSize.W)))(
+                regs(io.chAddr)(i)(kernelSize - 1) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))(
                   i
                 )
             }

@@ -52,10 +52,29 @@ package object implicits {
         def totalBitwidth: Int = qt.dtype.get.bitwidth * qt.shape.reduce(_ * _)
 
         def toHexStr: String = {
-            """abcd
-0123
-4444
-ffff"""
+            logger.debug("Convertin QTensor to a hex file string.")
+            val paramW = qt.dtype.get.bitwidth
+            val memWordWidth:   Int = 32
+            val paramsPerWord:  Int = memWordWidth / paramW
+            val memValidBits:   Int = paramsPerWord * paramW
+            val memInvalidBits: Int = memWordWidth - memValidBits
+
+            var hex: String      = ""
+            var bin: Seq[String] = Seq()
+            var tmp: String      = ""
+
+            for (paramGroup <- qt.values.grouped(paramsPerWord)) {
+                tmp = ""
+                for (param <- paramGroup) {
+                    tmp = toBinary(param.toInt, paramW) + " " + tmp
+                }
+                tmp = toBinary(0, memInvalidBits) + tmp + "\n"
+                bin = bin :+ tmp
+            }
+            for (binStr     <- bin) {
+                hex = hex + BigInt(binStr.trim.replaceAll(" ", ""), 2).toString(16) + s" // " + binStr
+            }
+            hex
         }
     }
 

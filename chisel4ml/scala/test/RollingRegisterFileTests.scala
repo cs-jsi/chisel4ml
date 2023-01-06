@@ -38,7 +38,7 @@ class RollingRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
         test(new RollingRegisterFile(2, 1, 4)) { dut =>
             dut.io.shiftRegs.poke(false.B)
             dut.io.rowWriteMode.poke(true.B)
-            dut.io.kernelAddr.poke(0.U)
+            dut.io.chAddr.poke(0.U)
             dut.io.rowAddr.poke(0.U)
             dut.io.inData.poke(0.U)
             dut.io.inValid.poke(false.B)
@@ -126,7 +126,7 @@ class RollingRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
                     dut.io.shiftRegs.poke(true.B)
                     dut.io.rowWriteMode.poke(false.B)
                     for (i <- 0 until added.shape()(0)) { // kernelDepth
-                        dut.io.kernelAddr.poke(i.U)
+                        dut.io.chAddr.poke(i.U)
                         logger.debug(
                           s"row: ${added.getRow(i)} -> ${ndArrayToBinaryString(added.getRow(i), randKernParamBitwidth)}"
                         )
@@ -144,7 +144,7 @@ class RollingRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
                     dut.io.shiftRegs.poke(false.B)
                     dut.io.inValid.poke(true.B)
                     for (i <- 0 until window.shape()(0)) { // kernelDepth
-                        dut.io.kernelAddr.poke(i.U)
+                        dut.io.chAddr.poke(i.U)
                         for (j <- 0 until window.shape()(2)) { // kernelSize
                             dut.io.rowAddr.poke(j.U)
                             dut.io.inData.poke(

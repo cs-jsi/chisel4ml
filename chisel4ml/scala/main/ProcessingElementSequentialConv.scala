@@ -15,12 +15,15 @@
  */
 package chisel4ml.sequential
 
+import scala.reflect.runtime.{universe => ru}
+
 import chisel3._
 import chisel3.util._
 
 import _root_.chisel4ml.bus.AXIStream
 import _root_.chisel4ml.memory.{ROM, SRAM}
 import _root_.chisel4ml.util._
+import _root_.chisel4ml.lbir._
 import _root_.chisel4ml.implicits._
 import _root_.lbir.Layer
 import _root_.services.GenerateCircuitParams.Options
@@ -35,10 +38,22 @@ import _root_.scala.math
   * program code. This design, of course, comes at a price of utilization of the arithmetic units, which is low. But
   * thanks to the low bitwidths of parameters this should be an acceptable trade-off.
   */
-class ProcessingElementSequentialConv(layer: Layer, options: Options)
+class ProcessingElementSequentialConv[
+    I <: Bits,
+    W <: Bits: WeightsProvider,
+    M <: Bits,
+    A <: Bits: ThreshProvider,
+    O <: Bits
+  ](layer:      Layer,
+    options:    Options,
+    genIn:      I,
+    genWeights: W,
+    genThresh:  A,
+    genOut:     O,
+    mul:        (I, W) => M,
+    add:        Vec[M] => A,
+    actFn:      (A, A) => O)
     extends ProcessingElementSequential(layer, options) {
-
-    // KERNEL MEMORY
     val kernelParamSize:     Int = layer.weights.get.dtype.get.bitwidth
     val kernelParamsPerWord: Int = memWordWidth / kernelParamSize
     val kernelNumParams:     Int = layer.weights.get.shape.reduce(_ * _)
@@ -51,27 +66,37 @@ class ProcessingElementSequentialConv(layer: Layer, options: Options)
       )
     )
 
-    // ACTIVATION MEMORY
     val actParamSize:     Int = layer.input.get.dtype.get.bitwidth
     val actParamsPerWord: Int = memWordWidth / actParamSize
     val actNumParams:     Int = layer.input.get.shape.reduce(_ * _)
     val actMemDepth:      Int = math.ceil(actNumParams.toFloat / actParamsPerWord.toFloat).toInt
     val actMem = Module(new SRAM(depth = actMemDepth, width = memWordWidth))
 
-    // RESULT MEMORY
+    val numOfKernels: Int = layer.weights.get.shape(0)
+    val kernelDepth:  Int = layer.weights.get.shape(1)
+    val kernelSize:   Int = layer.weights.get.shape(2)
+    val kernelRegFile = Module(new KernelRegisterFile(kernelSize, kernelDepth, kernelParamSize))
+
+    val actRegFile = Module(new RollingRegisterFile(kernelSize, kernelDepth, kernelParamSize))
+
     val resParamSize:     Int = layer.output.get.dtype.get.bitwidth
     val resParamsPerWord: Int = memWordWidth / resParamSize
     val resNumParams:     Int = layer.output.get.shape.reduce(_ * _)
     val resMemDepth:      Int = math.ceil(resNumParams.toFloat / resParamsPerWord.toFloat).toInt
     val resMem = Module(new SRAM(depth = resMemDepth, width = memWordWidth))
 
-    // KERNEL REGISTERS
-    val numOfKernels: Int = layer.weights.get.shape(0)
-    val kernelDepth:  Int = layer.weights.get.shape(1)
-    val kernelSize:   Int = layer.weights.get.shape(2)
-    // val kernelRegFile = Module(new KernelRegisterFile(kernelSize, kernelDepth, kernelParamSize))
+    val dynamicNeuron = Module(
+      new DynamicNeuron[I, W, M, A, O](
+        genIn = genIn,
+        numSynaps = kernelNumParams,
+        genWeights = genWeights,
+        genThresh = genThresh,
+        genOut = genOut,
+        mul = mul,
+        add = add,
+        actFn = actFn
+      )
+    )
 
-    // ACTIVATION REGISTERS
-    val actRegFile = Module(new RollingRegisterFile(kernelSize, kernelDepth, kernelParamSize))
-
+    // val swu = Module(new SlidingWindowUnit())
 }

@@ -38,8 +38,10 @@ package object util {
 
     val logger = LoggerFactory.getLogger("chisel4ml.util.")
 
-    def log2(x: Int):   Int   = (log(x.toFloat) / log(2.0)).toInt
-    def log2(x: Float): Float = (log(x) / log(2.0)).toFloat
+    def log2(x: Int):        Int   = (log(x.toFloat) / log(2.0)).toInt
+    def log2(x: Float):      Float = (log(x) / log(2.0)).toFloat
+    def reqWidth(x: Int):    Int   = math.ceil(log2(x.toFloat)).toInt
+    def reqWidth(x: Double): Int   = math.ceil(log2(x.toFloat)).toInt
 
     def genHexMemoryFile(tensor: QTensor, layout: String): String = {
         require(layout == "CDHW")
