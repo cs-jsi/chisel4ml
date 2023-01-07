@@ -16,10 +16,6 @@
 package chisel4ml.sequential
 
 import _root_.chisel3._
-import _root_.chisel3.util._
-
-import _root_.chisel4ml.util._
-import _root_.chisel4ml.combinational.StaticNeuron
 import _root_.chisel4ml.lbir._
 
 class DynamicNeuron[I <: Bits, W <: Bits: WeightsProvider, M <: Bits, A <: Bits: ThreshProvider, O <: Bits](
@@ -30,30 +26,30 @@ class DynamicNeuron[I <: Bits, W <: Bits: WeightsProvider, M <: Bits, A <: Bits:
     genOut:     O,
     mul:        (I, W) => M,
     add:        Vec[M] => A,
-    actFn:      (A, A) => O)
-    extends Module {
+    actFn:      (A, A) => O,
+  ) extends Module {
 
-    def shiftAndRound[A <: Bits: ThreshProvider](pAct: A, shift: UInt, shiftLeft: Bool, genThresh: A): A = {
-        val out = Wire(genThresh)
-        when(shiftLeft) {
-            out := (pAct << shift).asTypeOf(pAct)
-        }.otherwise {
-            out := ((pAct >> shift).asSInt + pAct(shift - 1.U).asSInt).asTypeOf(pAct)
-        }
-        out
+  def shiftAndRound[A <: Bits: ThreshProvider](pAct: A, shift: UInt, shiftLeft: Bool, genThresh: A): A = {
+    val out = Wire(genThresh)
+    when(shiftLeft) {
+      out := (pAct << shift).asTypeOf(pAct)
+    }.otherwise {
+      out := ((pAct >> shift).asSInt + pAct(shift - 1.U).asSInt).asTypeOf(pAct)
     }
+    out
+  }
 
-    val io = IO(new Bundle {
-        val in:        Vec[I] = Input(Vec(numSynaps, genIn))
-        val weights:   Vec[W] = Input(Vec(numSynaps, genWeights))
-        val thresh:    A      = Input(genThresh)
-        val shift:     UInt   = Input(UInt(8.W)) // TODO: bitwidth?
-        val shiftLeft: Bool   = Input(Bool())
-        val out:       O      = Output(genOut)
-    })
+  val io = IO(new Bundle {
+    val in:        Vec[I] = Input(Vec(numSynaps, genIn))
+    val weights:   Vec[W] = Input(Vec(numSynaps, genWeights))
+    val thresh:    A      = Input(genThresh)
+    val shift:     UInt   = Input(UInt(8.W)) // TODO: bitwidth?
+    val shiftLeft: Bool   = Input(Bool())
+    val out:       O      = Output(genOut)
+  })
 
-    val muls = VecInit((io.in.zip(io.weights)).map { case (a, b) => mul(a, b) })
-    val pAct = add(muls)
-    val sAct = shiftAndRound(pAct, io.shift, io.shiftLeft, genThresh)
-    io.out := actFn(sAct, io.thresh)
+  val muls = VecInit((io.in.zip(io.weights)).map { case (a, b) => mul(a, b) })
+  val pAct = add(muls)
+  val sAct = shiftAndRound(pAct, io.shift, io.shiftLeft, genThresh)
+  io.out := actFn(sAct, io.thresh)
 }

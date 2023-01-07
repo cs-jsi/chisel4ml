@@ -15,46 +15,40 @@
  */
 package chisel4ml.tests
 
-import org.scalatest.flatspec.AnyFlatSpec
+import _root_.chisel4ml.tests.SlidingWindowUnitTestBed
+import _root_.lbir.Datatype.QuantizationType.UNIFORM
+import _root_.org.slf4j.LoggerFactory
 import chisel3._
 import chiseltest._
-
-import _root_.chisel4ml.sequential._
-import _root_.chisel4ml.implicits._
-import _root_.chisel4ml.tests.SlidingWindowUnitTestBed
-import _root_.lbir._
-import _root_.lbir.Datatype.QuantizationType.UNIFORM
-
-import _root_.org.slf4j.Logger
-import _root_.org.slf4j.LoggerFactory
+import org.scalatest.flatspec.AnyFlatSpec
 
 class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester {
-    val logger = LoggerFactory.getLogger(classOf[SlidingWindowUnitTests])
+  val logger = LoggerFactory.getLogger(classOf[SlidingWindowUnitTests])
 
-    val dtype          = new lbir.Datatype(quantization = UNIFORM, bitwidth = 5, signed = false, shift = Seq(0), offset = Seq(0))
-    val testParameters = lbir.QTensor(
-      dtype = Option(dtype),
-      shape = Seq(1, 2, 3, 3),
-      values = Seq(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
-    )
+  val dtype = new lbir.Datatype(quantization = UNIFORM, bitwidth = 5, signed = false, shift = Seq(0), offset = Seq(0))
+  val testParameters = lbir.QTensor(
+    dtype = Option(dtype),
+    shape = Seq(1, 2, 3, 3),
+    values = Seq(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18),
+  )
 
-    behavior.of("SlidingWindowUnit module")
-    it should "show appropirate window as it cycles through the input image" in {
-        test(
-          new SlidingWindowUnitTestBed(
-            kernelSize = 2,
-            kernelDepth = 2,
-            actWidth = 3,
-            actHeight = 3,
-            actParamSize = 3,
-            parameters = testParameters
-          )
-        ) { dut =>
-            dut.clock.step()
-            dut.io.start.poke(true.B)
-            dut.clock.step()
-            dut.io.start.poke(false.B)
-            dut.clock.step(20)
-        }
+  behavior.of("SlidingWindowUnit module")
+  it should "show appropirate window as it cycles through the input image" in {
+    test(
+      new SlidingWindowUnitTestBed(
+        kernelSize = 2,
+        kernelDepth = 2,
+        actWidth = 3,
+        actHeight = 3,
+        actParamSize = 5,
+        parameters = testParameters,
+      ),
+    ) { dut =>
+      dut.clock.step()
+      dut.io.start.poke(true.B)
+      dut.clock.step()
+      dut.io.start.poke(false.B)
+      dut.clock.step(20)
     }
+  }
 }

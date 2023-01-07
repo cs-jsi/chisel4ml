@@ -5,3 +5,6 @@ zinc/
 chisel4ml.jar
 test-sync/
 test-zinc/
+meta/
+scalafix-sync/
+test-meta/

@@ -1,7 +1,14 @@
 ThisBuild / scalaVersion     := "2.13.10"
 ThisBuild / version          := "0.1.0"
 ThisBuild / organization     := "JSI"
-
+ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0"
+inThisBuild(
+    List(
+        scalaVersion := "2.13.10",
+        semanticdbEnabled := true,
+        semanticdbVersion := scalafixSemanticdb.revision
+    )
+)
 Compile / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "main"
 Test / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "test"
 Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "scala" / "lbir"
@@ -49,14 +56,18 @@ lazy val root = (project in file("."))
       "org.slf4j"                  %  "slf4j-simple"         % slf4jVersion,
       "org.scalatest"              %% "scalatest"            % scalatestVersion,
       "org.scalatest"              %% "scalatest"            % scalatestVersion % "test",
-      "org.nd4j"                   % "nd4j-native"           % "0.5.0",
-      "org.nd4j"                   % "nd4j-native"           % "0.5.0"
+      "org.nd4j"                   %  "nd4j-native"          % "0.5.0",
+      "org.nd4j"                   %  "nd4j-native"          % "0.5.0",
     ),
     scalacOptions ++= Seq(
-      "-language:reflectiveCalls",
+      "-unchecked",
       "-deprecation",
+      "-language:reflectiveCalls",
       "-feature",
       "-Xcheckinit",
+      "-Xfatal-warnings",
+      "-Ywarn-dead-code",
+      "-Ywarn-unused",
       "-P:chiselplugin:genBundleElements",
     ),
     addCompilerPlugin("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion cross CrossVersion.full),

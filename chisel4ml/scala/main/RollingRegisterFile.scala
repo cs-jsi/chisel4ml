@@ -15,11 +15,8 @@
  */
 package chisel4ml.sequential
 
-import chisel3._
-import chisel3.util._
-
 import _root_.chisel4ml.util.reqWidth
-import _root_.chisel4ml.implicits._
+import chisel3._
 
 /** A register file for storing the inputs (activations or iamge) of a convotional layer.
   *
@@ -27,44 +24,44 @@ import _root_.chisel4ml.implicits._
   * Int - The depth of the kernel (number of input channels) actParamSize: Int - The activation parameterSize in bits.
   */
 class RollingRegisterFile(kernelSize: Int, kernelDepth: Int, paramSize: Int) extends Module {
-    val totalNumOfElements:  Int = kernelSize * kernelSize * kernelDepth
-    val kernelNumOfElements: Int = kernelSize * kernelSize
-    val outDataSize:         Int = kernelSize * kernelSize * kernelDepth * paramSize
-    val wrDataWidth:         Int = kernelSize * paramSize
-    val chAddrWidth:         Int = reqWidth(kernelDepth)
-    val rowAddrWidth:        Int = reqWidth(kernelSize)
+  val totalNumOfElements:  Int = kernelSize * kernelSize * kernelDepth
+  val kernelNumOfElements: Int = kernelSize * kernelSize
+  val outDataSize:         Int = kernelSize * kernelSize * kernelDepth * paramSize
+  val wrDataWidth:         Int = kernelSize * paramSize
+  val chAddrWidth:         Int = reqWidth(kernelDepth)
+  val rowAddrWidth:        Int = reqWidth(kernelSize)
 
-    val io = IO(new Bundle {
-        val shiftRegs    = Input(Bool())
-        val rowWriteMode = Input(Bool())
-        val rowAddr      = Input(UInt(rowAddrWidth.W))
-        val chAddr       = Input(UInt(chAddrWidth.W))
-        val inData       = Input(UInt(wrDataWidth.W))
-        val inValid      = Input(Bool())
-        val outData      = Output(UInt(outDataSize.W))
-    })
+  val io = IO(new Bundle {
+    val shiftRegs    = Input(Bool())
+    val rowWriteMode = Input(Bool())
+    val rowAddr      = Input(UInt(rowAddrWidth.W))
+    val chAddr       = Input(UInt(chAddrWidth.W))
+    val inData       = Input(UInt(wrDataWidth.W))
+    val inValid      = Input(Bool())
+    val outData      = Output(UInt(outDataSize.W))
+  })
 
-    val regs = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(paramSize.W)))
-    io.outData := regs.asUInt
+  val regs = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(paramSize.W)))
+  io.outData := regs.asUInt
 
-    when(io.inValid) {
-        when(io.rowWriteMode === true.B) {
-            regs(io.chAddr)(io.rowAddr) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))
-        }.otherwise {
-            for (i <- 0 until kernelSize) {
-                regs(io.chAddr)(i)(kernelSize - 1) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))(
-                  i
-                )
-            }
-            when(io.shiftRegs === true.B) {
-                for {
-                    i <- 0 until kernelDepth
-                    k <- 0 until kernelSize - 1
-                    j <- 0 until kernelSize
-                } {
-                    regs(i)(j)(k) := regs(i)(j)(k + 1)
-                }
-            }
+  when(io.inValid) {
+    when(io.rowWriteMode === true.B) {
+      regs(io.chAddr)(io.rowAddr) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))
+    }.otherwise {
+      for (i <- 0 until kernelSize) {
+        regs(io.chAddr)(i)(kernelSize - 1) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))(
+          i,
+        )
+      }
+      when(io.shiftRegs === true.B) {
+        for {
+          i <- 0 until kernelDepth
+          k <- 0 until kernelSize - 1
+          j <- 0 until kernelSize
+        } {
+          regs(i)(j)(k) := regs(i)(j)(k + 1)
         }
+      }
     }
+  }
 }

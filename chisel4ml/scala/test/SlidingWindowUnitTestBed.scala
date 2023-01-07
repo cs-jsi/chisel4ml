@@ -15,14 +15,11 @@
  */
 package chisel4ml.tests
 
-import chisel3._
-import chisel3.util._
-
 import _root_.chisel4ml.memory.ROM
-import _root_.chisel4ml._
 import _root_.chisel4ml.sequential._
 import _root_.chisel4ml.util._
 import _root_.lbir.QTensor
+import chisel3._
 
 /** Sliding Window Unit - test bed
   */
@@ -33,50 +30,53 @@ class SlidingWindowUnitTestBed(
     actWidth:     Int,
     actHeight:    Int,
     actParamSize: Int,
-    parameters:   QTensor)
-    extends Module {
+    parameters:   QTensor,
+  ) extends Module {
 
-    val memWordWidth:     Int = 32
-    val actParamsPerWord: Int = memWordWidth / actParamSize
-    val actMemValidBits:  Int = actParamsPerWord * actParamSize
-    val actMemDepthBits:  Int = (actWidth * actHeight * kernelDepth * actParamSize)
-    val actMemDepthWords: Int = (actMemDepthBits / actMemValidBits) + 1
+  val memWordWidth:     Int = 32
+  val actParamsPerWord: Int = memWordWidth / actParamSize
+  val actMemValidBits:  Int = actParamsPerWord * actParamSize
+  val actMemDepthBits:  Int = actWidth * actHeight * kernelDepth * actParamSize
+  val actMemDepthWords: Int = (actMemDepthBits / actMemValidBits) + 1
 
-    val io = IO(new Bundle {
-        val start     = Input(Bool())
-        val actRdData = Output(UInt(32.W))
-    })
+  val outDataSize: Int = kernelSize * kernelSize * kernelDepth * actParamSize
 
-    val swu = Module(
-      new SlidingWindowUnit(
-        kernelSize = kernelSize,
-        kernelDepth = kernelDepth,
-        actWidth = actWidth,
-        actHeight = actHeight,
-        actParamSize = actParamSize
-      )
-    )
+  val io = IO(new Bundle {
+    val start   = Input(Bool())
+    val outData = Output(UInt(outDataSize.W))
+  })
 
-    val rrf = Module(
-      new RollingRegisterFile(kernelSize = kernelSize, kernelDepth = kernelDepth, paramSize = actParamSize)
-    )
+  val swu = Module(
+    new SlidingWindowUnit(
+      kernelSize = kernelSize,
+      kernelDepth = kernelDepth,
+      actWidth = actWidth,
+      actHeight = actHeight,
+      actParamSize = actParamSize,
+    ),
+  )
 
-    // For testing purposes we use a prewritten ROM
-    val actMem = Module(
-      new ROM(depth = actMemDepthWords, width = memWordWidth, memFile = genHexMemoryFile(parameters, layout = "CDHW"))
-    )
+  val rrf = Module(
+    new RollingRegisterFile(kernelSize = kernelSize, kernelDepth = kernelDepth, paramSize = actParamSize),
+  )
 
-    rrf.io.shiftRegs    := swu.io.shiftRegs
-    rrf.io.rowWriteMode := swu.io.rowWriteMode
-    rrf.io.rowAddr      := swu.io.rowAddr
-    rrf.io.chAddr       := swu.io.chAddr
-    rrf.io.inData       := swu.io.data
-    rrf.io.inValid      := swu.io.valid
+  // For testing purposes we use a prewritten ROM
+  val actMem = Module(
+    new ROM(depth = actMemDepthWords, width = memWordWidth, memFile = genHexMemoryFile(parameters, layout = "CDHW")),
+  )
 
-    actMem.io.rdEna  := swu.io.actRdEn
-    actMem.io.rdAddr := swu.io.actRdAddr
-    swu.io.actRdData := actMem.io.rdData
+  rrf.io.shiftRegs    := swu.io.shiftRegs
+  rrf.io.rowWriteMode := swu.io.rowWriteMode
+  rrf.io.rowAddr      := swu.io.rowAddr
+  rrf.io.chAddr       := swu.io.chAddr
+  rrf.io.inData       := swu.io.data
+  rrf.io.inValid      := swu.io.valid
+  io.outData          := rrf.io.outData
 
-    swu.io.start := io.start
-    io.actRdData := actMem.io.rdData
+  actMem.io.rdEna  := swu.io.actRdEn
+  actMem.io.rdAddr := swu.io.actRdAddr
+  swu.io.actRdData := actMem.io.rdData
+
+  swu.io.start := io.start
+
 }

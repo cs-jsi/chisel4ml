@@ -15,33 +15,28 @@
  */
 package chisel4ml.tests
 
-import org.scalatest.flatspec.AnyFlatSpec
-import chisel3._
-import chisel3.experimental.VecLiterals._
-import chiseltest._
-
 import _root_.chisel4ml.sequential._
-import _root_.chisel4ml.implicits._
-
-import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
+import chisel3._
+import chiseltest._
+import org.scalatest.flatspec.AnyFlatSpec
 
 class KernelRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
-    val logger = LoggerFactory.getLogger(classOf[KernelRegisterFileTests])
+  val logger = LoggerFactory.getLogger(classOf[KernelRegisterFileTests])
 
-    behavior.of("KernelRegisterFile module")
-    it should "show appropirate window as it cycles through the input image" in {
-        test(new KernelRegisterFile(2, 2, 4)) { dut =>
-            dut.io.kernelAddr.poke(0.U)
-            dut.io.inData.poke("b0011_0010_0001_0000".U)
-            dut.io.inValid.poke(true.B)
-            dut.clock.step()
-            dut.io.kernelAddr.poke(1.U)
-            dut.io.inData.poke("b0111_0110_0101_0100".U)
-            dut.clock.step()
-            dut.io.inValid.poke(false.B)
-            dut.io.outData.expect("b0111_0110_0101_0100_0011_0010_0001_0000".U)
-            dut.clock.step()
-        }
+  behavior.of("KernelRegisterFile module")
+  it should "show appropirate window as it cycles through the input image" in {
+    test(new KernelRegisterFile(2, 2, 4)) { dut =>
+      dut.io.kernelAddr.poke(0.U)
+      dut.io.inData.poke("b0011_0010_0001_0000".U)
+      dut.io.inValid.poke(true.B)
+      dut.clock.step()
+      dut.io.kernelAddr.poke(1.U)
+      dut.io.inData.poke("b0111_0110_0101_0100".U)
+      dut.clock.step()
+      dut.io.inValid.poke(false.B)
+      dut.io.outData.expect("b0111_0110_0101_0100_0011_0010_0001_0000".U)
+      dut.clock.step()
     }
+  }
 }

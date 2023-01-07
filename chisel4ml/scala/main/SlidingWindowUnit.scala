@@ -15,12 +15,10 @@
  */
 package chisel4ml.sequential
 
-import chisel3._
-import chisel3.util._
-
 import _root_.chisel4ml.util.reqWidth
-import _root_.chisel4ml.implicits._
+import chisel3._
 import chisel3.experimental.ChiselEnum
+import chisel3.util._
 
 /** Sliding Window Unit
   *
@@ -33,130 +31,188 @@ class SlidingWindowUnit(
     kernelDepth:  Int,
     actWidth:     Int,
     actHeight:    Int,
-    actParamSize: Int)
-    extends Module {
+    actParamSize: Int,
+  ) extends Module {
 
-    val totalNumOfKernelElements: Int = kernelSize * kernelSize * kernelDepth
-    val wrDataWidth:              Int = kernelSize * actParamSize
-    val chAddrWidth:              Int = reqWidth(kernelDepth.toFloat)
-    val rowAddrWidth:             Int = reqWidth(kernelSize.toFloat)
+  val totalNumOfKernelElements: Int = kernelSize * kernelSize * kernelDepth
+  val wrDataWidth:              Int = kernelSize * actParamSize
+  val chAddrWidth:              Int = reqWidth(kernelDepth.toFloat)
+  val rowAddrWidth:             Int = reqWidth(kernelSize.toFloat)
 
-    val memWordWidth: Int = 32
+  val memWordWidth: Int = 32
 
-    val actParamsPerWord: Int = memWordWidth / actParamSize
-    val actMemValidBits:  Int = actParamsPerWord * actParamSize
-    val leftoverBits:     Int = memWordWidth - actMemValidBits
+  val actParamsPerWord: Int = memWordWidth / actParamSize
+  val actMemValidBits:  Int = actParamsPerWord * actParamSize
+  val leftoverBits:     Int = memWordWidth - actMemValidBits
 
-    val actMemChSize:  Int = kernelSize * kernelSize * actParamSize
-    val actMemRowSize: Int = kernelSize * actParamSize
-    val actMemColSize: Int = kernelSize
+  val actMemChSize:  Int = kernelSize * kernelSize * actParamSize
+  val actMemRowSize: Int = kernelSize * actParamSize
+  val actMemColSize: Int = kernelSize
 
-    val actMemWordsForKernel: Int = math.ceil(totalNumOfKernelElements.toFloat / actParamsPerWord.toFloat).toInt
-    val actMemDepthBits:      Int = (actWidth * actHeight * kernelDepth * actParamSize)
-    val actMemDepthWords:     Int = (actMemDepthBits / actMemValidBits) + 1
+  val actMemWordsForKernel: Int = math.ceil(totalNumOfKernelElements.toFloat / actParamsPerWord.toFloat).toInt
+  val actMemDepthBits:      Int = actWidth * actHeight * kernelDepth * actParamSize
+  val actMemDepthWords:     Int = (actMemDepthBits / actMemValidBits) + 1
 
-    val collumnAddConstant: Int = actParamSize
-    val rowAddConstant:     Int = ((actWidth - kernelSize) + (kernelSize - 1)) * actParamSize
-    val chAddConstant:      Int = ((actWidth - kernelSize) + ((actHeight - kernelSize) * actWidth) + 1) * actParamSize
-    val constantWireSize:   Int = if (reqWidth(chAddConstant) > 5) reqWidth(chAddConstant) else 5
+  val colAddConstant:   Int = actParamSize
+  val rowAddConstant:   Int = ((actWidth - kernelSize) + (kernelSize - 1)) * actParamSize
+  val chAddConstant:    Int = ((actWidth - kernelSize) + ((actHeight - kernelSize) * actWidth) + 1) * actParamSize
+  val constantWireSize: Int = if (reqWidth(chAddConstant) > 5) reqWidth(chAddConstant) else 5
 
-    val io = IO(new Bundle {
-        // interface to the RollingRegisterFile module.
-        val shiftRegs    = Output(Bool())
-        val rowWriteMode = Output(Bool())
-        val rowAddr      = Output(UInt(rowAddrWidth.W))
-        val chAddr       = Output(UInt(chAddrWidth.W))
-        val data         = Output(UInt(wrDataWidth.W))
-        val valid        = Output(Bool())
+  val io = IO(new Bundle {
+    // interface to the RollingRegisterFile module.
+    val shiftRegs    = Output(Bool())
+    val rowWriteMode = Output(Bool())
+    val rowAddr      = Output(UInt(rowAddrWidth.W))
+    val chAddr       = Output(UInt(chAddrWidth.W))
+    val data         = Output(UInt(wrDataWidth.W))
+    val valid        = Output(Bool())
 
-        // interface to the activation memory
-        val actRdEn   = Output(Bool())
-        val actRdAddr = Output(UInt(reqWidth(actMemDepthWords).W))
-        val actRdData = Input(UInt(memWordWidth.W))
+    // interface to the activation memory
+    val actRdEn   = Output(Bool())
+    val actRdAddr = Output(UInt(reqWidth(actMemDepthWords).W))
+    val actRdData = Input(UInt(memWordWidth.W))
 
-        // control interface
-        val start = Input(Bool())
-    })
+    // control interface
+    val start = Input(Bool())
+  })
 
-    val bitAddr        = RegInit(0.U(reqWidth(actMemDepthBits).W)) // bit addressing, because params can be any width
-    val bitAddrNext    = Wire(UInt(reqWidth(actMemDepthBits).W))
-    val bitAddrNextMod = Wire(UInt(reqWidth(actMemDepthBits).W))
-    val addConstant    = WireInit(0.U(constantWireSize.W))
-    val correction     = Wire(UInt())
-    val subwordAddr    = Wire(UInt(reqWidth(memWordWidth).W))      // Which part of the memory word are we looking at?
-    val subwordAddrReg = RegNext(subwordAddr)
-    val data           = Wire(UInt(actParamSize.W))
-    val dataReg        = RegNext(data)
+  val bitAddr        = RegInit(0.U(reqWidth(actMemDepthBits).W)) // bit addressing, because params can be any width
+  val bitAddrNext    = Wire(UInt(reqWidth(actMemDepthBits).W))
+  val bitAddrNextMod = Wire(UInt(reqWidth(actMemDepthBits).W))
+  val addConstant    = WireInit(0.U(constantWireSize.W))
+  val correction     = Wire(UInt())
+  val subwordAddr    = Wire(UInt(reqWidth(memWordWidth).W))      // Which part of the memory word are we looking at?
+  val ramDataAsVec   = Wire(Vec(actParamsPerWord, UInt(actParamSize.W)))
+  val dataBuf        = RegInit(VecInit(Seq.fill(kernelSize)(0.U(actParamSize.W))))
+  val dataIndex      = Wire(UInt())
 
-    object swuState extends ChiselEnum {
-        val sWAIT, sADDCOL, sADDROW, sADDCH, sEND = Value
-    }
+  object swuState extends ChiselEnum {
+    // val sWAIT, sADDCOL, sADDROW, sADDCH, sEND = Value
+    val sWAITSTART = Value(0.U)
+    val sADDCOL    = Value(1.U)
+    val sADDROW    = Value(2.U)
+    val sADDCH     = Value(3.U)
+    val sSTALL     = Value(4.U)
+    val sEND       = Value(5.U)
+    val sERROR     = Value(6.U)
+  }
 
-    val nstate = WireInit(swuState.sWAIT)
-    val state  = RegNext(next = nstate, init = swuState.sWAIT)
+  val nstate     = WireInit(swuState.sERROR)
+  val nstateTemp = WireInit(swuState.sERROR)
+  val state      = RegNext(next = nstate, init = swuState.sWAITSTART)
+  val stallState = RegInit(swuState.sERROR)
 
-    val colCnt = RegInit(0.U(reqWidth(kernelSize).W))
-    val rowCnt = RegInit(0.U(reqWidth(kernelSize).W))
-    val chCnt  = RegInit(0.U(reqWidth(kernelDepth).W))
+  val colCnt = RegInit(0.U(reqWidth(kernelSize).W))
+  val rowCnt = RegInit(0.U(reqWidth(kernelSize).W))
+  val chCnt  = RegInit(0.U(reqWidth(kernelDepth).W))
 
-    io.actRdEn := false.B
-    when(io.start === true.B) {
-        state       := swuState.sADDCOL
-        bitAddr     := 0.U
-        io.actRdEn  := true.B
-        addConstant := 0.U
+  // //// NEXT STATE LOGIC //////
+  when(state === swuState.sWAITSTART) {
+    when(io.start) {
+      nstate     := swuState.sSTALL
+      stallState := swuState.sADDCOL
     }.otherwise {
-        switch(state) {
-            is(swuState.sWAIT) {
-                addConstant := 0.U
-                io.actRdEn  := false.B
-            }
-            is(swuState.sADDCOL) {
-                addConstant := collumnAddConstant.U
-                io.actRdEn  := true.B
-                colCnt      := colCnt + 1.U
-                when(colCnt === (kernelSize - 1).U) {
-                    nstate := swuState.sADDCOL
-                }
-            }
-            is(swuState.sADDROW) {
-                addConstant := rowAddConstant.U
-                io.actRdEn  := true.B
-                rowCnt      := rowCnt + 1.U
-                when(rowCnt === (kernelSize - 1).U) {
-                    nstate := swuState.sADDCH
-                }.otherwise {
-                    nstate := swuState.sADDCOL
-                }
-            }
-            is(swuState.sADDCH) {
-                addConstant := chAddConstant.U
-                io.actRdEn  := true.B
-                chCnt       := chCnt + 1.U
-                nstate      := swuState.sADDCOL
-            }
-            is(swuState.sEND) {
-                addConstant := 0.U
-                io.actRdEn  := false.B
-            }
-        }
+      nstate := swuState.sWAITSTART
     }
+  }.elsewhen(state === swuState.sSTALL) {
+    nstate := stallState
+  }.elsewhen(
+    state === swuState.sADDCOL ||
+      state === swuState.sADDROW ||
+      state === swuState.sADDCH,
+  ) {
+    when(
+      colCnt === (kernelSize - 1).U &&
+        rowCnt === (kernelSize - 1).U &&
+        chCnt === (kernelDepth - 1).U,
+    ) {
+      nstateTemp := swuState.sEND
+    }.elsewhen(
+      colCnt === (kernelSize - 2).U &&
+        rowCnt === (kernelSize - 1).U,
+    ) {
+      nstateTemp := swuState.sADDCH
+    }.elsewhen(colCnt === (kernelSize - 2).U) {
+      nstateTemp := swuState.sADDROW
+    }.otherwise {
+      nstateTemp := swuState.sADDCOL
+    }
+    when(correction =/= 0.U) {
+      nstate     := swuState.sSTALL
+      stallState := nstateTemp
+    }.otherwise {
+      nstate     := nstateTemp
+      stallState := swuState.sERROR
+    }
+  }.elsewhen(state === swuState.sEND) {
+    nstate := swuState.sWAITSTART
+  }.elsewhen(state === swuState.sERROR) {
+    nstate := swuState.sERROR
+  }.otherwise {
+    nstate := swuState.sERROR
+  }
 
-    // ADDRESS CALCULATIONS
-    bitAddrNext    := bitAddr + addConstant
-    // The correction factor corrects for the stuffing that happens (if 32 / bw is not whole) at the end of each word
-    correction     := (addConstant >> 5) + ((addConstant(4, 0) + bitAddr(5, 0)) >> 5)
-    bitAddrNextMod := bitAddrNext + correction * (memWordWidth - actMemValidBits).U
-    bitAddr        := bitAddrNextMod
+  // //// CONSTANTS //////
+  addConstant := 0.U
+  switch(state) {
+    is(swuState.sADDCOL)(addConstant := colAddConstant.U)
+    is(swuState.sADDROW)(addConstant := rowAddConstant.U)
+    is(swuState.sADDCH)(addConstant  := chAddConstant.U)
+  }
 
-    io.actRdAddr := (bitAddr >> 5)
-    subwordAddr  := bitAddr(5, 0)
-    data         := io.actRdData(actMemValidBits - 1, 0).asTypeOf(Vec(actParamsPerWord, UInt(actParamSize.W)))(subwordAddrReg)
+  // //// COUNTERS //////
+  switch(state) {
+    is(swuState.sWAITSTART) { colCnt := 0.U; rowCnt := 0.U; chCnt := 0.U }
+    is(swuState.sADDCOL)(colCnt := colCnt + 1.U)
+    is(swuState.sADDROW) { rowCnt := rowCnt + 1.U; colCnt := 0.U }
+    is(swuState.sADDCH) { chCnt := chCnt + 1.U; rowCnt := 0.U; colCnt := 0.U }
+  }
 
-    io.shiftRegs    := false.B
-    io.rowWriteMode := false.B
-    io.rowAddr      := 0.U
-    io.chAddr       := 0.U
-    io.data         := 0.U
-    io.valid        := false.B
+  // //// ADDRESS CALCULATIONS //////
+  bitAddrNext := bitAddr + addConstant
+  // The correction factor corrects for the stuffing that happens (if 32 / bw is not whole) at the end of each word
+  correction     := (addConstant +& bitAddr(4, 0) + leftoverBits.U) >> 5
+  bitAddrNextMod := bitAddrNext + correction * leftoverBits.U
+  when(
+    state === swuState.sADDCOL ||
+      state === swuState.sADDROW ||
+      state === swuState.sADDCH,
+  ) {
+    bitAddr := bitAddrNextMod
+  }.elsewhen(state === swuState.sWAITSTART) {}
+
+  // //// ACTIVATION MEMORY INTERFACE //////
+  io.actRdEn := (state === swuState.sSTALL ||
+    state === swuState.sADDCOL ||
+    state === swuState.sADDROW ||
+    state === swuState.sADDCH)
+  io.actRdAddr := (bitAddr >> 5)
+
+  // Subword (bit) address is translated into indexes via a lookup table
+  subwordAddr := bitAddr(4, 0)
+  dataIndex := MuxLookup(
+    subwordAddr,
+    0.U,
+    Seq.tabulate(actParamsPerWord)(_ * actParamSize).zipWithIndex.map(x => (x._1.U -> x._2.U)),
+  )
+  ramDataAsVec := io.actRdData(actMemValidBits - 1, 0).asTypeOf(ramDataAsVec)
+  when(
+    state === swuState.sADDCOL ||
+      state === swuState.sADDROW ||
+      state === swuState.sADDCH,
+  ) {
+    dataBuf(colCnt) := ramDataAsVec(dataIndex)
+  }
+
+  // //// ROLLING REGISTER FILE INTERFACE //////
+  io.shiftRegs    := false.B
+  io.rowWriteMode := true.B
+  io.rowAddr      := RegNext(rowCnt)
+  io.chAddr       := RegNext(chCnt)
+  io.data         := dataBuf.asUInt
+  when(io.rowWriteMode) {
+    io.valid := RegNext(colCnt === (kernelSize - 1).U)
+  }.otherwise {
+    io.valid := false.B
+  }
 }

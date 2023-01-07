@@ -15,11 +15,8 @@
  */
 package chisel4ml.sequential
 
-import chisel3._
-import chisel3.util._
-
 import _root_.chisel4ml.util.reqWidth
-import _root_.chisel4ml.implicits._
+import chisel3._
 
 /** A register file for storing the weights/kernel of a convolution layer.
   *
@@ -28,25 +25,25 @@ import _root_.chisel4ml.implicits._
   * parameterSize in bits. kernelParamSize: Int - Bitwidth of each kernel parameter.
   */
 class KernelRegisterFile(kernelSize: Int, kernelDepth: Int, kernelParamSize: Int) extends Module {
-    val totalNumOfElements:  Int = kernelSize * kernelSize * kernelDepth
-    val kernelNumOfElements: Int = kernelSize * kernelSize
-    val wrDataWidth:         Int = kernelNumOfElements * kernelParamSize
-    val outDataSize:         Int = kernelSize * kernelSize * kernelDepth * kernelParamSize
-    val kernelAddrWidth:     Int = reqWidth(kernelDepth)
-    val rowAddrWidth:        Int = reqWidth(kernelSize)
+  val totalNumOfElements:  Int = kernelSize * kernelSize * kernelDepth
+  val kernelNumOfElements: Int = kernelSize * kernelSize
+  val wrDataWidth:         Int = kernelNumOfElements * kernelParamSize
+  val outDataSize:         Int = kernelSize * kernelSize * kernelDepth * kernelParamSize
+  val kernelAddrWidth:     Int = reqWidth(kernelDepth)
+  val rowAddrWidth:        Int = reqWidth(kernelSize)
 
-    val io = IO(new Bundle {
-        val kernelAddr = Input(UInt(kernelAddrWidth.W))
-        val inData     = Input(UInt(wrDataWidth.W))
-        val inValid    = Input(Bool())
-        val outData    = Output(UInt(outDataSize.W))
-    })
+  val io = IO(new Bundle {
+    val kernelAddr = Input(UInt(kernelAddrWidth.W))
+    val inData     = Input(UInt(wrDataWidth.W))
+    val inValid    = Input(Bool())
+    val outData    = Output(UInt(outDataSize.W))
+  })
 
-    val regs = RegInit(VecInit.fill(kernelDepth, kernelNumOfElements)(0.U(kernelParamSize.W)))
+  val regs = RegInit(VecInit.fill(kernelDepth, kernelNumOfElements)(0.U(kernelParamSize.W)))
 
-    when(io.inValid) {
-        regs(io.kernelAddr) := io.inData.asTypeOf(Vec(kernelNumOfElements, UInt(kernelParamSize.W)))
-    }
+  when(io.inValid) {
+    regs(io.kernelAddr) := io.inData.asTypeOf(Vec(kernelNumOfElements, UInt(kernelParamSize.W)))
+  }
 
-    io.outData := regs.asUInt
+  io.outData := regs.asUInt
 }
