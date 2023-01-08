@@ -73,9 +73,10 @@ class SlidingWindowUnit(
     val actRdData = Input(UInt(memWordWidth.W))
 
     // control interface
-    val start = Input(Bool())
+    val start     = Input(Bool())
   })
 
+  val baseBitAddr    = RegInit(0.U(reqWidth(actMemDepthBits).W))
   val bitAddr        = RegInit(0.U(reqWidth(actMemDepthBits).W)) // bit addressing, because params can be any width
   val bitAddrNext    = Wire(UInt(reqWidth(actMemDepthBits).W))
   val bitAddrNextMod = Wire(UInt(reqWidth(actMemDepthBits).W))
@@ -87,126 +88,172 @@ class SlidingWindowUnit(
   val dataIndex      = Wire(UInt())
 
   object swuState extends ChiselEnum {
-    // val sWAIT, sADDCOL, sADDROW, sADDCH, sEND = Value
     val sWAITSTART = Value(0.U)
-    val sADDCOL    = Value(1.U)
-    val sADDROW    = Value(2.U)
-    val sADDCH     = Value(3.U)
-    val sSTALL     = Value(4.U)
-    val sEND       = Value(5.U)
-    val sERROR     = Value(6.U)
+    val sROWMODE   = Value(1.U)
+    val sCOLMODE   = Value(2.U)
+    val sEND       = Value(3.U)
+    val sERROR     = Value(4.U)
   }
 
-  val nstate     = WireInit(swuState.sERROR)
-  val nstateTemp = WireInit(swuState.sERROR)
-  val state      = RegNext(next = nstate, init = swuState.sWAITSTART)
-  val stallState = RegInit(swuState.sERROR)
+  object addState extends ChiselEnum {
+    val sADDCOL    = Value(0.U)
+    val sADDROW    = Value(1.U)
+    val sADDCH     = Value(2.U)
+  }
+
+  val nstate = WireInit(swuState.sERROR)
+  val state  = RegNext(next = nstate, init = swuState.sWAITSTART)
+
+  val stall = RegInit(false.B)
+
+  val naddstate = WireInit(addState.sADDCOL)
+  val addstate  = RegNext(next = naddstate, init = addState.sADDCOL)
+  val stalladdstate = RegInit(addState.sADDCOL)
 
   val colCnt = RegInit(0.U(reqWidth(kernelSize).W))
   val rowCnt = RegInit(0.U(reqWidth(kernelSize).W))
   val chCnt  = RegInit(0.U(reqWidth(kernelDepth).W))
 
-  // //// NEXT STATE LOGIC //////
-  when(state === swuState.sWAITSTART) {
-    when(io.start) {
-      nstate     := swuState.sSTALL
-      stallState := swuState.sADDCOL
+  val featHoriOffsetCnt = RegInit(0.U(reqWidth(actWidth).W))
+  val featVertOffsetCnt = RegInit(0.U(reqWidth(actHeight).W))
+
+
+  ////// NEXT STATE LOGIC //////
+  when (state === swuState.sWAITSTART) {
+    when (io.start) {
+      nstate := swuState.sROWMODE
     }.otherwise {
       nstate := swuState.sWAITSTART
     }
-  }.elsewhen(state === swuState.sSTALL) {
-    nstate := stallState
-  }.elsewhen(
-    state === swuState.sADDCOL ||
-      state === swuState.sADDROW ||
-      state === swuState.sADDCH,
-  ) {
-    when(
-      colCnt === (kernelSize - 1).U &&
-        rowCnt === (kernelSize - 1).U &&
-        chCnt === (kernelDepth - 1).U,
-    ) {
-      nstateTemp := swuState.sEND
-    }.elsewhen(
-      colCnt === (kernelSize - 2).U &&
-        rowCnt === (kernelSize - 1).U,
-    ) {
-      nstateTemp := swuState.sADDCH
-    }.elsewhen(colCnt === (kernelSize - 2).U) {
-      nstateTemp := swuState.sADDROW
-    }.otherwise {
-      nstateTemp := swuState.sADDCOL
+  }.elsewhen (state === swuState.sERROR) {
+      nstate := swuState.sERROR
+  }.elsewhen (state === swuState.sEND) {
+      nstate := swuState.sWAITSTART
+  }.elsewhen (state === swuState.sROWMODE) {
+    when (colCnt === (kernelSize - 1).U &&
+          rowCnt === (kernelSize - 1).U &&
+          chCnt  === (kernelDepth - 1).U) {
+      nstate := swuState.sCOLMODE
+    }. otherwise {
+      nstate := swuState.sROWMODE
     }
-    when(correction =/= 0.U) {
-      nstate     := swuState.sSTALL
-      stallState := nstateTemp
+  }.elsewhen (state === swuState.sCOLMODE) {
+    when (featHoriOffsetCnt === (actWidth - kernelSize).U &&
+          featVertOffsetCnt === (actHeight - kernelSize).U &&
+          rowCnt === (kernelSize -1).U &&
+          chCnt  === (kernelDepth -1).U) {
+      nstate := swuState.sEND
+    }.elsewhen(featHoriOffsetCnt === (actWidth - kernelSize).U &&
+               rowCnt === (kernelSize -1).U &&
+               chCnt  === (kernelDepth -1).U) {
+      nstate := swuState.sROWMODE
     }.otherwise {
-      nstate     := nstateTemp
-      stallState := swuState.sERROR
+      nstate := swuState.sCOLMODE
     }
-  }.elsewhen(state === swuState.sEND) {
-    nstate := swuState.sWAITSTART
-  }.elsewhen(state === swuState.sERROR) {
-    nstate := swuState.sERROR
-  }.otherwise {
-    nstate := swuState.sERROR
   }
 
-  // //// CONSTANTS //////
+
+  ///// NEXT ADD STATE LOGIC /////
+  when (stall) {
+    naddstate := stalladdstate
+  }.elsewhen (state === swuState.sROWMODE) {
+    when (addstate === addState.sADDROW || addstate  === addState.sADDCH) {
+      naddstate := addState.sADDCOL
+    }.elsewhen (colCnt === (kernelSize - 2).U &&
+                rowCnt === (kernelSize - 1).U) {
+      naddstate := addState.sADDCH
+    }.elsewhen (colCnt === (kernelSize - 2).U) {
+      naddstate := addState.sADDROW
+    }.otherwise {
+      naddstate := addState.sADDCOL
+    }
+  }.elsewhen (state === swuState.sCOLMODE) {
+    when (rowCnt === (kernelSize - 1).U) {
+      naddstate := addState.sADDCH
+    }.otherwise {
+      naddstate := addState.sADDROW
+    }
+  }
+
+  when (stall) {
+    stalladdstate := addstate
+  }
+
+  when (((bitAddr >> 5) =/= (bitAddrNextMod >> 5)) && !stall) {
+    stall := true.B
+  }.elsewhen(stall) {
+    stall := false.B
+  }
+
+
+  ////// CONSTANTS //////
   addConstant := 0.U
-  switch(state) {
-    is(swuState.sADDCOL)(addConstant := colAddConstant.U)
-    is(swuState.sADDROW)(addConstant := rowAddConstant.U)
-    is(swuState.sADDCH)(addConstant  := chAddConstant.U)
+  switch(addstate) {
+    is(addState.sADDCOL) { addConstant := colAddConstant.U }
+    is(addState.sADDROW) { addConstant := rowAddConstant.U }
+    is(addState.sADDCH)  { addConstant := chAddConstant.U  }
   }
 
-  // //// COUNTERS //////
-  switch(state) {
-    is(swuState.sWAITSTART) { colCnt := 0.U; rowCnt := 0.U; chCnt := 0.U }
-    is(swuState.sADDCOL)(colCnt := colCnt + 1.U)
-    is(swuState.sADDROW) { rowCnt := rowCnt + 1.U; colCnt := 0.U }
-    is(swuState.sADDCH) { chCnt := chCnt + 1.U; rowCnt := 0.U; colCnt := 0.U }
+  ////// COUNTERS //////
+  when (state === swuState.sWAITSTART) {
+    colCnt := 0.U
+    rowCnt := 0.U
+    chCnt  := 0.U
+    featHoriOffsetCnt := 0.U
+    featVertOffsetCnt := 0.U
+  }.elsewhen ((state === swuState.sROWMODE || state === swuState.sCOLMODE) && !stall) {
+    switch (addstate) {
+      is (addState.sADDCOL) {
+        colCnt := colCnt + 1.U
+      }
+      is (addState.sADDROW) {
+        rowCnt := rowCnt + 1.U
+        colCnt := 0.U
+      }
+      is (addState.sADDCH) {
+        chCnt  := chCnt + 1.U
+        rowCnt := 0.U
+        colCnt := 0.U
+      }
+    }
   }
 
-  // //// ADDRESS CALCULATIONS //////
+
+  ////// ADDRESS CALCULATIONS //////
   bitAddrNext := bitAddr + addConstant
   // The correction factor corrects for the stuffing that happens (if 32 / bw is not whole) at the end of each word
   correction     := (addConstant +& bitAddr(4, 0) + leftoverBits.U) >> 5
   bitAddrNextMod := bitAddrNext + correction * leftoverBits.U
-  when(
-    state === swuState.sADDCOL ||
-      state === swuState.sADDROW ||
-      state === swuState.sADDCH,
-  ) {
+  when((state === swuState.sROWMODE || state === swuState.sCOLMODE) && !stall) {
     bitAddr := bitAddrNextMod
-  }.elsewhen(state === swuState.sWAITSTART) {}
+  }.elsewhen(state === swuState.sWAITSTART) {
+    bitAddr := 0.U
+  }
 
-  // //// ACTIVATION MEMORY INTERFACE //////
-  io.actRdEn := (state === swuState.sSTALL ||
-    state === swuState.sADDCOL ||
-    state === swuState.sADDROW ||
-    state === swuState.sADDCH)
+  when (io.start) {
+    baseBitAddr := 0.U
+  }.elsewhen(colCnt === 0.U && rowCnt === 0.U && chCnt === 0.U) {
+    baseBitAddr := baseBitAddr + (kernelSize * actParamSize).U
+  }
+
+  ////// ACTIVATION MEMORY INTERFACE //////
+  io.actRdEn := (state === swuState.sROWMODE  || state === swuState.sCOLMODE)
   io.actRdAddr := (bitAddr >> 5)
 
   // Subword (bit) address is translated into indexes via a lookup table
   subwordAddr := bitAddr(4, 0)
-  dataIndex := MuxLookup(
-    subwordAddr,
-    0.U,
-    Seq.tabulate(actParamsPerWord)(_ * actParamSize).zipWithIndex.map(x => (x._1.U -> x._2.U)),
-  )
+  dataIndex := MuxLookup(subwordAddr,
+                         0.U,
+                         Seq.tabulate(actParamsPerWord)(_ * actParamSize).zipWithIndex.map(x => (x._1.U -> x._2.U)))
   ramDataAsVec := io.actRdData(actMemValidBits - 1, 0).asTypeOf(ramDataAsVec)
-  when(
-    state === swuState.sADDCOL ||
-      state === swuState.sADDROW ||
-      state === swuState.sADDCH,
-  ) {
+  when(state === swuState.sROWMODE ||
+       state === swuState.sCOLMODE) {
     dataBuf(colCnt) := ramDataAsVec(dataIndex)
   }
 
   // //// ROLLING REGISTER FILE INTERFACE //////
-  io.shiftRegs    := false.B
-  io.rowWriteMode := true.B
+  io.shiftRegs    := state === swuState.sCOLMODE
+  io.rowWriteMode := RegNext(state === swuState.sROWMODE)
   io.rowAddr      := RegNext(rowCnt)
   io.chAddr       := RegNext(chCnt)
   io.data         := dataBuf.asUInt
