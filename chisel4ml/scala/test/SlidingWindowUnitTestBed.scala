@@ -42,8 +42,13 @@ class SlidingWindowUnitTestBed(
   val outDataSize: Int = kernelSize * kernelSize * kernelDepth * actParamSize
 
   val io = IO(new Bundle {
-    val start   = Input(Bool())
-    val outData = Output(UInt(outDataSize.W))
+    val start        = Input(Bool())
+    val rrfInValid   = Output(Bool())
+    val rrfInData    = Output(UInt((kernelSize * actParamSize).W))
+    val rrfRowAddr   = Output(UInt(reqWidth(kernelSize).W))
+    val rrfChAddr    = Output(UInt(reqWidth(kernelDepth).W))
+    val rrfRowWrMode = Output(Bool())
+    val rrfOutData   = Output(UInt(outDataSize.W))
   })
 
   val swu = Module(
@@ -71,7 +76,13 @@ class SlidingWindowUnitTestBed(
   rrf.io.chAddr       := swu.io.chAddr
   rrf.io.inData       := swu.io.data
   rrf.io.inValid      := swu.io.valid
-  io.outData          := rrf.io.outData
+  io.rrfOutData       := rrf.io.outData
+
+  io.rrfInData        := swu.io.data
+  io.rrfInValid       := swu.io.valid
+  io.rrfRowAddr       := swu.io.rowAddr
+  io.rrfChAddr        := swu.io.chAddr
+  io.rrfRowWrMode     := swu.io.rowWriteMode
 
   actMem.io.rdEna  := swu.io.actRdEn
   actMem.io.rdAddr := swu.io.actRdAddr

@@ -29,26 +29,48 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester {
   val testParameters = lbir.QTensor(
     dtype = Option(dtype),
     shape = Seq(1, 2, 3, 3),
-    values = Seq(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18),
+    values = Seq(1, 2, 3,
+                 4, 5, 6,
+                 7, 8, 9,
+                 10, 11, 12,
+                 13, 14, 15,
+                 16, 17, 18),
   )
 
   behavior.of("SlidingWindowUnit module")
   it should "show appropirate window as it cycles through the input image" in {
-    test(
-      new SlidingWindowUnitTestBed(
-        kernelSize = 2,
-        kernelDepth = 2,
-        actWidth = 3,
-        actHeight = 3,
-        actParamSize = 5,
-        parameters = testParameters,
-      ),
-    ) { dut =>
-      dut.clock.step()
-      dut.io.start.poke(true.B)
-      dut.clock.step()
-      dut.io.start.poke(false.B)
-      dut.clock.step(60)
+    test(new SlidingWindowUnitTestBed(kernelSize = 2,
+                                      kernelDepth = 2,
+                                      actWidth = 3,
+                                      actHeight = 3,
+                                      actParamSize = 5,
+                                      parameters = testParameters)) { dut =>
+          //                  data,            rowAddr, chAddr, rowWriteMode
+          val testVec = Seq(("b00010_00001".U(10.W), 0, 0,      true), // (1, 2)
+                            ("b00101_00100".U(10.W), 1, 0,      true), // (4, 5)
+                            ("b01011_01010".U(10.W), 0, 1,      true), // (10, 11)
+                            ("b01110_01101".U(10.W), 1, 1,      true), // (13, 14)
+                            ("b00110_00011".U(10.W), 1, 0,      false), // (3, 6)
+                            ("b01111_01100".U(10.W), 1, 1,      false), // (12, 15)
+                            ("b00101_00100".U(10.W), 0, 0,      true), // (4, 5)
+                            ("b01000_00111".U(10.W), 1, 0,      true), // (7, 8)
+                            ("b01110_01101".U(10.W), 0, 1,      true), // (13, 14)
+                            ("b10001_10000".U(10.W), 1, 1,      true), // (16, 17)
+                            ("b01001_00110".U(10.W), 1, 0,      false), // (6, 9)
+                            ("b10010_01111".U(10.W), 1, 1,      false), // (15, 18)
+                            )
+          dut.clock.step()
+          dut.io.start.poke(true.B)
+          dut.clock.step()
+          dut.io.start.poke(false.B)
+          for (expected <- testVec) {
+            while(!dut.io.rrfInValid.peek().litToBoolean) { dut.clock.step() } // wait for valid
+            dut.io.rrfInData.expect(expected._1)
+            dut.io.rrfRowAddr.expect(expected._2)
+            dut.io.rrfChAddr.expect(expected._3)
+            dut.io.rrfRowWrMode.expect(expected._4)
+            dut.clock.step()
+          }
     }
   }
 }
