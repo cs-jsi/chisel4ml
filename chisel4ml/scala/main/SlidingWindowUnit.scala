@@ -78,17 +78,18 @@ class SlidingWindowUnit(
     val start     = Input(Bool())
   })
 
-  val baseBitAddr    = RegInit(0.U(reqWidth(actMemDepthBits).W))
-  val baseCorrection = WireInit(0.U)
-  val bitAddr        = RegInit(0.U(reqWidth(actMemDepthBits).W)) // bit addressing, because params can be any width
-  val bitAddrNext    = Wire(UInt(reqWidth(actMemDepthBits).W))
-  val bitAddrNextMod = Wire(UInt(reqWidth(actMemDepthBits).W))
-  val addConstant    = WireInit(0.U(constantWireSize.W))
-  val correction     = Wire(UInt())
-  val subwordAddr    = Wire(UInt(reqWidth(memWordWidth).W))      // Which part of the memory word are we looking at?
-  val ramDataAsVec   = Wire(Vec(actParamsPerWord, UInt(actParamSize.W)))
-  val dataBuf        = RegInit(VecInit(Seq.fill(kernelSize)(0.U(actParamSize.W))))
-  val dataIndex      = Wire(UInt())
+  val baseBitAddr     = RegInit(0.U(reqWidth(actMemDepthBits).W))
+  val baseCorrection  = WireInit(0.U)
+  val baseCorrection2 = WireInit(0.U)
+  val bitAddr         = RegInit(0.U(reqWidth(actMemDepthBits).W)) // bit addressing, because params can be any width
+  val bitAddrNext     = Wire(UInt(reqWidth(actMemDepthBits).W))
+  val bitAddrNextMod  = Wire(UInt(reqWidth(actMemDepthBits).W))
+  val addConstant     = WireInit(0.U(constantWireSize.W))
+  val correction      = Wire(UInt())
+  val subwordAddr     = Wire(UInt(reqWidth(memWordWidth).W))      // Which part of the memory word are we looking at?
+  val ramDataAsVec    = Wire(Vec(actParamsPerWord, UInt(actParamSize.W)))
+  val dataBuf         = RegInit(VecInit(Seq.fill(kernelSize)(0.U(actParamSize.W))))
+  val dataIndex       = Wire(UInt())
 
   object swuState extends ChiselEnum {
     val sWAITSTART = Value(0.U)
@@ -105,15 +106,14 @@ class SlidingWindowUnit(
   }
 
   val nstate = WireInit(swuState.sERROR)
-  val state  = RegNext(next = nstate, init = swuState.sWAITSTART)
+  val state  = RegInit(swuState.sWAITSTART)
   val prevstate  = RegNext(next = state, init = swuState.sWAITSTART)
 
   val stall = RegInit(false.B)
   val prevstall = RegNext(next = stall, init = false.B)
 
   val naddstate = WireInit(addState.sADDCOL)
-  val addstate  = RegNext(next = naddstate, init = addState.sADDCOL)
-  val stalladdstate = RegInit(addState.sADDCOL)
+  val addstate  = RegInit(addState.sADDCOL)
 
   val colCnt = RegInit(0.U(reqWidth(kernelSize).W))
   val rowCnt = RegInit(0.U(reqWidth(kernelSize).W))
@@ -126,45 +126,44 @@ class SlidingWindowUnit(
   val rowAndChCntMax = Wire(Bool())
 
   ////// NEXT STATE LOGIC //////
-  when (!stall) {
-    when (state === swuState.sWAITSTART) {
-      when (io.start) {
-        nstate := swuState.sROWMODE
-      }.otherwise {
-        nstate := swuState.sWAITSTART
-      }
-    }.elsewhen (state === swuState.sERROR) {
-        nstate := swuState.sERROR
-    }.elsewhen (state === swuState.sEND) {
-        nstate := swuState.sWAITSTART
-    }.elsewhen (state === swuState.sROWMODE) {
-      when (allCntMax) {
-        nstate := swuState.sCOLMODE
-      }. otherwise {
-        nstate := swuState.sROWMODE
-      }
-    }.elsewhen (state === swuState.sCOLMODE) {
-      when (rowAndChCntMax &&
-            horizCnt === (actWidth - kernelSize).U &&
-            vertiCnt === (actHeight - kernelSize).U) {
-        nstate := swuState.sEND
-      }.elsewhen (rowAndChCntMax &&
-                  horizCnt === (actWidth - kernelSize).U) {
-        nstate := swuState.sROWMODE
-      }.otherwise {
-        nstate := swuState.sCOLMODE
-      }
+  nstate := state
+  when (state === swuState.sWAITSTART) {
+    when (io.start) {
+      nstate := swuState.sROWMODE
+    }.otherwise {
+      nstate := swuState.sWAITSTART
     }
-  }.otherwise{
-    nstate := state
+  }.elsewhen (state === swuState.sERROR) {
+      nstate := swuState.sERROR
+  }.elsewhen (state === swuState.sEND) {
+      nstate := swuState.sWAITSTART
+  }.elsewhen (state === swuState.sROWMODE) {
+    when (allCntMax) {
+      nstate := swuState.sCOLMODE
+    }. otherwise {
+      nstate := swuState.sROWMODE
+    }
+  }.elsewhen (state === swuState.sCOLMODE) {
+    when (rowAndChCntMax &&
+          horizCnt === (actWidth - kernelSize).U &&
+          vertiCnt === (actHeight - kernelSize).U) {
+      nstate := swuState.sEND
+    }.elsewhen (rowAndChCntMax &&
+                horizCnt === (actWidth - kernelSize).U) {
+      nstate := swuState.sROWMODE
+    }.otherwise {
+      nstate := swuState.sCOLMODE
+    }
   }
+  when (!stall) {
+    state := nstate
+  }
+
 
   ///// NEXT ADD STATE LOGIC /////
   when (state === swuState.sROWMODE) {
     when (allCntMax) {
-      naddstate := addState.sADDROW
-    }.elsewhen (stall) {
-      naddstate := stalladdstate
+      naddstate := addState.sADDROW // state will change to COLMODE - so add mode should be addrow
     }.elsewhen (addstate === addState.sADDROW || addstate  === addState.sADDCH) {
       naddstate := addState.sADDCOL
     }.elsewhen (colCnt === (kernelSize - 2).U &&
@@ -176,18 +175,22 @@ class SlidingWindowUnit(
       naddstate := addState.sADDCOL
     }
   }.elsewhen (state === swuState.sCOLMODE) {
-    when (stall) {
-      naddstate := stalladdstate
-    }.elsewhen (rowCnt === (kernelSize - 2).U) {
+    when (rowAndChCntMax &&
+          horizCnt === (actWidth - kernelSize).U) {
+      naddstate := addState.sADDCOL // state will change to ROWMODE - so add mode should be addcol
+    }.elsewhen(rowCnt === (kernelSize - 2).U) {
       naddstate := addState.sADDCH
     }.otherwise {
       naddstate := addState.sADDROW
     }
   }
+  when (!stall) {
+    addstate := naddstate
+  }
 
+  /////// STALL LOGIC //////
   when (((bitAddr >> 5) =/= (bitAddrNextMod >> 5)) && !stall) {
     stall := true.B
-    stalladdstate := naddstate
   }.elsewhen(stall) {
     stall := false.B
   }
@@ -210,38 +213,29 @@ class SlidingWindowUnit(
 
   ////// COUNTERS //////
   when (!stall) {
-  when (state === swuState.sWAITSTART) {
-    colCnt := 0.U
-    rowCnt := 0.U
-    chCnt  := 0.U
-  }.elsewhen (state === swuState.sROWMODE &&
-              nstate === swuState.sCOLMODE && !stall) {
-    colCnt := (kernelSize -1).U
-    rowCnt := 0.U
-    chCnt  := 0.U
-  }.elsewhen(state === swuState.sCOLMODE &&
-             nstate === swuState.sROWMODE && !stall) {
-    colCnt := 0.U
-    rowCnt := 0.U
-    chCnt := 0.U
-  }.elsewhen ((state === swuState.sROWMODE ||
-               state === swuState.sCOLMODE ||
-               state === swuState.sEND) && !stall) {
-    switch (addstate) {
-      is (addState.sADDCOL) {
-        colCnt := colCnt + 1.U
-      }
-      is (addState.sADDROW) {
-        rowCnt := rowCnt + 1.U
-        colCnt := 0.U
-      }
-      is (addState.sADDCH) {
-        chCnt  := chCnt + 1.U
-        rowCnt := 0.U
-        colCnt := 0.U
+    when (state === swuState.sWAITSTART ||
+         (state =/= nstate)) {
+      colCnt := 0.U
+      rowCnt := 0.U
+      chCnt  := 0.U
+    }.elsewhen ((state === swuState.sROWMODE ||
+                 state === swuState.sCOLMODE ||
+                 state === swuState.sEND)) {
+      switch (addstate) {
+        is (addState.sADDCOL) {
+          colCnt := colCnt + 1.U
+        }
+        is (addState.sADDROW) {
+          rowCnt := rowCnt + 1.U
+          colCnt := 0.U
+        }
+        is (addState.sADDCH) {
+          chCnt  := chCnt + 1.U
+          rowCnt := 0.U
+          colCnt := 0.U
+        }
       }
     }
-  }
   }. otherwise {
     colCnt := colCnt
     rowCnt := rowCnt
@@ -254,12 +248,15 @@ class SlidingWindowUnit(
   allCntMax       := (colCnt === (kernelSize - 1).U) && rowAndChCntMax
 
   when (!stall) {
-    when (allCntMax && state === swuState.sROWMODE) {
+    when (io.start && !RegNext(io.start)) {
+      horizCnt := 0.U
+      vertiCnt := 0.U
+    }.elsewhen (state === swuState.sROWMODE && allCntMax) {
       horizCnt := horizCnt + 1.U
-    }.elsewhen (rowAndChCntMax && state === swuState.sCOLMODE) {
-      when(horizCnt < (actWidth - kernelSize).U) {
+    }.elsewhen (state === swuState.sCOLMODE) {
+      when(horizCnt < (actWidth - kernelSize).U && rowAndChCntMax) {
        horizCnt := horizCnt + 1.U
-      }.otherwise {
+      }.elsewhen(rowAndChCntMax) {
        horizCnt := 0.U
        vertiCnt := vertiCnt + 1.U
       }
@@ -283,11 +280,17 @@ class SlidingWindowUnit(
     bitAddr := 0.U
   }
 
-  when(io.start) {
-    baseBitAddr := ((kernelSize - 1) * actParamSize).U
-  }.elsewhen(colCnt === 0.U && rowCnt === 1.U && chCnt === 0.U && !stall) {
-    baseCorrection := (actParamSize.U +& baseBitAddr(4,0) + leftoverBits.U) >> 5
-    baseBitAddr := baseBitAddr +  actParamSize.U + (baseCorrection * leftoverBits.U)
+
+  baseCorrection  := (((actWidth - 1)*actParamSize).U +& baseBitAddr(4,0) + leftoverBits.U) >> 5
+  baseCorrection2 := (actParamSize.U +& baseBitAddr(4,0) + leftoverBits.U) >> 5
+  when(!stall){
+    when(io.start && !RegNext(io.start)) {
+      baseBitAddr := 0.U
+    }.elsewhen(allCntZero && state === swuState.sROWMODE) {
+      baseBitAddr := baseBitAddr + ((actWidth - 1)*actParamSize).U + (baseCorrection * leftoverBits.U)
+    }.elsewhen(allCntZero && state === swuState.sCOLMODE) {
+      baseBitAddr := baseBitAddr + actParamSize.U + (baseCorrection2 * leftoverBits.U)
+    }
   }
 
   ////// ACTIVATION MEMORY INTERFACE //////
