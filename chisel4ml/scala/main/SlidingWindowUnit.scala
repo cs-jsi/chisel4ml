@@ -38,7 +38,6 @@ class SlidingWindowUnit(
   val wrDataWidth:              Int = kernelSize * actParamSize
   val chAddrWidth:              Int = reqWidth(kernelDepth.toFloat)
   val rowAddrWidth:             Int = reqWidth(kernelSize.toFloat)
-
   val memWordWidth: Int = 32
 
   val actParamsPerWord: Int = memWordWidth / actParamSize
@@ -49,15 +48,14 @@ class SlidingWindowUnit(
   val actMemRowSize: Int = kernelSize * actParamSize
   val actMemColSize: Int = kernelSize
 
-  val actMemWordsForKernel: Int = math.ceil(totalNumOfKernelElements.toFloat / actParamsPerWord.toFloat).toInt
   val actMemDepthBits:      Int = actWidth * actHeight * kernelDepth * actParamSize
   val actMemDepthWords:     Int = (actMemDepthBits / actMemValidBits) + 1
 
   val colAddConstant:   Int = actParamSize
-  val rowAddConstant:   Int = ((actWidth - kernelSize) + (kernelSize - 1)) * actParamSize
+  val rowAddConstant:   Int = (actWidth - kernelSize + 1) * actParamSize
   val chAddConstant:    Int = ((actWidth - kernelSize) + ((actHeight - kernelSize) * actWidth) + 1) * actParamSize
   val colModRowAddConstant: Int = actWidth * actParamSize
-  val colModChAddConstant:  Int = (actWidth * actHeight * actParamSize) - colModRowAddConstant
+  val colModChAddConstant:  Int = (actWidth * actHeight * actParamSize) - ((kernelSize - 1) * colModRowAddConstant)
   val constantWireSize:     Int = if (reqWidth(colModChAddConstant) > 5) reqWidth(colModChAddConstant) else 5
 
   val io = IO(new Bundle {
@@ -76,6 +74,7 @@ class SlidingWindowUnit(
 
     // control interface
     val start     = Input(Bool())
+    val end       = Output(Bool())
   })
 
   val baseBitAddr     = RegInit(0.U(reqWidth(actMemDepthBits).W))
@@ -148,8 +147,7 @@ class SlidingWindowUnit(
           horizCnt === (actWidth - kernelSize).U &&
           vertiCnt === (actHeight - kernelSize).U) {
       nstate := swuState.sEND
-    }.elsewhen (rowAndChCntMax &&
-                horizCnt === (actWidth - kernelSize).U) {
+    }.elsewhen (rowAndChCntMax && horizCnt === (actWidth - kernelSize).U) {
       nstate := swuState.sROWMODE
     }.otherwise {
       nstate := swuState.sCOLMODE
@@ -244,32 +242,43 @@ class SlidingWindowUnit(
 
   rowAndChCntZero := (rowCnt === 0.U) && (chCnt === 0.U)
   allCntZero      := (colCnt === 0.U) && rowAndChCntZero
-  rowAndChCntMax  := (rowCnt === (kernelSize - 1).U) && (chCnt === (kernelDepth - 1).U)
-  allCntMax       := (colCnt === (kernelSize - 1).U) && rowAndChCntMax
+  if (kernelDepth > 1) {
+    rowAndChCntMax := (rowCnt === (kernelSize - 1).U) && (chCnt === (kernelDepth - 1).U)
+  } else {
+    rowAndChCntMax := (rowCnt === (kernelSize - 1).U)
+  }
+  allCntMax := (colCnt === (kernelSize - 1).U) && rowAndChCntMax
 
+  baseCorrection  := ((kernelSize * actParamSize).U +& baseBitAddr(4,0) + leftoverBits.U) >> 5
+  baseCorrection2 := (actParamSize.U +& baseBitAddr(4,0) + leftoverBits.U) >> 5
   when (!stall) {
     when (io.start && !RegNext(io.start)) {
       horizCnt := 0.U
       vertiCnt := 0.U
+      baseBitAddr := (kernelSize * actParamSize).U
     }.elsewhen (state === swuState.sROWMODE && allCntMax) {
       horizCnt := horizCnt + 1.U
+      baseBitAddr := baseBitAddr + actParamSize.U + (baseCorrection2 * leftoverBits.U)
     }.elsewhen (state === swuState.sCOLMODE) {
       when(horizCnt < (actWidth - kernelSize).U && rowAndChCntMax) {
-       horizCnt := horizCnt + 1.U
+        horizCnt := horizCnt + 1.U
+        baseBitAddr := baseBitAddr + actParamSize.U + (baseCorrection2 * leftoverBits.U)
       }.elsewhen(rowAndChCntMax) {
-       horizCnt := 0.U
-       vertiCnt := vertiCnt + 1.U
+        horizCnt := 0.U
+        vertiCnt := vertiCnt + 1.U
+        baseBitAddr := baseBitAddr + (kernelSize * actParamSize).U + (baseCorrection * leftoverBits.U)
       }
     }
   }.otherwise {
     horizCnt := horizCnt
     vertiCnt := vertiCnt
+    baseBitAddr := baseBitAddr
   }
 
   ////// ADDRESS CALCULATIONS //////
   bitAddrNext := bitAddr + addConstant
   // The correction factor corrects for the stuffing that happens (if 32 / bw is not whole) at the end of each word
-  correction     := (addConstant +& bitAddr(4, 0) + leftoverBits.U) >> 5
+  correction := ((addConstant(4,0) +& bitAddr(4,0) + leftoverBits.U) >= actMemValidBits.U).asUInt +& (addConstant >> 5)
   bitAddrNextMod := bitAddrNext + correction * leftoverBits.U
   when((allCntMax && state === swuState.sROWMODE && !stall) ||
        (rowAndChCntMax && state === swuState.sCOLMODE && !stall) ) {
@@ -280,18 +289,6 @@ class SlidingWindowUnit(
     bitAddr := 0.U
   }
 
-
-  baseCorrection  := (((actWidth - 1)*actParamSize).U +& baseBitAddr(4,0) + leftoverBits.U) >> 5
-  baseCorrection2 := (actParamSize.U +& baseBitAddr(4,0) + leftoverBits.U) >> 5
-  when(!stall){
-    when(io.start && !RegNext(io.start)) {
-      baseBitAddr := 0.U
-    }.elsewhen(allCntZero && state === swuState.sROWMODE) {
-      baseBitAddr := baseBitAddr + ((actWidth - 1)*actParamSize).U + (baseCorrection * leftoverBits.U)
-    }.elsewhen(allCntZero && state === swuState.sCOLMODE) {
-      baseBitAddr := baseBitAddr + actParamSize.U + (baseCorrection2 * leftoverBits.U)
-    }
-  }
 
   ////// ACTIVATION MEMORY INTERFACE //////
   io.actRdEn := (state === swuState.sROWMODE  || state === swuState.sCOLMODE)
@@ -315,11 +312,18 @@ class SlidingWindowUnit(
   io.rowWriteMode := RegNext(prevstate === swuState.sROWMODE ||
                              (state === swuState.sROWMODE && prevstate === swuState.sWAITSTART))
   io.rowAddr      := RegNext(rowCnt)
-  io.chAddr       := RegNext(chCnt)
+  if (kernelDepth > 1) {
+    io.chAddr := RegNext(chCnt)
+  } else {
+    io.chAddr := 0.U
+  }
   io.data         := dataBuf.asUInt
   when(io.rowWriteMode) {
     io.valid := RegNext(colCnt === (kernelSize - 1).U) && !prevstall
   }.otherwise {
     io.valid := RegNext(rowCnt === (kernelSize - 1).U) && rowCnt === 0.U && !prevstall // rowCnt reset
   }
+
+  ////// CONTROL INTERFACE ///////
+  io.end := (state === swuState.sEND) && (prevstate =/= swuState.sEND) // in case of stall, we add prevstate
 }

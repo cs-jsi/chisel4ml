@@ -36,8 +36,20 @@ package object util {
 
   def log2(x: Int):        Int   = (log(x.toFloat) / log(2.0)).toInt
   def log2(x: Float):      Float = (log(x) / log(2.0)).toFloat
-  def reqWidth(x: Int):    Int   = math.ceil(log2(x.toFloat)).toInt
-  def reqWidth(x: Double): Int   = math.ceil(log2(x.toFloat)).toInt
+  def reqWidth(x: Int):    Int   = {
+    var ret = math.ceil(log2(x.toFloat)).toInt
+    if (ret == 0) {
+      ret = 1
+    }
+    ret
+  }
+  def reqWidth(x: Double): Int   = {
+    var ret = math.ceil(log2(x.toFloat)).toInt
+    if (ret == 0) {
+      ret = 1
+    }
+    ret
+  }
 
   def genHexMemoryFile(tensor: QTensor, layout: String): String = {
     require(layout == "CDHW")
