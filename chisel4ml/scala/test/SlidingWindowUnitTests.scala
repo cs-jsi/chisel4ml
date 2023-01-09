@@ -48,7 +48,7 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.start.poke(true.B)
       dut.clock.step()
       dut.io.start.poke(false.B)
-      dut.clock.step(20)
+      dut.clock.step(60)
     }
   }
 }

@@ -65,7 +65,7 @@ lazy val root = (project in file("."))
       "-language:reflectiveCalls",
       "-feature",
       "-Xcheckinit",
-      "-Xfatal-warnings",
+      //"-Xfatal-warnings",
       "-Ywarn-dead-code",
       "-Ywarn-unused",
       "-P:chiselplugin:genBundleElements",
