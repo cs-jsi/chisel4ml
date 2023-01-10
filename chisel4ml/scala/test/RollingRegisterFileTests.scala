@@ -17,6 +17,7 @@ package chisel4ml.tests
 
 import _root_.chisel4ml.implicits._
 import _root_.chisel4ml.sequential._
+import _root_.chisel4ml.util._
 import _root_.org.slf4j.LoggerFactory
 import chisel3._
 import chiseltest._
@@ -77,14 +78,6 @@ class RollingRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
 
   val rand = new scala.util.Random(seed = 42)
   Nd4j.getRandom().setSeed(42)
-  def ndArrayToBinaryString(arr: INDArray, bits: Int): String = {
-    val flatArr      = Nd4j.toFlattened(arr)
-    var binaryString = ""
-    for (i <- 0 until arr.length) {
-      binaryString = toBinary(flatArr.getDouble(i).toInt, bits) + binaryString
-    }
-    "b" + binaryString
-  }
   for (testCaseId <- 0 until 10) { // Set this number to a bigger one for more exhaustive tests
     val randKernSize          = rand.between(2, 7 + 1) // rand.between(inclusive, exclusive)
     val randKernDepth         = rand.between(1, 16 + 1)
@@ -106,9 +99,7 @@ class RollingRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
             if (j == 0) {
               fillWindow(window)
             } else {
-              fillAdded(
-                window.get(NDArrayIndex.all(), NDArrayIndex.all(), NDArrayIndex.point(randKernSize - 1)),
-              )
+              fillAdded(window.get(NDArrayIndex.all(), NDArrayIndex.all(), NDArrayIndex.point(randKernSize - 1)))
             }
             dut.io.outData.expect(ndArrayToBinaryString(window, randKernParamBitwidth).U)
           }

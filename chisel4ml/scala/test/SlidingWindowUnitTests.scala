@@ -16,6 +16,7 @@
 package chisel4ml.tests
 
 import _root_.chisel4ml.tests.SlidingWindowUnitTestBed
+import _root_.chisel4ml.util._
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
 import chisel3._
@@ -139,13 +140,13 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester {
 
   val rand = new scala.util.Random(seed = 42)
   Nd4j.getRandom().setSeed(42)
-  for (testcaseId <- 0 until 1) {
+  for (testcaseId <- 0 until 10) {
     val randKernelSize        = rand.between(2, 7 + 1)  // rand.between(inclusive, exclusive)
     val randKernelDepth       = rand.between(1, 16 + 1)
     val randActParamBitwidth  = rand.between(1, 8 + 1)
     val randImageWidth        = rand.between(randKernelSize + 1, randKernelSize + 7 + 1)
     val randImageHeight       = rand.between(randKernelSize + 1, randKernelSize + 7 + 1)
-    val randImageNormal       = Nd4j.rand(Array(randKernelDepth, randImageWidth, randImageHeight))
+    val randImageNormal       = Nd4j.rand(Array(randKernelDepth, randImageHeight, randImageWidth))
     val randImage             = Transforms.round(randImageNormal.mul(scala.math.pow(2, randActParamBitwidth) - 1))
     val dtype = new lbir.Datatype(quantization = UNIFORM,
                                   bitwidth = randActParamBitwidth,
@@ -166,6 +167,7 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester {
                                         actHeight = randImageHeight,
                                         actParamSize = randActParamBitwidth,
                                         parameters = testParameters)) { dut =>
+        dut.clock.setTimeout(10000)
         dut.clock.step()
         dut.io.start.poke(true.B)
         dut.clock.step()
@@ -177,6 +179,7 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester {
                                        NDArrayIndex.interval(j, j + randKernelSize))
             while(!dut.io.rrfImageValid.peek().litToBoolean) { dut.clock.step() } // wait for valid
             dut.clock.step()
+			dut.io.rrfOutData.expect(ndArrayToBinaryString(window, randActParamBitwidth).U)
           }
         }
       }

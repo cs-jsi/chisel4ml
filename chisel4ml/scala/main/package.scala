@@ -64,7 +64,11 @@ package object implicits {
         for (param <- paramGroup) {
           tmp = toBinary(param.toInt, paramW) + " " + tmp
         }
-        tmp = toBinary(0, memInvalidBits) + " " + tmp + "\n"
+        if (memInvalidBits > 0) {
+          tmp = toBinary(0, memInvalidBits) + " " + tmp + "\n"
+        } else {
+          tmp = tmp + "\n"
+        }
         bin = bin :+ tmp
       }
       for (binStr <- bin) {

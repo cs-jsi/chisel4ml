@@ -23,6 +23,9 @@ import _root_.org.slf4j.LoggerFactory
 import _root_.scala.math.{log, pow}
 import chisel3._
 
+import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.factory.Nd4j
+
 package object util {
   var cnt:       Int  = 0
   var directory: Path = Paths.get("")
@@ -49,6 +52,15 @@ package object util {
       ret = 1
     }
     ret
+  }
+
+  def ndArrayToBinaryString(arr: INDArray, bits: Int): String = {
+    val flatArr      = Nd4j.toFlattened(arr)
+    var binaryString = ""
+    for (i <- 0 until arr.length) {
+      binaryString = toBinary(flatArr.getDouble(i).toInt, bits) + binaryString
+    }
+    "b" + binaryString
   }
 
   def genHexMemoryFile(tensor: QTensor, layout: String): String = {

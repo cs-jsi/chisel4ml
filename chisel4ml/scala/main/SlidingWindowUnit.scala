@@ -38,6 +38,7 @@ class SlidingWindowUnit(
   val wrDataWidth:              Int = kernelSize * actParamSize
   val chAddrWidth:              Int = reqWidth(kernelDepth.toFloat)
   val rowAddrWidth:             Int = reqWidth(kernelSize.toFloat)
+
   val memWordWidth: Int = 32
 
   val actParamsPerWord: Int = memWordWidth / actParamSize
@@ -48,15 +49,32 @@ class SlidingWindowUnit(
   val actMemRowSize: Int = kernelSize * actParamSize
   val actMemColSize: Int = kernelSize
 
-  val actMemDepthBits:      Int = actWidth * actHeight * kernelDepth * actParamSize
-  val actMemDepthWords:     Int = (actMemDepthBits / actMemValidBits) + 1
+  val actMemDepthBits:     Int = actWidth * actHeight * kernelDepth * actParamSize
+  val actMemDepthWords:    Int = (actMemDepthBits / actMemValidBits) + 1
+  val actMemDepthRealBits: Int = actMemDepthWords * memWordWidth
 
-  val colAddConstant:   Int = actParamSize
-  val rowAddConstant:   Int = (actWidth - kernelSize + 1) * actParamSize
-  val chAddConstant:    Int = ((actWidth - kernelSize) + ((actHeight - kernelSize) * actWidth) + 1) * actParamSize
-  val colModRowAddConstant: Int = actWidth * actParamSize
-  val colModChAddConstant:  Int = (actWidth * actHeight * actParamSize) - ((kernelSize - 1) * colModRowAddConstant)
-  val constantWireSize:     Int = if (reqWidth(colModChAddConstant) > 5) reqWidth(colModChAddConstant) else 5
+
+  val baseAddConstantBase:  Int = kernelSize * actParamSize
+  val colAddConstantBase:   Int = actParamSize
+  val rowAddConstantBase:   Int = (actWidth - kernelSize + 1) * actParamSize
+  val chAddConstantBase:    Int = ((actWidth - kernelSize) + ((actHeight - kernelSize) * actWidth) + 1) * actParamSize
+  val colModRowAddConstantBase: Int = actWidth * actParamSize
+  val colModChAddConstantBase:  Int = (actWidth * actHeight * actParamSize) - ((kernelSize - 1) * colModRowAddConstantBase)
+
+  val baseAddConstantMod:  Int = baseAddConstantBase / actMemValidBits
+  val colAddConstantMod:   Int = colAddConstantBase  / actMemValidBits
+  val rowAddConstantMod:   Int = rowAddConstantBase  / actMemValidBits
+  val chAddConstantMod:    Int = chAddConstantBase   / actMemValidBits
+  val colModRowAddConstantMod: Int = colModRowAddConstantBase / actMemValidBits
+  val colModChAddConstantMod:  Int = colModChAddConstantBase  / actMemValidBits
+
+  val baseAddConstant:  Int = baseAddConstantBase + (baseAddConstantMod * leftoverBits)
+  val colAddConstant:   Int = colAddConstantBase +  (colAddConstantMod * leftoverBits)
+  val rowAddConstant:   Int = rowAddConstantBase +  (rowAddConstantMod * leftoverBits)
+  val chAddConstant:    Int = chAddConstantBase +   (chAddConstantMod  * leftoverBits)
+  val colModRowAddConstant: Int = colModRowAddConstantBase + (colModRowAddConstantMod * leftoverBits)
+  val colModChAddConstant:  Int = colModChAddConstantBase  + (colModChAddConstantMod * leftoverBits)
+  val constantWireSize:     Int = if (reqWidth(colModChAddConstant) >= 5) reqWidth(colModChAddConstant) + 1 else 5
 
   val io = IO(new Bundle {
     // interface to the RollingRegisterFile module.
@@ -78,14 +96,17 @@ class SlidingWindowUnit(
     val end       = Output(Bool())
   })
 
-  val baseBitAddr     = RegInit(0.U(reqWidth(actMemDepthBits).W))
-  val baseCorrection  = WireInit(0.U)
-  val baseCorrection2 = WireInit(0.U)
-  val bitAddr         = RegInit(0.U(reqWidth(actMemDepthBits).W)) // bit addressing, because params can be any width
-  val bitAddrNext     = Wire(UInt(reqWidth(actMemDepthBits).W))
-  val bitAddrNextMod  = Wire(UInt(reqWidth(actMemDepthBits).W))
+
+  val updateBase1     = WireInit(false.B)
+  val updateBase2     = WireInit(false.B)
+  val baseBitAddr     = RegInit(0.U(reqWidth(actMemDepthRealBits).W))
+  val nbaseBitAddr    = WireInit(0.U(reqWidth(actMemDepthRealBits).W))
+  val nbaseBitAddrMod = WireInit(0.U(reqWidth(actMemDepthRealBits).W))
+  val bitAddr         = RegInit(0.U(reqWidth(actMemDepthRealBits).W)) // bit addressing, because params can be any width
+  val nbitAddr        = Wire(UInt(reqWidth(actMemDepthRealBits).W))
+  val nbitAddrMod     = Wire(UInt(reqWidth(actMemDepthRealBits).W))
   val addConstant     = WireInit(0.U(constantWireSize.W))
-  val correction      = Wire(UInt())
+  val addConstantMod  = WireInit(0.U(constantWireSize.W))
   val subwordAddr     = Wire(UInt(reqWidth(memWordWidth).W))      // Which part of the memory word are we looking at?
   val ramDataAsVec    = Wire(Vec(actParamsPerWord, UInt(actParamSize.W)))
   val dataBuf         = RegInit(VecInit(Seq.fill(kernelSize)(0.U(actParamSize.W))))
@@ -118,8 +139,10 @@ class SlidingWindowUnit(
   val colCnt = RegInit(0.U(reqWidth(kernelSize).W))
   val rowCnt = RegInit(0.U(reqWidth(kernelSize).W))
   val chCnt  = RegInit(0.U(reqWidth(kernelDepth).W))
-  val horizCnt = RegInit(0.U(reqWidth(actWidth).W))
-  val vertiCnt = RegInit(0.U(reqWidth(actHeight).W))
+  val horizCnt  = RegInit(0.U(reqWidth(actWidth).W))
+  val nhorizCnt = WireInit(0.U(reqWidth(actWidth).W))
+  val vertiCnt  = RegInit(0.U(reqWidth(actHeight).W))
+  val nvertiCnt = WireInit(0.U(reqWidth(actHeight).W))
   val allCntZero = Wire(Bool())
   val rowAndChCntZero = Wire(Bool())
   val allCntMax = Wire(Bool())
@@ -188,7 +211,7 @@ class SlidingWindowUnit(
   }
 
   /////// STALL LOGIC //////
-  when (((bitAddr >> 5) =/= (bitAddrNextMod >> 5)) && !stall) {
+  when (((bitAddr >> 5) =/= (nbitAddrMod >> 5)) && !stall) {
     stall := true.B
   }.elsewhen(stall) {
     stall := false.B
@@ -199,18 +222,36 @@ class SlidingWindowUnit(
   addConstant := 0.U
   when (state === swuState.sROWMODE) {
     switch(addstate) {
-      is(addState.sADDCOL) { addConstant := colAddConstant.U }
-      is(addState.sADDROW) { addConstant := rowAddConstant.U }
-      is(addState.sADDCH)  { addConstant := chAddConstant.U  }
+      is(addState.sADDCOL) {
+        addConstant := colAddConstant.U
+        addConstantMod := colAddConstantMod.U
+      }
+      is(addState.sADDROW) {
+        addConstant := rowAddConstant.U
+        addConstantMod := rowAddConstantMod.U
+      }
+      is(addState.sADDCH)  {
+        addConstant := chAddConstant.U
+        addConstantMod := chAddConstantMod.U
+      }
     }
   }.otherwise {
     switch(addstate) {
-      is(addState.sADDROW) { addConstant := colModRowAddConstant.U }
-      is(addState.sADDCH)  { addConstant := colModChAddConstant.U }
+      is(addState.sADDROW) {
+        addConstant := colModRowAddConstant.U
+        addConstantMod := colModRowAddConstantMod.U
+      }
+      is(addState.sADDCH)  {
+        addConstant := colModChAddConstant.U
+        addConstantMod := colModChAddConstantMod.U
+      }
     }
   }
 
   ////// COUNTERS //////
+  colCnt := colCnt
+  rowCnt := rowCnt
+  chCnt := chCnt
   when (!stall) {
     when (state === swuState.sWAITSTART ||
          (state =/= nstate)) {
@@ -229,16 +270,16 @@ class SlidingWindowUnit(
           colCnt := 0.U
         }
         is (addState.sADDCH) {
-          chCnt  := chCnt + 1.U
+          when (chCnt === (kernelDepth - 1).U) {
+            chCnt := 0.U
+          }.otherwise {
+            chCnt  := chCnt + 1.U
+          }
           rowCnt := 0.U
           colCnt := 0.U
         }
       }
     }
-  }. otherwise {
-    colCnt := colCnt
-    rowCnt := rowCnt
-    chCnt := chCnt
   }
 
   rowAndChCntZero := (rowCnt === 0.U) && (chCnt === 0.U)
@@ -250,46 +291,66 @@ class SlidingWindowUnit(
   }
   allCntMax := (colCnt === (kernelSize - 1).U) && rowAndChCntMax
 
-  baseCorrection  := ((kernelSize * actParamSize).U +& baseBitAddr(4,0) + leftoverBits.U) >> 5
-  baseCorrection2 := (actParamSize.U +& baseBitAddr(4,0) + leftoverBits.U) >> 5
-  when (!stall) {
-    when (io.start && !RegNext(io.start)) {
-      horizCnt := 0.U
-      vertiCnt := 0.U
-      baseBitAddr := (kernelSize * actParamSize).U
-    }.elsewhen (state === swuState.sROWMODE && allCntMax) {
-      horizCnt := horizCnt + 1.U
-      baseBitAddr := baseBitAddr + actParamSize.U + (baseCorrection2 * leftoverBits.U)
-    }.elsewhen (state === swuState.sCOLMODE) {
-      when(horizCnt < (actWidth - kernelSize).U && rowAndChCntMax) {
-        horizCnt := horizCnt + 1.U
-        baseBitAddr := baseBitAddr + actParamSize.U + (baseCorrection2 * leftoverBits.U)
-      }.elsewhen(rowAndChCntMax) {
-        horizCnt := 0.U
-        vertiCnt := vertiCnt + 1.U
-        baseBitAddr := baseBitAddr + (kernelSize * actParamSize).U + (baseCorrection * leftoverBits.U)
+
+  nbaseBitAddr := baseBitAddr
+  nhorizCnt := horizCnt
+  nvertiCnt := vertiCnt
+  updateBase1 := false.B
+  updateBase2 := false.B
+  when (io.start && !RegNext(io.start)) {
+    nhorizCnt := 0.U
+    nvertiCnt := 0.U
+    nbaseBitAddr := baseAddConstant.U
+    updateBase1 := true.B
+  }.elsewhen (state === swuState.sROWMODE && allCntMax) {
+    nhorizCnt := horizCnt + 1.U
+    nbaseBitAddr := baseBitAddr + actParamSize.U
+    updateBase2 := true.B
+  }.elsewhen (state === swuState.sCOLMODE) {
+    when(horizCnt < (actWidth - kernelSize).U && rowAndChCntMax) {
+      updateBase2 := true.B
+      nhorizCnt := horizCnt + 1.U
+      when (horizCnt =/= 0.U) {
+        nbaseBitAddr := baseBitAddr + actParamSize.U
       }
+    }.elsewhen(rowAndChCntMax) {
+      updateBase1 := true.B
+      nhorizCnt := 0.U
+      nvertiCnt := vertiCnt + 1.U
+      nbaseBitAddr := baseBitAddr + baseAddConstant.U
     }
+  }
+  when ((((nbaseBitAddr >> 5) - (baseBitAddr >> 5) =/= baseAddConstantMod.U) && updateBase1) ||
+        nbaseBitAddr(4,0) === actMemValidBits.U) {
+    nbaseBitAddrMod := nbaseBitAddr + leftoverBits.U
   }.otherwise {
-    horizCnt := horizCnt
-    vertiCnt := vertiCnt
-    baseBitAddr := baseBitAddr
+    nbaseBitAddrMod := nbaseBitAddr
+  }
+  when (!stall && (updateBase1 || updateBase2)) {
+    baseBitAddr := nbaseBitAddrMod
+    horizCnt    := nhorizCnt
+    vertiCnt    := nvertiCnt
   }
 
   ////// ADDRESS CALCULATIONS //////
-  bitAddrNext := bitAddr + addConstant
-  // The correction factor corrects for the stuffing that happens (if 32 / bw is not whole) at the end of each word
-  correction := ((addConstant(4,0) +& bitAddr(4,0) + leftoverBits.U) >= actMemValidBits.U).asUInt +& (addConstant >> 5)
-  bitAddrNextMod := bitAddrNext + correction * leftoverBits.U
+  nbitAddr := bitAddr
   when((allCntMax && state === swuState.sROWMODE && !stall) ||
        (rowAndChCntMax && state === swuState.sCOLMODE && !stall) ) {
-    bitAddr := baseBitAddr
+    nbitAddr := baseBitAddr
   }.elsewhen((state === swuState.sROWMODE || state === swuState.sCOLMODE) && !stall) {
-    bitAddr := bitAddrNextMod
-  }.elsewhen(state === swuState.sWAITSTART) {
-    bitAddr := 0.U
+    nbitAddr := bitAddr + addConstant
   }
 
+  nbitAddrMod := nbitAddr
+  when ((state === swuState.sROWMODE || state === swuState.sCOLMODE) &&
+         !stall &&
+         (((((nbitAddr >> 5) - (bitAddr >> 5)) =/= addConstantMod) && nbitAddr > bitAddr) ||
+         (nbitAddr(4,0) === actMemValidBits.U))) {
+    nbitAddrMod := nbitAddr + leftoverBits.U
+  }.otherwise {
+    nbitAddrMod := nbitAddr
+  }
+  bitAddr := nbitAddrMod
 
   ////// ACTIVATION MEMORY INTERFACE //////
   io.actRdEn := (state === swuState.sROWMODE  || state === swuState.sCOLMODE)
