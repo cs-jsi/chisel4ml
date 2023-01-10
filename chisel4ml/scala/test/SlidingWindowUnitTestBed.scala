@@ -42,14 +42,15 @@ class SlidingWindowUnitTestBed(
   val outDataSize: Int = kernelSize * kernelSize * kernelDepth * actParamSize
 
   val io = IO(new Bundle {
-    val start        = Input(Bool())
-    val rrfInValid   = Output(Bool())
-    val rrfInData    = Output(UInt((kernelSize * actParamSize).W))
-    val rrfRowAddr   = Output(UInt(reqWidth(kernelSize).W))
-    val rrfChAddr    = Output(UInt(reqWidth(kernelDepth).W))
-    val rrfRowWrMode = Output(Bool())
-    val rrfOutData   = Output(UInt(outDataSize.W))
-    val rrfEnd       = Output(Bool())
+    val start         = Input(Bool())
+    val rrfInValid    = Output(Bool())
+    val rrfImageValid = Output(Bool())
+    val rrfInData     = Output(UInt((kernelSize * actParamSize).W))
+    val rrfRowAddr    = Output(UInt(reqWidth(kernelSize).W))
+    val rrfChAddr     = Output(UInt(reqWidth(kernelDepth).W))
+    val rrfRowWrMode  = Output(Bool())
+    val rrfOutData    = Output(UInt(outDataSize.W))
+    val rrfEnd        = Output(Bool())
   })
 
   val swu = Module(
@@ -81,6 +82,7 @@ class SlidingWindowUnitTestBed(
 
   io.rrfInData        := swu.io.data
   io.rrfInValid       := swu.io.valid
+  io.rrfImageValid    := swu.io.imageValid
   io.rrfRowAddr       := swu.io.rowAddr
   io.rrfChAddr        := swu.io.chAddr
   io.rrfRowWrMode     := swu.io.rowWriteMode

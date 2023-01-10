@@ -22,6 +22,11 @@ import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 
+import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.factory.Nd4j
+import org.nd4j.linalg.indexing.NDArrayIndex
+import org.nd4j.linalg.ops.transforms.Transforms
+
 class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester {
   val logger = LoggerFactory.getLogger(classOf[SlidingWindowUnitTests])
 
@@ -88,7 +93,7 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester {
           }
     }
     }
-  it should "show appropirate window as it cycles through the input image with several kernels" in {
+  it should "show appropirate window as it cycles through the input image with a bigger window" in {
     test(new SlidingWindowUnitTestBed(kernelSize = 3,
                                       kernelDepth = 2,
                                       actWidth = 5,
@@ -130,5 +135,60 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester {
             dut.clock.step()
           }
     }
+  }
+
+  val rand = new scala.util.Random(seed = 42)
+  Nd4j.getRandom().setSeed(42)
+  for (testcaseId <- 0 until 1) {
+    val randKernelSize        = rand.between(2, 7 + 1)  // rand.between(inclusive, exclusive)
+    val randKernelDepth       = rand.between(1, 16 + 1)
+    val randActParamBitwidth  = rand.between(1, 8 + 1)
+    val randImageWidth        = rand.between(randKernelSize + 1, randKernelSize + 7 + 1)
+    val randImageHeight       = rand.between(randKernelSize + 1, randKernelSize + 7 + 1)
+    val randImageNormal       = Nd4j.rand(Array(randKernelDepth, randImageWidth, randImageHeight))
+    val randImage             = Transforms.round(randImageNormal.mul(scala.math.pow(2, randActParamBitwidth) - 1))
+    val dtype = new lbir.Datatype(quantization = UNIFORM,
+                                  bitwidth = randActParamBitwidth,
+                                  signed = false,
+                                  shift = Seq(0),
+                                  offset = Seq(0))
+    val testParameters = lbir.QTensor(
+      dtype = Option(dtype),
+      shape = Seq(1, randKernelDepth, randImageWidth, randImageHeight),
+      values = arrToSeq(randImage),
+    )
+    it should s"""testcaseid: $testcaseId, random params: kernelSize=$randKernelSize, kernelDepth=$randKernelDepth
+                 |actParamBitiwdth=$randActParamBitwidth, imageWidth=$randImageWidth, imageHeight=
+                 |$randImageHeight.""".stripMargin.replace("\n", " ") in {
+      test(new SlidingWindowUnitTestBed(kernelSize = randKernelSize,
+                                        kernelDepth = randKernelDepth,
+                                        actWidth = randImageWidth,
+                                        actHeight = randImageHeight,
+                                        actParamSize = randActParamBitwidth,
+                                        parameters = testParameters)) { dut =>
+        dut.clock.step()
+        dut.io.start.poke(true.B)
+        dut.clock.step()
+        dut.io.start.poke(false.B)
+        for (i <- 0 until randImageHeight - randKernelSize + 1) {
+          for (j <- 0 until randImageWidth - randKernelSize + 1) {
+            val window = randImage.get(NDArrayIndex.all(),  // kernel
+                                       NDArrayIndex.interval(i, i + randKernelSize),
+                                       NDArrayIndex.interval(j, j + randKernelSize))
+            while(!dut.io.rrfImageValid.peek().litToBoolean) { dut.clock.step() } // wait for valid
+            dut.clock.step()
+          }
+        }
+      }
+    }
+  }
+
+  def arrToSeq(arr: INDArray): Seq[Float] = {
+    var mySeq: Seq[Float] = Seq()
+    val flatArr = Nd4j.toFlattened(arr)
+    for (ind <- 0 until flatArr.length()) {
+      mySeq = mySeq :+ flatArr.getFloat(ind)
+    }
+    mySeq
   }
 }

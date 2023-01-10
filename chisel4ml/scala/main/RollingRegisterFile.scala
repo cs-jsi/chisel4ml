@@ -44,24 +44,20 @@ class RollingRegisterFile(kernelSize: Int, kernelDepth: Int, paramSize: Int) ext
   val regs = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(paramSize.W)))
   io.outData := regs.asUInt
 
+  regs := regs
   when(io.inValid) {
     when(io.rowWriteMode === true.B) {
       regs(io.chAddr)(io.rowAddr) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))
     }.otherwise {
       for (i <- 0 until kernelSize) {
-        regs(io.chAddr)(i)(kernelSize - 1) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))(
-          i,
-        )
+        regs(io.chAddr)(i)(kernelSize - 1) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))(i)
       }
-      when(io.shiftRegs === true.B) {
-        for {
-          i <- 0 until kernelDepth
-          k <- 0 until kernelSize - 1
-          j <- 0 until kernelSize
-        } {
-          regs(i)(j)(k) := regs(i)(j)(k + 1)
-        }
-      }
+    }
+  }.elsewhen(io.shiftRegs === true.B) {
+    for {i <- 0 until kernelDepth
+         k <- 0 until kernelSize - 1
+         j <- 0 until kernelSize} {
+      regs(i)(j)(k) := regs(i)(j)(k + 1)
     }
   }
 }

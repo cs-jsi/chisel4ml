@@ -66,6 +66,7 @@ class SlidingWindowUnit(
     val chAddr       = Output(UInt(chAddrWidth.W))
     val data         = Output(UInt(wrDataWidth.W))
     val valid        = Output(Bool())
+    val imageValid   = Output(Bool())
 
     // interface to the activation memory
     val actRdEn   = Output(Bool())
@@ -308,9 +309,8 @@ class SlidingWindowUnit(
   }
 
   // //// ROLLING REGISTER FILE INTERFACE //////
-  io.shiftRegs    := !io.rowWriteMode
-  io.rowWriteMode := RegNext(prevstate === swuState.sROWMODE ||
-                             (state === swuState.sROWMODE && prevstate === swuState.sWAITSTART))
+  io.shiftRegs    := RegNext(io.imageValid)
+  io.rowWriteMode := (prevstate === swuState.sROWMODE) && !io.shiftRegs
   io.rowAddr      := RegNext(rowCnt)
   if (kernelDepth > 1) {
     io.chAddr := RegNext(chCnt)
@@ -323,6 +323,8 @@ class SlidingWindowUnit(
   }.otherwise {
     io.valid := RegNext(rowCnt === (kernelSize - 1).U) && rowCnt === 0.U && !prevstall // rowCnt reset
   }
+  io.imageValid := (RegNext(allCntMax) && prevstate === swuState.sROWMODE && !prevstall) ||
+                   (RegNext(rowAndChCntMax) && prevstate === swuState.sCOLMODE && !prevstall)
 
   ////// CONTROL INTERFACE ///////
   io.end := (state === swuState.sEND) && (prevstate =/= swuState.sEND) // in case of stall, we add prevstate

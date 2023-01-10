@@ -93,5 +93,9 @@ class ProcessingElementSequentialConv[
     ),
   )
 
-  // val swu = Module(new SlidingWindowUnit())
+  val swu = Module(new SlidingWindowUnit(kernelSize = kernelSize,
+                                         kernelDepth = kernelDepth,
+                                         actWidth = layer.weights.get.shape(2),
+                                         actHeight = layer.weights.get.shape(3),
+                                         actParamSize = actParamSize))
 }
