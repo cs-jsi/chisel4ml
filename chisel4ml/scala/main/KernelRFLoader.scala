@@ -51,7 +51,7 @@ class KernelRFLoader(
     val valid   = Output(Bool())
 
     // interface to the kernel ROM
-    val romRdEn   = Output(Bool())
+    val romRdEna  = Output(Bool())
     val romRdAddr = Output(UInt(reqWidth(kernelMemDepthWords).W))
     val romRdData = Input(UInt(memWordWidth.W))
 
@@ -177,7 +177,7 @@ class KernelRFLoader(
   io.valid   := RegNext((state === krfState.sFILLRF) && !stall)
 
   // kernel ROM interface
-  io.romRdEn   := (state === krfState.sFILLRF)
+  io.romRdEna  := (state === krfState.sFILLRF)
   io.romRdAddr := ramAddr
 
   // control interface

@@ -53,7 +53,9 @@ class RollingRegisterFile(kernelSize: Int, kernelDepth: Int, paramSize: Int) ext
         regs(io.chAddr)(i)(kernelSize - 1) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))(i)
       }
     }
-  }.elsewhen(io.shiftRegs === true.B) {
+  }
+
+  when(io.shiftRegs === true.B) {
     for {i <- 0 until kernelDepth
          k <- 0 until kernelSize - 1
          j <- 0 until kernelSize} {

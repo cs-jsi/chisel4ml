@@ -88,7 +88,7 @@ class SlidingWindowUnitTestBed(
   io.rrfRowWrMode     := swu.io.rowWriteMode
   io.rrfEnd           := swu.io.end
 
-  actMem.io.rdEna  := swu.io.actRdEn
+  actMem.io.rdEna  := swu.io.actRdEna
   actMem.io.rdAddr := swu.io.actRdAddr
   swu.io.actRdData := actMem.io.rdData
 

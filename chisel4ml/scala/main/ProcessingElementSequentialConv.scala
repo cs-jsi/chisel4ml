@@ -97,4 +97,14 @@ class ProcessingElementSequentialConv[
                                             kernelParamSize = kernelParamSize,
                                             numKernels = numKernels))
 
+
+  kernelMem.io.rdEna  := kRFLoader.io.romRdEna
+  kernelMem.io.rdAddr := kRFLoader.io.romRdAddr
+  kRFLoader.io.romRdData := kernelMem.io.rdData
+
+  actMem.io.rdEna  := swu.io.actRdEna
+  actMem.io.rdAddr := swu.io.actRdAddr
+  swu.io.actRdData := actMem.io.rdData
+
+
 }

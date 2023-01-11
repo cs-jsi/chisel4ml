@@ -67,7 +67,7 @@ class KernelRFLoaderTestBed(
   krf.io.inData   := krfLoader.io.data
   krf.io.inValid  := krfLoader.io.valid
 
-  kernelMem.io.rdEna     := krfLoader.io.romRdEn
+  kernelMem.io.rdEna     := krfLoader.io.romRdEna
   kernelMem.io.rdAddr    := krfLoader.io.romRdAddr
   krfLoader.io.romRdData := kernelMem.io.rdData
 

@@ -89,7 +89,7 @@ class SlidingWindowUnit(
     val imageValid   = Output(Bool())
 
     // interface to the activation memory
-    val actRdEn   = Output(Bool())
+    val actRdEna  = Output(Bool())
     val actRdAddr = Output(UInt(reqWidth(actMemDepthWords).W))
     val actRdData = Input(UInt(memWordWidth.W))
 
@@ -355,7 +355,7 @@ class SlidingWindowUnit(
   bitAddr := nbitAddrMod
 
   ////// ACTIVATION MEMORY INTERFACE //////
-  io.actRdEn := (state === swuState.sROWMODE  || state === swuState.sCOLMODE)
+  io.actRdEna  := (state === swuState.sROWMODE  || state === swuState.sCOLMODE)
   io.actRdAddr := (bitAddr >> 5)
 
   // Subword (bit) address is translated into indexes via a lookup table
