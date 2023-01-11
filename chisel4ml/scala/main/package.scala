@@ -50,26 +50,48 @@ package object implicits {
 
     def toHexStr: String = {
       logger.debug("Convertin QTensor to a hex file string.")
-      val paramW = qt.dtype.get.bitwidth
+      val bitwidth:       Int = qt.dtype.get.bitwidth
       val memWordWidth:   Int = 32
-      val paramsPerWord:  Int = memWordWidth / paramW
-      val memValidBits:   Int = paramsPerWord * paramW
+      val paramsPerWord:  Int = memWordWidth / bitwidth
+      val memValidBits:   Int = paramsPerWord * bitwidth
       val memInvalidBits: Int = memWordWidth - memValidBits
+      val numKernels:     Int = if (qt.shape.length == 4) qt.shape(0) else 1
+      val totalElements:  Int = qt.shape.reduce(_ * _)
+      val elemPerKernel:  Int = totalElements / numKernels
+      require(elemPerKernel * numKernels == totalElements, "All tensor must be of the same size.")
+
+
+      var values: Seq[Float]     = Seq()
+      var realElemPerKernel: Int = 0
+      // We insert zeros where necesessary for kernel alignment (each kernel goes to new word)
+      val finalElemOffset = elemPerKernel % paramsPerWord
+      if (finalElemOffset != 0) {
+        realElemPerKernel = elemPerKernel + (paramsPerWord - finalElemOffset)
+        for (i <- 0 until numKernels) {
+          values = values :++ qt.values.grouped(elemPerKernel).toSeq(i)
+          values = values :++ Seq.fill(paramsPerWord - finalElemOffset)(0.0F)
+        }
+      } else {
+        values = qt.values
+        realElemPerKernel = elemPerKernel
+      }
 
       var hex: String      = ""
       var bin: Seq[String] = Seq()
       var tmp: String      = ""
-      for (paramGroup <- qt.values.grouped(paramsPerWord)) {
-        tmp = ""
-        for (param <- paramGroup) {
-          tmp = toBinary(param.toInt, paramW) + " " + tmp
+      for (kernel <- values.grouped(realElemPerKernel)) {
+        for (paramGroup <- kernel.grouped(paramsPerWord)) {
+          tmp = ""
+          for (param <- paramGroup) {
+            tmp = toBinary(param.toInt, bitwidth) + " " + tmp
+          }
+          if (memInvalidBits > 0) {
+            tmp = toBinary(0, memInvalidBits) + " " + tmp + "\n"
+          } else {
+            tmp = tmp + "\n"
+          }
+          bin = bin :+ tmp
         }
-        if (memInvalidBits > 0) {
-          tmp = toBinary(0, memInvalidBits) + " " + tmp + "\n"
-        } else {
-          tmp = tmp + "\n"
-        }
-        bin = bin :+ tmp
       }
       for (binStr <- bin) {
         tmp = BigInt(binStr.trim.replaceAll(" ", ""), 2).toString(16)

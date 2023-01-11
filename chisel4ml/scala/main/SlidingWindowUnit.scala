@@ -22,9 +22,11 @@ import chisel3.util._
 
 /** Sliding Window Unit
   *
-  * kernelSize - Size of one side of a square 2d kernel (i.e. kernelSize=3 for a 3x3 kernel). kernelDepth - The depth of
-  * a kernel, i.e. for a RGB image, the kernel depth is 3. (i.e. num of channels) actParamSize - The bitwidth of each
-  * activation parameter.
+  * kernelSize - Size of one side of a square 2d kernel (i.e. kernelSize=3 for a 3x3 kernel).
+  * kernelDepth - The depth of a kernel/actMap, i.e. for a RGB image, the kernel depth is 3. (i.e. num of channels)
+  * actWidth - the width of the activation map/image (in num of elements)
+  * actHeight - the height of the activation map/image (in num of elements)
+  * actParamSize - The bitwidth of each activation parameter.
   */
 class SlidingWindowUnit(
     kernelSize:   Int,

@@ -25,24 +25,21 @@ import chisel3._
   * parameterSize in bits. kernelParamSize: Int - Bitwidth of each kernel parameter.
   */
 class KernelRegisterFile(kernelSize: Int, kernelDepth: Int, kernelParamSize: Int) extends Module {
-  val totalNumOfElements:  Int = kernelSize * kernelSize * kernelDepth
-  val kernelNumOfElements: Int = kernelSize * kernelSize
-  val wrDataWidth:         Int = kernelNumOfElements * kernelParamSize
-  val outDataSize:         Int = kernelSize * kernelSize * kernelDepth * kernelParamSize
-  val kernelAddrWidth:     Int = reqWidth(kernelDepth)
-  val rowAddrWidth:        Int = reqWidth(kernelSize)
+  val outDataSize: Int = kernelSize * kernelSize * kernelDepth * kernelParamSize
 
   val io = IO(new Bundle {
-    val kernelAddr = Input(UInt(kernelAddrWidth.W))
-    val inData     = Input(UInt(wrDataWidth.W))
+    val chAddr     = Input(UInt(reqWidth(kernelDepth).W))
+    val rowAddr    = Input(UInt(reqWidth(kernelSize).W))
+    val colAddr    = Input(UInt(reqWidth(kernelSize).W))
+    val inData     = Input(UInt(kernelParamSize.W))
     val inValid    = Input(Bool())
     val outData    = Output(UInt(outDataSize.W))
   })
 
-  val regs = RegInit(VecInit.fill(kernelDepth, kernelNumOfElements)(0.U(kernelParamSize.W)))
+  val regs = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(kernelParamSize.W)))
 
   when(io.inValid) {
-    regs(io.kernelAddr) := io.inData.asTypeOf(Vec(kernelNumOfElements, UInt(kernelParamSize.W)))
+    regs(io.chAddr)(io.rowAddr)(io.colAddr) := io.inData
   }
 
   io.outData := regs.asUInt

@@ -52,14 +52,11 @@ class ProcessingElementSequentialConv[
   val kernelParamSize:     Int = layer.weights.get.dtype.get.bitwidth
   val kernelParamsPerWord: Int = memWordWidth / kernelParamSize
   val kernelNumParams:     Int = layer.weights.get.shape.reduce(_ * _)
+  val numKernels:          Int = 1 // TODO!
   val kernelMemDepth:      Int = math.ceil(kernelNumParams.toFloat / kernelParamsPerWord.toFloat).toInt
-  val kernelMem = Module(
-    new ROM(
-      depth = kernelMemDepth,
-      width = memWordWidth,
-      memFile = genHexMemoryFile(layer.weights.get, layout = "CDHW"),
-    ),
-  )
+  val kernelMem = Module(new ROM(depth = kernelMemDepth,
+                                 width = memWordWidth,
+                                 memFile = genHexMemoryFile(layer.weights.get, layout = "CDHW")))
 
   val actParamSize:     Int = layer.input.get.dtype.get.bitwidth
   val actParamsPerWord: Int = memWordWidth / actParamSize
@@ -80,22 +77,24 @@ class ProcessingElementSequentialConv[
   val resMemDepth:      Int = math.ceil(resNumParams.toFloat / resParamsPerWord.toFloat).toInt
   val resMem = Module(new SRAM(depth = resMemDepth, width = memWordWidth))
 
-  val dynamicNeuron = Module(
-    new DynamicNeuron[I, W, M, A, O](
-      genIn = genIn,
-      numSynaps = kernelNumParams,
-      genWeights = genWeights,
-      genThresh = genThresh,
-      genOut = genOut,
-      mul = mul,
-      add = add,
-      actFn = actFn,
-    ),
-  )
+  val dynamicNeuron = Module(new DynamicNeuron[I, W, M, A, O](genIn = genIn,
+                                                              numSynaps = kernelNumParams,
+                                                              genWeights = genWeights,
+                                                              genThresh = genThresh,
+                                                              genOut = genOut,
+                                                              mul = mul,
+                                                              add = add,
+                                                              actFn = actFn))
 
   val swu = Module(new SlidingWindowUnit(kernelSize = kernelSize,
                                          kernelDepth = kernelDepth,
                                          actWidth = layer.weights.get.shape(2),
                                          actHeight = layer.weights.get.shape(3),
                                          actParamSize = actParamSize))
+
+  val kRFLoader = Module(new KernelRFLoader(kernelSize = kernelSize,
+                                            kernelDepth = kernelDepth,
+                                            kernelParamSize = kernelParamSize,
+                                            numKernels = numKernels))
+
 }
