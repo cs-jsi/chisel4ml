@@ -52,7 +52,7 @@ class ProcessingElementSequentialConv[
   val kernelParamSize:     Int = layer.weights.get.dtype.get.bitwidth
   val kernelParamsPerWord: Int = memWordWidth / kernelParamSize
   val kernelNumParams:     Int = layer.weights.get.shape.reduce(_ * _)
-  val numKernels:          Int = 1 // TODO!
+  val numKernels:          Int = layer.weights.get.shape(0)
   val kernelMemDepth:      Int = math.ceil(kernelNumParams.toFloat / kernelParamsPerWord.toFloat).toInt
   val kernelMem = Module(new ROM(depth = kernelMemDepth,
                                  width = memWordWidth,
@@ -67,13 +67,14 @@ class ProcessingElementSequentialConv[
   val numOfKernels: Int = layer.weights.get.shape(0)
   val kernelDepth:  Int = layer.weights.get.shape(1)
   val kernelSize:   Int = layer.weights.get.shape(2)
-  val kernelRegFile = Module(new KernelRegisterFile(kernelSize, kernelDepth, kernelParamSize))
+  val krf = Module(new KernelRegisterFile(kernelSize, kernelDepth, kernelParamSize))
 
   val actRegFile = Module(new RollingRegisterFile(kernelSize, kernelDepth, kernelParamSize))
 
   val resParamSize:     Int = layer.output.get.dtype.get.bitwidth
   val resParamsPerWord: Int = memWordWidth / resParamSize
   val resNumParams:     Int = layer.output.get.shape.reduce(_ * _)
+  val resultsPerKernel: Int = resNumParams / numKernels
   val resMemDepth:      Int = math.ceil(resNumParams.toFloat / resParamsPerWord.toFloat).toInt
   val resMem = Module(new SRAM(depth = resMemDepth, width = memWordWidth))
 
@@ -97,6 +98,18 @@ class ProcessingElementSequentialConv[
                                             kernelParamSize = kernelParamSize,
                                             numKernels = numKernels))
 
+  val tas = Module(new ThreshAndShiftUnit[A](numKernels = numKernels,
+                                             genThresh = genThresh,
+                                             layer = layer))
+
+  val rmb = Module(new ResultMemoryBuffer[O](genOut = genOut,
+                                             resultsPerKernel = resultsPerKernel,
+                                             resMemDepth = resMemDepth,
+                                             numKernels = numKernels))
+
+  val ctrl = Module(new PeSeqConvController(numKernels = numKernels,
+                                            resMemDepth = resMemDepth,
+                                            actMemDepth = actMemDepth))
 
   kernelMem.io.rdEna  := kRFLoader.io.romRdEna
   kernelMem.io.rdAddr := kRFLoader.io.romRdAddr
@@ -106,5 +119,52 @@ class ProcessingElementSequentialConv[
   actMem.io.rdAddr := swu.io.actRdAddr
   swu.io.actRdData := actMem.io.rdData
 
+  resMem.io.wrEna  := rmb.io.resRamEn
+  resMem.io.wrAddr := rmb.io.resRamAddr
+  resMem.io.wrData := rmb.io.resRamData
 
+  krf.io.chAddr  := kRFLoader.io.chAddr
+  krf.io.rowAddr := kRFLoader.io.rowAddr
+  krf.io.colAddr := kRFLoader.io.colAddr
+  krf.io.inData  := kRFLoader.io.data
+  krf.io.inValid := kRFLoader.io.valid
+
+  actRegFile.io.shiftRegs    := swu.io.shiftRegs
+  actRegFile.io.rowWriteMode := swu.io.rowWriteMode
+  actRegFile.io.rowAddr      := swu.io.rowAddr
+  actRegFile.io.chAddr       := swu.io.chAddr
+  actRegFile.io.inData       := swu.io.data
+  actRegFile.io.inValid      := swu.io.valid
+
+  rmb.io.resultValid := RegNext(RegNext(swu.io.imageValid))
+  rmb.io.result      := dynamicNeuron.io.out
+  rmb.io.start       := ctrl.io.swuStart
+
+  dynamicNeuron.io.in        := actRegFile.io.outData
+  dynamicNeuron.io.weights   := krf.io.outData
+  dynamicNeuron.io.thresh    := tas.io.thresh
+  dynamicNeuron.io.shift     := tas.io.shift
+  dynamicNeuron.io.shiftLeft := tas.io.shiftLeft
+
+  swu.io.start   := ctrl.io.swuStart
+  ctrl.io.swuEnd := swu.io.end
+
+  ctrl.io.krfReady        := kRFLoader.io.kernelReady
+  kRFLoader.io.loadKernel := ctrl.io.krfLoadKernel
+  kRFLoader.io.kernelNum  := ctrl.io.krfKernelNum
+
+  io.inStream.data.ready := ctrl.io.inStreamReady
+  actMem.io.wrEna        := io.inStream.data.ready && io.inStream.data.valid
+  actMem.io.wrAddr       := ctrl.io.actMemAddr
+  actMem.io.wrData       := io.inStream.data.bits
+  ctrl.io.inStreamLast   := io.inStream.last
+  ctrl.io.inStreamValid  := io.inStream.data.valid
+
+  io.outStream.data.valid := ctrl.io.outStreamValid
+  io.outStream.data.bits  := resMem.io.rdData
+  io.outStream.last       := ctrl.io.outStreamLast
+  ctrl.io.outStreamReady  := io.outStream.data.ready
+
+  resMem.io.rdEna  := ctrl.io.resMemEna
+  resMem.io.rdAddr := ctrl.io.resMemAddr
 }
