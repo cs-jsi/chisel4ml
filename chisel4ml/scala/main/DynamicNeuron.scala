@@ -40,15 +40,18 @@ class DynamicNeuron[I <: Bits, W <: Bits: WeightsProvider, M <: Bits, A <: Bits:
   }
 
   val io = IO(new Bundle {
-    val in:        Vec[I] = Input(Vec(numSynaps, genIn))
-    val weights:   Vec[W] = Input(Vec(numSynaps, genWeights))
-    val thresh:    A      = Input(genThresh)
-    val shift:     UInt   = Input(UInt(8.W)) // TODO: bitwidth?
-    val shiftLeft: Bool   = Input(Bool())
-    val out:       O      = Output(genOut)
+    val in:        UInt = Input(UInt((numSynaps * genIn.getWidth).W))
+    val weights:   UInt = Input(UInt((numSynaps * genWeights.getWidth).W))
+    val thresh:    A    = Input(genThresh)
+    val shift:     UInt = Input(UInt(8.W)) // TODO: bitwidth?
+    val shiftLeft: Bool = Input(Bool())
+    val out:       O    = Output(genOut)
   })
 
-  val muls = VecInit((io.in.zip(io.weights)).map { case (a, b) => mul(a, b) })
+  val inVec     = io.in.asTypeOf(Vec(numSynaps, genIn))
+  val inWeights = io.weights.asTypeOf(Vec(numSynaps, genWeights))
+
+  val muls = VecInit((inVec.zip(inWeights)).map { case (a, b) => mul(a, b) })
   val pAct = add(muls)
   val sAct = shiftAndRound(pAct, io.shift, io.shiftLeft, genThresh)
   io.out := actFn(sAct, io.thresh)

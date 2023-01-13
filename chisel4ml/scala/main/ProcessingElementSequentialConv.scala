@@ -89,8 +89,8 @@ class ProcessingElementSequentialConv[
 
   val swu = Module(new SlidingWindowUnit(kernelSize = kernelSize,
                                          kernelDepth = kernelDepth,
-                                         actWidth = layer.weights.get.shape(2),
-                                         actHeight = layer.weights.get.shape(3),
+                                         actWidth = layer.input.get.shape(2),
+                                         actHeight = layer.input.get.shape(3),
                                          actParamSize = actParamSize))
 
   val kRFLoader = Module(new KernelRFLoader(kernelSize = kernelSize,
@@ -136,7 +136,7 @@ class ProcessingElementSequentialConv[
   actRegFile.io.inData       := swu.io.data
   actRegFile.io.inValid      := swu.io.valid
 
-  rmb.io.resultValid := RegNext(RegNext(swu.io.imageValid))
+  rmb.io.resultValid := RegNext(swu.io.imageValid)
   rmb.io.result      := dynamicNeuron.io.out
   rmb.io.start       := ctrl.io.swuStart
 
@@ -145,6 +145,9 @@ class ProcessingElementSequentialConv[
   dynamicNeuron.io.thresh    := tas.io.thresh
   dynamicNeuron.io.shift     := tas.io.shift
   dynamicNeuron.io.shiftLeft := tas.io.shiftLeft
+
+  tas.io.start  := ctrl.io.swuStart
+  tas.io.nextKernel := ctrl.io.krfLoadKernel
 
   swu.io.start   := ctrl.io.swuStart
   ctrl.io.swuEnd := swu.io.end

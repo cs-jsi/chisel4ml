@@ -42,7 +42,7 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
     val resRamData = Output(UInt(memWordWidth.W))
 
     // control inerface
-    val start     = Input(Bool())
+    val start  = Input(Bool())
   })
 
   object rmbState extends ChiselEnum {
@@ -50,8 +50,8 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
     val sCOMP = Value(1.U)
   }
 
-  val resPerWordCnt   = RegInit(0.U(reqWidth(resultsPerWord).W))
-  val resPerKernelCnt = RegInit(0.U(reqWidth(resultsPerKernel).W))
+  val resPerWordCnt   = RegInit(0.U(reqWidth(resultsPerWord + 1).W))
+  val resPerKernelCnt = RegInit(0.U(reqWidth(resultsPerKernel + 1).W))
   val kernelCnt       = RegInit(0.U(reqWidth(numKernels).W))
 
   val dataBuf = RegInit(VecInit(Seq.fill(resultsPerWord)(0.U(genOut.getWidth.W))))
@@ -63,7 +63,7 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
   when (io.start) {
     state := rmbState.sCOMP
   }.elsewhen (state === rmbState.sCOMP) {
-    when (resPerKernelCnt === (resultsPerKernel - 1).U &&
+    when (resPerKernelCnt === resultsPerKernel.U &&
           kernelCnt === (numKernels - 1).U) {
       state := rmbState.sWAIT
     }
@@ -76,11 +76,11 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
   }.otherwise{
     when (io.resultValid) {
       resPerKernelCnt := resPerKernelCnt + 1.U
-      when (resPerKernelCnt === (resultsPerKernel - 1).U) {
+      when (resPerKernelCnt === resultsPerKernel.U) {
         kernelCnt       := kernelCnt + 1.U
         resPerKernelCnt := 0.U
         resPerWordCnt   := 0.U
-      }.elsewhen (resPerWordCnt === (resultsPerWord - 1).U) {
+      }.elsewhen (resPerWordCnt === resultsPerWord.U) {
         resPerWordCnt := 0.U
       }.otherwise {
         resPerWordCnt := resPerWordCnt + 1.U
@@ -91,20 +91,20 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
   ramAddr := ramAddr
   when(io.start) {
     ramAddr := 0.U
-  }.elsewhen(resPerKernelCnt === (resultsPerKernel - 1).U ||
-             resPerWordCnt === (resultsPerWord - 1).U) {
+  }.elsewhen(resPerKernelCnt === resultsPerKernel.U ||
+             resPerWordCnt === resultsPerWord.U) {
     ramAddr := ramAddr + 1.U
   }
 
   when (io.start) {
     dataBuf := VecInit(Seq.fill(resultsPerWord)(0.U(genOut.getWidth.W)))
   }.elsewhen(io.resultValid) {
-    dataBuf(resPerWordCnt) := io.result
+    dataBuf(resPerWordCnt) := io.result.asUInt
   }
 
-  io.resRamEn   := ((state === rmbState.sCOMP) &&
-                    (resPerWordCnt === (resultsPerWord - 1).U) &&
-                    RegNext(io.resultValid))
+  io.resRamEn   := (RegNext(state === rmbState.sCOMP) &&
+                   ((resPerWordCnt === resultsPerWord.U) || resPerKernelCnt === resultsPerKernel.U) &&
+                   RegNext(io.resultValid))
   io.resRamAddr := ramAddr
   io.resRamData := dataBuf.asUInt
 }

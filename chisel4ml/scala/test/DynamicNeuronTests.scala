@@ -40,8 +40,9 @@ class DynamicNeuronTests extends AnyFlatSpec with ChiselScalatestTester {
         actFn = reluFn,
       ),
     ) { dut =>
-      dut.io.in.poke(Vec(4, UInt(4.W)).Lit(0 -> 0.U, 1 -> 1.U, 2 -> 2.U, 3 -> 3.U))
-      dut.io.weights.poke(Vec(4, SInt(4.W)).Lit(0 -> 1.S, 1 -> 1.S, 2 -> 1.S, 3 -> 1.S))
+
+      dut.io.in.poke("b0011_0010_0001_0000".U)
+      dut.io.weights.poke("b0001_0001_0001_0001".U)
       dut.io.thresh.poke(0.S)
       dut.io.shift.poke(0.U)
       dut.io.shiftLeft.poke(true.B)

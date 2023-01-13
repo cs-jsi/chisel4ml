@@ -31,10 +31,10 @@ abstract class ProcessingElementSequential(layer: Layer, options: Options) exten
   val memWordWidth      = 32
 
   val inSizeBits: Int = layer.input.get.totalBitwidth
-  val numInTrans: Int = reqWidth(inSizeBits.toFloat / inputStreamWidth.toFloat)
+  val numInTrans: Int = math.ceil(inSizeBits.toFloat / inputStreamWidth.toFloat).toInt
 
   val outSizeBits: Int = layer.output.get.totalBitwidth
-  val numOutTrans: Int = reqWidth(outSizeBits.toFloat / outputStreamWidth.toFloat)
+  val numOutTrans: Int = math.ceil(outSizeBits.toFloat / outputStreamWidth.toFloat).toInt
 
   val io = IO(new Bundle {
     val inStream  = Flipped(new AXIStream(inputStreamWidth))

@@ -41,7 +41,7 @@ class PeSeqConvController(numKernels: Int,
     val inStreamReady = Output(Bool())
     val inStreamValid = Input(Bool())
     val inStreamLast  = Input(Bool())
-    val actMemAddr    = Output(UInt(actMemDepth.W))
+    val actMemAddr    = Output(UInt(reqWidth(actMemDepth).W))
 
     // output stream
     val outStreamReady = Input(Bool())
@@ -53,14 +53,16 @@ class PeSeqConvController(numKernels: Int,
 
   object ctrlState extends ChiselEnum {
     val sWAITFORDATA = Value(0.U)
-    val sLOADKERNEL  = Value(1.U)
-    val sCOMP        = Value(2.U)
-    val sSENDDATA    = Value(3.U)
+    val sLOADINPACT  = Value(1.U)
+    val sLOADKERNEL  = Value(2.U)
+    val sCOMP        = Value(3.U)
+    val sWAITWRITE   = Value(4.U)
+    val sSENDDATA    = Value(5.U)
   }
 
-  val kernelCnt = RegInit(0.U(reqWidth(numKernels).W))
-  val actMemCnt = RegInit(0.U(reqWidth(actMemDepth).W))
-  val resMemCnt = RegInit(0.U(reqWidth(resMemDepth).W))
+  val kernelCnt = RegInit(0.U(reqWidth(numKernels + 1).W))
+  val actMemCnt = RegInit(0.U(reqWidth(actMemDepth + 1).W))
+  val resMemCnt = RegInit(0.U(reqWidth(resMemDepth + 1).W))
 
   val state  = RegInit(ctrlState.sWAITFORDATA)
   val nstate = WireInit(ctrlState.sCOMP)
@@ -68,12 +70,16 @@ class PeSeqConvController(numKernels: Int,
 
   nstate := state
   when (state === ctrlState.sWAITFORDATA && io.inStreamValid) {
+    nstate := ctrlState.sLOADINPACT
+  }.elsewhen(state === ctrlState.sLOADINPACT && actMemCnt === actMemDepth.U) {
     nstate := ctrlState.sLOADKERNEL
-  }.elsewhen (state === ctrlState.sLOADKERNEL && actMemCnt === (actMemDepth - 1).U) {
+  }.elsewhen (state === ctrlState.sLOADKERNEL && io.krfReady) {
     nstate := ctrlState.sCOMP
-  }.elsewhen (state === ctrlState.sCOMP && kernelCnt === (numKernels - 1).U && io.swuEnd) {
+  }.elsewhen (state === ctrlState.sCOMP && kernelCnt === (numKernels - 1).U && RegNext(io.swuEnd)) {
+    nstate := ctrlState.sWAITWRITE
+  }.elsewhen (state === ctrlState.sWAITWRITE) {
     nstate := ctrlState.sSENDDATA
-  }.elsewhen (state === ctrlState.sSENDDATA && resMemCnt === (resMemDepth - 1).U) {
+  }.elsewhen (state === ctrlState.sSENDDATA && resMemCnt === resMemDepth.U) {
     nstate := ctrlState.sWAITFORDATA
   }
   state := nstate
@@ -81,12 +87,12 @@ class PeSeqConvController(numKernels: Int,
 
   when (state === ctrlState.sLOADKERNEL) {
     kernelCnt := 0.U
-  }.elsewhen (io.swuEnd) {
+  }.elsewhen (RegNext(io.swuEnd)) {
     kernelCnt := kernelCnt + 1.U
   }
 
   actMemCnt := actMemCnt
-  when (state === ctrlState.sCOMP && kernelCnt === (numKernels - 1).U && io.swuEnd) {
+  when (state === ctrlState.sCOMP && kernelCnt === (numKernels - 1).U && RegNext(io.swuEnd)) {
     actMemCnt := 0.U
   }.elsewhen (io.inStreamReady && io.inStreamValid) {
     actMemCnt := actMemCnt + 1.U
@@ -102,13 +108,13 @@ class PeSeqConvController(numKernels: Int,
   io.swuStart := (state === ctrlState.sCOMP) && RegNext(state === ctrlState.sLOADKERNEL)
 
   io.krfKernelNum  := kernelCnt
-  io.krfLoadKernel := (state === ctrlState.sLOADKERNEL)
+  io.krfLoadKernel := (state === ctrlState.sLOADKERNEL) && RegNext(state === ctrlState.sLOADINPACT)
 
-  io.inStreamReady := actMemCnt =/= (actMemDepth - 1).U
+  io.inStreamReady := actMemCnt =/= actMemDepth.U
   io.actMemAddr    := actMemCnt
 
-  io.outStreamValid := (resMemCnt =/= (resMemDepth - 1).U) && (state === ctrlState.sSENDDATA)
-  io.outStreamLast  := (resMemCnt === (resMemDepth - 1).U) && (state === ctrlState.sSENDDATA)
+  io.outStreamValid := RegNext((resMemCnt =/= resMemDepth.U) && (state === ctrlState.sSENDDATA))
+  io.outStreamLast  := RegNext((resMemCnt === (resMemDepth - 1).U) && (state === ctrlState.sSENDDATA))
   io.resMemAddr     := resMemCnt
   io.resMemEna      := (state === ctrlState.sSENDDATA)
 }

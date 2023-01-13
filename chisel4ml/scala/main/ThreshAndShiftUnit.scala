@@ -49,7 +49,7 @@ extends Module {
 
 
   io.thresh    := MuxLookup(kernelNum,
-                            0.U,
+                            0.S.asTypeOf(genThresh),
                             layer.thresh.get.values.zipWithIndex.map(x => (x._1.toInt.U -> x._2.S.asTypeOf(genThresh))))
   io.shift     := MuxLookup(kernelNum,
                             0.U,
