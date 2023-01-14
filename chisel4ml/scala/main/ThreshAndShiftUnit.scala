@@ -47,14 +47,18 @@ extends Module {
     kernelNum := kernelNum + 1.U
   }
 
+  val threshWithIndex = layer.thresh.get.values.zipWithIndex
+  val shiftWithIndex  = layer.thresh.get.dtype.get.shift.zipWithIndex
+
+  println(threshWithIndex.map(x => (x._2.toInt -> x._1.toInt)))
 
   io.thresh    := MuxLookup(kernelNum,
                             0.S.asTypeOf(genThresh),
-                            layer.thresh.get.values.zipWithIndex.map(x => (x._1.toInt.U -> x._2.S.asTypeOf(genThresh))))
+                            threshWithIndex.map(x => (x._2.toInt.U -> x._1.toInt.S.asTypeOf(genThresh))))
   io.shift     := MuxLookup(kernelNum,
                             0.U,
-                            layer.thresh.get.dtype.get.shift.zipWithIndex.map(x => (x._1.toInt.U -> x._2.abs.U)))
+                            shiftWithIndex.map(x => (x._2.toInt.U -> x._1.abs.U)))
   io.shiftLeft := MuxLookup(kernelNum,
                             true.B,
-                            layer.thresh.get.dtype.get.shift.zipWithIndex.map(x => (x._1.toInt.U -> (x._2 == x._2.abs).B)))
+                            shiftWithIndex.map(x => (x._2.toInt.U -> (x._1 == x._1.abs).B)))
 }

@@ -64,18 +64,48 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
 
   val testOptions0 = services.GenerateCircuitParams.Options(isSimple = false)
 
+
+  val dtypeUInt6 = lbir.Datatype(quantization = UNIFORM, bitwidth = 6, signed = false, shift = Seq(0), offset = Seq(0))
+  val dtypeSInt7 = lbir.Datatype(quantization = UNIFORM, bitwidth = 7, signed = true, shift = Seq(0), offset = Seq(0))
+  val testLayer1 = lbir.Layer(
+                    ltype = lbir.Layer.Type.CONV2D,
+                    thresh = Option(lbir.QTensor(
+                      dtype = Option(dtypeSInt7),
+                      shape = Seq(2),
+                      values = Seq(-2)
+                    )),
+                    weights = Option(lbir.QTensor(
+                      dtype = Option(dtypeSInt7),
+                      shape = Seq(1, 2, 2, 2),
+                      values = Seq(1, 0,
+                                   0, 0,
+                                   0, 0,
+                                   1, 0)
+                    )),
+                    input = Option(lbir.QTensor(
+                      dtype = Option(dtypeUInt6),
+                      shape = Seq(1, 2, 3, 3),
+                    )),
+                    output = Option(lbir.QTensor(
+                      dtype = Option(dtypeSInt7),
+                      shape = Seq(1, 1, 2, 2)
+                    ))
+                   )
+
+
   behavior.of("ProcessingElementSequentialConv module")
   it should "compute the convolution correctly" in { // .withAnnotations(Seq(VerilatorBackendAnnotation))
     test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt](layer = testLayer0,
-                                             options = testOptions0,
-                                             genIn = UInt(4.W),
-                                             genWeights = SInt(4.W),
-                                             genThresh = SInt(4.W),
-                                             genOut = SInt(4.W),
-                                             mul = (x:UInt, w: SInt) => (x * w),
-                                             add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
-                                             actFn = (x: SInt, y: SInt) => x)).withAnnotations(Seq(VerilatorBackendAnnotation)) { dut =>
-      dut.clock.setTimeout(10000)
+                                                                           options = testOptions0,
+                                                                           genIn = UInt(4.W),
+                                                                           genWeights = SInt(4.W),
+                                                                           genThresh = SInt(4.W),
+                                                                           genOut = SInt(4.W),
+                                                                           mul = (x:UInt, w: SInt) => (x * w),
+                                                                           add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
+                                                                           actFn = (x: SInt, y: SInt) => x)).
+                                                                           withAnnotations(
+                                                                           Seq(VerilatorBackendAnnotation)) { dut =>
       dut.io.inStream.data.initSource()
       dut.io.inStream.data.setSourceClock(dut.clock)
       dut.io.outStream.data.initSink()
@@ -87,6 +117,44 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
       dut.clock.step(1)
       dut.io.inStream.last.poke(false.B)
       dut.io.outStream.data.expectDequeueSeq(Seq("b0000_0000__0000_0000__0101_0100__0010_0001".U))
+    }
+  }
+
+  it should "compute a convolution with several channels correctly" in {
+    test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt](layer = testLayer1,
+                                                                           options = testOptions0,
+                                                                           genIn = UInt(6.W),
+                                                                           genWeights = SInt(7.W),
+                                                                           genThresh = SInt(7.W),
+                                                                           genOut = SInt(7.W),
+                                                                           mul = (x:UInt, w: SInt) => (x * w),
+                                                                           add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
+                                                                           actFn = (x: SInt, y:SInt) => x + y)).
+                                                                           withAnnotations(
+                                                                           Seq(VerilatorBackendAnnotation)){ dut =>
+      dut.clock.setTimeout(10000)
+      dut.io.inStream.data.initSource()
+      dut.io.inStream.data.setSourceClock(dut.clock)
+      dut.io.outStream.data.initSink()
+      dut.io.outStream.data.setSinkClock(dut.clock)
+      dut.clock.step()
+      /*  1   2   3   |   1  0  |  1 + 13 - 2 = 12  | 12 14
+       *  4   5   6   |   0  0  |  2 + 14 - 2 = 14  | 18 20
+       *  7   8   9   |         |  4 + 16 - 2 = 18  |
+       *              |         |  5 + 17 - 2 = 20  |
+       *  10 11  12   |   0  0  |                   |
+       *  13 14  15   |   1  0  |                   |
+       *  16 17  18   |         |                   |
+       */
+
+      dut.io.inStream.data.enqueueSeq(Seq("b00_000101_000100_000011_000010_000001".U,
+                                          "b00_001010_001001_001000_000111_000110".U,
+                                          "b00_001111_001110_001101_001100_001011".U,
+                                          "b00_000000_000000_010010_010001_010000".U))
+      dut.io.inStream.last.poke(true.B)
+      dut.clock.step()
+      dut.io.inStream.last.poke(false.B)
+      dut.io.outStream.data.expectDequeueSeq(Seq("b0000_0010100_0010010_0001110_0001100".U))
     }
   }
 }

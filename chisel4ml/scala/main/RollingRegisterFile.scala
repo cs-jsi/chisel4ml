@@ -18,7 +18,7 @@ package chisel4ml.sequential
 import _root_.chisel4ml.util.reqWidth
 import chisel3._
 
-/** A register file for storing the inputs (activations or iamge) of a convotional layer.
+/** A register file for storing the inputs (activations or image) of a convotional layer.
   *
   * kernelSize: Int - Signifies one dimension of a square kernel (If its a 3x3 kernel then kernelSize=3) kernelDepth:
   * Int - The depth of the kernel (number of input channels) actParamSize: Int - The activation parameterSize in bits.

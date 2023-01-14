@@ -69,7 +69,7 @@ class ProcessingElementSequentialConv[
   val kernelSize:   Int = layer.weights.get.shape(2)
   val krf = Module(new KernelRegisterFile(kernelSize, kernelDepth, kernelParamSize))
 
-  val actRegFile = Module(new RollingRegisterFile(kernelSize, kernelDepth, kernelParamSize))
+  val actRegFile = Module(new RollingRegisterFile(kernelSize, kernelDepth, actParamSize))
 
   val resParamSize:     Int = layer.output.get.dtype.get.bitwidth
   val resParamsPerWord: Int = memWordWidth / resParamSize
