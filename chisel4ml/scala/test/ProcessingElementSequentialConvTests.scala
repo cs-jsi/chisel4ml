@@ -71,7 +71,7 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
                     ltype = lbir.Layer.Type.CONV2D,
                     thresh = Option(lbir.QTensor(
                       dtype = Option(dtypeSInt7),
-                      shape = Seq(2),
+                      shape = Seq(1),
                       values = Seq(-2)
                     )),
                     weights = Option(lbir.QTensor(
@@ -89,6 +89,33 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
                     output = Option(lbir.QTensor(
                       dtype = Option(dtypeSInt7),
                       shape = Seq(1, 1, 2, 2)
+                    ))
+                   )
+
+  val dtypeUInt3 = lbir.Datatype(quantization=UNIFORM, bitwidth=3, signed=false, shift = Seq(0, 1), offset = Seq(0,0))
+  val dtypeSInt2 = lbir.Datatype(quantization=UNIFORM, bitwidth=2, signed=false, shift = Seq(0, 1), offset = Seq(0,0))
+  val testLayer2 = lbir.Layer(
+                    ltype = lbir.Layer.Type.CONV2D,
+                    thresh = Option(lbir.QTensor(
+                      dtype = Option(dtypeSInt2),
+                      shape = Seq(2),
+                      values = Seq(-1, 1)
+                    )),
+                    weights = Option(lbir.QTensor(
+                      dtype = Option(dtypeSInt2),
+                      shape = Seq(2, 1, 2, 2),
+                      values = Seq( 1,  2,
+                                   -2, -1,
+                                    2,  0,
+                                    0,  2)
+                    )),
+                    input = Option(lbir.QTensor(
+                      dtype = Option(dtypeUInt3),
+                      shape = Seq(1, 1, 5, 6),
+                    )),
+                    output = Option(lbir.QTensor(
+                      dtype = Option(dtypeUInt3),
+                      shape = Seq(1, 2, 3, 4)
                     ))
                    )
 
@@ -132,7 +159,6 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
                                                                            actFn = (x: SInt, y:SInt) => x + y)).
                                                                            withAnnotations(
                                                                            Seq(VerilatorBackendAnnotation)){ dut =>
-      dut.clock.setTimeout(10000)
       dut.io.inStream.data.initSource()
       dut.io.inStream.data.setSourceClock(dut.clock)
       dut.io.outStream.data.initSink()
@@ -155,6 +181,44 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
       dut.clock.step()
       dut.io.inStream.last.poke(false.B)
       dut.io.outStream.data.expectDequeueSeq(Seq("b0000_0010100_0010010_0001110_0001100".U))
+    }
+  }
+
+  it should "compute a convolution with several kernels correctly" in {
+    test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, UInt](layer = testLayer2,
+                                                                           options = testOptions0,
+                                                                           genIn = UInt(3.W),
+                                                                           genWeights = SInt(2.W),
+                                                                           genThresh = SInt(2.W),
+                                                                           genOut = UInt(3.W),
+                                                                           mul = (x: UInt, y: SInt) => (x * y),
+                                                                           add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
+                                                                           actFn = reluFn)){ dut =>
+    /*                         |                  |
+     *  1   2   3   4  5  6    |   1   2   b = -1 | 0 0 0 2 7   7 7 7 7 7
+     *  7   6   5   4  3  2    |  -2  -1          | 7 7 7 2 0   7 7 7 7 7
+     *  1   0   1   2  3  4    |                  | 0 0 0 0 0   7 7 7 7 7
+     *  5   6   7   6  5  4    |   2   0   b = +1 | 7 7 7 7 7   7 7 7 7 7
+     *  3   2   1   0  1  2    |   0   2          |
+     *                         |                  |
+     *
+     */
+
+      dut.io.inStream.data.initSource()
+      dut.io.inStream.data.setSourceClock(dut.clock)
+      dut.io.outStream.data.initSink()
+      dut.io.outStream.data.setSinkClock(dut.clock)
+      dut.clock.step()
+      dut.io.inStream.data.enqueueSeq(Seq("b00_100_101_110_111_110_101_100_011_010_001".U,
+                                          "b00_110_101_100_011_010_001_000_001_010_011".U,
+                                          "b00_011_001_000_001_010_011_100_101_110_111".U))
+      dut.io.inStream.last.poke(true.B)
+      dut.clock.step()
+      dut.io.inStream.last.poke(false.B)
+      dut.io.outStream.data.expectDequeueSeq(Seq("b00_000_010_111_111_111_111_010_000_000_000".U,
+                                                 "b00_111_111_111_111_111_000_000_000_000_000".U,
+                                                 "b00_111_111_111_111_111_111_111_111_111_111".U,
+                                                 "b00_111_111_111_111_111_111_111_111_111_111".U))
     }
   }
 }

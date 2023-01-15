@@ -49,37 +49,29 @@ class ProcessingElementSequentialConv[
     add:        Vec[M] => A,
     actFn:      (A, A) => O,
   ) extends ProcessingElementSequential(layer, options) {
-  val kernelParamSize:     Int = layer.weights.get.dtype.get.bitwidth
-  val kernelParamsPerWord: Int = memWordWidth / kernelParamSize
-  val kernelNumParams:     Int = layer.weights.get.shape.reduce(_ * _)
-  val numKernels:          Int = layer.weights.get.shape(0)
-  val kernelMemDepth:      Int = math.ceil(kernelNumParams.toFloat / kernelParamsPerWord.toFloat).toInt
-  val kernelMem = Module(new ROM(depth = kernelMemDepth,
-                                 width = memWordWidth,
+
+  val cfg = ProcessingElementSequentialConvConfig(layer)
+
+  val kernelMem = Module(new ROM(depth = cfg.kernel.mem.depth, //kernelMemDepth,
+                                 width = MemWordSize.bits, //memWordWidth,
                                  memFile = genHexMemoryFile(layer.weights.get, layout = "CDHW")))
 
-  val actParamSize:     Int = layer.input.get.dtype.get.bitwidth
-  val actParamsPerWord: Int = memWordWidth / actParamSize
-  val actNumParams:     Int = layer.input.get.shape.reduce(_ * _)
-  val actMemDepth:      Int = math.ceil(actNumParams.toFloat / actParamsPerWord.toFloat).toInt
-  val actMem = Module(new SRAM(depth = actMemDepth, width = memWordWidth))
+  val actMem = Module(new SRAM(depth = cfg.input.mem.depth, //actMemDepth,
+                               width = MemWordSize.bits)) //memWordWidth))
 
-  val numOfKernels: Int = layer.weights.get.shape(0)
-  val kernelDepth:  Int = layer.weights.get.shape(1)
-  val kernelSize:   Int = layer.weights.get.shape(2)
-  val krf = Module(new KernelRegisterFile(kernelSize, kernelDepth, kernelParamSize))
+  val krf = Module(new KernelRegisterFile(kernelSize = cfg.kernel.width,
+                                          kernelDepth = cfg.kernel.numChannels,
+                                          kernelParamSize = cfg.kernel.paramBitwidth))
 
-  val actRegFile = Module(new RollingRegisterFile(kernelSize, kernelDepth, actParamSize))
+  val actRegFile = Module(new RollingRegisterFile(kernelSize = cfg.kernel.width,
+                                                  kernelDepth = cfg.kernel.numChannels,
+                                                  paramSize = cfg.input.paramBitwidth))
 
-  val resParamSize:     Int = layer.output.get.dtype.get.bitwidth
-  val resParamsPerWord: Int = memWordWidth / resParamSize
-  val resNumParams:     Int = layer.output.get.shape.reduce(_ * _)
-  val resultsPerKernel: Int = resNumParams / numKernels
-  val resMemDepth:      Int = math.ceil(resNumParams.toFloat / resParamsPerWord.toFloat).toInt
-  val resMem = Module(new SRAM(depth = resMemDepth, width = memWordWidth))
+  val resMem = Module(new SRAM(depth = cfg.result.mem.depth, //resMemDepth,
+                               width = MemWordSize.bits))
 
   val dynamicNeuron = Module(new DynamicNeuron[I, W, M, A, O](genIn = genIn,
-                                                              numSynaps = kernelNumParams,
+                                                              numSynaps = cfg.kernel.numKernelParams,
                                                               genWeights = genWeights,
                                                               genThresh = genThresh,
                                                               genOut = genOut,
@@ -87,29 +79,29 @@ class ProcessingElementSequentialConv[
                                                               add = add,
                                                               actFn = actFn))
 
-  val swu = Module(new SlidingWindowUnit(kernelSize = kernelSize,
-                                         kernelDepth = kernelDepth,
-                                         actWidth = layer.input.get.shape(2),
-                                         actHeight = layer.input.get.shape(3),
-                                         actParamSize = actParamSize))
+  val swu = Module(new SlidingWindowUnit(kernelSize = cfg.kernel.width,
+                                         kernelDepth = cfg.kernel.numChannels,
+                                         actWidth = cfg.input.width,
+                                         actHeight = cfg.input.height,
+                                         actParamSize = cfg.input.paramBitwidth))
 
-  val kRFLoader = Module(new KernelRFLoader(kernelSize = kernelSize,
-                                            kernelDepth = kernelDepth,
-                                            kernelParamSize = kernelParamSize,
-                                            numKernels = numKernels))
+  val kRFLoader = Module(new KernelRFLoader(kernelSize = cfg.kernel.width,
+                                            kernelDepth = cfg.kernel.numChannels,
+                                            kernelParamSize = cfg.kernel.paramBitwidth,
+                                            numKernels = cfg.kernel.numKernels))
 
-  val tas = Module(new ThreshAndShiftUnit[A](numKernels = numKernels,
+  val tas = Module(new ThreshAndShiftUnit[A](numKernels = cfg.kernel.numKernels,
                                              genThresh = genThresh,
                                              layer = layer))
 
   val rmb = Module(new ResultMemoryBuffer[O](genOut = genOut,
-                                             resultsPerKernel = resultsPerKernel,
-                                             resMemDepth = resMemDepth,
-                                             numKernels = numKernels))
+                                             resultsPerKernel = cfg.result.height * cfg.result.width,
+                                             resMemDepth = cfg.result.mem.depth,
+                                             numKernels = cfg.kernel.numKernels))
 
-  val ctrl = Module(new PeSeqConvController(numKernels = numKernels,
-                                            resMemDepth = resMemDepth,
-                                            actMemDepth = actMemDepth))
+  val ctrl = Module(new PeSeqConvController(numKernels = cfg.kernel.numKernels,
+                                            resMemDepth = cfg.result.mem.depth,
+                                            actMemDepth = cfg.input.mem.depth))
 
   kernelMem.io.rdEna  := kRFLoader.io.romRdEna
   kernelMem.io.rdAddr := kRFLoader.io.romRdAddr
