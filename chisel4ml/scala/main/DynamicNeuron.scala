@@ -17,24 +17,31 @@ package chisel4ml.sequential
 
 import _root_.chisel3._
 import _root_.chisel4ml.lbir._
+import _root_.chisel4ml.util.saturate
 
-class DynamicNeuron[I <: Bits, W <: Bits: WeightsProvider, M <: Bits, A <: Bits: ThreshProvider, O <: Bits](
+class DynamicNeuron[I <: Bits,
+                    W <: Bits: WeightsProvider,
+                    M <: Bits,
+                    S <: Bits: ThreshProvider,
+                    A <: Bits: ThreshProvider,
+                    O <: Bits](
     genIn:      I,
     numSynaps:  Int,
     genWeights: W,
+    genAccu:    S,
     genThresh:  A,
     genOut:     O,
     mul:        (I, W) => M,
-    add:        Vec[M] => A,
-    actFn:      (A, A) => O,
+    add:        Vec[M] => S,
+    actFn:      (S, A) => O,
   ) extends Module {
 
-  def shiftAndRound[A <: Bits: ThreshProvider](pAct: A, shift: UInt, shiftLeft: Bool, genThresh: A): A = {
-    val out = Wire(genThresh)
+  def shiftAndRound(pAct: S, shift: UInt, shiftLeft: Bool, genAccu: S): S = {
+    val out = Wire(genAccu)
     when(shiftLeft) {
-      out := (pAct << shift).asTypeOf(pAct)
+      out := saturate((pAct << shift).asUInt, out.getWidth).asTypeOf(out)
     }.otherwise {
-      out := ((pAct >> shift).asSInt + pAct(shift - 1.U).asSInt).asTypeOf(pAct)
+      out := saturate(((pAct >> shift).asSInt + pAct(shift - 1.U).asSInt).asUInt, out.getWidth).asTypeOf(out)
     }
     out
   }
@@ -53,6 +60,6 @@ class DynamicNeuron[I <: Bits, W <: Bits: WeightsProvider, M <: Bits, A <: Bits:
 
   val muls = VecInit((inVec.zip(inWeights)).map { case (a, b) => mul(a, b) })
   val pAct = add(muls)
-  val sAct = shiftAndRound(pAct, io.shift, io.shiftLeft, genThresh)
+  val sAct = shiftAndRound(pAct, io.shift, io.shiftLeft, genAccu)
   io.out := actFn(sAct, io.thresh)
 }

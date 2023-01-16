@@ -92,17 +92,19 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
                     ))
                    )
 
-  val dtypeUInt3 = lbir.Datatype(quantization=UNIFORM, bitwidth=3, signed=false, shift = Seq(0, 1), offset = Seq(0,0))
-  val dtypeSInt2 = lbir.Datatype(quantization=UNIFORM, bitwidth=2, signed=false, shift = Seq(0, 1), offset = Seq(0,0))
+  val dtypeUInt3 = lbir.Datatype(quantization=UNIFORM, bitwidth=3, signed=false, shift = Seq(0, 0), offset = Seq(0,0))
+  val dtypeSInt2 = lbir.Datatype(quantization=UNIFORM, bitwidth=2, signed=false, shift = Seq(0, 0), offset = Seq(0,0))
+  val dtypeSInt3 = lbir.Datatype(quantization=UNIFORM, bitwidth=3, signed=false, shift = Seq(0, 0), offset = Seq(0,0))
+
   val testLayer2 = lbir.Layer(
                     ltype = lbir.Layer.Type.CONV2D,
                     thresh = Option(lbir.QTensor(
-                      dtype = Option(dtypeSInt2),
+                      dtype = Option(dtypeSInt3),
                       shape = Seq(2),
-                      values = Seq(-1, 1)
+                      values = Seq(1, -1)
                     )),
                     weights = Option(lbir.QTensor(
-                      dtype = Option(dtypeSInt2),
+                      dtype = Option(dtypeSInt3),
                       shape = Seq(2, 1, 2, 2),
                       values = Seq( 1,  2,
                                    -2, -1,
@@ -122,10 +124,11 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
 
   behavior.of("ProcessingElementSequentialConv module")
   it should "compute the convolution correctly" in { // .withAnnotations(Seq(VerilatorBackendAnnotation))
-    test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt](layer = testLayer0,
+    test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, SInt](layer = testLayer0,
                                                                            options = testOptions0,
                                                                            genIn = UInt(4.W),
                                                                            genWeights = SInt(4.W),
+                                                                           genAccu = SInt(8.W),
                                                                            genThresh = SInt(4.W),
                                                                            genOut = SInt(4.W),
                                                                            mul = (x:UInt, w: SInt) => (x * w),
@@ -148,10 +151,11 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
   }
 
   it should "compute a convolution with several channels correctly" in {
-    test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt](layer = testLayer1,
+    test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, SInt](layer = testLayer1,
                                                                            options = testOptions0,
                                                                            genIn = UInt(6.W),
                                                                            genWeights = SInt(7.W),
+                                                                           genAccu = SInt(8.W),
                                                                            genThresh = SInt(7.W),
                                                                            genOut = SInt(7.W),
                                                                            mul = (x:UInt, w: SInt) => (x * w),
@@ -185,16 +189,17 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
   }
 
   it should "compute a convolution with several kernels correctly" in {
-    test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, UInt](layer = testLayer2,
+    test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, UInt](layer = testLayer2,
                                                                            options = testOptions0,
                                                                            genIn = UInt(3.W),
-                                                                           genWeights = SInt(2.W),
-                                                                           genThresh = SInt(2.W),
+                                                                           genWeights = SInt(3.W),
+                                                                           genAccu = SInt(6.W),
+                                                                           genThresh = SInt(3.W),
                                                                            genOut = UInt(3.W),
                                                                            mul = (x: UInt, y: SInt) => (x * y),
                                                                            add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
                                                                            actFn = reluFn)){ dut =>
-    /*                         |                  |
+    /*                         | (bias = -thresh) |
      *  1   2   3   4  5  6    |   1   2   b = -1 | 0 0 0 2 7   7 7 7 7 7
      *  7   6   5   4  3  2    |  -2  -1          | 7 7 7 2 0   7 7 7 7 7
      *  1   0   1   2  3  4    |                  | 0 0 0 0 0   7 7 7 7 7

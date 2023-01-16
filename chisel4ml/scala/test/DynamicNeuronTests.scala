@@ -29,10 +29,11 @@ class DynamicNeuronTests extends AnyFlatSpec with ChiselScalatestTester {
   behavior.of("DynamicNeuron module")
   it should "Compute the right value" in {
     test(
-      new DynamicNeuron[UInt, SInt, SInt, SInt, UInt](
+      new DynamicNeuron[UInt, SInt, SInt, SInt, SInt, UInt](
         genIn = UInt(4.W),
         numSynaps = 4,
         genWeights = SInt(4.W),
+        genAccu = SInt(4.W),
         genThresh = SInt(4.W),
         genOut = UInt(4.W),
         mul = (i: UInt, w: SInt) => i * w,
