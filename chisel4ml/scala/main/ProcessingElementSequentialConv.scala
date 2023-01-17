@@ -49,16 +49,15 @@ class ProcessingElementSequentialConv[
     genOut:     O,
     mul:        (I, W) => M,
     add:        Vec[M] => S,
-    actFn:      (S, A) => O,
+    actFn:      (S, A) => S,
   ) extends ProcessingElementSequential(layer, options) {
 
   val cfg = ProcessingElementSequentialConvConfig(layer)
 
-  val kernelMem = Module(new ROM(depth = cfg.kernel.mem.depth, //kernelMemDepth,
+  val kernelMem = Module(new ROM(depth = cfg.kernel.mem.depth + 1, //kernelMemDepth,
                                  width = MemWordSize.bits, //memWordWidth,
                                  memFile = genHexMemoryFile(layer.weights.get, layout = "CDHW")))
 
-  println(s"actMem depth: ${cfg.input.mem.depth}")
   val actMem = Module(new SRAM(depth = cfg.input.mem.depth, //actMemDepth,
                                width = MemWordSize.bits)) //memWordWidth))
 
@@ -134,7 +133,7 @@ class ProcessingElementSequentialConv[
 
   rmb.io.resultValid := RegNext(swu.io.imageValid)
   rmb.io.result      := dynamicNeuron.io.out
-  rmb.io.start       := ctrl.io.swuStart
+  rmb.io.start       := ctrl.io.rmbStart
 
   dynamicNeuron.io.in        := actRegFile.io.outData
   dynamicNeuron.io.weights   := krf.io.outData

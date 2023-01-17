@@ -38,7 +38,7 @@ class DynamicNeuronTests extends AnyFlatSpec with ChiselScalatestTester {
         genOut = UInt(4.W),
         mul = (i: UInt, w: SInt) => i * w,
         add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
-        actFn = reluFn,
+        actFn = reluFnS,
       ),
     ) { dut =>
 

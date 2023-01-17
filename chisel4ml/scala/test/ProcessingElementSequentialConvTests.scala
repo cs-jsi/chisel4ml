@@ -117,7 +117,7 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
                     )),
                     output = Option(lbir.QTensor(
                       dtype = Option(dtypeUInt3),
-                      shape = Seq(1, 2, 3, 4)
+                      shape = Seq(1, 2, 4, 5)
                     ))
                    )
 
@@ -198,7 +198,7 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
                                                                            genOut = UInt(3.W),
                                                                            mul = (x: UInt, y: SInt) => (x * y),
                                                                            add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
-                                                                           actFn = reluFn)){ dut =>
+                                                                           actFn = reluFnS)){ dut =>
     /*                         | (bias = -thresh) |
      *  1   2   3   4  5  6    |   1   2   b = -1 | 0 0 0 2 7   7 7 7 7 7
      *  7   6   5   4  3  2    |  -2  -1          | 7 7 7 2 0   7 7 7 7 7
@@ -216,14 +216,15 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
       dut.clock.step()
       dut.io.inStream.data.enqueueSeq(Seq("b00_100_101_110_111_110_101_100_011_010_001".U,
                                           "b00_110_101_100_011_010_001_000_001_010_011".U,
-                                          "b00_011_001_000_001_010_011_100_101_110_111".U))
+                                          "b00_010_001_000_001_010_011_100_101_110_111".U))
       dut.io.inStream.last.poke(true.B)
       dut.clock.step()
       dut.io.inStream.last.poke(false.B)
-      dut.io.outStream.data.expectDequeueSeq(Seq("b00_000_010_111_111_111_111_010_000_000_000".U,
-                                                 "b00_111_111_111_111_111_000_000_000_000_000".U,
-                                                 "b00_111_111_111_111_111_111_111_111_111_111".U,
-                                                 "b00_111_111_111_111_111_111_111_111_111_111".U))
+      dut.io.outStream.data.expectDequeueSeq(Seq("b00_000_010_111_111_111_111_010_000_000_000".U,  // 0x02FFF400
+                                                 "b00_111_111_111_111_111_000_000_000_000_000".U,  // 0x3FFF8000
+                                                 "b00_111_111_111_111_111_111_111_111_111_111".U,  // 0x3FFFFFFF
+                                                 "b00_111_111_111_111_111_111_111_111_111_111".U)) // 0x3FFFFFFF
+      dut.clock.step(10)
     }
   }
 }

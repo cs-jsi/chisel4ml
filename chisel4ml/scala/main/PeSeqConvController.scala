@@ -37,6 +37,8 @@ class PeSeqConvController(numKernels: Int,
     val krfKernelNum  = Output(UInt(reqWidth(numKernels).W))
     val krfLoadKernel = Output(Bool())
 
+    val rmbStart      = Output(Bool())
+
     // input stream
     val inStreamReady = Output(Bool())
     val inStreamValid = Input(Bool())
@@ -57,7 +59,8 @@ class PeSeqConvController(numKernels: Int,
     val sLOADKERNEL  = Value(2.U)
     val sCOMP        = Value(3.U)
     val sWAITWRITE   = Value(4.U)
-    val sSENDDATA    = Value(5.U)
+    val sWAITWRITE2  = Value(5.U)
+    val sSENDDATA    = Value(6.U)
   }
 
   val kernelCnt = RegInit(0.U(reqWidth(numKernels + 1).W))
@@ -75,9 +78,15 @@ class PeSeqConvController(numKernels: Int,
     nstate := ctrlState.sLOADKERNEL
   }.elsewhen (state === ctrlState.sLOADKERNEL && io.krfReady) {
     nstate := ctrlState.sCOMP
-  }.elsewhen (state === ctrlState.sCOMP && kernelCnt === (numKernels - 1).U && RegNext(io.swuEnd)) {
-    nstate := ctrlState.sWAITWRITE
-  }.elsewhen (state === ctrlState.sWAITWRITE) {
+  }.elsewhen (state === ctrlState.sCOMP && io.swuEnd) {
+    when (kernelCnt === numKernels.U) {
+      nstate := ctrlState.sWAITWRITE
+    }.otherwise {
+      nstate := ctrlState.sLOADKERNEL
+    }
+  }.elsewhen (state === ctrlState.sWAITWRITE) { // we wait two cycle for results to be written to resMem
+    nstate := ctrlState.sWAITWRITE2
+  }.elsewhen (state === ctrlState.sWAITWRITE2) {
     nstate := ctrlState.sSENDDATA
   }.elsewhen (state === ctrlState.sSENDDATA && resMemCnt === resMemDepth.U) {
     nstate := ctrlState.sWAITFORDATA
@@ -85,9 +94,9 @@ class PeSeqConvController(numKernels: Int,
   state := nstate
 
 
-  when (state === ctrlState.sLOADKERNEL) {
+  when (state === ctrlState.sWAITFORDATA) {
     kernelCnt := 0.U
-  }.elsewhen (RegNext(io.swuEnd)) {
+  }.elsewhen (io.krfReady) {
     kernelCnt := kernelCnt + 1.U
   }
 
@@ -99,22 +108,28 @@ class PeSeqConvController(numKernels: Int,
   }
 
   resMemCnt := resMemCnt
-  when (state === ctrlState.sCOMP) {
+  when (state === ctrlState.sLOADINPACT) {
     resMemCnt := 0.U
-  }.elsewhen (io.outStreamReady && io.outStreamValid) {
+  }.elsewhen (state === ctrlState.sSENDDATA ||
+              nstate === ctrlState.sSENDDATA) {
     resMemCnt := resMemCnt + 1.U
   }
 
-  io.swuStart := (state === ctrlState.sCOMP) && RegNext(state === ctrlState.sLOADKERNEL)
+  io.swuStart := (((state === ctrlState.sLOADKERNEL) && io.krfReady) ||
+                   (state === ctrlState.sCOMP) && RegNext(RegNext(io.swuEnd)))
 
   io.krfKernelNum  := kernelCnt
-  io.krfLoadKernel := (state === ctrlState.sLOADKERNEL) && RegNext(state === ctrlState.sLOADINPACT)
+  io.krfLoadKernel := RegNext((RegNext(io.swuEnd) ||
+                              ((state === ctrlState.sLOADKERNEL) &&
+                               RegNext(state === ctrlState.sLOADINPACT))))
 
   io.inStreamReady := actMemCnt =/= actMemDepth.U
   io.actMemAddr    := actMemCnt
 
-  io.outStreamValid := RegNext((resMemCnt =/= resMemDepth.U) && (state === ctrlState.sSENDDATA))
-  io.outStreamLast  := RegNext((resMemCnt === (resMemDepth - 1).U) && (state === ctrlState.sSENDDATA))
+  io.outStreamValid := (state === ctrlState.sSENDDATA)
+  io.outStreamLast  := ((resMemCnt === resMemDepth.U) && (state === ctrlState.sSENDDATA))
   io.resMemAddr     := resMemCnt
   io.resMemEna      := (state === ctrlState.sSENDDATA)
+
+  io.rmbStart := (state === ctrlState.sWAITFORDATA) && (nstate === ctrlState.sLOADINPACT)
 }

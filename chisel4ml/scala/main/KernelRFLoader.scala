@@ -52,7 +52,7 @@ class KernelRFLoader(
 
     // interface to the kernel ROM
     val romRdEna  = Output(Bool())
-    val romRdAddr = Output(UInt(reqWidth(kernelMemDepthWords).W))
+    val romRdAddr = Output(UInt(reqWidth(kernelMemDepthWords+1).W))
     val romRdData = Input(UInt(memWordWidth.W))
 
     // control interface
@@ -79,8 +79,8 @@ class KernelRFLoader(
   val chCnt  = RegInit(0.U(reqWidth(kernelDepth).W))
 
   val elemBitOffset = WireInit(0.U(reqWidth(memWordWidth).W))
-  val ramAddr       = RegInit(0.U(reqWidth(kernelMemDepthWords).W))
-  val nramAddr      = WireInit(0.U(reqWidth(kernelMemDepthWords).W))
+  val ramAddr       = RegInit(0.U(reqWidth(kernelMemDepthWords+1).W))
+  val nramAddr      = WireInit(0.U(reqWidth(kernelMemDepthWords+1).W))
   val wordElemCnt   = RegInit(0.U(reqWidth(kernelParamsPerWord).W))
   val nwordElemCnt  = WireInit(0.U(reqWidth(kernelParamsPerWord).W))
   val totalElemCnt  = RegInit(0.U(reqWidth(kernelNumOfElements).W))
@@ -116,7 +116,7 @@ class KernelRFLoader(
                           Seq.tabulate(numKernels)(_ * wordsPerKernel).zipWithIndex.map(x => (x._2.U -> x._1.U)))
     nwordElemCnt := 0.U
     ntotalElemCnt := 0.U
-  }.otherwise {
+  }.elsewhen (state === krfState.sFILLRF) {
     when(wordElemCnt === (kernelParamsPerWord - 1).U) {
       nramAddr := ramAddr + 1.U
       nwordElemCnt := 0.U

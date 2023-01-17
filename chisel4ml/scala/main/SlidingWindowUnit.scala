@@ -328,7 +328,9 @@ class SlidingWindowUnit(
   }.otherwise {
     nbaseBitAddrMod := nbaseBitAddr
   }
-  when (!stall && (updateBase1 || updateBase2)) {
+  when (io.start && !RegNext(io.start)) {
+    baseBitAddr := nbaseBitAddr
+  }.elsewhen (!stall && (updateBase1 || updateBase2)) {
     baseBitAddr := nbaseBitAddrMod
     horizCnt    := nhorizCnt
     vertiCnt    := nvertiCnt
@@ -336,8 +338,10 @@ class SlidingWindowUnit(
 
   ////// ADDRESS CALCULATIONS //////
   nbitAddr := bitAddr
-  when((allCntMax && state === swuState.sROWMODE && !stall) ||
-       (rowAndChCntMax && state === swuState.sCOLMODE && !stall) ) {
+  when(io.start && !RegNext(io.start)) {
+    nbitAddr := 0.U
+  }.elsewhen((allCntMax && state === swuState.sROWMODE && !stall) ||
+             (rowAndChCntMax && state === swuState.sCOLMODE && !stall) ) {
     nbitAddr := baseBitAddr
   }.elsewhen((state === swuState.sROWMODE || state === swuState.sCOLMODE) && !stall) {
     nbitAddr := bitAddr + addConstant

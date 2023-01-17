@@ -78,6 +78,7 @@ package object util {
   def signFn(act: UInt, thresh: UInt):    Bool = act >= thresh
   def signFn(act: SInt, thresh: SInt):    Bool = act >= thresh
   def reluFn(act: SInt, thresh: SInt):    UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
+  def reluFnS(act: SInt, thresh: SInt):   SInt = Mux((act - thresh) > 0.S, (act - thresh), 0.S)
   def linFn(act: SInt, thresh: SInt):     SInt = act - thresh
   def noSaturate(x: Bool, bitwidth: Int): Bool = x
   def noSaturate(x: SInt, bitwidth: Int): SInt = Mux(

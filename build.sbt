@@ -48,7 +48,7 @@ lazy val root = (project in file("."))
     Compile / doc / scalacOptions := Seq("-groups", "-implicits"),
     libraryDependencies ++= Seq(
       "edu.berkeley.cs"            %% "chisel3"              % chiselVersion,
-      "edu.berkeley.cs"            %% "chiseltest"           % "0.5.4",
+      "edu.berkeley.cs"            %% "chiseltest"           % "0.5.6",
       "com.thesamet.scalapb"       %% "scalapb-runtime"      % scalapb.compiler.Version.scalapbVersion % "protobuf",
       "io.grpc"                    %  "grpc-netty"           % scalapb.compiler.Version.grpcJavaVersion,
       "com.thesamet.scalapb"       %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,

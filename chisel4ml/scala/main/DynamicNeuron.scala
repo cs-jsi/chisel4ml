@@ -33,17 +33,17 @@ class DynamicNeuron[I <: Bits,
     genOut:     O,
     mul:        (I, W) => M,
     add:        Vec[M] => S,
-    actFn:      (S, A) => O,
+    actFn:      (S, A) => S,
   ) extends Module {
 
   def shiftAndRound(pAct: S, shift: UInt, shiftLeft: Bool, genAccu: S): S = {
-    val out = Wire(genAccu)
+    val sout = Wire(genAccu)
     when(shiftLeft) {
-      out := saturate((pAct << shift).asUInt, out.getWidth).asTypeOf(out)
+      sout := (pAct << shift).asUInt.asTypeOf(sout)
     }.otherwise {
-      out := saturate(((pAct >> shift).asSInt + pAct(shift - 1.U).asSInt).asUInt, out.getWidth).asTypeOf(out)
+      sout := ((pAct >> shift).asSInt + pAct(shift - 1.U).asSInt).asUInt.asTypeOf(sout)
     }
-    out
+    sout
   }
 
   val io = IO(new Bundle {
@@ -61,5 +61,5 @@ class DynamicNeuron[I <: Bits,
   val muls = VecInit((inVec.zip(inWeights)).map { case (a, b) => mul(a, b) })
   val pAct = add(muls)
   val sAct = shiftAndRound(pAct, io.shift, io.shiftLeft, genAccu)
-  io.out := actFn(sAct, io.thresh)
+  io.out := saturate(actFn(sAct, io.thresh).asUInt, genOut.getWidth).asTypeOf(io.out)
 }

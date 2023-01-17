@@ -38,7 +38,7 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
 
     // result memory interface
     val resRamEn   = Output(Bool())
-    val resRamAddr = Output(UInt(resMemDepth.W))
+    val resRamAddr = Output(UInt(reqWidth(resMemDepth).W))
     val resRamData = Output(UInt(memWordWidth.W))
 
     // control inerface
@@ -55,7 +55,7 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
   val kernelCnt       = RegInit(0.U(reqWidth(numKernels).W))
 
   val dataBuf = RegInit(VecInit(Seq.fill(resultsPerWord)(0.U(genOut.getWidth.W))))
-  val ramAddr = RegInit(0.U(resMemDepth.W))
+  val ramAddr = RegInit(0.U(reqWidth(resMemDepth).W))
 
   val state = RegInit(rmbState.sWAIT)
 
@@ -80,7 +80,7 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
         kernelCnt       := kernelCnt + 1.U
         resPerKernelCnt := 0.U
         resPerWordCnt   := 0.U
-      }.elsewhen (resPerWordCnt === resultsPerWord.U) {
+      }.elsewhen (resPerWordCnt === (resultsPerWord - 1).U) {
         resPerWordCnt := 0.U
       }.otherwise {
         resPerWordCnt := resPerWordCnt + 1.U
@@ -91,8 +91,7 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
   ramAddr := ramAddr
   when(io.start) {
     ramAddr := 0.U
-  }.elsewhen(resPerKernelCnt === resultsPerKernel.U ||
-             resPerWordCnt === resultsPerWord.U) {
+  }.elsewhen(io.resRamEn) {
     ramAddr := ramAddr + 1.U
   }
 
@@ -102,9 +101,10 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
     dataBuf(resPerWordCnt) := io.result.asUInt
   }
 
-  io.resRamEn   := (RegNext(state === rmbState.sCOMP) &&
-                   ((resPerWordCnt === resultsPerWord.U) || resPerKernelCnt === resultsPerKernel.U) &&
-                   RegNext(io.resultValid))
+  io.resRamEn   := RegNext((RegNext(state === rmbState.sCOMP) &&
+                           ((resPerWordCnt === (resultsPerWord - 1).U) ||
+                            resPerKernelCnt === (resultsPerKernel - 1).U) &&
+                            io.resultValid))
   io.resRamAddr := ramAddr
   io.resRamData := dataBuf.asUInt
 }

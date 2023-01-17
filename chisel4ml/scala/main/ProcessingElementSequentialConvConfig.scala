@@ -44,18 +44,26 @@ case class TensorConfig(qtensor: lbir.QTensor) {
   val numParams:       Int = qtensor.shape.reduce(_ * _)
   val numKernelParams: Int = numChannels * height * width
   val paramBitwidth:   Int = qtensor.dtype.get.bitwidth
-  val mem                  = MemoryConfig(qtensor, numParams = numParams, paramBitwidth = paramBitwidth)
+  val mem                  = MemoryConfig(qtensor,
+                                          numKernelParams = numKernelParams,
+                                          paramBitwidth = paramBitwidth,
+                                          numKernels = numKernels)
 }
 
 case class ThreshConfig(qtensor: lbir.QTensor) {
-  val numParams:     Int = qtensor.shape.reduce(_ * _)
-  val paramBitwidth: Int = qtensor.dtype.get.bitwidth
-  val mem                = MemoryConfig(qtensor, numParams = numParams, paramBitwidth = paramBitwidth)
+  val numParams:       Int = qtensor.shape.reduce(_ * _)
+  val numKernels:      Int = qtensor.shape(0)
+  val numKernelParams: Int = numParams / numKernels
+  val paramBitwidth:   Int = qtensor.dtype.get.bitwidth
+  val mem                  = MemoryConfig(qtensor,
+                                          numKernelParams = numKernelParams,
+                                          paramBitwidth = paramBitwidth,
+                                          numKernels = numKernels)
 }
 
-case class MemoryConfig(qtensor: lbir.QTensor, numParams: Int, paramBitwidth: Int) {
+case class MemoryConfig(qtensor: lbir.QTensor, numKernelParams: Int, paramBitwidth: Int, numKernels: Int) {
   val paramsPerWord: Int = MemWordSize.bits / paramBitwidth
-  val depth:         Int = math.ceil(numParams.toFloat / paramsPerWord.toFloat).toInt
+  val depth:         Int = math.ceil(numKernelParams.toFloat / paramsPerWord.toFloat).toInt * numKernels
 }
 
 case object MemWordSize {
