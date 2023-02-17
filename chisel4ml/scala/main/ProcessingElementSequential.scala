@@ -25,6 +25,7 @@ import chisel3._
 
 abstract class ProcessingElementSequential(layer: Layer, options: Options) extends Module {
   val logger = LoggerFactory.getLogger(this.getClass())
+  val cfg = ProcessingElementSequentialConvConfig(layer)
 
   val inputStreamWidth  = 32
   val outputStreamWidth = 32
@@ -39,6 +40,9 @@ abstract class ProcessingElementSequential(layer: Layer, options: Options) exten
   val io = IO(new Bundle {
     val inStream  = Flipped(new AXIStream(inputStreamWidth))
     val outStream = new AXIStream(outputStreamWidth)
+    val kernelMemWrData = Input(UInt(memWordWidth.W))
+    val kernelMemWrEna  = Input(Bool())
+    val kernelMemWrAddr = Input(UInt(reqWidth(cfg.kernel.mem.depth + 1).W))
   })
 
   logger.info(s"""Created new ProcessingElementSequential with inSizeBits: $inSizeBits,

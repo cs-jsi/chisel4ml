@@ -16,7 +16,7 @@
 package chisel4ml.sequential
 
 import _root_.chisel4ml.lbir._
-import _root_.chisel4ml.memory.{ROM, SRAM}
+import _root_.chisel4ml.memory.{SRAMInit, SRAM}
 import _root_.chisel4ml.util._
 import _root_.lbir.Layer
 import _root_.scala.math
@@ -52,11 +52,11 @@ class ProcessingElementSequentialConv[
     actFn:      (S, A) => S,
   ) extends ProcessingElementSequential(layer, options) {
 
-  val cfg = ProcessingElementSequentialConvConfig(layer)
+  //val cfg = ProcessingElementSequentialConvConfig(layer)
 
-  val kernelMem = Module(new ROM(depth = cfg.kernel.mem.depth + 1, //kernelMemDepth,
-                                 width = MemWordSize.bits, //memWordWidth,
-                                 memFile = genHexMemoryFile(layer.weights.get, layout = "CDHW")))
+  val kernelMem = Module(new SRAMInit(depth = cfg.kernel.mem.depth + 1, //kernelMemDepth,
+                                      width = MemWordSize.bits, //memWordWidth,
+                                      memFile = genHexMemoryFile(layer.weights.get, layout = "CDHW")))
 
   val actMem = Module(new SRAM(depth = cfg.input.mem.depth, //actMemDepth,
                                width = MemWordSize.bits)) //memWordWidth))
@@ -109,6 +109,10 @@ class ProcessingElementSequentialConv[
   kernelMem.io.rdEna  := kRFLoader.io.romRdEna
   kernelMem.io.rdAddr := kRFLoader.io.romRdAddr
   kRFLoader.io.romRdData := kernelMem.io.rdData
+
+  kernelMem.io.wrEna  := io.kernelMemWrEna
+  kernelMem.io.wrAddr := io.kernelMemWrAddr
+  kernelMem.io.wrData := io.kernelMemWrData
 
   actMem.io.rdEna  := swu.io.actRdEna
   actMem.io.rdAddr := swu.io.actRdAddr

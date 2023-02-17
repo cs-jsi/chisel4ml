@@ -227,4 +227,90 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
       dut.clock.step(10)
     }
   }
+
+  val rand = new scala.util.Random(seed = 42)
+  Nd4j.getRandom().setSeed(42)
+
+  val imageWidth=28
+  val imageHeight=28
+  val imageDepth=3
+  val numKernels=16
+  val kernelSize=3
+  for (kernelBW   <- 2 to 8;
+       actInpBW   <- 2 to 8) {
+    val kernelNormal = Nd4j.rand(Array(numKernels, imageDepth, kernelSize, kernelSize))
+    val kernelUnsign = Transforms.round(kernelNormal.mul(scala.math.pow(2, kernelBW)-1))
+    val kernel       = Transforms.round(kernelUnsign.sub(scala.math.pow(2, kernelBW-1)))
+    val dtypeKernel = lbir.Datatype(quantization = UNIFORM,
+                                    bitwidth     = kernelBW,
+                                    signed       = true,
+                                    shift        = Seq.fill(numKernels)(0),
+                                    offset       = Seq.fill(numKernels)(0))
+    val dtypeInOut  = lbir.Datatype(quantization = UNIFORM,
+                                    bitwidth     = actInpBW,
+                                    signed       = false,
+                                    shift        = Seq.fill(numKernels)(0),
+                                    offset       = Seq.fill(numKernels)(0))
+    val dtypeThresh = lbir.Datatype(quantization = UNIFORM,
+                                    bitwidth     = 8,
+                                    signed       = true,
+                                    shift        = Seq.fill(numKernels)(0),
+                                    offset       = Seq.fill(numKernels)(0))
+
+    val testLayerAuto = lbir.Layer(ltype = lbir.Layer.Type.CONV2D,
+                                   thresh = Option(lbir.QTensor(dtype = Option(dtypeThresh),
+                                                                shape = Seq(numKernels),
+                                                                values = Seq.tabulate(numKernels)(_.toFloat) // 0, 1...
+                                   )),
+                                   weights = Option(lbir.QTensor(dtype = Option(dtypeKernel),
+                                                                 shape = Seq(numKernels,
+                                                                             imageDepth,
+                                                                             kernelSize,
+                                                                             kernelSize),
+                                                                 values = arrToSeq(kernel)
+                                   )),
+                                   input = Option(lbir.QTensor(dtype = Option(dtypeInOut),
+                                                               shape = Seq(1,
+                                                                           imageDepth,
+                                                                           imageHeight,
+                                                                           imageWidth),
+                                   )),
+                                   output = Option(lbir.QTensor(dtype = Option(dtypeInOut),
+                                                                shape = Seq(1,
+                                                                            numKernels,
+                                                                            imageHeight,
+                                                                            imageWidth)
+                                   ))
+                   )
+    it should s"""compute convolution for automatic test parameters: imageWidth=$imageWidth, imageHeight=$imageHeight,
+                 |imageDepth=$imageDepth, kernelSize=$kernelSize, numKernels=$numKernels, kernelBW=$kernelBW, actInpBw=
+                 |$actInpBW""".stripMargin.replaceAll("\n","") in {
+    test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, UInt](layer = testLayerAuto,
+                                                                           options = testOptions0,
+                                                                           genIn = UInt(actInpBW.W),
+                                                                           genWeights = SInt(kernelBW.W),
+                                                                           genAccu = SInt((kernelBW + actInpBW).W),
+                                                                           genThresh = SInt(8.W),
+                                                                           genOut = UInt(actInpBW.W),
+                                                                           mul = (x: UInt, y: SInt) => (x * y),
+                                                                           add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
+                                                                           actFn = reluFnS)).withAnnotations(
+                                                                           Seq(VerilatorBackendAnnotation)){ dut =>
+      dut.io.inStream.data.initSource()
+      dut.io.inStream.data.setSourceClock(dut.clock)
+      dut.io.outStream.data.initSink()
+      dut.io.outStream.data.setSinkClock(dut.clock)
+      dut.clock.step(50)
+    }
+    }
+    }
+
+  def arrToSeq(arr: INDArray): Seq[Float] = {
+    var mySeq: Seq[Float] = Seq()
+    val flatArr = Nd4j.toFlattened(arr)
+    for (ind <- 0 until flatArr.length()) {
+      mySeq = mySeq :+ flatArr.getFloat(ind)
+    }
+    mySeq
+  }
 }
