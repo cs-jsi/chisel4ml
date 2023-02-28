@@ -24,6 +24,7 @@ import _root_.services._
 
 import _root_.org.slf4j.LoggerFactory
 import chisel3._
+import firrtl.transforms.NoCircuitDedupAnnotation
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -135,7 +136,8 @@ class ProcessingElementSequentialConvTests extends AnyFlatSpec with ChiselScalat
                                                                            add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
                                                                            actFn = (x: SInt, y: SInt) => x)).
                                                                            withAnnotations(
-                                                                           Seq(VerilatorBackendAnnotation)) { dut =>
+                                                                           Seq(VerilatorBackendAnnotation,
+                                                                               NoCircuitDedupAnnotation)) { dut =>
       dut.io.inStream.data.initSource()
       dut.io.inStream.data.setSourceClock(dut.clock)
       dut.io.outStream.data.initSink()
