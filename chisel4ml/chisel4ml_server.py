@@ -9,15 +9,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import atexit
-import concurrent.futures
 import logging
 import os
 import shutil
 import signal
 import subprocess
 import tempfile
-from concurrent.futures import ThreadPoolExecutor
+import time
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+from threading import Event
+from threading import Thread
 
 import grpc
 
@@ -36,21 +38,17 @@ class Chisel4mlServer:
     """
 
     def __init__(self, command, temp_dir, host: str = "localhost", port: int = 50051):
-        self._server_addr = host + ":" + str(port)
-        self._channel = None
         self._stub = None
-
+        self.error = False
         # We start a new instance of the server. It will check if there is an instance
         # already running, and if so will simply close itself.
         self._log_file = open(os.path.join(temp_dir, "chisel4ml_server.log"), "w+")
-        self.task = subprocess.Popen(
-            command + [temp_dir], stdout=self._log_file, stderr=self._log_file
+        self._channel_initialized = Event()
+        self.scala_thread = Thread(
+            target=self.scala_thread_imp,
+            args=(command, host + ":" + str(port), temp_dir),
         )
-        log.info(f"Started task with pid: {self.task.pid}.")
-
-        # We start a process to create the grpc stub (this can take some time).
-        self._pool = ThreadPoolExecutor(1)
-        self._future = self._pool.submit(self.create_grpc_channel)
+        self.scala_thread.start()
 
         # Here we make sure that the chisel4ml server is shut down.
         atexit.register(self.stop)
@@ -59,41 +57,47 @@ class Chisel4mlServer:
         )  # This ensures kill pid also close the server.
         signal.signal(signal.SIGINT, self.stop)
 
-    @property
-    def stdout(self):
-        return self.task.stdout.read()
-
-    @property
-    def stderr(self):
-        return self.task.stderr.read()
-
-    def create_grpc_channel(self):
-        self._channel = grpc.insecure_channel(self._server_addr)
-        self._stub = services_grpc.Chisel4mlServiceStub(self._channel)
+    def scala_thread_imp(self, command, server_addr, temp_dir):
+        channel = grpc.insecure_channel(server_addr)
+        self._stub = services_grpc.Chisel4mlServiceStub(channel)
         log.info("Created grpc channel.")
+        self._channel_initialized.set()
+        ret = subprocess.run(
+            command + [temp_dir], stdout=self._log_file, stderr=self._log_file
+        )
+        if ret != 0:
+            self.error = True
+            raise RuntimeError("Chisel4ml server returned and error.")
 
     def send_grpc_msg(self, msg, timeout=60):
-        concurrent.futures.wait([self._future])
+        self._channel_initialized.wait(timeout=10)
+        if self.error:
+            raise RuntimeError(
+                f"Something is wrong with the chisel4ml server. Check "
+                f"{self._log_file} for details."
+            )
         if isinstance(msg, services.GenerateCircuitParams):
-            ret = self._stub.GenerateCircuit(msg, wait_for_ready=True, timeout=timeout)
+            fn = (
+                self._stub.GenerateCircuit
+            )  # (msg, wait_for_ready=True, timeout=timeout)
         elif isinstance(msg, services.RunSimulationParams):
-            ret = self._stub.RunSimulation(msg, wait_for_ready=True, timeout=timeout)
+            fn = self._stub.RunSimulation  # (msg, wait_for_ready=True, timeout=timeout)
         else:
             raise ValueError(f"Invalid msg to send via grpc. Message is of type {msg}.")
-
-        return ret
-
-    def is_running(self):
-        if self.task is None:
-            return False
-        else:
-            return self.task.poll() is None
+        with ProcessPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(fn, msg, wait_for_ready=True, timeout=timeout)
+            while not future.done():
+                time.sleep(1)
+                if self.error:
+                    raise RuntimeError(
+                        f"The chisel4ml server crashed. Check {self._log_file} for "
+                        f"details."
+                    )
+        return future.result()
 
     def stop(self):
-        log.info(f"Stoping task with pid: {self.task.pid}.")
-        self._channel.close()
         self._log_file.close()
-        self.task.terminate()
+        self.scala_thread.join()
 
 
 def start_server_once():
