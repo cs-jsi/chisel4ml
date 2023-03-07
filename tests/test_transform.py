@@ -39,7 +39,7 @@ def test_sint_simple_conv_model_transform(sint_simple_conv_model):
                         shift=[0] * 9,
                         offset=[0],
                     ),
-                    shape=[3, 3, 1],
+                    shape=[1, 3, 3, 1],
                 ),
                 output=lbir.QTensor(
                     dtype=lbir.Datatype(
@@ -49,11 +49,12 @@ def test_sint_simple_conv_model_transform(sint_simple_conv_model):
                         shift=[0] * 8,
                         offset=[0],
                     ),
-                    shape=[2, 2, 2],
+                    shape=[1, 2, 2, 2],
                 ),
                 activation=lbir.Layer.Activation.RELU,
             ),
             lbir.Layer(
+                ltype=lbir.Layer.Type.DENSE,
                 thresh=lbir.QTensor(
                     dtype=lbir.Datatype(
                         quantization=lbir.Datatype.QuantizationType.UNIFORM,
@@ -73,7 +74,7 @@ def test_sint_simple_conv_model_transform(sint_simple_conv_model):
                         shift=[-1],
                         offset=[0],
                     ),
-                    shape=[8, 1],
+                    shape=[1, 1, 8, 1],
                     values=[-1, 4, -3, -1, 2, 3, -3, -2],
                 ),
                 input=lbir.QTensor(
@@ -84,7 +85,7 @@ def test_sint_simple_conv_model_transform(sint_simple_conv_model):
                         shift=[0] * 8,
                         offset=[0],
                     ),
-                    shape=[8, 1],
+                    shape=[1, 1, 1, 8],
                 ),
                 output=lbir.QTensor(
                     dtype=lbir.Datatype(
@@ -94,13 +95,13 @@ def test_sint_simple_conv_model_transform(sint_simple_conv_model):
                         shift=[0],
                         offset=[0],
                     ),
-                    shape=[1],
+                    shape=[1, 1, 1, 1],
                 ),
                 activation=lbir.Layer.Activation.NO_ACTIVATION,
             ),
         ],
     )
-    assert lbir_model == lbir_ref
+    assert lbir_model == lbir_ref, f"{lbir_model} \n\n\n {lbir_ref}"
 
 
 def test_sint_simple_model_transform(sint_simple_model):
@@ -119,17 +120,17 @@ def test_sint_simple_model_transform(sint_simple_model):
                         offset=[0],
                     ),
                     shape=[4],
-                    values=[-1, -2, -0, -1],
+                    values=[-1, -2, -0.0, -1],
                 ),
                 weights=lbir.QTensor(
                     dtype=lbir.Datatype(
                         quantization=lbir.Datatype.QuantizationType.UNIFORM,
                         signed=True,
                         bitwidth=4,
-                        shift=[-1, -2, 0, -2],
+                        shift=[-1, -2, -0, -2],
                         offset=[0],
                     ),
-                    shape=[3, 4],
+                    shape=[1, 1, 3, 4],
                     values=[1, 2, 3, 4, -4, -3, -2, -1, 2, -1, 1, 1],
                 ),
                 input=lbir.QTensor(
@@ -140,7 +141,7 @@ def test_sint_simple_model_transform(sint_simple_model):
                         shift=[0] * 3,
                         offset=[0],
                     ),
-                    shape=[3],
+                    shape=[1, 1, 1, 3],
                 ),
                 output=lbir.QTensor(
                     dtype=lbir.Datatype(
@@ -150,7 +151,7 @@ def test_sint_simple_model_transform(sint_simple_model):
                         shift=[0] * 4,
                         offset=[0],
                     ),
-                    shape=[4],
+                    shape=[1, 1, 1, 4],
                 ),
                 activation=lbir.Layer.Activation.RELU,
             ),
@@ -175,7 +176,7 @@ def test_sint_simple_model_transform(sint_simple_model):
                         shift=[-3],
                         offset=[0],
                     ),
-                    shape=[4, 1],
+                    shape=[1, 1, 4, 1],
                     values=[-1, 4, -3, -1],
                 ),
                 input=lbir.QTensor(
@@ -186,7 +187,7 @@ def test_sint_simple_model_transform(sint_simple_model):
                         shift=[0] * 4,
                         offset=[0],
                     ),
-                    shape=[4],
+                    shape=[1, 1, 1, 4],
                 ),
                 output=lbir.QTensor(
                     dtype=lbir.Datatype(
@@ -196,13 +197,13 @@ def test_sint_simple_model_transform(sint_simple_model):
                         shift=[0],
                         offset=[0],
                     ),
-                    shape=[1],
+                    shape=[1, 1, 1, 1],
                 ),
                 activation=lbir.Layer.Activation.NO_ACTIVATION,
             ),
         ],
     )
-    assert lbir_model == lbir_ref
+    assert lbir_model == lbir_ref, f"{lbir_model} \n\n\n {lbir_ref}"
 
 
 def test_bnn_simple_model_transform(bnn_simple_model):
@@ -231,7 +232,7 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                         shift=[0] * 4,
                         offset=[0],
                     ),
-                    shape=[3, 4],
+                    shape=[1, 1, 3, 4],
                     values=[1, -1, -1, 1, -1, 1, 1, -1, -1, -1, 1, 1],
                 ),
                 input=lbir.QTensor(
@@ -242,7 +243,7 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                         shift=[0] * 3,
                         offset=[0],
                     ),
-                    shape=[3],
+                    shape=[1, 1, 1, 3],
                 ),
                 output=lbir.QTensor(
                     dtype=lbir.Datatype(
@@ -252,7 +253,7 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                         shift=[0] * 4,
                         offset=[0],
                     ),
-                    shape=[4],
+                    shape=[1, 1, 1, 4],
                 ),
                 activation=lbir.Layer.Activation.BINARY_SIGN,
             ),
@@ -277,7 +278,7 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                         shift=[0],
                         offset=[0],
                     ),
-                    shape=[4, 1],
+                    shape=[1, 1, 4, 1],
                     values=[-1, 1, -1, -1],
                 ),
                 input=lbir.QTensor(
@@ -288,7 +289,7 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                         shift=[0] * 4,
                         offset=[0],
                     ),
-                    shape=[4],
+                    shape=[1, 1, 1, 4],
                 ),
                 output=lbir.QTensor(
                     dtype=lbir.Datatype(
@@ -298,10 +299,10 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                         shift=[0],
                         offset=[0],
                     ),
-                    shape=[1],
+                    shape=[1, 1, 1, 1],
                 ),
                 activation=lbir.Layer.Activation.BINARY_SIGN,
             ),
         ],
     )
-    assert lbir_model == lbir_ref
+    assert lbir_model == lbir_ref, f"{lbir_model} \n\n\n {lbir_ref}"

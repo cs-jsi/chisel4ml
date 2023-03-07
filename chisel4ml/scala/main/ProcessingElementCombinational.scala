@@ -100,14 +100,14 @@ class ProcessingElementCombinationalDense[
   ) extends ProcessingElementCombinational(layer) {
   val logger = LoggerFactory.getLogger(classOf[ProcessingElementCombinational])
   val weights: Seq[Seq[W]] = LbirDataTransforms.transformWeights[W](layer.weights.get)
-  val thresh:  Seq[A]      = LbirDataTransforms.transformThresh[A](layer.thresh.get, layer.input.get.shape(0))
+  val thresh:  Seq[A]      = LbirDataTransforms.transformThresh[A](layer.thresh.get, layer.input.get.shape(3))
   val shift:   Seq[Int]    = layer.weights.get.dtype.get.shift
 
-  val in_int  = Wire(Vec(layer.input.get.shape(0), genI))
-  val out_int = Wire(Vec(layer.output.get.shape(0), genO))
+  val in_int  = Wire(Vec(layer.input.get.shape(3), genI))
+  val out_int = Wire(Vec(layer.output.get.shape(3), genO))
 
   in_int := io.in.asTypeOf(in_int)
-  for (i <- 0 until layer.output.get.shape(0)) {
+  for (i <- 0 until layer.output.get.shape(3)) {
     out_int(i) := saturateFn(
       StaticNeuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn, shift(i)),
       layer.output.get.dtype.get.bitwidth,

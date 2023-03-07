@@ -22,8 +22,8 @@ from chisel4ml.transforms.qkeras_util import _qkeras_base_transform_no_inp
 
 @register_qkeras_transform
 class QKerasQActActiveFuse(QKerasTransform):
-    """Takes the sequence: QActivation, QDense and transforms it to a lbir.Layer. A
-    QActivation before QDense is needed to determine the input quantization. This
+    """Takes the sequence: QActivation, QDense/QConv and transforms it to a lbir.Layer.
+    A QActivation before QDense is needed to determine the input quantization. This
     transform comes after running a fuse qdense, Qact sequence transform, thus
     qdense.activation should be populated. This transform should only take effect at
     the input (so first two layers).
@@ -33,6 +33,12 @@ class QKerasQActActiveFuse(QKerasTransform):
     order = 3
 
     def _call_impl(self, layers):
+        act_shape = layers[0].get_output_shape_at(0)[1:]
+        if len(act_shape) == 1:
+            input_shape = (1, 1, 1) + act_shape  # qdense
+        else:
+            input_shape = (1,) + act_shape  # qconv
+        assert len(input_shape) == 4
         input_tensor = lbir.QTensor(
             dtype=lbir.Datatype(
                 quantization=_qact_to_qtype(layers[0].activation),
@@ -43,9 +49,7 @@ class QKerasQActActiveFuse(QKerasTransform):
                 ),
                 offset=[0],
             ),
-            shape=layers[0].get_output_shape_at(0)[
-                1:
-            ],  # 1st arg for nodes, 2nd batch dims
+            shape=input_shape,  # 1st arg for nodes, 2nd batch dims
         )
         lbir_layer = _qkeras_base_transform_no_inp(layers[1])
         lbir_layer.input.CopyFrom(input_tensor)

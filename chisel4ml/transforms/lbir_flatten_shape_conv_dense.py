@@ -13,6 +13,7 @@ from functools import reduce
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
+from chisel4ml.transforms.qkeras_util import is_flat_shape
 
 
 @register_qkeras_transform
@@ -27,8 +28,10 @@ class LbirFlattenShapeConvDense(QKerasTransform):
 
     def _call_impl(self, layers):
         layers[1].input.shape[:] = [
-            reduce(lambda x, y: x * y, layers[0].output.shape),
             1,
+            1,
+            1,
+            reduce(lambda x, y: x * y, layers[0].output.shape),
         ]
         return layers
 
@@ -38,5 +41,5 @@ class LbirFlattenShapeConvDense(QKerasTransform):
             and isinstance(layers[1], lbir.Layer)
             and layers[0].ltype == lbir.Layer.Type.CONV2D
             and layers[1].ltype == lbir.Layer.Type.DENSE
-            and len(layers[1].input.shape) > 2
+            and not is_flat_shape(layers[1].input.shape)
         )

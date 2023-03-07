@@ -56,12 +56,17 @@ class Circuit(model: Model, options: Options, directory: Path, useVerilator: Boo
 
   def run(): Unit = {
     logger.info(s"Used annotations for generated circuit are: ${annot.map(_.toString)}.")
-    if (isCombinational) {
-      RawTester.test(new ProcessingPipelineCombinational(model), annot)(this.runCombinational(_))
-    } else {
-      RawTester.test(new ProcessingPipeline(model, options), annot)(this.runSequential(_))
+    try {
+      if (isCombinational) {
+        RawTester.test(new ProcessingPipelineCombinational(model), annot)(this.runCombinational(_))
+      } else {
+        RawTester.test(new ProcessingPipeline(model, options), annot)(this.runSequential(_))
+      }
+      isStoped.countDown()
     }
-    isStoped.countDown()
+    finally {
+      this.stopSimulation()
+    }
   }
 
   private def runCombinational(dut: ProcessingPipelineCombinational): Unit = {

@@ -57,11 +57,11 @@ object WeightsProvider {
 
   implicit object WeightsProviderBool extends WeightsProvider[Bool] {
     def instance(tensor: QTensor): Seq[Seq[Bool]] =
-      tensor.values.map(_ > 0).map(_.B).grouped(tensor.shape(1)).toSeq.transpose
+      tensor.values.map(_ > 0).map(_.B).grouped(tensor.shape(3)).toSeq.transpose
   }
 
   implicit object WeightsProviderSInt extends WeightsProvider[SInt] {
     def instance(tensor: QTensor): Seq[Seq[SInt]] =
-      tensor.values.map(_.toInt.S).grouped(tensor.shape(1)).toSeq.transpose
+      tensor.values.map(_.toInt.S).grouped(tensor.shape(3)).toSeq.transpose
   }
 }

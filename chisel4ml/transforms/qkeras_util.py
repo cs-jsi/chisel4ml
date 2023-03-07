@@ -116,7 +116,7 @@ def _layer_to_weight_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
 
 def _layer_to_shape(keras_layer: KerasLayer) -> list[int]:
     if isinstance(keras_layer, qkeras.QDense):
-        return keras_layer.kernel.shape.as_list()
+        return [1, 1] + keras_layer.kernel.shape.as_list()
     elif isinstance(keras_layer, qkeras.QConv2D):
         return list(np.moveaxis(keras_layer.kernel, [0, 1, 2, 3], [3, 2, 1, 0]).shape)
     else:
@@ -127,6 +127,12 @@ def _layer_to_shape(keras_layer: KerasLayer) -> list[int]:
 
 
 def _layer_to_output_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
+    base_shape = keras_layer.get_output_shape_at(0)[1:]
+    if len(base_shape) == 1:
+        lbir_shape = (1, 1, 1) + base_shape
+    else:
+        lbir_shape = (1,) + base_shape
+    assert len(lbir_shape) == 4
     return lbir.QTensor(
         dtype=lbir.Datatype(
             quantization=_qact_to_qtype(keras_layer.activation),
@@ -137,7 +143,7 @@ def _layer_to_output_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
             ),
             offset=[0],
         ),
-        shape=keras_layer.get_output_shape_at(0)[1:],
+        shape=lbir_shape,
     )
 
 
@@ -320,3 +326,8 @@ def _flatten(items):
                 yield sub_x
         else:
             yield x
+
+
+def is_flat_shape(shape):
+    assert len(shape) == 4, f"All tensor lenghts should be 4. It is: {shape} "
+    return shape[0] == 1 and shape[1] == 1 and shape[2] == 1

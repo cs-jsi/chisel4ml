@@ -14,17 +14,10 @@
  * limitations under the License.
  */
 package chisel4ml.sequential
-
-import _root_.chisel4ml.lbir._
-import _root_.chisel4ml.memory.{ROM, SRAM}
-import _root_.chisel4ml.util._
-import _root_.lbir.Layer
 import _root_.scala.math
-import _root_.services.GenerateCircuitParams.Options
-import chisel3._
 
 
-case class ProcessingElementSequentialConvConfig(layer: lbir.Layer) {
+case class ProcessingElementSequentialConfig(layer: lbir.Layer) {
   val kernel = TensorConfig(layer.weights.get)
   val thresh = ThreshConfig(layer.thresh.get)
   val input  = TensorConfig(layer.input.get)
@@ -32,7 +25,7 @@ case class ProcessingElementSequentialConvConfig(layer: lbir.Layer) {
 
   require(kernel.numChannels == input.numChannels)
   require(kernel.numKernels == result.numChannels)
-  require(kernel.height == kernel.width)
+  //require(kernel.height == kernel.width)
   require(result.numKernels == 1)
 }
 

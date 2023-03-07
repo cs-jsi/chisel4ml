@@ -44,9 +44,7 @@ class Circuit:
         run_sim_params = services.RunSimulationParams(
             circuitId=self.circuitId, inputs=[qtensor]
         )
-        run_sim_return = self._server.send_grpc_msg(
-            run_sim_params, timeout=sim_timeout_sec
-        )
+        run_sim_return = self._server.send_grpc_msg(run_sim_params)
         return np.array(run_sim_return.values[0].values)
 
     def predict(self, np_arr):

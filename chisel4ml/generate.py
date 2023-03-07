@@ -29,7 +29,6 @@ def circuit(
     gen_vcd=False,
     gen_timeout_sec=600,
 ):
-    assert gen_timeout_sec > 5, "Please provide at least a 5 second generation timeout."
     # TODO - add checking that the opt_model is correct
     # opt_model = optimize.qkeras_model(model)
     lbir_model = transform.qkeras_to_lbir(opt_model)
@@ -44,8 +43,7 @@ def circuit(
             useVerilator=use_verilator,
             genVcd=gen_vcd,
             generationTimeoutSec=gen_timeout_sec,
-        ),
-        gen_timeout_sec + 2,
+        )
     )
     if gen_circt_ret is None:
         return None

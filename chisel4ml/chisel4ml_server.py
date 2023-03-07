@@ -15,8 +15,6 @@ import shutil
 import signal
 import subprocess
 import tempfile
-import time
-from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from threading import Event
 from threading import Thread
@@ -40,6 +38,7 @@ class Chisel4mlServer:
     def __init__(self, command, temp_dir, host: str = "localhost", port: int = 50051):
         self._stub = None
         self.error = False
+
         # We start a new instance of the server. It will check if there is an instance
         # already running, and if so will simply close itself.
         self._log_file = open(os.path.join(temp_dir, "chisel4ml_server.log"), "w+")
@@ -51,53 +50,67 @@ class Chisel4mlServer:
         self.scala_thread.start()
 
         # Here we make sure that the chisel4ml server is shut down.
-        atexit.register(self.stop)
+        atexit.register(self.close)
         signal.signal(
-            signal.SIGTERM, self.stop
+            signal.SIGTERM, self.close
         )  # This ensures kill pid also close the server.
-        signal.signal(signal.SIGINT, self.stop)
+        signal.signal(signal.SIGINT, self.close)
 
     def scala_thread_imp(self, command, server_addr, temp_dir):
-        channel = grpc.insecure_channel(server_addr)
+        channel_options = [
+            ("grpc.keepalive_time_ms", 5000),
+            ("grpc.keepalive_timeout_ms", 10000),
+            ("grpc.http2.max_pings_without_data", 3),
+            ("grpc.keepalive_permit_without_calls", 0),
+        ]
+
+        channel = grpc.insecure_channel(server_addr, options=channel_options)
         self._stub = services_grpc.Chisel4mlServiceStub(channel)
         log.info("Created grpc channel.")
         self._channel_initialized.set()
         ret = subprocess.run(
             command + [temp_dir], stdout=self._log_file, stderr=self._log_file
         )
-        if ret != 0:
+        if ret.returncode != 0:
             self.error = True
-            raise RuntimeError("Chisel4ml server returned and error.")
+            raise RuntimeError(f"Chisel4ml server returned and error code: {ret}.")
 
-    def send_grpc_msg(self, msg, timeout=60):
+    def _msg_to_fn(self, msg):
+        if isinstance(msg, services.GenerateCircuitParams):
+            fn = self._stub.GenerateCircuit
+        elif isinstance(msg, services.RunSimulationParams):
+            fn = self._stub.RunSimulation
+        else:
+            raise ValueError(f"Invalid msg to send via grpc. Message is of type {msg}.")
+        return fn
+
+    def send_grpc_msg(self, msg):
         self._channel_initialized.wait(timeout=10)
         if self.error:
             raise RuntimeError(
                 f"Something is wrong with the chisel4ml server. Check "
                 f"{self._log_file} for details."
             )
-        if isinstance(msg, services.GenerateCircuitParams):
-            fn = (
-                self._stub.GenerateCircuit
-            )  # (msg, wait_for_ready=True, timeout=timeout)
-        elif isinstance(msg, services.RunSimulationParams):
-            fn = self._stub.RunSimulation  # (msg, wait_for_ready=True, timeout=timeout)
-        else:
-            raise ValueError(f"Invalid msg to send via grpc. Message is of type {msg}.")
-        with ProcessPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(fn, msg, wait_for_ready=True, timeout=timeout)
-            while not future.done():
-                time.sleep(1)
-                if self.error:
-                    raise RuntimeError(
-                        f"The chisel4ml server crashed. Check {self._log_file} for "
-                        f"details."
-                    )
-        return future.result()
+        fn = self._msg_to_fn(msg)
+        try:
+            ret = fn(msg, wait_for_ready=True)
+        except grpc.RpcError as rpc_error:
+            self.error = True
+            raise RuntimeError(
+                f"Chisel4ml server failed with {rpc_error}. See "
+                f"{self._log_file} for details."
+            )
+        return ret
 
-    def stop(self):
-        self._log_file.close()
-        self.scala_thread.join()
+    def close(self):
+        if self._stub is not None:
+            try:
+                self._stub.ShutdownServer(services.ShutdownServerParams(), timeout=1)
+            except grpc.RpcError as rpc_error:  # noqa: F841
+                pass  # server already down
+            finally:
+                self._log_file.close()
+                self.scala_thread.join()
 
 
 def start_server_once():

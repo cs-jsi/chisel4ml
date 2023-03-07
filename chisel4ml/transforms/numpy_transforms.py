@@ -19,7 +19,6 @@ def numpy_to_qtensor(
     arr: np.ndarray, input_quantizer, input_qtensor: lbir.QTensor
 ) -> lbir.QTensor:
     assert np.array_equal(arr, input_quantizer(arr))
-    assert list(arr.shape) == input_qtensor.shape
 
     qtensor = copy.deepcopy(input_qtensor)
     qtensor.values[:] = arr.tolist()

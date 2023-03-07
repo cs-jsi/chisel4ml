@@ -50,20 +50,21 @@ object Chisel4mlServer {
       }
       fRwChannel = new RandomAccessFile(f, "rw").getChannel()
       lock = fRwChannel.tryLock()
-      if (lock == null) {
-        // Lock occupied by other instance
-        fRwChannel.close()
-        throw new RuntimeException("Only one instance of chisel4ml server may run at a time.")
-      }
-      // We add a shutdown hook to release the lock on shutdown
-      sys.addShutdownHook(closeFileLockHook())
-      val server = new Chisel4mlServer(ExecutionContext.global, tempDir = tempDir)
-      server.start()
-      server.blockUntilShutdown()
     } catch {
       case e: IOException =>
         throw new RuntimeException("Could not aquire lock to start a new instace of server.", e)
     }
+    if (lock == null) {
+      // Lock occupied by other instance
+      fRwChannel.close()
+      throw new RuntimeException("Only one instance of chisel4ml server may run at a time.")
+    }
+
+    // We add a shutdown hook to release the lock on shutdown
+    sys.addShutdownHook(closeFileLockHook())
+    val server = new Chisel4mlServer(ExecutionContext.global, tempDir = tempDir)
+    server.start()
+    server.blockUntilShutdown()
   }
 
   private def closeFileLockHook(): Unit = {
@@ -104,6 +105,12 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
   private def blockUntilShutdown(): Unit = if (server != null) { server.awaitTermination() }
 
   private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
+
+    override def shutdownServer(params: ShutdownServerParams): Future[ShutdownServerReturn] = {
+      server.shutdownNow()
+      return Future.successful(ShutdownServerReturn())
+    }
+
     override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
       val circuitId = circuits.length
       circuits = circuits :+ new Circuit(
@@ -139,9 +146,20 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
 
     override def runSimulation(params: RunSimulationParams): Future[RunSimulationReturn] = {
       logger.info(s"Simulating circuit id: ${params.circuitId} circuit on ${params.inputs.length} input/s.")
-      Future.successful(
-        RunSimulationReturn(values = Seq(circuits(params.circuitId).sim(params.inputs(0)))),
-      )
+      try {
+        val simRes = circuits(params.circuitId).sim(params.inputs(0))
+        Future.successful(
+          RunSimulationReturn(values = Seq(simRes)),
+        )
+      } catch {
+        case e => {
+          self.stop()
+          throw e
+          Future.successful(
+            RunSimulationReturn(values = Seq()),
+          )
+        }
+      }
     }
   }
 }
