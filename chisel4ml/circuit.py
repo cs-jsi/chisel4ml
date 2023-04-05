@@ -41,19 +41,22 @@ class Circuit:
 
     def __call__(self, np_arr, sim_timeout_sec=100):
         "Simulate the circuit, timeout in seconds."
-        qtensor = transforms.numpy_transforms.numpy_to_qtensor(
+        qtensors = transforms.numpy_transforms.numpy_to_qtensor(
             np_arr, self.input_quantizer, self.input_qtensor
         )
         run_sim_params = services.RunSimulationParams(
-            circuitId=self.circuitId, inputs=[qtensor]
+            circuitId=self.circuitId, inputs=qtensors
         )
         run_sim_return = self._server.send_grpc_msg(
             run_sim_params, timeout=sim_timeout_sec
         )
-        return np.array(run_sim_return.values[0].values)
+        results = []
+        for res in run_sim_return.values:
+            results.append(res.values)
+        return np.array(results)
 
     def predict(self, np_arr):
-        self.__call__(np_arr)
+        return self.__call__(np_arr)
 
     def package(self, directory=None, name="ProcessingPipeline"):
         if directory is None:

@@ -14,7 +14,6 @@ from typing import List
 
 import numpy as np
 import qkeras
-import tensorflow as tf
 from tensorflow.keras.layers import Layer as KerasLayer
 
 import chisel4ml.lbir.lbir_pb2 as lbir
@@ -48,40 +47,39 @@ def _layer_to_ltype(keras_layer: KerasLayer) -> lbir.Layer.Type:
 
 
 def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
-    assert keras_layer.use_bias, (
-        "All layers should use bias. Regardles of the starting settings, after"
-        " optimization the use_bias settings get switched to true (to enable folding)."
-    )
-    if keras_layer.bias_quantizer_internal is None:
-        keras_layer.bias_quantizer_internal = qkeras.quantized_bits(
-            bits=16, integer=15, keep_negative=True, alpha=1
-        )
-        log.warning(
-            "The bias tensor was left unquantized. Adding 16-bit signed integer"
-            " quantization."
-        )
-    else:
-        if keras_layer.bias_quantizer_internal.scale != 1:
-            raise ValueError(
-                "The bias must be quantized with a scale factor of 1. This can be done"
-                " by setting the factor alpha to constant 1."
-            )
+    # assert keras_layer.use_bias, (
+    #    "All layers should use bias. Regardles of the starting settings, after"
+    #    " optimization the use_bias settings get switched to true (to enable folding)."
+    # )
+    # if keras_layer.bias_quantizer_internal is None:
+    #    keras_layer.bias_quantizer_internal = qkeras.quantized_bits(
+    #        bits=16, integer=15, keep_negative=True, alpha=1
+    #    )
+    #    log.warning(
+    #        "The bias tensor was left unquantized. Adding 16-bit signed integer"
+    #        " quantization."
+    #    )
+    # else:
+    #    if keras_layer.bias_quantizer_internal.scale != 1:
+    #        raise ValueError(
+    #            "The bias must be quantized with a scale factor of 1. This can be done"
+    #            " by setting the factor alpha to constant 1."
+    #        )
 
-    bias_values = get_integer_values(
-        keras_layer.bias, keras_layer.bias_quantizer_internal
-    ).numpy()
+    bias_values = np.zeros(keras_layer.output_shape[1])
+    # bias_values = get_integer_values(
+    #    keras_layer.bias, keras_layer.bias_quantizer_internal
+    # ).numpy()
     thresh_values = (bias_values * (-1.0)).flatten().tolist()
     return lbir.QTensor(
         dtype=lbir.Datatype(
-            quantization=_quantizer_to_qtype(keras_layer.bias_quantizer_internal),
+            quantization=_quantizer_to_qtype(keras_layer.kernel_quantizer_internal),
             signed=True,  # Some way to limit biases to only positive/only negative?
-            bitwidth=_quantizer_to_bitwidth(keras_layer.bias_quantizer_internal),
-            shift=_quantizer_to_shift(
-                keras_layer.bias_quantizer_internal, keras_layer.bias
-            ),
+            bitwidth=_quantizer_to_bitwidth(keras_layer.kernel_quantizer_internal),
+            shift=np.zeros(keras_layer.output_shape[1]).astype(np.int32),
             offset=[0],
         ),
-        shape=keras_layer.bias.shape.as_list(),
+        shape=[keras_layer.output_shape[1]],  # keras_layer.bias.shape.as_list(),
         values=thresh_values,
     )
 
@@ -290,25 +288,17 @@ def get_integer_values(
     values: np.ndarray, quantizer: qkeras.BaseQuantizer
 ) -> np.ndarray:
     _ = quantizer(values)
-    if isinstance(quantizer, qkeras.quantized_bits):
-        return (
-            quantizer(values)
-            / get_scale(quantizer, values)
-            * 2 ** (quantizer.bits - (quantizer.integer + quantizer.keep_negative))
-        )
-    else:
-        return quantizer(values) / get_scale(quantizer, values)
+    return quantizer(values) / get_scale(quantizer, values)
 
 
 def get_input_quantization(model):
-    assert isinstance(model.layers[0], tf.keras.layers.InputLayer)
-    if isinstance(model.layers[1], qkeras.qlayers.QActivation):
+    if isinstance(model.layers[0], qkeras.qlayers.QActivation):
         return model.layers[1].activation
     else:
         raise ValueError(
-            "model.layers[1] should be a qkeras activation function. This means it"
+            "model.layers[0] should be a qkeras activation function. This means it"
             " should be subclass of qkeras.qlayer.QActivation. Instead it is"
-            f" {type(model.layers[1])}."
+            f" {type(model.layers[0])}."
         )
 
 

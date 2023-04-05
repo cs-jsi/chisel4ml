@@ -97,11 +97,28 @@ object ProcessingElementSimple {
             i * w
         }
     }
+    def mul(i: SInt, w: SInt): SInt = {
+        if(w.litValue == 0.S.litValue) {
+            0.S
+        } else {
+            i * w
+        }
+    }
 
     def apply(layer: Layer) = (layer.input.get.dtype.get.quantization,
+                               layer.input.get.dtype.get.signed,
                                layer.weights.get.dtype.get.quantization,
                                layer.activation) match {
-        case (UNIFORM, UNIFORM, RELU) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, UInt](layer,
+        case (UNIFORM, true,UNIFORM, RELU) => new ProcessingElementSimpleDense[SInt, SInt, SInt, SInt, UInt](layer,
+                                                                        SInt(layer.input.get.dtype.get.bitwidth.W),
+                                                                        UInt(layer.output.get.dtype.get.bitwidth.W),
+                                                                        mul,
+                                                                        (x: Vec[SInt]) => x.reduceTree(_ +& _),
+                                                                        layer.weights.get.dtype.get.shift,
+                                                                        reluFn,
+                                                                        saturate
+                                                                        )
+        case (UNIFORM, false,UNIFORM, RELU) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, UInt](layer,
                                                                         UInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         UInt(layer.output.get.dtype.get.bitwidth.W),
                                                                         mul,
@@ -110,7 +127,7 @@ object ProcessingElementSimple {
                                                                         reluFn,
                                                                         saturate
                                                                         )
-        case (UNIFORM, UNIFORM, NO_ACTIVATION) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, SInt](layer,
+        case (UNIFORM, false, UNIFORM, NO_ACTIVATION) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, SInt](layer,
                                                                         UInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         SInt(layer.output.get.dtype.get.bitwidth.W),
                                                                         mul,
@@ -119,7 +136,7 @@ object ProcessingElementSimple {
                                                                         linFn,
                                                                         noSaturate
                                                                         )
-        case (UNIFORM, BINARY, BINARY_SIGN) => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,
+        case (UNIFORM, false, BINARY, BINARY_SIGN) => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,
                                                                         UInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         Bool(),
                                                                         mul,
@@ -128,7 +145,7 @@ object ProcessingElementSimple {
                                                                         signFn,
                                                                         noSaturate
                                                                         )
-        case (BINARY, BINARY, BINARY_SIGN)  => new ProcessingElementSimpleDense[Bool, Bool, Bool, UInt, Bool](layer,
+        case (BINARY, false, BINARY, BINARY_SIGN)  => new ProcessingElementSimpleDense[Bool, Bool, Bool, UInt, Bool](layer,
                                                                                                  Bool(),
                                                                                                  Bool(),
                                                                                                     mul,

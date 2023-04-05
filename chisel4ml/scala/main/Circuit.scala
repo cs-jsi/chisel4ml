@@ -124,8 +124,14 @@ extends Runnable {
         }
     }
 
-    def sim(x: QTensor): QTensor = {
-        inQueue.put(ValidQTensor(x, true))
-        outQueue.take() // .take() is a blocking call
+    def sim(x: Seq[QTensor]): Seq[QTensor] = {
+        var result: Seq[QTensor] = Seq()
+        for (qtensor <- x) {
+            inQueue.put(ValidQTensor(qtensor, true))
+        }
+        for (_ <- x) {
+            result = result :+ outQueue.take() // .take() is a blocking call
+        }
+        result
     }
 }

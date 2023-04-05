@@ -145,7 +145,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
         override def runSimulation(params: RunSimulationParams): Future[RunSimulationReturn] = {
             logger.info(s"Simulating circuit id: ${params.circuitId} circuit on ${params.inputs.length} input/s.")
             Future.successful(
-                RunSimulationReturn(values=Seq(circuits(params.circuitId).sim(params.inputs(0))))
+                RunSimulationReturn(values=circuits(params.circuitId).sim(params.inputs))
             )
         }
     }
