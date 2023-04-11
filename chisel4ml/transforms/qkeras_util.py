@@ -151,8 +151,12 @@ def _qact_to_shift(activation, output_shape):
         ] * num_outputs
     elif isinstance(activation, qkeras.binary):
         return [0] * num_outputs
-    elif activation.__name__ == "linear" or activation.__name__ == "softmax":
-        return [0] * num_outputs
+    elif isinstance(activation, str):
+        if activation == "linear" or activation == "softmax":
+            return [0] * num_outputs
+    elif callable(activation):
+        if activation.__name__ == "linear" or activation.__name__ == "softmax":
+            return [0] * num_outputs
     else:
         raise ValueError(
             f"Unsupported activation function: {activation}. Only quantized_relu,"
@@ -165,8 +169,12 @@ def _qact_to_qtype(activation) -> lbir.Datatype.QuantizationType:
         return lbir.Datatype.QuantizationType.UNIFORM
     elif isinstance(activation, qkeras.binary):
         return lbir.Datatype.QuantizationType.BINARY
-    elif activation.__name__ == "linear" or activation.__name__ == "softmax":
-        return lbir.Datatype.QuantizationType.UNIFORM
+    elif isinstance(activation, str):
+        if activation == "linear" or activation == "softmax":
+            return lbir.Datatype.QuantizationType.UNIFORM
+    elif callable(activation):
+        if activation.__name__ == "linear" or activation.__name__ == "softmax":
+            return lbir.Datatype.QuantizationType.UNIFORM
     else:
         raise ValueError(
             f"Unsupported activation function: {type(activation)}. Only quantized_relu,"
@@ -179,8 +187,12 @@ def _qact_to_act(activation) -> lbir.Layer.Activation:
         return lbir.Layer.Activation.RELU
     elif isinstance(activation, qkeras.binary):
         return lbir.Layer.Activation.BINARY_SIGN
-    elif activation.__name__ == "linear" or activation.__name__ == "softmax":
-        return lbir.Layer.Activation.NO_ACTIVATION
+    elif isinstance(activation, str):
+        if activation == "linear" or activation == "softmax":
+            return lbir.Layer.Activation.NO_ACTIVATION
+    elif callable(activation):
+        if activation.__name__ == "linear" or activation.__name__ == "softmax":
+            return lbir.Layer.Activation.NO_ACTIVATION
     else:
         raise ValueError(
             f"Unsupported activation function: {activation}. Only quantized_relu,"
@@ -193,8 +205,12 @@ def _qact_to_sign(activation) -> bool:
         return False
     elif isinstance(activation, (qkeras.binary, qkeras.quantized_bits)):
         return True
-    elif activation.__name__ == "linear" or activation.__name__ == "softmax":
-        return True
+    elif isinstance(activation, str):
+        if activation == "linear" or activation == "softmax":
+            return True
+    elif callable(activation):
+        if activation.__name__ == "linear" or activation.__name__ == "softmax":
+            return True
     else:
         raise ValueError(
             f"Unsupported activation function: {activation}. Only quantized_relu,"
@@ -207,8 +223,12 @@ def _qact_to_bitwidth(activation) -> int:
         return activation.bits
     elif isinstance(activation, qkeras.binary):
         return 1
-    elif activation.__name__ == "softmax" or activation.__name__ == "linear":
-        return 8  # TODO: change to the minimum required bitwidth?
+    elif isinstance(activation, str):
+        if activation == "softmax" or activation == "linear":
+            return 8  # TODO: change to the minimum required bitwidth?
+    elif callable(activation):
+        if activation.__name__ == "softmax" or activation.__name__ == "linear":
+            return 8  # TODO: change to the minimum required bitwidth?
     else:
         raise ValueError(
             f"Unsupported activation function: {activation}. Only quantized_relu,"

@@ -10,6 +10,7 @@
 # limitations under the License.
 import qkeras
 from tensorflow.keras.activations import linear
+from tensorflow.keras.layers import Activation
 
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
@@ -34,5 +35,5 @@ class QKerasActiveQActFuse(QKerasTransform):
         return (
             isinstance(layers[0], (qkeras.QDense, qkeras.QConv2D))
             and (layers[0].activation is None or layers[0].activation is linear)
-            and isinstance(layers[1], qkeras.QActivation)
+            and isinstance(layers[1], (qkeras.QActivation, Activation))
         )
