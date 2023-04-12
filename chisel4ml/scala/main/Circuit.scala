@@ -63,7 +63,7 @@ extends Runnable {
     def run() : Unit = {
         logger.info(s"Used annotations for generated circuit are: ${annot.map(_.toString)}.")
         if (isSimple) {
-            RawTester.test(new ProcessingPipelineSimple(model), annot)(this.runSimple(_))
+            RawTester.test(new ProcessingPipelineSimple(model, options), annot)(this.runSimple(_))
         } else {
             RawTester.test(new ProcessingPipeline(model, options), annot)(this.runSequential(_))
         }
@@ -83,7 +83,7 @@ extends Runnable {
             if (validQTensor.valid == false) break()
             dut.io.in.poke(validQTensor.qtensor.toUInt)
             logger.info(s"Simulating a simple circuit on a new input.")
-            dut.clock.step()
+            dut.clock.step(dut.peList.length)
             outQueue.put(dut.io.out.peek().toQTensor(outTensorShape))
         }
     }

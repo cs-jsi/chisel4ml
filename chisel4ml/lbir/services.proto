@@ -29,6 +29,7 @@ service Chisel4mlService {
 message GenerateCircuitParams {
     message Options {
         bool isSimple = 1;
+        bool pipelineCircuit = 2;
     }
     lbir.Model model = 1;
     Options options = 2;

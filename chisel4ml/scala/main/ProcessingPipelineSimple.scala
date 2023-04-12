@@ -22,9 +22,10 @@ import _root_.lbir.{Model, Layer}
 import _root_.chisel4ml.implicits._
 import _root_.chisel4ml.util.LbirUtil
 import _root_.chisel4ml.util.bus.AXIStream
+import _root_.services.GenerateCircuitParams.Options
 import _root_.scala.collection.mutable._
 
-class ProcessingPipelineSimple(model: Model) extends Module {
+class ProcessingPipelineSimple(model: Model, options: Options) extends Module {
     // List of processing elements - one PE per layer
     val peList = new ListBuffer[ProcessingElementSimple]()
 
@@ -41,7 +42,11 @@ class ProcessingPipelineSimple(model: Model) extends Module {
     // Connect the inputs and outputs of the layers
     peList(0).io.in := io.in
     for (i <- 1 until model.layers.length) {
-        peList(i).io.in := peList(i - 1).io.out
+        if (options.pipelineCircuit) {
+            peList(i).io.in := RegNext(peList(i - 1).io.out)
+        } else {
+            peList(i).io.in := peList(i - 1).io.out
+        }
     }
     io.out := peList.last.io.out
 }

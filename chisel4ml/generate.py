@@ -25,6 +25,7 @@ log = logging.getLogger(__name__)
 def circuit(
     opt_model: tf.keras.Model,
     is_simple=False,
+    pipeline=False,
     use_verilator=False,
     gen_vcd=False,
     gen_timeout_sec=600,
@@ -40,7 +41,9 @@ def circuit(
     gen_circt_ret = server.send_grpc_msg(
         GenerateCircuitParams(
             model=lbir_model,
-            options=GenerateCircuitParams.Options(isSimple=is_simple),
+            options=GenerateCircuitParams.Options(
+                isSimple=is_simple, pipelineCircuit=pipeline
+            ),
             useVerilator=use_verilator,
             genVcd=gen_vcd,
             generationTimeoutSec=gen_timeout_sec,
