@@ -136,7 +136,7 @@ object ProcessingElementSimple {
                                                                         linFn,
                                                                         noSaturate
                                                                         )
-        case (UNIFORM, false, BINARY, BINARY_SIGN) => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,
+        case (UNIFORM, _, BINARY, BINARY_SIGN) => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,
                                                                         UInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         Bool(),
                                                                         mul,
