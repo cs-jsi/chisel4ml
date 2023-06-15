@@ -14,6 +14,7 @@ from typing import List
 
 import numpy as np
 import qkeras
+import tensorflow as tf
 from tensorflow.keras.layers import Layer as KerasLayer
 
 import chisel4ml.lbir.lbir_pb2 as lbir
@@ -266,10 +267,8 @@ def _quantizer_to_shift(quantizer: qkeras.BaseQuantizer, tensor) -> List[int]:
     scale = get_scale(quantizer, tensor)
     adjusted_scale = []
     if isinstance(quantizer, qkeras.quantized_bits):
-        adjusted_scale = np.array(
-            scale
-            / 2 ** (quantizer.bits - (quantizer.integer + quantizer.keep_negative))
-        )
+        decimal_bits = quantizer.bits - (quantizer.integer + quantizer.keep_negative)
+        adjusted_scale = np.array(scale / (2**decimal_bits))
     elif isinstance(quantizer, qkeras.binary):
         adjusted_scale = scale
     else:
@@ -313,6 +312,10 @@ def get_integer_values(
 
 def get_input_quantization(model):
     if isinstance(model.layers[0], qkeras.qlayers.QActivation):
+        return model.layers[0].activation
+    elif isinstance(model.layers[0], tf.keras.layers.InputLayer) and isinstance(
+        model.layers[1], qkeras.qlayers.QActivation
+    ):
         return model.layers[1].activation
     else:
         raise ValueError(

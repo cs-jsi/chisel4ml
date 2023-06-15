@@ -1,5 +1,0 @@
-tensorflow>=2.5.0rc
-QKeras==0.9.0
-grpcio==1.49.1
-protobuf==3.19.6
-tf2-keras-surgeon>=0.0.1

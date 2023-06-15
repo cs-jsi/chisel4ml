@@ -12,21 +12,22 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ['3.7', '3.8', '3.9']
+        python-version: ['3.7', '3.8', '3.9', '3.10']
 
     steps:
     - uses: actions/checkout@v2
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip setuptools tox
-        pip install tox tox-gh-actions
-        pip install grpcio==1.46.0
-        pip install grpcio-tools==1.46.0
-        pip install mypy-protobuf==3.2.0
+        python -m pip install --upgrade pip
+        python -m pip install -r requirements_dev.txt
+        python -m pip install .
+
     - name: Setup JDK
       uses: actions/setup-java@v2
       with:
@@ -37,8 +38,10 @@ jobs:
       run: |
           sbt --no-colors protocGenerate
           sbt --no-colors assembly
+
     - name: Make protobuf
       run: |
           make protobuf
+
     - name: Test with tox
       run: tox -e py

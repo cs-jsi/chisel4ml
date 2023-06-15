@@ -145,7 +145,7 @@ object ProcessingElementSimple {
                                                                         signFn,
                                                                         noSaturate
                                                                         )
-        case (BINARY, false, BINARY, BINARY_SIGN)  => new ProcessingElementSimpleDense[Bool, Bool, Bool, UInt, Bool](layer,
+        case (BINARY, _, BINARY, BINARY_SIGN)  => new ProcessingElementSimpleDense[Bool, Bool, Bool, UInt, Bool](layer,
                                                                                                  Bool(),
                                                                                                  Bool(),
                                                                                                     mul,
