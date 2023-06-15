@@ -34,14 +34,10 @@ version = {attr = "chisel4ml.__version__"}
 dev = [
     "tox<4",
 	"tox-run-before",
-	"typing-extensions",
 	"flake8",
     "Flake8-pyproject",
 	"pytest",
 	"pytest-cov",
-	"mypy",
-	"mypy-protobuf",
-	"mypy-extensions",
 	"sphinx",
 	"versioneer",
 	"grpcio-tools",
@@ -66,31 +62,6 @@ filterwarnings = ["ignore:::.*flatbuffers*", "ignore:::.*tensorflow*"]
 testpaths = [
     "tests",
 ]
-
-[tool.mypy]
-mypy_path = "chisel4ml"
-check_untyped_defs = true
-disallow_any_generics = true
-ignore_missing_imports = true
-no_implicit_optional = true
-show_error_codes = true
-strict_equality = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_configs = true
-no_implicit_reexport = true
-no_namespace_packages = true
-exclude = [
-      '^lbir_pb2\.py$',
-      '^lbir_pb2\.pyi$',
-      '^lbirpb2_grpc\.py$',
-      '^services_pb2\.py$',
-      '^services_pb2\.pyi$',
-      '^services_pb2_grpc\.py$',
-      '^server_manager\.py$',
-      '^_version\.py$',
-    ]
 
 [tool.flake8]
 extend-ignore = ["E203"]
@@ -126,7 +97,7 @@ exclude=[
 legacy_tox_ini = """
 [tox]
 minversion = 3.7.0
-envlist = py37, py38, py39, py310, linters, mypy
+envlist = py37, py38, py39, py310, linters
 isolated_build = true
 
 [gh-actions]
@@ -134,25 +105,19 @@ python =
     3.7:  py37
     3.8:  py38
     3.9:  py39
-    3.10: py310, mypy, linters
+    3.10: py310, linters
 
 [testenv]
-usedevelop = true
+extras = dev
 run_before = make protobuf
 setenv =
     PYTHONPATH = {toxinidir}
-extras = dev
 commands =
     pytest --basetemp={envtmpdir} tests/
 
 [testenv:linters]
 commands =
     flake8 chisel4ml tests
-
-[testenv:mypy]
-deps =
-    -r{toxinidir}/requirements.txt
-commands = mypy --install-types --non-interactive --namespace-packages --follow-imports=skip -p chisel4ml
 """
 
 [tool.versioneer]

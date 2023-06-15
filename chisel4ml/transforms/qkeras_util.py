@@ -48,35 +48,31 @@ def _layer_to_ltype(keras_layer: KerasLayer) -> lbir.Layer.Type:
 
 
 def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
-    # assert keras_layer.use_bias, (
-    #    "All layers should use bias. Regardles of the starting settings, after"
-    #    " optimization the use_bias settings get switched to true (to enable folding)."
-    # )
-    # if keras_layer.bias_quantizer_internal is None:
-    #    keras_layer.bias_quantizer_internal = qkeras.quantized_bits(
-    #        bits=16, integer=15, keep_negative=True, alpha=1
-    #    )
-    #    log.warning(
-    #        "The bias tensor was left unquantized. Adding 16-bit signed integer"
-    #        " quantization."
-    #    )
-    # else:
-    #    if keras_layer.bias_quantizer_internal.scale != 1:
-    #        raise ValueError(
-    #            "The bias must be quantized with a scale factor of 1. This can be done"
-    #            " by setting the factor alpha to constant 1."
-    #        )
+    if keras_layer.bias_quantizer_internal is None:
+        keras_layer.bias_quantizer_internal = qkeras.quantized_bits(
+            bits=16, integer=15, keep_negative=True, alpha=1
+        )
+        log.warning(
+            "The bias tensor was left unquantized. Adding 16-bit signed integer"
+            " quantization."
+        )
+    else:
+        if keras_layer.bias_quantizer_internal.scale != 1:
+            raise ValueError(
+                "The bias must be quantized with a scale factor of 1. This can be done"
+                " by setting the factor alpha to constant 1."
+            )
 
     bias_values = np.zeros(keras_layer.output_shape[1])
-    # bias_values = get_integer_values(
-    #    keras_layer.bias, keras_layer.bias_quantizer_internal
-    # ).numpy()
+    bias_values = get_integer_values(
+        keras_layer.bias, keras_layer.bias_quantizer_internal
+    ).numpy()
     thresh_values = (bias_values * (-1.0)).flatten().tolist()
     return lbir.QTensor(
         dtype=lbir.Datatype(
-            quantization=_quantizer_to_qtype(keras_layer.kernel_quantizer_internal),
+            quantization=_quantizer_to_qtype(keras_layer.bias_quantizer_internal),
             signed=True,  # Some way to limit biases to only positive/only negative?
-            bitwidth=_quantizer_to_bitwidth(keras_layer.kernel_quantizer_internal),
+            bitwidth=_quantizer_to_bitwidth(keras_layer.bias_quantizer_internal),
             shift=np.zeros(keras_layer.output_shape[1]).astype(np.int32),
             offset=[0],
         ),
@@ -113,7 +109,7 @@ def _layer_to_weight_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
     )
 
 
-def _layer_to_shape(keras_layer: KerasLayer) -> list[int]:
+def _layer_to_shape(keras_layer: KerasLayer):
     if isinstance(keras_layer, qkeras.QDense):
         return keras_layer.kernel.shape.as_list()
     elif isinstance(keras_layer, qkeras.QConv2D):
