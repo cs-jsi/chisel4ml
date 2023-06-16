@@ -1,5 +1,5 @@
 dist/
-*.hex
+mem*.hex
 
 gen_temp/
 chisel4ml_circuit/
