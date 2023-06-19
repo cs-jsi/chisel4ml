@@ -16,15 +16,23 @@
 package chisel4ml
 
 import _root_.chisel3._
-import _root_.lbir.{QTensor, Datatype}
+import _root_.lbir.{QTensor, Datatype, AXIStreamLBIRDriver}
 import _root_.lbir.Datatype.QuantizationType.BINARY
+import interfaces.amba.axis._
 
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 import _root_.scala.math.pow
+import scala.language.implicitConversions
 
 package object implicits {
     val logger = LoggerFactory.getLogger("chisel4ml")
+
+    implicit def axiStreamToDriver[T <: Data](x: AXIStreamIO[T]): AXIStreamDriver[T] = new AXIStreamDriver(x)
+
+    implicit def axiStreamToLBIRDriver(x: AXIStreamIO[UInt]): AXIStreamLBIRDriver = {
+        new AXIStreamLBIRDriver(new AXIStreamDriver(x))
+    }
 
     def toBinary(i: Int, digits: Int = 8): String = String.format(s"%${digits}s",
                                                             i.toBinaryString.takeRight(digits)).replace(' ', '0')
@@ -38,24 +46,20 @@ package object implicits {
 
     // Allows QTensor to be converted to chisel UInt
     implicit class QTensorAddOns(qt: QTensor) {
-        def toUInt: UInt = {
-            logger.debug(s"Converting QTensor to an UInt.")
+        def toBinaryString: String = {
             var values = qt.values.reverse
             if (qt.dtype.get.quantization == BINARY) {
                 values = values.map(x => (x + 1) / 2) // 1 -> 1, -1 -> 0
             }
-            val binaryString = "b".concat(values.map(_.toInt).map(toBinary(_, qt.dtype.get.bitwidth)).mkString)
+            "b".concat(values.map(_.toInt).map(toBinary(_, qt.dtype.get.bitwidth)).mkString)
+        }
+        def toUInt: UInt = {
+            logger.debug(s"Converting QTensor to an UInt.")
+            val binaryString = qt.toBinaryString
             binaryString.U(qt.totalBitwidth.W)
         }
 
         def totalBitwidth: Int = qt.dtype.get.bitwidth * qt.shape.reduce(_ * _)
-
-        def toHexStr: String = {
-            """abcd
-0123
-4444
-ffff"""
-        }
     }
 
     implicit class BigIntSeqToUInt(x: Seq[BigInt]) {

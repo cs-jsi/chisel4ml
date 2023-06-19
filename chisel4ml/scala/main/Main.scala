@@ -94,7 +94,7 @@ object Chisel4mlServer {
  */
 class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { self =>
     private[this] var server: Server = null
-    private var circuits: Seq[Circuit] = Seq() // Holds the circuit and simulation object
+    private var circuits: Seq[Circuit[Module with LBIRStream]] = Seq() // Holds the circuit and simulation object
     val logger = LoggerFactory.getLogger(classOf[Chisel4mlServer])
 
     private def start(): Unit = {
@@ -121,11 +121,12 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
     private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
         override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
             val circuitId = circuits.length
-            circuits = circuits :+ new Circuit(model = params.model.get,
-                                               options = params.options.get,
+            circuits = circuits :+ new Circuit[ProcessingPipeline](
+                                               dutGen = new ProcessingPipeline(params.model.get, params.options.get),
                                                directory = Paths.get(tempDir, s"circuit$circuitId"),
                                                useVerilator = params.useVerilator,
-                                               genVcd = params.genVcd)
+                                               genVcd = params.genVcd
+                                       )
             logger.info(s"""Started generating hardware for circuit id:$circuitId in temporary directory $tempDir
                 | with a timeout of ${params.generationTimeoutSec} seconds.""".stripMargin.replaceAll("\n", ""))
             new Thread(circuits.last).start()

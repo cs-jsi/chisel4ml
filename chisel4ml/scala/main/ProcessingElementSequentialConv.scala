@@ -18,7 +18,7 @@ package chisel4ml
 import chisel3._
 import chisel3.util._
 
-import _root_.chisel4ml.util.bus.AXIStream
+import interfaces.amba.axis._
 import _root_.chisel4ml.util.{SRAM, ROM}
 import _root_.chisel4ml.util.LbirUtil.log2
 import _root_.chisel4ml.util.LbirUtil
@@ -44,14 +44,14 @@ extends ProcessingElementSequential(layer, options) {
     val romAddr = RegInit(0.U((log2(romMemDepth) + 1).W))
 
     /***** INPUT DATA INTERFACE *****/
-    io.inStream.data.ready := sramAddr < sramMemDepth.U
-    when(io.inStream.data.ready && io.inStream.data.valid) {
-        inReg := io.inStream.data.bits
+    io.inStream.ready := sramAddr < sramMemDepth.U
+    when(io.inStream.ready && io.inStream.valid) {
+        inReg := io.inStream.bits
         sramAddr := sramAddr + 1.U
     }
 
     // Handles the SRAM memory
-    val wasInputTrans = RegNext(io.inStream.data.ready && io.inStream.data.valid)
+    val wasInputTrans = RegNext(io.inStream.ready && io.inStream.valid)
     sram.io.wrEna := false.B
     sram.io.wrAddr := 0.U
     sram.io.wrData := inReg
@@ -64,8 +64,8 @@ extends ProcessingElementSequential(layer, options) {
 
 
     /***** OUTPUT DATA INTERFACE *****/
-    io.outStream.data.valid := (romAddr > 0.U) && (romAddr <= romMemDepth.U)
-    io.outStream.data.bits := rom.io.rdData
+    io.outStream.valid := (romAddr > 0.U) && (romAddr <= romMemDepth.U)
+    io.outStream.bits := rom.io.rdData
     io.outStream.last := romAddr === (romMemDepth - 1).U
 
     // Handle ROM memory

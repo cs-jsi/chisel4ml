@@ -20,12 +20,16 @@ import _root_.chisel3.util._
 import _root_.chisel3.experimental._
 import _root_.lbir.{Model, Layer}
 import _root_.chisel4ml.util.LbirUtil
-import _root_.chisel4ml.util.bus.AXIStream
+import _root_.chisel4ml.LBIRStream
+import interfaces.amba.axis._
 import _root_.services.GenerateCircuitParams.Options
 import _root_.scala.collection.mutable._
 
 
-class ProcessingPipeline(model: Model, options: Options) extends Module {
+class ProcessingPipeline(model: Model, options: Options) extends Module with LBIRStream {
+    val inStream = IO(Flipped(AXIStream(UInt(32.W))))
+    val outStream = IO(AXIStream(UInt(32.W)))
+
     // List of processing elements - one PE per layer
     val peList = new ListBuffer[ProcessingElementSequential]()
 
@@ -34,15 +38,10 @@ class ProcessingPipeline(model: Model, options: Options) extends Module {
         peList += Module(ProcessingElementSequential(layer, options))
     }
 
-    val io = IO(new Bundle {
-        val inStream = Flipped(new AXIStream(32))
-        val outStream = new AXIStream(32)
-    })
-
     // Connect the inputs and outputs of the layers
-    peList(0).io.inStream <> io.inStream
+    peList(0).io.inStream <> inStream
     for (i <- 1 until model.layers.length) {
         peList(i).io.inStream <> peList(i - 1).io.outStream
     }
-    io.outStream <> peList.last.io.outStream
+    outStream <> peList.last.io.outStream
 }

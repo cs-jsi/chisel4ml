@@ -55,14 +55,22 @@ val commonSettings = Seq(
     addCompilerPlugin("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion cross CrossVersion.full),
 )
 
+lazy val interfaces = (project in file("interfaces")).settings(commonSettings, name := "interfaces")
+
+lazy val fft = (project in file("audio_features_extract/sdf-fft"))
+    .settings(commonSettings,
+              name := "sdf-fft"
+    )
+lazy val afe = (project in file("audio_features_extract"))
+    .dependsOn(fft, interfaces)
+    .settings(commonSettings,
+              name := "afe"
+    )
 
 lazy val root = (project in file("."))
-  .dependsOn(afe)
+  .dependsOn(afe, interfaces)
   .settings(
     commonSettings,
     name := "chisel4ml",
     Compile / doc / scalacOptions := Seq("-groups", "-implicits")
   )
-
-lazy val fft = (project in file("audio_features_extract/sdf-fft")).settings(commonSettings, name := "sdf-fft")
-lazy val afe = (project in file("audio_features_extract")).dependsOn(fft).settings(commonSettings, name := "afe")

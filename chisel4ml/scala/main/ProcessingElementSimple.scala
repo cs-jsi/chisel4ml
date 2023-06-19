@@ -109,7 +109,7 @@ object ProcessingElementSimple {
                                layer.input.get.dtype.get.signed,
                                layer.weights.get.dtype.get.quantization,
                                layer.activation) match {
-        case (UNIFORM, true,UNIFORM, RELU) => new ProcessingElementSimpleDense[SInt, SInt, SInt, SInt, UInt](layer,
+        case (UNIFORM, true, UNIFORM, RELU) => new ProcessingElementSimpleDense[SInt, SInt, SInt, SInt, UInt](layer,
                                                                         SInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         UInt(layer.output.get.dtype.get.bitwidth.W),
                                                                         mul,
@@ -118,7 +118,7 @@ object ProcessingElementSimple {
                                                                         reluFn,
                                                                         saturate
                                                                         )
-        case (UNIFORM, false,UNIFORM, RELU) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, UInt](layer,
+        case (UNIFORM, false, UNIFORM, RELU) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, UInt](layer,
                                                                         UInt(layer.input.get.dtype.get.bitwidth.W),
                                                                         UInt(layer.output.get.dtype.get.bitwidth.W),
                                                                         mul,
@@ -196,5 +196,6 @@ extends ProcessingElementSimple(layer) {
                     | is ${layer.input.get.dtype.get.bitwidth}, the output bitwidth
                     | ${layer.output.get.dtype.get.bitwidth}. Thus the total size of the input vector is
                     | ${layer.input.get.totalBitwidth} bits, and the total size of the output vector
-                    | is ${layer.output.get.totalBitwidth} bits.""".stripMargin.replaceAll("\n", ""))
+                    | is ${layer.output.get.totalBitwidth} bits.
+                    | The input quantization is ${genI}, output quantization is ${genO}.""".stripMargin.replaceAll("\n", ""))
 }

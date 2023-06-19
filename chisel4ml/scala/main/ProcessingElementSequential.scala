@@ -19,7 +19,7 @@ import chisel3._
 import chisel3.util._
 
 import _root_.chisel4ml.implicits._
-import _root_.chisel4ml.util.bus.AXIStream
+import interfaces.amba.axis.AXIStream
 import _root_.chisel4ml.util.SRAM
 import _root_.chisel4ml.util.LbirUtil.log2
 import _root_.lbir.{Layer}
@@ -41,11 +41,11 @@ abstract class ProcessingElementSequential(layer: Layer, options: Options) exten
     val numOutTrans: Int = math.ceil(outSizeBits.toFloat / outputStreamWidth.toFloat).toInt
 
     val io = IO(new Bundle {
-        val inStream = Flipped(new AXIStream(inputStreamWidth))
-        val outStream = new AXIStream(outputStreamWidth)
+        val inStream = Flipped(AXIStream(UInt(inputStreamWidth.W)))
+        val outStream = AXIStream(UInt(outputStreamWidth.W))
     })
 
-    logger.info(s"""Created new ProcessingElementSequentialConv with inSizeBits: $inSizeBits,
+    logger.info(s"""Created new ProcessingElementSequential with inSizeBits: $inSizeBits,
                 | numInTrans: $numInTrans, outSizeBits: $outSizeBits, numOutTrans: $numOutTrans,
                 | inputStreamWidth: $inputStreamWidth, outputStreamWidth: $outputStreamWidth.
                 |""".stripMargin.replaceAll("\n",""))

@@ -104,7 +104,7 @@ object LbirUtil {
         val fPath = Paths.get(directory.toString, s"mem$cnt.hex").toAbsolutePath()
         val relPath = Paths.get("").toAbsolutePath().relativize(fPath)
         val writer = new BufferedWriter(new FileWriter(fPath.toString))
-        writer.write(tensor.toHexStr)
+        writer.write(tensor.toBinaryString) // TODO hex!
         writer.close()
         logger.debug(s"Created new memory file: ${fPath.toString}.")
         cnt = cnt + 1
