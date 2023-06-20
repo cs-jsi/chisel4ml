@@ -36,7 +36,7 @@ def test_run_service_2(bnn_simple_bweight_model):
     layers.
     """
     opt_model = optimize.qkeras_model(bnn_simple_bweight_model)
-    circuit = generate.circuit(opt_model, is_simple=False)
+    circuit = generate.circuit(opt_model, is_simple=False, gen_vcd=True)
     assert circuit is not None
     for inp in [
         [36.0, 22.0, 3.0],

@@ -63,7 +63,10 @@ class Circuit:
             raise ValueError("Directory parameter missing.")
         temp_dir = self._server.temp_dir
         temp_circuit_dir = os.path.join(temp_dir, f"circuit{self.circuitId}")
-        temp_circuit_file = Path(temp_circuit_dir).glob("*.sv").__next__()
+        try:
+            temp_circuit_file = Path(temp_circuit_dir).glob("*.sv").__next__()
+        except StopIteration:
+            raise Exception("Can only package if Verilator selected as backend.")
         dest_file = directory
         os.makedirs(Path(directory).absolute(), exist_ok=True)
         if os.path.isdir(directory):

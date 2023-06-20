@@ -5,6 +5,7 @@ import chisel3._
 import chiseltest._
 import _root_.services.GenerateCircuitParams.Options
 import _root_.chisel4ml._
+import _root_.chisel4ml.implicits._
 import _root_.lbir._
 
 
@@ -58,21 +59,11 @@ class PeSequentialTestsTemp extends AnyFlatSpec with ChiselScalatestTester {
 
     it should "send data through the pipeline." in {
    		test(new ProcessingElementSequentialConv(lbirLayer, Options())).withAnnotations(Seq(VerilatorBackendAnnotation)) { c =>
-            c.io.inStream.data.initSource()
-            c.io.inStream.data.setSourceClock(c.clock)
-            c.io.outStream.data.initSink()
-            c.io.outStream.data.setSinkClock(c.clock)
+            c.io.inStream.initSource()
+            c.io.outStream.initSink()
 
-
-            c.io.inStream.data.enqueue(3.U(32.W))
-            c.io.inStream.data.enqueue(6.U(32.W))
-            c.io.inStream.data.enqueue(9.U(32.W))
-            c.io.inStream.last.poke(true.B)
-            c.io.inStream.data.enqueue(12.U(32.W))
-            c.io.inStream.last.poke(false.B)
-            c.clock.step()
-            c.clock.step()
-            c.clock.step()
+            c.io.inStream.enqueuePacket(Seq(3.U(32.W), 6.U(32.W), 9.U(32.W), 12.U(32.W)), c.clock)
+            c.clock.step(3)
         }
     }
     // test(new ProcessingPipeline(new lbirModel)) TODO

@@ -29,7 +29,7 @@ class AXIStreamLBIRDriver(val axiDrive: AXIStreamDriver[UInt]) {
         axiDrive.enqueuePacket(Seq(("b"+paddedString).U(busWidth.W)), clock)
     }
 
-    def dequeueQTensor(clock: Clock): QTensor = {
-        QTensor(values=axiDrive.dequeuePacket(clock).map(x => ((x * 2) - 1).toFloat))
+    def dequeueQTensor(stencil: QTensor, clock: Clock): QTensor = {
+        axiDrive.dequeuePacket(clock).toUInt(axiDrive.getBusWidth()).toQTensor(stencil)
     }
 }

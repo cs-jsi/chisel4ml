@@ -39,6 +39,7 @@ import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
 class Circuit[+T <: Module with LBIRStream](dutGen: => T,
+                                            outputStencil: QTensor,
                                             directory: Path,
                                             useVerilator: Boolean,
                                             genVcd: Boolean)
@@ -82,7 +83,7 @@ extends Runnable {
             fork {
                 dut.inStream.enqueueQTensor(validQTensor.qtensor, dut.clock)
             }.fork {
-                outQueue.put(dut.outStream.dequeueQTensor(dut.clock))
+                outQueue.put(dut.outStream.dequeueQTensor(outputStencil, dut.clock))
             }.join()
          }
         }
