@@ -13,22 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package lbir
+package chisel4ml
 
 import chisel3._
-import chisel4ml.implicits._
-import interfaces.amba.axis._
+import _root_.lbir.{Layer}
+import _root_.services.GenerateCircuitParams.Options
+import _root_.chisel4ml.LBIRStream
 
-class AXIStreamLBIRDriver(val axiDrive: AXIStreamDriver[UInt]) {
-    /*
-        Drives a AXIStreamIO with a LBIR QTensor.
-    */
-    def enqueueQTensor(qt: QTensor, clock: Clock): Unit = {
-        val sequence = qt.toUInt.toUIntSeq(axiDrive.getBusWidth())
-        axiDrive.enqueuePacket(sequence, clock)
-    }
-
-    def dequeueQTensor(stencil: QTensor, clock: Clock): QTensor = {
-        axiDrive.dequeuePacket(clock).toUInt(axiDrive.getBusWidth()).toQTensor(stencil)
+object LayerGenerator {
+    // TODO: Rewrite the generation procedure to something more sensisble
+    def apply(layer: Layer, options: Options): Module with LBIRStream = {
+        if (layer.ltype == Layer.Type.PREPROC) {
+            Module(new AudioFeaturesExtractWrapper(layer, options))
+        } else {
+            Module(ProcessingElementSequential(layer, options))
+        }
     }
 }

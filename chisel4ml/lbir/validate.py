@@ -23,7 +23,6 @@ def is_valid_lbir_model(model):
     is_valid = True
     is_valid = is_valid and isinstance(model, lbir.Model)
     is_valid = is_valid and model.name != ""
-    is_valid = is_valid and len(model.layers) > 0
     for layer in model.layers:
         is_valid = is_valid and layer.HasField("thresh")
         is_valid = is_valid and layer.HasField("weights")

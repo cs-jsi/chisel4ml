@@ -33,6 +33,9 @@ class QKerasQActActiveFuse(QKerasTransform):
     order = 3
 
     def _call_impl(self, layers):
+        shape = layers[0].get_output_shape_at(0)[1:]
+        if isinstance(layers[1], qkeras.QConv2D):
+            shape = [shape[2]] + [*shape[0:2]]
         input_tensor = lbir.QTensor(
             dtype=lbir.Datatype(
                 quantization=_qact_to_qtype(layers[0].activation),
@@ -43,9 +46,7 @@ class QKerasQActActiveFuse(QKerasTransform):
                 ),
                 offset=[0],
             ),
-            shape=layers[0].get_output_shape_at(0)[
-                1:
-            ],  # 1st arg for nodes, 2nd batch dims
+            shape=shape,
         )
         lbir_layer = _qkeras_base_transform_no_inp(layers[1])
         lbir_layer.input.CopyFrom(input_tensor)

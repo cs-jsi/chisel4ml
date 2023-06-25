@@ -31,8 +31,8 @@ extends ProcessingElementSequential(layer, options) {
     val inputBuffer  = RegInit(VecInit(Seq.fill(numInTrans)(0.U(inputStreamWidth.W))))
     val outputBuffer = RegInit(VecInit(Seq.fill(numOutTrans)(0.U(outputStreamWidth.W))))
 
-    val inputTransaction = io.inStream.valid && io.inStream.ready
-    val outputTransaction = io.outStream.valid && io.outStream.ready
+    val inputTransaction = inStream.valid && inStream.ready
+    val outputTransaction = outStream.valid && outStream.ready
 
     val (inputCntValue, inputCntWrap) = Counter(inputTransaction, numInTrans-1)
     val (outputCntValue, outputCntWrap) = Counter(outputTransaction, numOutTrans-1)
@@ -43,22 +43,22 @@ extends ProcessingElementSequential(layer, options) {
 
 
     /***** INPUT DATA INTERFACE *****/
-    io.inStream.ready := !outputBufferFull
+    inStream.ready := !outputBufferFull
     when(inputTransaction) {
-        inputBuffer(inputCntValue) := io.inStream.bits
+        inputBuffer(inputCntValue) := inStream.bits
     }
 
     /***** CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE *****/
     peSimple.io.in := inputBuffer.asUInt
-    when (RegNext(io.inStream.last)) {
+    when (RegNext(inStream.last)) {
         outputBuffer :=  peSimple.io.out.asTypeOf(outputBuffer)
         outputBufferFull := true.B
-    } .elsewhen(io.outStream.last) {
+    } .elsewhen(outStream.last) {
         outputBufferFull := false.B
     }
 
     /***** OUTPUT DATA INTERFACE *****/
-    io.outStream.valid := outputBufferFull
-    io.outStream.bits  := outputBuffer(outputCntValue)
-    io.outStream.last  := outputCntWrap
+    outStream.valid := outputBufferFull
+    outStream.bits  := outputBuffer(outputCntValue)
+    outStream.last  := outputCntWrap
 }

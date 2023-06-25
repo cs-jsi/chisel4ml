@@ -9,78 +9,44 @@ import _root_.chisel4ml.implicits._
 import _root_.chisel3._
 
 class LbirChiselConversionTests extends AnyFunSuite {
-    val binaryDatatype = Some(new Datatype(quantization=BINARY,
-                                           bitwidth=1,
-                                           signed=true,
-                                           shift=Seq(0),
-                                           offset=Seq(0)))
 
-    // QTENSOR -> UInt
-    test("Binary tensor conversion test 0") {
-        val qtensor = new QTensor(dtype = binaryDatatype,
-                                  shape = Seq(4),
-                                  values = Seq(-1, -1, -1, 1))
+    // TEST QTensor -> UInt WITH TEST VECTORS
+    val testVectors = List(Seq(-1, -1, -1, 1).BQ -> "b1000".U.litValue,
+                           Seq(1, 1, 1, -1).BQ -> "b0111".U.litValue,
+                           Seq(4, 3, 2, 1).UQ(bw=4) -> "b0001_0010_0011_0100".U.litValue,
+                      )
 
-        assert(qtensor.toUInt.litValue == "b1000".U.litValue)
+    for ( ((qtensor, goldenValue), idx) <- testVectors.zipWithIndex) {
+        test(s"Testing QTensor to UInt conversion test vector: $idx") {
+            assert(qtensor.toUInt.litValue == goldenValue.U.litValue)
+        }
     }
 
-    test("Binary tensor conversion test 1") {
-        val qtensor = new QTensor(dtype = binaryDatatype,
-                                  shape = Seq(4),
-                                  values = Seq(1, 1, 1, -1))
-
-        assert(qtensor.toUInt.litValue == "b0111".U.litValue)
-    }
-
-    test("Uniformly quantized tensor to 4-bits conversion test 0") {
-        val uniformFourBitNoscaleType = Some(new Datatype(quantization=UNIFORM,
-                                                   signed=false,
-                                                   bitwidth=4,
-                                                   shift=Seq(0),
-                                                   offset=Seq(0)))
-        val qtensor = new QTensor(dtype = uniformFourBitNoscaleType,
-                                  shape = Seq(4),
-                                  values = Seq(4, 3, 2, 1))
-
-        assert(qtensor.toUInt.litValue == "b0001_0010_0011_0100".U.litValue)
-    }
-
-    // UInt -> QTENSOR
-    test("Convert back a UInt to a uniformy quantized QTensor") {
-        val uniformFourBitNoscaleType = Some(new Datatype(quantization=UNIFORM,
-                                                   signed=false,
-                                                   bitwidth=4,
-                                                   shift=Seq(0),
-                                                   offset=Seq(0)))
-
-        val stencil = new QTensor(dtype = uniformFourBitNoscaleType,
-                                  shape = Seq(4))
-
-        val qtensor = new QTensor(dtype = uniformFourBitNoscaleType,
-                                  shape = Seq(4),
-                                  values = Seq(4, 3, 2, 1))
-
-        assert(qtensor.toUInt.toQTensor(stencil).values == qtensor.values,
-            s"""QTensor was first converted to ${qtensor.toUInt}, with total bitwidth ${qtensor.totalBitwidth} and
-            | then back to a qtensor: ${qtensor.toUInt.toQTensor(stencil).values}.""".stripMargin.replaceAll("\n", ""))
-    }
-
-    test("Convert back a UInt to a signed uniformy quantized QTensor") {
-        val uniformFourBitNoscaleType = Some(new Datatype(quantization=UNIFORM,
-                                                   signed=true,
-                                                   bitwidth=4,
-                                                   shift=Seq(0),
-                                                   offset=Seq(0)))
-
-        val stencil = new QTensor(dtype = uniformFourBitNoscaleType,
-                                  shape = Seq(4))
-
-        val qtensor = new QTensor(dtype = uniformFourBitNoscaleType,
-                                  shape = Seq(4),
-                                  values = Seq(-4, -3, 2, 1))
-
-        assert(qtensor.toUInt.toQTensor(stencil).values == qtensor.values,
-            s"""QTensor was first converted to ${qtensor.toUInt}, with total bitwidth ${qtensor.totalBitwidth} and
-            | then back to a qtensor: ${qtensor.toUInt.toQTensor(stencil).values}.""".stripMargin.replaceAll("\n", ""))
+    // Randomly test QTensor -> UInt -> QTensor
+    val numUniformTests = 20
+    val r = new scala.util.Random
+    r.setSeed(42L)
+    for (idx <- 0 until numUniformTests) {
+        val signed = r.nextFloat() < 0.5 // true/false
+        val bitwidth = r.nextInt(15) + 2  // 2-16
+        val length = r.nextInt(128) + 1  // 1-128
+        val signAdjust = if (signed) Math.pow(2, bitwidth - 1).toFloat else 0.0F
+        val values = (0 until length).map(_ => r.nextInt(Math.pow(2, bitwidth).toInt).toFloat - signAdjust)
+        val dtype = Some(Datatype(quantization=UNIFORM,
+                                                  signed=signed,
+                                                  bitwidth=bitwidth,
+                                                  shift=Seq(0),
+                                                  offset=Seq(0)))
+        val qtensor = QTensor(dtype=dtype,
+                              shape=Seq(length),
+                              values=values)
+        val stencil = QTensor(dtype=dtype,
+                              shape=Seq(length))
+        test(s"Random test QTensor -> UInt -> QTensor: $idx") {
+            assert(qtensor.toUInt.toQTensor(stencil).values == qtensor.values,
+                s"""QTensor was first converted to ${qtensor.toUInt}, with total bitwidth ${qtensor.totalBitwidth} and
+                | then back to a qtensor: ${qtensor.toUInt.toQTensor(stencil).values}.
+                | The QTensor was signed:$signed, bitwidth: $bitwidth.""".stripMargin.replaceAll("\n", ""))
+        }
     }
 }

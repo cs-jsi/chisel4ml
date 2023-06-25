@@ -116,10 +116,14 @@ def start_server_once():
         # We move to the temp dir because chisels TargetDirAnotation works with
         # relative dirs, which can cause a problem on Windows, if your working dir is
         # not on the same disk as the temp_dir (can't get a proper relative directory)
+        backup = os.getcwd()
         os.chdir(temp_dir)
-        server = Chisel4mlServer(
-            command=["java", "-jar", str(jar_file)], temp_dir=str(temp_dir)
-        )
+        try:
+            server = Chisel4mlServer(
+                command=["java", "-jar", str(jar_file)], temp_dir=str(temp_dir)
+            )
+        finally:
+            os.chdir(backup)
     return server
 
 

@@ -44,14 +44,14 @@ extends ProcessingElementSequential(layer, options) {
     val romAddr = RegInit(0.U((log2(romMemDepth) + 1).W))
 
     /***** INPUT DATA INTERFACE *****/
-    io.inStream.ready := sramAddr < sramMemDepth.U
-    when(io.inStream.ready && io.inStream.valid) {
-        inReg := io.inStream.bits
+    inStream.ready := sramAddr < sramMemDepth.U
+    when(inStream.ready && inStream.valid) {
+        inReg := inStream.bits
         sramAddr := sramAddr + 1.U
     }
 
     // Handles the SRAM memory
-    val wasInputTrans = RegNext(io.inStream.ready && io.inStream.valid)
+    val wasInputTrans = RegNext(inStream.ready && inStream.valid)
     sram.io.wrEna := false.B
     sram.io.wrAddr := 0.U
     sram.io.wrData := inReg
@@ -64,9 +64,9 @@ extends ProcessingElementSequential(layer, options) {
 
 
     /***** OUTPUT DATA INTERFACE *****/
-    io.outStream.valid := (romAddr > 0.U) && (romAddr <= romMemDepth.U)
-    io.outStream.bits := rom.io.rdData
-    io.outStream.last := romAddr === (romMemDepth - 1).U
+    outStream.valid := (romAddr > 0.U) && (romAddr <= romMemDepth.U)
+    outStream.bits := rom.io.rdData
+    outStream.last := romAddr === (romMemDepth - 1).U
 
     // Handle ROM memory
     rom.io.rdEna := true.B

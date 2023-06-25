@@ -180,12 +180,10 @@ extends ProcessingElementSimple(layer) {
 
     in_int := io.in.asTypeOf(in_int)
     for (i <- 0 until layer.output.get.shape(0)) {
-        //
         out_int(i) := saturateFn(Neuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn, shift(i)),
                                  layer.output.get.dtype.get.bitwidth
                                  )
     }
-
 
     // The CAT operator reverses the order of bits, so we reverse them
     // to evenout the reversing (its not pretty but it works).

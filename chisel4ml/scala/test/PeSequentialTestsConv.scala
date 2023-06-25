@@ -59,10 +59,10 @@ class PeSequentialTestsTemp extends AnyFlatSpec with ChiselScalatestTester {
 
     it should "send data through the pipeline." in {
    		test(new ProcessingElementSequentialConv(lbirLayer, Options())).withAnnotations(Seq(VerilatorBackendAnnotation)) { c =>
-            c.io.inStream.initSource()
-            c.io.outStream.initSink()
+            c.inStream.initSource()
+            c.outStream.initSink()
 
-            c.io.inStream.enqueuePacket(Seq(3.U(32.W), 6.U(32.W), 9.U(32.W), 12.U(32.W)), c.clock)
+            c.inStream.enqueuePacket(Seq(3.U(32.W), 6.U(32.W), 9.U(32.W), 12.U(32.W)), c.clock)
             c.clock.step(3)
         }
     }

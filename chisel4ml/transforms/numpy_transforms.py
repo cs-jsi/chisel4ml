@@ -16,16 +16,19 @@ import chisel4ml.lbir.lbir_pb2 as lbir
 
 
 def numpy_to_qtensor(arr: np.ndarray, input_quantizer, input_qtensor: lbir.QTensor):
-    assert np.array_equal(arr, input_quantizer(arr))
+    """Converts numpy tensors to a list of qtensor objects."""
+    assert np.array_equal(arr, input_quantizer(arr)), "Input is not properly quantized."
+
+    if len(arr.shape) > 4:
+        raise ValueError("Input array must have at most four dimensions.")
+
     if len(arr.shape) == 1:
-        assert list(arr.shape) == input_qtensor.shape
-        arr = arr.reshape([1, arr.shape[0]])
+        narr = [arr]
     else:
-        assert len(arr.shape) == 2
-        assert arr.shape[1] == input_qtensor.shape[0]
+        narr = arr
 
     results = []
-    for tensor in arr:
+    for tensor in narr:
         qtensor = copy.deepcopy(input_qtensor)
         qtensor.values[:] = tensor.tolist()
         results.append(qtensor)

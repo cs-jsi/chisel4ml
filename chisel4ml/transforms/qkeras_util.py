@@ -76,7 +76,7 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
             shift=np.zeros(keras_layer.output_shape[1]).astype(np.int32),
             offset=[0],
         ),
-        shape=[keras_layer.output_shape[1]],  # keras_layer.bias.shape.as_list(),
+        shape=[keras_layer.output_shape[1]],
         values=thresh_values,
     )
 
@@ -111,7 +111,7 @@ def _layer_to_weight_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
 
 def _layer_to_shape(keras_layer: KerasLayer):
     if isinstance(keras_layer, qkeras.QDense):
-        return keras_layer.kernel.shape.as_list()
+        return keras_layer.kernel.shape.as_list()[::-1]
     elif isinstance(keras_layer, qkeras.QConv2D):
         return list(np.moveaxis(keras_layer.kernel, [0, 1, 2, 3], [3, 2, 1, 0]).shape)
     else:

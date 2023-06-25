@@ -17,7 +17,7 @@ package chisel4ml
 
 import _root_.chisel3._
 import _root_.lbir.{QTensor, Datatype, AXIStreamLBIRDriver}
-import _root_.lbir.Datatype.QuantizationType.BINARY
+import _root_.lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
 import interfaces.amba.axis._
 
 import _root_.org.slf4j.Logger
@@ -64,9 +64,33 @@ package object implicits {
 
     implicit class BigIntSeqToUInt(x: Seq[BigInt]) {
         def toUInt(busWidth:Int): UInt = {
-            logger.debug(s"Converting Seq[BigInt] to an UInt.")
+            logger.debug(s"Converting Seq[BigInt]=$x to an UInt.")
             val totalWidth = busWidth * x.length
-            "b".concat(x.map( (a:BigInt) => toBinaryB(a, busWidth) ).mkString).U(totalWidth.W)
+            "b".concat(x.map( (a:BigInt) => toBinaryB(a, busWidth) ).reverse.mkString).U(totalWidth.W)
+        }
+    }
+
+    implicit class IntSeqToUInt(x: Seq[Int]) {
+        def BQ: QTensor = {
+            QTensor(dtype=Some(Datatype(quantization=BINARY,
+                                        bitwidth=1,
+                                        signed=true,
+                                        shift=Seq(0),
+                                        offset=Seq(0))),
+                    shape=Seq(x.length),  // TODO: add multu-dim support
+                    values=x.map(_.toFloat)
+            )
+        }
+
+        def UQ(bw: Int): QTensor = {
+            QTensor(dtype=Some(Datatype(quantization=UNIFORM,
+                                        bitwidth=bw,
+                                        signed=false,
+                                        shift=Seq(0),
+                                        offset=Seq(0))),
+                    shape=Seq(x.length),
+                    values=x.map(_.toFloat)
+            )
         }
     }
 
@@ -74,7 +98,7 @@ package object implicits {
     implicit class UIntToQTensor(x: UInt) {
         def toQTensor(stencil: QTensor) = {
             val valuesString = toBinaryB(x.litValue, stencil.totalBitwidth).grouped(stencil.dtype.get.bitwidth).toList
-            val values = valuesString.map(Integer.parseInt(_, 2).toFloat).reverse
+            val values = valuesString.reverse.map(Integer.parseInt(_, 2).toFloat)
             val valuesMod = if (stencil.dtype.get.quantization == BINARY) {
                 values.map(x => (x * 2) - 1)
             } else {

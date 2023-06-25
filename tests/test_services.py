@@ -36,7 +36,7 @@ def test_run_service_2(bnn_simple_bweight_model):
     layers.
     """
     opt_model = optimize.qkeras_model(bnn_simple_bweight_model)
-    circuit = generate.circuit(opt_model, is_simple=False, gen_vcd=True)
+    circuit = generate.circuit(opt_model, is_simple=False)
     assert circuit is not None
     for inp in [
         [36.0, 22.0, 3.0],
@@ -70,9 +70,7 @@ def test_run_service_3(bnn_mnist_model):
     y_test = np.where(y_test < 0.1, -1.0, 1.0)
 
     opt_model = optimize.qkeras_model(bnn_mnist_model)
-    circuit = generate.circuit(
-        opt_model, is_simple=True, use_verilator=True, gen_vcd=True
-    )
+    circuit = generate.circuit(opt_model, is_simple=True)
     assert circuit is not None
     for i in range(0, 10):
         sw_res = opt_model.predict(x_test[i].reshape(1, 784))

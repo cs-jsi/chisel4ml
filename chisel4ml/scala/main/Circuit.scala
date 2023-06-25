@@ -21,7 +21,7 @@ import _root_.firrtl.options.TargetDirAnnotation
 import _root_.firrtl.{AnnotationSeq, VerilogEmitter}
 import _root_.firrtl.stage.{FirrtlStage, OutputFileAnnotation}
 import _root_.chiseltest._
-import _root_.chiseltest.simulator.WriteVcdAnnotation
+import _root_.chiseltest.simulator.WriteFstAnnotation
 
 import _root_.chisel4ml.util.LbirUtil
 import _root_.chisel4ml.implicits._
@@ -54,7 +54,7 @@ extends Runnable {
     LbirUtil.setDirectory(directory)
 
     var annot: AnnotationSeq = Seq(TargetDirAnnotation(relDir)) // TODO - work with .pb instead of .lo.fir
-    if (genVcd) annot = annot :+ WriteVcdAnnotation
+    if (genVcd) annot = annot :+ WriteFstAnnotation
     if (useVerilator) annot = annot :+ VerilatorBackendAnnotation
 
     def stopSimulation(): Unit = {
@@ -73,6 +73,7 @@ extends Runnable {
         logger.info(s"Generated circuit in directory: ${directory}.")
         dut.inStream.initSource()
         dut.outStream.initSink()
+        dut.clock.setTimeout(0)
         breakable {
         while(true) {
             // inQueue.take() blocks execution until data is available

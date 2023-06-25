@@ -65,14 +65,14 @@ object WeightsProvider {
     implicit object WeightsProviderBool extends WeightsProvider[Bool] {
         def instance(tensor: QTensor): Seq[Seq[Bool]] = {
             LbirUtil.logger.debug(s"""Transformed input tensor of weights to a Seq[Seq[Bool]].""")
-            tensor.values.map(_ > 0).map(_.B).grouped(tensor.shape(1)).toSeq.transpose
+            tensor.values.map(_ > 0).map(_.B).grouped(tensor.shape(0)).toSeq.transpose
         }
     }
 
     implicit object WeightsProviderSInt extends WeightsProvider[SInt] {
         def instance(tensor: QTensor): Seq[Seq[SInt]] = {
             LbirUtil.logger.debug(s"""Transformed input tensor of weights to a Seq[Seq[SInt]].""")
-            tensor.values.map(_.toInt.S).grouped(tensor.shape(1)).toSeq.transpose
+            tensor.values.map(_.toInt.S).grouped(tensor.shape(0)).toSeq.transpose
         }
     }
 }
