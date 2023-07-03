@@ -23,7 +23,7 @@ import _root_.chisel4ml.util.{SRAM, ROM}
 import _root_.chisel4ml.util.LbirUtil.log2
 import _root_.chisel4ml.util.LbirUtil
 import _root_.lbir.{Layer}
-import _root_.services.GenerateCircuitParams.Options
+import _root_.services.LayerOptions
 import _root_.scala.math
 
 /** A sequential processing element for convolutions.
@@ -31,7 +31,7 @@ import _root_.scala.math
  *  This hardware module can handle two-dimensional convolutions of various types, and also can adjust
  *  the aritmetic units depending on the quantization type. It does not take advantage of sparsity.
  */
-class ProcessingElementSequentialConv(layer: Layer, options: Options)
+class ProcessingElementSequentialConv(layer: Layer, options: LayerOptions)
 extends ProcessingElementSequential(layer, options) {
     val inReg = RegInit(0.U(inputStreamWidth.W))
 

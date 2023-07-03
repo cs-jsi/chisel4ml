@@ -24,12 +24,12 @@ import _root_.chisel4ml.LBIRStream
 import _root_.chisel4ml.util.SRAM
 import _root_.chisel4ml.util.LbirUtil.log2
 import _root_.lbir.{Layer}
-import _root_.services.GenerateCircuitParams.Options
+import _root_.services.LayerOptions
 
 import _root_.org.slf4j.LoggerFactory
 
 
-abstract class ProcessingElementSequential(layer: Layer, options: Options) extends Module with LBIRStream {
+abstract class ProcessingElementSequential(layer: Layer, options: LayerOptions) extends Module with LBIRStream {
     val logger = LoggerFactory.getLogger(this.getClass())
 
     val inputStreamWidth = 32
@@ -51,5 +51,5 @@ abstract class ProcessingElementSequential(layer: Layer, options: Options) exten
 }
 
 object ProcessingElementSequential {
-    def apply(layer: Layer, options: Options) = new ProcessingElementWrapSimpleToSequential(layer, options)
+    def apply(layer: Layer, options: LayerOptions) = new ProcessingElementWrapSimpleToSequential(layer, options)
 }

@@ -21,6 +21,7 @@ from chisel4ml.lbir.lbir_pb2 import PreprocessLayer
 from chisel4ml.lbir.lbir_pb2 import QTensor
 from chisel4ml.lbir.services_pb2 import GenerateCircuitParams
 from chisel4ml.lbir.services_pb2 import GenerateCircuitReturn
+from chisel4ml.lbir.services_pb2 import LayerOptions
 from chisel4ml.transforms.qkeras_util import get_input_quantization
 
 log = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ def circuit(
     use_verilator=False,
     gen_vcd=False,
     gen_timeout_sec=600,
+    axi_stream_width=None,
 ):
     assert gen_timeout_sec > 5, "Please provide at least a 5 second generation timeout."
     # TODO - add checking that the opt_model is correct
@@ -50,7 +52,7 @@ def circuit(
                     dtype=Datatype(
                         quantization=Datatype.QuantizationType.UNIFORM,
                         signed=False,
-                        bitwidth=32,  # 13
+                        bitwidth=13,
                         shift=[0],
                         offset=[0],
                     ),
@@ -60,7 +62,7 @@ def circuit(
                     dtype=Datatype(
                         quantization=Datatype.QuantizationType.UNIFORM,
                         signed=True,
-                        bitwidth=32,
+                        bitwidth=6,
                         shift=[0],
                         offset=[0],
                     ),
@@ -81,17 +83,19 @@ def circuit(
         GenerateCircuitParams(
             model=lbir_model,
             options=GenerateCircuitParams.Options(
-                isSimple=is_simple, pipelineCircuit=pipeline
+                is_simple=is_simple,
+                pipeline_circuit=pipeline,
+                layers=generate_layer_options(lbir_model, axi_stream_width),
             ),
-            useVerilator=use_verilator,
-            genVcd=gen_vcd,
-            generationTimeoutSec=gen_timeout_sec,
+            use_verilator=use_verilator,
+            gen_vcd=gen_vcd,
+            generation_timeout_sec=gen_timeout_sec,
         ),
         gen_timeout_sec + 2,
     )
     if gen_circt_ret is None:
         return None
-    elif gen_circt_ret.err.errId != GenerateCircuitReturn.ErrorMsg.SUCCESS:
+    elif gen_circt_ret.err.err_id != GenerateCircuitReturn.ErrorMsg.SUCCESS:
         log.error(
             f"Circuit generation failed with error id:{gen_circt_ret.err.errId} and the"
             f" following error message:{gen_circt_ret.err.msg}"
@@ -99,9 +103,19 @@ def circuit(
         return None
 
     circuit = Circuit(
-        gen_circt_ret.circuitId,
+        gen_circt_ret.circuit_id,
         # TODO: this is temporary
         tf.keras.activations.linear if get_mfcc else get_input_quantization(opt_model),
         lbir_model.layers[0].input,
     )
     return circuit
+
+
+def generate_layer_options(lbir_model, axi_stream_width):
+    options = []
+    for layer in lbir_model.layers:
+        if layer.ltype is Layer.Type.PREPROC:
+            options.append(LayerOptions(bus_width_in=13, bus_width_out=6))
+        else:
+            options.append(LayerOptions(bus_width_in=32, bus_width_out=32))
+    return options

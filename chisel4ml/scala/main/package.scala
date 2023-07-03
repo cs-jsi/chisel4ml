@@ -98,7 +98,7 @@ package object implicits {
     implicit class UIntToQTensor(x: UInt) {
         def toQTensor(stencil: QTensor) = {
             val valuesString = toBinaryB(x.litValue, stencil.totalBitwidth).grouped(stencil.dtype.get.bitwidth).toList
-            val values = valuesString.reverse.map(Integer.parseInt(_, 2).toFloat)
+            val values = valuesString.reverse.map(BigInt(_, 2).toFloat)
             val valuesMod = if (stencil.dtype.get.quantization == BINARY) {
                 values.map(x => (x * 2) - 1)
             } else {

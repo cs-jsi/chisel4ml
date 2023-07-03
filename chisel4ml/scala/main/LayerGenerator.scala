@@ -17,12 +17,12 @@ package chisel4ml
 
 import chisel3._
 import _root_.lbir.{Layer}
-import _root_.services.GenerateCircuitParams.Options
+import _root_.services.LayerOptions
 import _root_.chisel4ml.LBIRStream
 
 object LayerGenerator {
     // TODO: Rewrite the generation procedure to something more sensisble
-    def apply(layer: Layer, options: Options): Module with LBIRStream = {
+    def apply(layer: Layer, options: LayerOptions): Module with LBIRStream = {
         if (layer.ltype == Layer.Type.PREPROC) {
             Module(new AudioFeaturesExtractWrapper(layer, options))
         } else {

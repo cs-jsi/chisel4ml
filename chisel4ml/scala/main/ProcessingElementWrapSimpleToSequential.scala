@@ -22,11 +22,11 @@ import interfaces.amba.axis._
 import _root_.chisel4ml.util.SRAM
 import _root_.chisel4ml.util.LbirUtil.log2
 import _root_.lbir.{Layer}
-import _root_.services.GenerateCircuitParams.Options
+import _root_.services.LayerOptions
 import _root_.scala.math
 
 
-class ProcessingElementWrapSimpleToSequential(layer: Layer, options: Options)
+class ProcessingElementWrapSimpleToSequential(layer: Layer, options: LayerOptions)
 extends ProcessingElementSequential(layer, options) {
     val inputBuffer  = RegInit(VecInit(Seq.fill(numInTrans)(0.U(inputStreamWidth.W))))
     val outputBuffer = RegInit(VecInit(Seq.fill(numOutTrans)(0.U(outputStreamWidth.W))))

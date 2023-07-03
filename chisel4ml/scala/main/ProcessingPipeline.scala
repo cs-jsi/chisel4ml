@@ -27,15 +27,15 @@ import _root_.scala.collection.mutable._
 
 
 class ProcessingPipeline(model: Model, options: Options) extends Module with LBIRStream {
-    val inStream = IO(Flipped(AXIStream(UInt(32.W))))
-    val outStream = IO(AXIStream(UInt(32.W)))
+    val inStream = IO(Flipped(AXIStream(UInt(options.layers(0).busWidthIn.W))))
+    val outStream = IO(AXIStream(UInt(options.layers.last.busWidthOut.W)))
 
     // List of processing elements - one PE per layer
     val peList = new ListBuffer[Module with LBIRStream]()
 
     // Instantiate modules for seperate layers, for now we only support DENSE layers
-    for (layer <- model.layers) {
-        peList += LayerGenerator(layer, options)
+    for ((layer, idx) <- model.layers.zipWithIndex) {
+        peList += LayerGenerator(layer, options.layers(idx))
     }
 
     // Connect the inputs and outputs of the layers

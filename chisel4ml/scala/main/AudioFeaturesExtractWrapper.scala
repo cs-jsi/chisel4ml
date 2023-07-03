@@ -21,12 +21,12 @@ import _root_.chisel3.experimental._
 import _root_.lbir.{Layer}
 import _root_.chisel4ml.{LBIRStream}
 import interfaces.amba.axis._
-import _root_.services.GenerateCircuitParams.Options
+import _root_.services.LayerOptions
 import fft._
 import dsptools._
 import afe._
 
-class AudioFeaturesExtractWrapper(layer: Layer, options: Options) extends Module with LBIRStream {
+class AudioFeaturesExtractWrapper(layer: Layer, options: LayerOptions) extends Module with LBIRStream {
 	val wordSize = 13
   	val fftSize = 512
   	val isBitReverse = true

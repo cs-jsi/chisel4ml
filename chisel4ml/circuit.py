@@ -29,12 +29,12 @@ class Circuit:
     provides a python interface to that server via gRPC (via __call__ or predict).
     """
 
-    def __init__(self, circuitId: int, input_quantizer, input_qtensor: lbir.QTensor):
-        assert circuitId >= 0, (
+    def __init__(self, circuit_id: int, input_quantizer, input_qtensor: lbir.QTensor):
+        assert circuit_id >= 0, (
             "Invalid circuitId provided. This parameter should be positive, but is"
-            f" {circuitId}."
+            f" {circuit_id}."
         )
-        self.circuitId = circuitId
+        self.circuit_id = circuit_id
         self.input_quantizer = input_quantizer
         self.input_qtensor = input_qtensor
         self._server = start_server_once()
@@ -45,7 +45,7 @@ class Circuit:
             np_arr, self.input_quantizer, self.input_qtensor
         )
         run_sim_params = services.RunSimulationParams(
-            circuitId=self.circuitId, inputs=qtensors
+            circuit_id=self.circuit_id, inputs=qtensors
         )
         run_sim_return = self._server.send_grpc_msg(
             run_sim_params, timeout=sim_timeout_sec

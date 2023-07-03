@@ -3,7 +3,7 @@ package chisel4ml.tests
 import org.scalatest.flatspec.AnyFlatSpec
 import chisel3._
 import chiseltest._
-import _root_.services.GenerateCircuitParams.Options
+import _root_.services.LayerOptions
 import _root_.chisel4ml._
 import _root_.chisel4ml.implicits._
 import _root_.lbir._
@@ -58,7 +58,7 @@ class PeSequentialTestsTemp extends AnyFlatSpec with ChiselScalatestTester {
         )
 
     it should "send data through the pipeline." in {
-   		test(new ProcessingElementSequentialConv(lbirLayer, Options())).withAnnotations(Seq(VerilatorBackendAnnotation)) { c =>
+   		test(new ProcessingElementSequentialConv(lbirLayer, LayerOptions())).withAnnotations(Seq(VerilatorBackendAnnotation)) { c =>
             c.inStream.initSource()
             c.outStream.initSink()
 

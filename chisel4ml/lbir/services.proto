@@ -28,14 +28,15 @@ service Chisel4mlService {
 
 message GenerateCircuitParams {
     message Options {
-        bool isSimple = 1;
-        bool pipelineCircuit = 2;
+        bool is_simple = 1;
+        bool pipeline_circuit = 2;
+        repeated LayerOptions layers = 3;
     }
     lbir.Model model = 1;
     Options options = 2;
-    bool useVerilator = 3;
-    bool genVcd = 4;
-    uint32 generationTimeoutSec = 5;
+    bool use_verilator = 3;
+    bool gen_vcd = 4;
+    uint32 generation_timeout_sec = 5;
 }
 
 message GenerateCircuitReturn {
@@ -44,18 +45,23 @@ message GenerateCircuitReturn {
             SUCCESS = 0;
             FAIL    = 1;
         }
-        ErrorId errId = 1;
+        ErrorId err_id = 1;
         string msg = 2;
     }
-    uint32 circuitId = 1;
+    uint32 circuit_id = 1;
     ErrorMsg err = 2;
 }
 
 message RunSimulationParams {
-    uint32 circuitId = 1;
+    uint32 circuit_id = 1;
     repeated lbir.QTensor inputs = 2;
 }
 
 message RunSimulationReturn {
     repeated lbir.QTensor values = 1;
+}
+
+message LayerOptions {
+    uint32 bus_width_in = 6;
+    uint32 bus_width_out = 7;
 }
