@@ -44,6 +44,7 @@ dev = [
 	"setuptools>=61",
     "build",
     "versioneer",
+    "librosa",
     "pre_commit"
 ]
 

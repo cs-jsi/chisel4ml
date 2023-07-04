@@ -6,7 +6,7 @@ from chisel4ml import generate
 
 
 def test_preproc_sine_wave():
-    tone_freq = 100
+    tone_freq = 200
     num_frames = 32
     frame_length = 512
     sr = 32 * 512  # approx 16000
@@ -20,7 +20,8 @@ def test_preproc_sine_wave():
     filter_banks = librosa.filters.mel(
         n_fft=frame_length, sr=sr, n_mels=20, fmin=0, fmax=((sr / 2) + 1), norm=None
     )
-    fft_res = np.fft.rfft(frames, norm="forward")
+    hw = np.hamming(512)
+    fft_res = np.fft.rfft(frames * hw, norm="forward")
     mag_frames = fft_res.real**2
     mels = np.dot(filter_banks, mag_frames.T)
     log_mels = np.log2(mels, dtype=np.float32)

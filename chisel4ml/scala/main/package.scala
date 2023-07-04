@@ -113,10 +113,10 @@ package object implicits {
         }
 
         def toUIntSeq(busWidth: Int): Seq[UInt] = {
-            val numOfBusTrans = math.ceil(x.getWidth.toFloat / busWidth.toFloat).toInt
-            val temp0 = toBinaryB(x.litValue, x.getWidth)
-            val temp1 = temp0.grouped(busWidth).toList
-            temp1.map("b".concat(_).U(busWidth.W))
+            //val numOfBusTrans = math.ceil(x.getWidth.toFloat / busWidth.toFloat).toInt
+            val binaryStr = toBinaryB(x.litValue, x.getWidth)
+            val transactions = binaryStr.grouped(busWidth).toList.reverse
+            transactions.map("b".concat(_).U(busWidth.W))
         }
     }
 

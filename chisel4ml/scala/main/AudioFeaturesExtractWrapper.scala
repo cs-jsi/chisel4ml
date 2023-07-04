@@ -81,7 +81,8 @@ class AudioFeaturesExtractWrapper(layer: Layer, options: LayerOptions) extends M
 
 	inStream.ready := state === afeState.sREADY
     afe.io.inStream.valid := inStream.valid
-    afe.io.inStream.bits := inStream.bits.asTypeOf(afe.io.inStream.bits)
+    afe.io.inStream.bits.real := inStream.bits.asTypeOf(afe.io.inStream.bits.real)
+    afe.io.inStream.bits.imag := 0.U.asTypeOf(afe.io.inStream.bits.imag)
     afe.io.inStream.last := inStream.last || fftCounterWrap
 
     afe.io.outStream.ready := outStream.ready
