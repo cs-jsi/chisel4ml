@@ -50,7 +50,7 @@ class AudioFeaturesExtractWrapper(layer: Layer, options: LayerOptions) extends M
     	numMulPipes = 1,
     	sdfRadix = radix,
     	runTime = false,
-    	expandLogic =  Array.fill(log2Up(fftSize))(0),
+    	expandLogic =  Array.fill(log2Up(fftSize))(1),
     	keepMSBorLSB = Array.fill(log2Up(fftSize))(true),
     	minSRAMdepth = 8
   	)
@@ -59,7 +59,7 @@ class AudioFeaturesExtractWrapper(layer: Layer, options: LayerOptions) extends M
     val inStream = IO(Flipped(AXIStream(UInt(wordSize.W))))
     val outStream = IO(AXIStream(UInt(32.W)))
 
-    val afe = Module(new AudioFeaturesExtract(fftParams, 8))
+    val afe = Module(new AudioFeaturesExtract(fftParams))
 
     // This counter fixes the discrepancy between the last signal semantics of LBIRDriver and fft.
     // The fft wants per frame last signals, while LBIRDriver provides per tensor last signal.

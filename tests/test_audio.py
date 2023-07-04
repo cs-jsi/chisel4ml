@@ -31,5 +31,8 @@ def test_preproc_sine_wave():
         opt_model=tf.keras.Model(), get_mfcc=True, use_verilator=True, gen_vcd=True
     )
     ret = audio_preproc(frames)
+    hw_res = ret.transpose()
+
     assert sw_res.shape == (20, 32)
     assert ret.shape == (32, 20)
+    assert np.allclose(sw_res, hw_res, atol=2)
