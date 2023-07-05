@@ -19,9 +19,10 @@ import chisel3._
 import chisel3.util._
 
 import interfaces.amba.axis._
-import _root_.chisel4ml.util.{SRAM, ROM}
+import memories.MemoryGenerator
 import _root_.chisel4ml.util.LbirUtil.log2
 import _root_.chisel4ml.util.LbirUtil
+import _root_.chisel4ml.implicits._
 import _root_.lbir.{Layer}
 import _root_.services.LayerOptions
 import _root_.scala.math
@@ -36,11 +37,11 @@ extends ProcessingElementSequential(layer, options) {
     val inReg = RegInit(0.U(inputStreamWidth.W))
 
     val sramMemDepth = 4
-    val sram = Module(new SRAM(depth=sramMemDepth, width=32))
+    val sram = Module(MemoryGenerator.SRAM(depth=sramMemDepth, width=32))
     val sramAddr = RegInit(0.U((log2(sramMemDepth) + 1).W))
 
     val romMemDepth = 4
-    val rom = Module(new ROM(depth=romMemDepth, width=32, memFile=LbirUtil.createHexMemoryFile(layer.weights.get)))
+    val rom = Module(MemoryGenerator.SRAMInitFromString(hexStr=layer.weights.get.toBinaryString))
     val romAddr = RegInit(0.U((log2(romMemDepth) + 1).W))
 
     /***** INPUT DATA INTERFACE *****/

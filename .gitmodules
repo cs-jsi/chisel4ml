@@ -4,3 +4,6 @@
 [submodule "interfaces"]
 	path = interfaces
 	url = https://github.com/jurevreca12/chisel-interfaces
+[submodule "memories"]
+	path = memories
+	url = https://github.com/jurevreca12/chisel-memories

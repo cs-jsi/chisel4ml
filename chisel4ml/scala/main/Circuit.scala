@@ -37,6 +37,7 @@ import _root_.java.util.concurrent.CountDownLatch
 import _root_.java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
+import memories.MemoryGenerator
 
 class Circuit[+T <: Module with LBIRStream](dutGen: => T,
                                             outputStencil: QTensor,
@@ -51,7 +52,6 @@ extends Runnable {
     val isGenerated = new CountDownLatch(1)
     val isStoped = new CountDownLatch(1)
     val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString
-    LbirUtil.setDirectory(directory)
 
     var annot: AnnotationSeq = Seq(TargetDirAnnotation(relDir)) // TODO - work with .pb instead of .lo.fir
     if (genVcd) annot = annot :+ WriteFstAnnotation
@@ -64,6 +64,7 @@ extends Runnable {
 
     def run() : Unit = {
         logger.info(s"Used annotations for generated circuit are: ${annot.map(_.toString)}.")
+        MemoryGenerator.setGenDir(directory)
         RawTester.test(dutGen, annot)(this.simulate(_))
         isStoped.countDown()
     }

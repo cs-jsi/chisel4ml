@@ -19,7 +19,6 @@ import chisel3._
 import chisel3.util._
 
 import interfaces.amba.axis._
-import _root_.chisel4ml.util.SRAM
 import _root_.chisel4ml.util.LbirUtil.log2
 import _root_.lbir.{Layer}
 import _root_.services.LayerOptions

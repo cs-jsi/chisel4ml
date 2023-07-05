@@ -79,14 +79,6 @@ object WeightsProvider {
 
 final class LbirUtil
 object LbirUtil {
-    var cnt: Int = 0
-    var directory: Path = Paths.get("")
-
-    def setDirectory(dir: Path) = {
-        directory = dir
-        cnt = 0
-    }
-
     val logger = LoggerFactory.getLogger(classOf[LbirUtil])
 
     def transformWeights[T <: Bits : WeightsProvider](tensor: QTensor): Seq[Seq[T]] = {
@@ -99,15 +91,4 @@ object LbirUtil {
 
     def log2(x: Int): Int = (log(x) / log(2)).toInt
     def log2(x: Float): Float = (log(x) / log(2.0)).toFloat
-
-    def createHexMemoryFile(tensor: QTensor): String = {
-        val fPath = Paths.get(directory.toString, s"mem$cnt.hex").toAbsolutePath()
-        val relPath = Paths.get("").toAbsolutePath().relativize(fPath)
-        val writer = new BufferedWriter(new FileWriter(fPath.toString))
-        writer.write(tensor.toBinaryString) // TODO hex!
-        writer.close()
-        logger.debug(s"Created new memory file: ${fPath.toString}.")
-        cnt = cnt + 1
-        relPath.toString
-    }
 }

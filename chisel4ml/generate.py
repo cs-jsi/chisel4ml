@@ -97,8 +97,8 @@ def circuit(
         return None
     elif gen_circt_ret.err.err_id != GenerateCircuitReturn.ErrorMsg.SUCCESS:
         log.error(
-            f"Circuit generation failed with error id:{gen_circt_ret.err.errId} and the"
-            f" following error message:{gen_circt_ret.err.msg}"
+            f"Circuit generation failed with error id:{gen_circt_ret.err.err_id} and"
+            f" the following error message:{gen_circt_ret.err.msg}"
         )
         return None
 

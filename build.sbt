@@ -39,6 +39,7 @@ val dependencies = Seq(
     "org.slf4j"                  %  "slf4j-simple"         % slf4jVersion,
     "org.scalatest"              %% "scalatest"            % scalatestVersion,
     "org.scalatest"              %% "scalatest"            % scalatestVersion % "test",
+    "com.lihaoyi"                %% "os-lib"               % "0.9.1"
 )
 
 val scalaOptions = Seq(
@@ -56,19 +57,20 @@ val commonSettings = Seq(
 )
 
 lazy val interfaces = (project in file("interfaces")).settings(commonSettings, name := "interfaces")
+lazy val memories = (project in file("memories")).settings(commonSettings, name := "memories")
 
 lazy val fft = (project in file("audio_features_extract/sdf-fft"))
     .settings(commonSettings,
               name := "sdf-fft"
     )
 lazy val afe = (project in file("audio_features_extract"))
-    .dependsOn(fft, interfaces)
+    .dependsOn(fft, interfaces, memories)
     .settings(commonSettings,
               name := "afe"
     )
 
 lazy val root = (project in file("."))
-  .dependsOn(afe, interfaces)
+  .dependsOn(afe, interfaces, memories)
   .settings(
     commonSettings,
     name := "chisel4ml",
