@@ -107,9 +107,9 @@ class ProcessingElementSequentialConv[
   kernelMem.io.rdAddr := kRFLoader.io.romRdAddr
   kRFLoader.io.romRdData := kernelMem.io.rdData
 
-  /*kernelMem.io.wrEna  := io.kernelMemWrEna
-  kernelMem.io.wrAddr := io.kernelMemWrAddr
-  kernelMem.io.wrData := io.kernelMemWrData*/
+  kernelMem.io.wrEna  := false.B // io.kernelMemWrEna
+  kernelMem.io.wrAddr := 0.U // io.kernelMemWrAddr
+  kernelMem.io.wrData := 0.U // io.kernelMemWrData
 
   actMem.io.rdEna  := swu.io.actRdEna
   actMem.io.rdAddr := swu.io.actRdAddr
