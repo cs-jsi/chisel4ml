@@ -19,7 +19,6 @@ import _root_.chisel3._
 import _root_.chisel3.util._
 import _root_.chisel3.experimental._
 import _root_.lbir.{Model, Layer}
-import _root_.chisel4ml.util.LbirUtil
 import _root_.chisel4ml.{LayerGenerator, LBIRStream}
 import interfaces.amba.axis._
 import _root_.services.GenerateCircuitParams.Options

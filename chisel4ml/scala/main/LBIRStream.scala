@@ -16,6 +16,7 @@
 package chisel4ml
 import interfaces.amba.axis._
 import chisel3._
+import chisel3.util._
 
 trait LBIRStream {
  val inStream: AXIStreamIO[UInt]

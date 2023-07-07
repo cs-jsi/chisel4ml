@@ -22,9 +22,12 @@ option java_multiple_files = true;
 option java_package = "services";
 
 service Chisel4mlService {
-  rpc GenerateCircuit (GenerateCircuitParams) returns (GenerateCircuitReturn) {}
-  rpc RunSimulation (RunSimulationParams) returns (RunSimulationReturn) {}
+	rpc GenerateCircuit (GenerateCircuitParams) returns (GenerateCircuitReturn) {}
+	rpc RunSimulation (RunSimulationParams) returns (RunSimulationReturn) {}
 }
+
+message ShutdownServerParams {}
+message ShutdownServerReturn {}
 
 message GenerateCircuitParams {
     message Options {

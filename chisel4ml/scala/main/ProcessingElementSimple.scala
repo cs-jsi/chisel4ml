@@ -22,8 +22,11 @@ import _root_.lbir.{Datatype, Layer}
 import _root_.lbir.Datatype.QuantizationType._
 import _root_.lbir.Layer.Activation._
 import _root_.services.GenerateCircuitParams.Options
+import _root_.chisel4ml._
+import _root_.chisel4ml.lbir._
 import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
+
 
 import scala.math.pow
 import _root_.org.slf4j.Logger
@@ -171,8 +174,8 @@ class ProcessingElementSimpleDense[I <: Bits,
 
 extends ProcessingElementSimple(layer) {
     import ProcessingElementSimple.logger
-    val weights: Seq[Seq[W]] = LbirUtil.transformWeights[W](layer.weights.get)
-    val thresh: Seq[A] = LbirUtil.transformThresh[A](layer.thresh.get, layer.input.get.shape(0))
+    val weights: Seq[Seq[W]] = LbirDataTransforms.transformWeights[W](layer.weights.get)
+    val thresh: Seq[A] = LbirDataTransforms.transformThresh[A](layer.thresh.get, layer.input.get.shape(0))
     val shift: Seq[Int] = layer.weights.get.dtype.get.shift
 
     val in_int  = Wire(Vec(layer.input.get.shape(0), genI))

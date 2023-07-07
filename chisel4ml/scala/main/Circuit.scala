@@ -23,7 +23,7 @@ import _root_.firrtl.stage.{FirrtlStage, OutputFileAnnotation}
 import _root_.chiseltest._
 import _root_.chiseltest.simulator.WriteFstAnnotation
 
-import _root_.chisel4ml.util.LbirUtil
+import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
 import _root_.chisel4ml._
 import _root_.chisel4ml.ProcessingPipelineSimple

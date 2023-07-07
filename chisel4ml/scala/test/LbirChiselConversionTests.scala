@@ -1,7 +1,6 @@
 package chisel4ml.tests
 
 import org.scalatest.funsuite.AnyFunSuite
-import _root_.chisel4ml.util.LbirUtil
 import _root_.lbir.{QTensor, Datatype}
 import _root_.lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
 import _root_.chisel4ml._
@@ -9,6 +8,11 @@ import _root_.chisel4ml.implicits._
 import _root_.chisel3._
 
 class LbirChiselConversionTests extends AnyFunSuite {
+    val binaryDatatype = Some(new Datatype(quantization=BINARY,
+                                           bitwidth=1,
+                                           signed=true,
+                                           shift=Seq(0),
+                                           offset=Seq(0)))
 
     // TEST QTensor -> UInt WITH TEST VECTORS
     val testVectors = List(Seq(-1, -1, -1, 1).BQ -> "b1000".U.litValue,

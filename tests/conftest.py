@@ -8,9 +8,20 @@ from tensorflow.keras.datasets import mnist
 from tensorflow_model_optimization.python.core.sparsity.keras import prune
 from tensorflow_model_optimization.python.core.sparsity.keras import pruning_schedule
 
+from chisel4ml import chisel4ml_server
+
 # from tensorflow_model_optimization.python.core.sparsity.keras import pruning_callbacks
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+
+def pytest_sessionstart(session):
+    chisel4ml_server.start_server_once()
+
+
+def pytest_sessionfinish(session, exitstatus):
+    server = chisel4ml_server.start_server_once()
+    server.stop()
 
 
 @pytest.fixture(scope="session")

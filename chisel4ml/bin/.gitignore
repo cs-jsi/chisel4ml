@@ -3,4 +3,8 @@ sync/
 update/
 zinc/
 chisel4ml.jar
-test*
+test-sync/
+test-zinc/
+meta/
+scalafix-sync/
+test-meta/

@@ -60,6 +60,59 @@ package object implicits {
         }
 
         def totalBitwidth: Int = qt.dtype.get.bitwidth * qt.shape.reduce(_ * _)
+
+		def toHexStr: String = {
+      		logger.debug("Convertin QTensor to a hex file string.")
+      		val bitwidth:       Int = qt.dtype.get.bitwidth
+      		val memWordWidth:   Int = 32
+      		val paramsPerWord:  Int = memWordWidth / bitwidth
+      		val memValidBits:   Int = paramsPerWord * bitwidth
+      		val memInvalidBits: Int = memWordWidth - memValidBits
+      		val numKernels:     Int = if (qt.shape.length == 4) qt.shape(0) else 1
+      		val totalElements:  Int = qt.shape.reduce(_ * _)
+      		val elemPerKernel:  Int = totalElements / numKernels
+      		require(elemPerKernel * numKernels == totalElements, "All tensor must be of the same size.")
+
+
+      		var values: Seq[Float]     = Seq()
+      		var realElemPerKernel: Int = 0
+      		// We insert zeros where necesessary for kernel alignment (each kernel goes to new word)
+      		val finalElemOffset = elemPerKernel % paramsPerWord
+      		if (finalElemOffset != 0) {
+      		  realElemPerKernel = elemPerKernel + (paramsPerWord - finalElemOffset)
+      		  for (i <- 0 until numKernels) {
+      		    values = values :++ qt.values.grouped(elemPerKernel).toSeq(i)
+      		    values = values :++ Seq.fill(paramsPerWord - finalElemOffset)(0.0F)
+      		  }
+      		} else {
+      		  values = qt.values
+      		  realElemPerKernel = elemPerKernel
+      		}
+
+      		var hex: String      = ""
+      		var bin: Seq[String] = Seq()
+      		var tmp: String      = ""
+      		for (kernel <- values.grouped(realElemPerKernel)) {
+      		  for (paramGroup <- kernel.grouped(paramsPerWord)) {
+      		    tmp = ""
+      		    for (param <- paramGroup) {
+      		      tmp = toBinary(param.toInt, bitwidth) + " " + tmp
+      		    }
+      		    if (memInvalidBits > 0) {
+      		      tmp = toBinary(0, memInvalidBits) + " " + tmp + "\n"
+      		    } else {
+      		      tmp = tmp + "\n"
+      		    }
+      		    bin = bin :+ tmp
+      		  }
+      		}
+      		for (binStr <- bin) {
+      		  tmp = BigInt(binStr.trim.replaceAll(" ", ""), 2).toString(16)
+      		  tmp = tmp.reverse.padTo(8, "0").reverse.mkString
+      		  hex = hex + tmp + s" // " + binStr
+      		}
+      		hex
+    	}
     }
 
     implicit class BigIntSeqToUInt(x: Seq[BigInt]) {
@@ -97,6 +150,7 @@ package object implicits {
     // And vice versa
     implicit class UIntToQTensor(x: UInt) {
         def toQTensor(stencil: QTensor) = {
+
             val valuesString = toBinaryB(x.litValue, stencil.totalBitwidth).grouped(stencil.dtype.get.bitwidth).toList
             val values = valuesString.reverse.map(BigInt(_, 2).toFloat)
             val valuesMod = if (stencil.dtype.get.quantization == BINARY) {

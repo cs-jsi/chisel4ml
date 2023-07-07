@@ -23,6 +23,8 @@ Compile / PB.targets := Seq(
   scalapb.gen(flatPackage = true) ->  baseDirectory.value / "chisel4ml" / "scala"
 )
 
+Test / logBuffered := false
+Test / parallelExecution := true
 
 val chiselVersion = "3.5.6"
 val slf4jVersion = "1.7.5"
@@ -39,7 +41,9 @@ val dependencies = Seq(
     "org.slf4j"                  %  "slf4j-simple"         % slf4jVersion,
     "org.scalatest"              %% "scalatest"            % scalatestVersion,
     "org.scalatest"              %% "scalatest"            % scalatestVersion % "test",
-    "com.lihaoyi"                %% "os-lib"               % "0.9.1"
+    "com.lihaoyi"                %% "os-lib"               % "0.9.1",
+    "org.nd4j"                   %  "nd4j-native"          % "0.5.0",
+    "org.nd4j"                   %  "nd4j-native"          % "0.5.0",
 )
 
 val scalaOptions = Seq(

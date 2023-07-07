@@ -17,7 +17,7 @@ from chisel4ml.transforms import qkeras_trans_list
 
 
 def qkeras_to_lbir(
-    model: tf.keras.Model, name="chisel4ml_model", custom_trans_list=[]
+    model: tf.keras.Model, name="chisel4ml_model", custom_trans_list=[], debug=False
 ) -> lbir.Model:
     "Applys transformation to a Keras model, and returns a LBIR model."
     model_copy = qkeras.utils.clone_model(model)
@@ -26,6 +26,8 @@ def qkeras_to_lbir(
     xlayers = model_copy.layers
     trans_list = qkeras_trans_list if len(custom_trans_list) == 0 else custom_trans_list
     for trans in trans_list:
+        if debug:
+            _print_layers(xlayers, trans)
         left = 0
         right = trans.num_layers
         while right <= len(xlayers):
@@ -43,3 +45,10 @@ def qkeras_to_lbir(
     lbir_model.layers.extend(xlayers)
     assert is_valid_lbir_model(lbir_model)
     return lbir_model
+
+
+def _print_layers(layers, trans):
+    print(f"Printing layer status before applying trans: {type(trans)}.")
+    for lay in layers:
+        print(type(lay))
+    print("\n")
