@@ -45,7 +45,8 @@ dev = [
     "build",
     "versioneer",
     "librosa",
-    "pre_commit"
+    "pre_commit",
+    "tensorflow-datasets"
 ]
 
 [tool.setuptools]

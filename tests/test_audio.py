@@ -1,8 +1,13 @@
+import os
+
 import librosa
 import numpy as np
 import tensorflow as tf
 
 from chisel4ml import generate
+from chisel4ml import optimize
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 def test_preproc_sine_wave():
@@ -36,3 +41,12 @@ def test_preproc_sine_wave():
     assert sw_res.shape == (20, 32)
     assert ret.shape == (32, 20)
     assert np.allclose(sw_res, hw_res, atol=2)
+
+
+def test_audio_classifier(qnn_audio_class):
+    model, test_ds = qnn_audio_class
+    opt_model = optimize.qkeras_model(model)
+    circuit = generate.circuit(
+        opt_model, get_mfcc=True, use_verilator=True, gen_vcd=True
+    )
+    assert circuit is not None

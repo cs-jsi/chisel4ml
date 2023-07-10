@@ -27,7 +27,7 @@ def qkeras_to_lbir(
     trans_list = qkeras_trans_list if len(custom_trans_list) == 0 else custom_trans_list
     for trans in trans_list:
         if debug:
-            _print_layers(xlayers, trans)
+            print(_stringfy_layers(xlayers, trans))
         left = 0
         right = trans.num_layers
         while right <= len(xlayers):
@@ -40,15 +40,17 @@ def qkeras_to_lbir(
     for layer in xlayers:
         assert isinstance(layer, lbir.Layer), (
             "Transformation to lbir model failed. Not all layers were able to be "
-            "transformed to lbir layers."
+            f"transformed to lbir layers. Layers {layer} seems to be the problem."
+            f"All the layers are {_stringfy_layers(xlayers, None)}"
         )
     lbir_model.layers.extend(xlayers)
     assert is_valid_lbir_model(lbir_model)
     return lbir_model
 
 
-def _print_layers(layers, trans):
-    print(f"Printing layer status before applying trans: {type(trans)}.")
+def _stringfy_layers(layers, trans):
+    temp = f"Printing layer status before applying trans: {type(trans)}.\n"
     for lay in layers:
-        print(type(lay))
-    print("\n")
+        temp = temp + str(type(lay)) + "\n"
+    temp = temp + "\n"
+    return temp

@@ -48,10 +48,6 @@ def _layer_to_ltype(keras_layer: KerasLayer) -> lbir.Layer.Type:
 
 
 def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
-    assert keras_layer.use_bias, (
-        "All layers should use bias. Regardles of the starting settings, after"
-        " optimization the use_bias settings get switched to true (to enable folding)."
-    )
     if keras_layer.bias_quantizer_internal is None:
         keras_layer.bias_quantizer_internal = qkeras.quantized_bits(
             bits=16, integer=15, keep_negative=True, alpha=1
@@ -68,9 +64,10 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
             )
 
     bias_values = np.zeros(keras_layer.output_shape[1])
-    bias_values = get_integer_values(
-        keras_layer.bias, keras_layer.bias_quantizer_internal
-    ).numpy()
+    if keras_layer.use_bias:
+        bias_values = get_integer_values(
+            keras_layer.bias, keras_layer.bias_quantizer_internal
+        ).numpy()
     thresh_values = (bias_values * (-1.0)).flatten().tolist()
     return lbir.QTensor(
         dtype=lbir.Datatype(
