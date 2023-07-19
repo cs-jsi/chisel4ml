@@ -27,12 +27,13 @@ class LbirChiselConversionTests extends AnyFunSuite {
     }
 
     // Randomly test QTensor -> UInt -> QTensor
-    val numUniformTests = 20
+    val numUniformTests = 40
     val r = new scala.util.Random
     r.setSeed(42L)
     for (idx <- 0 until numUniformTests) {
         val signed = r.nextFloat() < 0.5 // true/false
         val bitwidth = r.nextInt(15) + 2  // 2-16
+        val busWidth = bitwidth + r.nextInt(32)
         val length = r.nextInt(128) + 1  // 1-128
         val signAdjust = if (signed) Math.pow(2, bitwidth - 1).toFloat else 0.0F
         val values = (0 until length).map(_ => r.nextInt(Math.pow(2, bitwidth).toInt).toFloat - signAdjust)
@@ -47,10 +48,11 @@ class LbirChiselConversionTests extends AnyFunSuite {
         val stencil = QTensor(dtype=dtype,
                               shape=Seq(length))
         test(s"Random test QTensor -> UInt -> QTensor: $idx") {
-            assert(qtensor.toUInt.toQTensor(stencil).values == qtensor.values,
-                s"""QTensor was first converted to ${qtensor.toUInt}, with total bitwidth ${qtensor.totalBitwidth} and
-                | then back to a qtensor: ${qtensor.toUInt.toQTensor(stencil).values}.
-                | The QTensor was signed:$signed, bitwidth: $bitwidth.""".stripMargin.replaceAll("\n", ""))
+            assert(qtensor.toLBIRTransactions(busWidth).map(_.litValue).toQTensor(stencil, busWidth).values == qtensor.values,
+                s"""QTensor was first converted to ${qtensor.toLBIRTransactions(busWidth)}, and then back to a qtensor:
+                | ${qtensor.toLBIRTransactions(busWidth).map(_.litValue).toQTensor(stencil, busWidth).values}.
+                | The QTensor was signed:$signed, bitwidth: $bitwidth. The simulated transaction buswidth was
+                | $busWidth.""".stripMargin.replaceAll("\n", ""))
         }
     }
 }

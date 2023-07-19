@@ -78,9 +78,7 @@ class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
       }.fork {
         res = dut.outStream.dequeueQTensor(stencil, dut.clock)
       }.join()
-      logger.error(s"Tensor ${res.values} does not equal to the expected values: ${expectedOutput.values}")
-      assert(res.values == expectedOutput.values,
-        s"Tensor ${res.values} does not equal to the expected values: ${expectedOutput.values}")
+      assert(res.values == expectedOutput.values)
     }
   }
 }

@@ -24,11 +24,11 @@ class AXIStreamLBIRDriver(val axiDrive: AXIStreamDriver[UInt]) {
         Drives a AXIStreamIO with a LBIR QTensor.
     */
     def enqueueQTensor(qt: QTensor, clock: Clock): Unit = {
-        val sequence = qt.toUInt.toUIntSeq(axiDrive.getBusWidth(), qt.dtype.get.bitwidth)
-        axiDrive.enqueuePacket(sequence, clock)
+        val transactions = qt.toLBIRTransactions(axiDrive.getBusWidth())
+        axiDrive.enqueuePacket(transactions, clock)
     }
 
     def dequeueQTensor(stencil: QTensor, clock: Clock): QTensor = {
-        axiDrive.dequeuePacket(clock).toUInt(axiDrive.getBusWidth()).toQTensor(stencil)
+        axiDrive.dequeuePacket(clock).toQTensor(stencil, axiDrive.getBusWidth())
     }
 }

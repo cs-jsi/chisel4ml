@@ -35,24 +35,43 @@ package object implicits {
         new AXIStreamLBIRDriver(new AXIStreamDriver(x))
     }
 
+    implicit class QTensorExtensions(qt: QTensor) {
+        def totalBitwidth: Int = qt.dtype.get.bitwidth * qt.shape.reduce(_ * _)
 
+        /* LBIR Transactions contain all parameters bit packed, with no parameter being
+         * separated into two transactions. Thus, depending on the bitwidth of parameters and
+         * the bus width there could be some stuffing bits.
+         *
+         * i.e. say we have 5-bit parameters and the following values in qt: (1, 2, 3, 4, 3, 2, 1).
+         * For a 32-bit bus we need 2 transactions, since we have 7 parameters. One transaction can have
+         * at most 6 parameters, and the 2-left over bits are empty with dont care (zeros in code).
+         * The following lines show the correct transaction data for the above case:
+         *  xx_00010_00011_00100_00011_00010_00001
+         *  xx_xxxxx_xxxxx_xxxxx_xxxxx_xxxxx_00001
+         */
+        def toLBIRTransactions(busWidth: Int): Seq[UInt] = {
+            val binaryStr = qt.toBinaryString
+            val paramWidth = qt.dtype.get.bitwidth
+            val emptyBits = busWidth % paramWidth
+            val dataBits = busWidth - emptyBits
+            val paramsPerTransaction: Int = busWidth / paramWidth
+            val transactions = binaryStr.drop(1).grouped(paramWidth).toList.reverse.grouped(paramsPerTransaction).map(
+                _.reverse.reduce(_ + _)
+            ).toList
+            transactions.map(s"b${"0"*emptyBits}".concat(_).U(busWidth.W))
+        }
 
-    // Allows QTensor to be converted to chisel UInt
-    implicit class QTensorAddOns(qt: QTensor) {
+        def toUInt: UInt = {
+            qt.toBinaryString.U
+        }
+
         def toBinaryString: String = {
-            var values = qt.values.reverse
+            var values =   qt.values.reverse
             if (qt.dtype.get.quantization == BINARY) {
                 values = values.map(x => (x + 1) / 2) // 1 -> 1, -1 -> 0
             }
             "b".concat(values.map(_.toInt).map(toBinary(_, qt.dtype.get.bitwidth)).mkString)
         }
-        def toUInt: UInt = {
-            logger.debug(s"Converting QTensor to an UInt.")
-            val binaryString = qt.toBinaryString
-            binaryString.U(qt.totalBitwidth.W)
-        }
-
-        def totalBitwidth: Int = qt.dtype.get.bitwidth * qt.shape.reduce(_ * _)
 
 		def toHexStr: String = {
       		logger.debug("Convertin QTensor to a hex file string.")
@@ -108,15 +127,40 @@ package object implicits {
     	}
     }
 
-    implicit class BigIntSeqToUInt(x: Seq[BigInt]) {
-        def toUInt(busWidth:Int): UInt = {
-            logger.debug(s"Converting Seq[BigInt]=$x to an UInt.")
-            val totalWidth = busWidth * x.length
-            "b".concat(x.map( (a:BigInt) => toBinaryB(a, busWidth) ).reverse.mkString).U(totalWidth.W)
+    implicit class SeqBigIntExtensions(x: Seq[BigInt]) {
+        /* LBIR Transactions -> QTensor
+         *
+         * Converts LBIR Transactions back to a QTensor. An appropriate stencil is needed as Seq[BigInt]
+         * does not contain enough information to know how to reconstruct the QTensor.
+         */
+        def toQTensor(stencil: QTensor, busWidth: Int) = {
+            val paramsPerTransaction: Int = busWidth / stencil.dtype.get.bitwidth
+            val bitsPerTransaction: Int = paramsPerTransaction * stencil.dtype.get.bitwidth
+
+            //val valuesString = toBinaryB(x.litValue, stencil.totalBitwidth).grouped(stencil.dtype.get.bitwidth).toList
+            //val values = valuesString.reverse.map(BigInt(_, 2).toFloat)
+            //val transactionToParams = (a: String) =>
+            val binaryVals = x.map((a: BigInt) => toBinaryB(a, bitsPerTransaction)).map(
+                _.grouped(stencil.dtype.get.bitwidth).toList.reverse
+            )
+            val flatVals = binaryVals.flatten.map(BigInt(_, 2).toFloat)
+            val values = flatVals.toList.dropRight(flatVals.length - stencil.shape.reduce(_ * _))
+            val valuesMod = if (stencil.dtype.get.quantization == BINARY) {
+                values.map(x => (x * 2) - 1)
+            } else {
+                values.map(signedCorrect(_, stencil.dtype.get))
+            }
+            logger.debug(s"""Converted Seq[BigInt] to QTensor. Values: $values, valuesMod: $valuesMod.
+                           | Original Seq: $x, paramsPerTransaction: $paramsPerTransaction, bitsPerTransaction:
+                           | $bitsPerTransaction, flatVals: $flatVals. binaryVals: $binaryVals""".stripMargin.replaceAll("\n", ""))
+            QTensor(dtype = stencil.dtype,
+                    shape = stencil.shape,
+                    values = valuesMod)
+
         }
     }
 
-    implicit class IntSeqToUInt(x: Seq[Int]) {
+    implicit class SeqIntHelperExtensions(x: Seq[Int]) {
         def BQ: QTensor = {
             QTensor(dtype=Some(Datatype(quantization=BINARY,
                                         bitwidth=1,
@@ -139,37 +183,5 @@ package object implicits {
             )
         }
     }
-
-    // And vice versa
-    implicit class UIntToQTensor(x: UInt) {
-        def toQTensor(stencil: QTensor) = {
-
-            val valuesString = toBinaryB(x.litValue, stencil.totalBitwidth).grouped(stencil.dtype.get.bitwidth).toList
-            val values = valuesString.reverse.map(BigInt(_, 2).toFloat)
-            val valuesMod = if (stencil.dtype.get.quantization == BINARY) {
-                values.map(x => (x * 2) - 1)
-            } else {
-                values.map(signedCorrect(_, stencil.dtype.get))
-            }
-            logger.info(s"""Converted UInt to QTensor. ValuesString: $valuesString, values: $values,
-							 | valuesMod: $valuesMod. Uint val: $x, LitValue: ${x.litValue}, Binary string:
-                             | ${toBinaryB(x.litValue, stencil.totalBitwidth)}""".stripMargin.replaceAll("\n", ""))
-            QTensor(dtype = stencil.dtype,
-                    shape = stencil.shape,
-                    values = valuesMod)
-        }
-
-        def toUIntSeq(busWidth: Int, paramWidth: Int): Seq[UInt] = {
-            val binaryStr = toBinaryB(x.litValue, x.getWidth)
-            val emptyBits = busWidth % paramWidth
-            val dataBits = busWidth - emptyBits
-            val paramsPerTransaction: Int = busWidth / paramWidth
-            val transactions = binaryStr.grouped(paramWidth).toList.reverse.grouped(paramsPerTransaction).map(
-                _.reverse.reduce(_ + _)
-            ).toList
-            transactions.map(s"b${"0"*emptyBits}".concat(_).U(busWidth.W))
-        }
-    }
-
 
 }
