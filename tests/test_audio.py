@@ -5,7 +5,6 @@ import numpy as np
 import tensorflow as tf
 
 from chisel4ml import generate
-from chisel4ml import optimize
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -44,8 +43,7 @@ def test_preproc_sine_wave():
 
 
 def test_audio_classifier(qnn_audio_class):
-    model, test_ds = qnn_audio_class
-    opt_model = optimize.qkeras_model(model)
+    opt_model, test_set, test_set_no_preproc = qnn_audio_class
     circuit = generate.circuit(
         opt_model, get_mfcc=True, use_verilator=True, gen_vcd=True
     )

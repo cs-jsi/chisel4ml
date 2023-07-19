@@ -24,7 +24,7 @@ from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
 @register_qkeras_optimization
 class QKerasBNQDenseFuse(QKerasOptimization):
     """
-    Fuses the BatchNorm and QDense layer with a quantized_relu activation function.
+    Fuses BatchNorm and QDense/QConv layers with a quantized_relu activation function.
     """
 
     num_layers = 2
@@ -42,19 +42,21 @@ class QKerasBNQDenseFuse(QKerasOptimization):
         layers[0].kernel.assign(w * inv)
         if not layers[0].use_bias:
             layers[0].use_bias = True
+            if isinstance(layers[0], qkeras.QDense):
+                bias_shape = layers[0].units
+            else:
+                bias_shape = layers[0].filters
             layers[0].bias = layers[0].add_weight(
                 "bias",
-                shape=[
-                    layers[0].units,
-                ],
+                shape=(bias_shape,),
                 dtype=layers[0].dtype,
                 trainable=True,
             )
-            layers[0].build(input_shape=layers[0]._build_input_shape[1:])
+            layers[0].build(input_shape=layers[0].input_shape[1:])
         layers[0].bias.assign(((b - mm) * inv) + beta)
         return delete_layer(model, layers[1], copy=False)
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
-        return isinstance(layers[0], qkeras.QDense) and isinstance(
+        return isinstance(layers[0], (qkeras.QConv2D, qkeras.QDense)) and isinstance(
             layers[1], BatchNormalization
         )

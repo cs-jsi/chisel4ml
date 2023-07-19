@@ -24,7 +24,9 @@ case class ProcessingElementSequentialConfig(layer: Layer) {
   val result = TensorConfig(layer.output.get)
 
   require(kernel.numChannels == input.numChannels)
-  require(kernel.numKernels == result.numChannels)
+  if (layer.ltype == Layer.Type.CONV2D) {
+    require(kernel.numKernels == result.numChannels)
+  }
 }
 
 case class TensorConfig(qtensor: QTensor) {

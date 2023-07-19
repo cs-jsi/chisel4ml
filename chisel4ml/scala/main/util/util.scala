@@ -57,6 +57,17 @@ package object util {
     "b" + binaryString
   }
 
+  def toBinary(i: Int, digits: Int = 8): String = String.format(s"%${digits}s",
+                                                         i.toBinaryString.takeRight(digits)).replace(' ', '0')
+  def toBinaryB(i: BigInt, digits: Int = 8): String = String.format("%" + digits + "s", i.toString(2)).replace(' ', '0')
+
+  def signedCorrect(x: Float, dtype: Datatype): Float = {
+        if (dtype.signed && x > (pow(2,dtype.bitwidth-1) - 1))
+            x - pow(2, dtype.bitwidth).toFloat
+        else
+            x
+    }
+
   def signFn(act: UInt, thresh: UInt):    Bool = act >= thresh
   def signFn(act: SInt, thresh: SInt):    Bool = act >= thresh
   def reluFn(act: SInt, thresh: SInt):    UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)

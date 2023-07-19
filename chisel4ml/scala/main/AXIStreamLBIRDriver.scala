@@ -24,7 +24,7 @@ class AXIStreamLBIRDriver(val axiDrive: AXIStreamDriver[UInt]) {
         Drives a AXIStreamIO with a LBIR QTensor.
     */
     def enqueueQTensor(qt: QTensor, clock: Clock): Unit = {
-        val sequence = qt.toUInt.toUIntSeq(axiDrive.getBusWidth())
+        val sequence = qt.toUInt.toUIntSeq(axiDrive.getBusWidth(), qt.dtype.get.bitwidth)
         axiDrive.enqueuePacket(sequence, clock)
     }
 

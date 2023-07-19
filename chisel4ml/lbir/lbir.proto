@@ -30,6 +30,7 @@ message Layer {
         DENSE  = 0;
         CONV2D = 1;
         PREPROC = 2;
+        MAX_POOL = 3;
     }
     enum Activation {
         BINARY_SIGN = 0;

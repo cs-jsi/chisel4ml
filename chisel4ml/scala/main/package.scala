@@ -18,6 +18,7 @@ package chisel4ml
 import _root_.chisel3._
 import _root_.lbir.{QTensor, Datatype, AXIStreamLBIRDriver}
 import _root_.lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
+import chisel4ml.util._
 import interfaces.amba.axis._
 
 import _root_.org.slf4j.Logger
@@ -34,15 +35,7 @@ package object implicits {
         new AXIStreamLBIRDriver(new AXIStreamDriver(x))
     }
 
-    def toBinary(i: Int, digits: Int = 8): String = String.format(s"%${digits}s",
-                                                            i.toBinaryString.takeRight(digits)).replace(' ', '0')
-    def toBinaryB(i: BigInt, digits: Int = 8): String = String.format("%" + digits + "s", i.toString(2)).replace(' ', '0')
-	def signedCorrect(x: Float, dtype: Datatype): Float = {
-        if (dtype.signed && x > (pow(2,dtype.bitwidth-1) - 1))
-            x - pow(2, dtype.bitwidth).toFloat
-        else
-            x
-    }
+
 
     // Allows QTensor to be converted to chisel UInt
     implicit class QTensorAddOns(qt: QTensor) {
@@ -158,7 +151,7 @@ package object implicits {
             } else {
                 values.map(signedCorrect(_, stencil.dtype.get))
             }
-            logger.debug(s"""Converted UInt to QTensor. ValuesString: $valuesString, values: $values,
+            logger.info(s"""Converted UInt to QTensor. ValuesString: $valuesString, values: $values,
 							 | valuesMod: $valuesMod. Uint val: $x, LitValue: ${x.litValue}, Binary string:
                              | ${toBinaryB(x.litValue, stencil.totalBitwidth)}""".stripMargin.replaceAll("\n", ""))
             QTensor(dtype = stencil.dtype,
@@ -166,11 +159,15 @@ package object implicits {
                     values = valuesMod)
         }
 
-        def toUIntSeq(busWidth: Int): Seq[UInt] = {
-            //val numOfBusTrans = math.ceil(x.getWidth.toFloat / busWidth.toFloat).toInt
+        def toUIntSeq(busWidth: Int, paramWidth: Int): Seq[UInt] = {
             val binaryStr = toBinaryB(x.litValue, x.getWidth)
-            val transactions = binaryStr.grouped(busWidth).toList.reverse
-            transactions.map("b".concat(_).U(busWidth.W))
+            val emptyBits = busWidth % paramWidth
+            val dataBits = busWidth - emptyBits
+            val paramsPerTransaction: Int = busWidth / paramWidth
+            val transactions = binaryStr.grouped(paramWidth).toList.reverse.grouped(paramsPerTransaction).map(
+                _.reverse.reduce(_ + _)
+            ).toList
+            transactions.map(s"b${"0"*emptyBits}".concat(_).U(busWidth.W))
         }
     }
 

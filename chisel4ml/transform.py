@@ -51,6 +51,8 @@ def qkeras_to_lbir(
 def _stringfy_layers(layers, trans):
     temp = f"Printing layer status before applying trans: {type(trans)}.\n"
     for lay in layers:
-        temp = temp + str(type(lay)) + "\n"
-    temp = temp + "\n"
+        if isinstance(lay, lbir.Layer):
+            temp = f"{temp}<lbir.Type.{lbir.Layer.Type.keys()[lay.ltype]}>\n"
+        else:
+            temp = f"{temp}{type(lay)}\n"
     return temp

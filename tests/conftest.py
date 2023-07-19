@@ -11,6 +11,7 @@ from tensorflow_model_optimization.python.core.sparsity.keras import prune
 from tensorflow_model_optimization.python.core.sparsity.keras import pruning_schedule
 
 from chisel4ml import chisel4ml_server
+from chisel4ml import optimize
 
 # from tensorflow_model_optimization.python.core.sparsity.keras import pruning_callbacks
 
@@ -440,6 +441,9 @@ def qnn_audio_class():
         "speech_commands", split="test", shuffle_files=False, as_supervised=True
     )
 
+    EPOCHS = 20  # noqa: F841
+    BATCH_SIZE = 128  # noqa: F841
+
     label_names = []
     for name in info.features["label"].names:
         print(name, info.features["label"].str2int(name))
@@ -534,7 +538,7 @@ def qnn_audio_class():
         test_gen_no_preproc,
         output_signature=tuple(
             [
-                tf.TensorSpec(shape=(32, 20, 1), dtype=tf.float32),
+                tf.TensorSpec(shape=(32, 512), dtype=tf.float32),
                 tf.TensorSpec(shape=(1), dtype=tf.float32),
             ]
         ),
@@ -562,7 +566,6 @@ def qnn_audio_class():
             kernel_quantizer=qkeras.quantized_bits(
                 bits=8, integer=7, keep_negative=True, alpha="auto_po2"
             ),
-            use_bias=False,
         )
     )
     model.add(tf.keras.layers.BatchNormalization())
@@ -575,7 +578,6 @@ def qnn_audio_class():
             kernel_quantizer=qkeras.quantized_bits(
                 bits=4, integer=3, keep_negative=True, alpha="auto_po2"
             ),
-            use_bias=False,
         )
     )
     model.add(tf.keras.layers.BatchNormalization())
@@ -619,8 +621,6 @@ def qnn_audio_class():
         metrics=["accuracy"],
     )
 
-    EPOCHS = 5  # noqa: F841
-    BATCH_SIZE = 128  # noqa: F841
     # model.fit_generator(train_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
     #                     steps_per_epoch=int(len(train_ds) / BATCH_SIZE),
     #                     validation_data=val_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
@@ -629,7 +629,23 @@ def qnn_audio_class():
     #                     verbose=True,
     #                     callbacks=[pruning_callbacks.UpdatePruningStep()]
     # )
-    # model.save_weights(os.path.join(SCRIPT_DIR, 'qnn_audio_class.h5'))
-    model.load_weights(os.path.join(SCRIPT_DIR, "qnn_audio_class.h5"))
     # model.evaluate(x=test_set.batch(BATCH_SIZE), verbose=True)
-    return (model, test_set_no_preproc)
+    opt_model = optimize.qkeras_model(model)
+    opt_model.summary()
+    opt_model.compile(
+        optimizer=tf.keras.optimizers.Adam(),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=["accuracy"],
+    )
+    # opt_model.fit_generator(train_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
+    #                         steps_per_epoch=int(len(train_ds) / BATCH_SIZE),
+    #                         validation_data=val_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
+    #                         validation_steps=int(len(val_ds) / BATCH_SIZE),
+    #                         epochs=EPOCHS,
+    #                         verbose=True,
+    #                         callbacks=[pruning_callbacks.UpdatePruningStep()]
+    # )
+    # opt_model.save_weights(os.path.join(SCRIPT_DIR, 'qnn_audio_class_opt.h5'))
+    opt_model.load_weights(os.path.join(SCRIPT_DIR, "qnn_audio_class_opt.h5"))
+    opt_model.evaluate(x=test_set.batch(BATCH_SIZE), verbose=True)
+    return (opt_model, test_set, test_set_no_preproc)

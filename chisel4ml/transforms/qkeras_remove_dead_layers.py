@@ -26,6 +26,11 @@ class QKerasRemoveDeadLayers(QKerasTransform):
         return []
 
     def is_applicable(self, layers) -> bool:
-        return isinstance(layers[0], tf.keras.layers.Dropout) or isinstance(
-            layers[0], (tf.keras.layers.InputLayer, tf.keras.layers.Flatten)
+        return isinstance(
+            layers[0],
+            (
+                tf.keras.layers.Dropout,
+                tf.keras.layers.InputLayer,
+                tf.keras.layers.Flatten,
+            ),
         )

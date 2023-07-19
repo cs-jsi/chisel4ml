@@ -32,5 +32,5 @@ class QKerasLbirQDenseFuse(QKerasTransform):
 
     def is_applicable(self, layers) -> bool:
         return isinstance(layers[0], lbir.Layer) and isinstance(
-            layers[1], qkeras.QDense
+            layers[1], (qkeras.QDense, qkeras.QConv2D)
         )
