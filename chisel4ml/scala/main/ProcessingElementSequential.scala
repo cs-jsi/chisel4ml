@@ -31,7 +31,6 @@ import _root_.org.slf4j.LoggerFactory
 abstract class ProcessingElementSequential(layer: Layer, options: LayerOptions) extends Module with LBIRStream {
     val logger = LoggerFactory.getLogger(this.getClass())
 
-    val cfg = ProcessingElementSequentialConfig(layer)
     val inputStreamWidth = 32
     val outputStreamWidth = 32
 
@@ -48,8 +47,4 @@ abstract class ProcessingElementSequential(layer: Layer, options: LayerOptions) 
                 | numInTrans: $numInTrans, outSizeBits: $outSizeBits, numOutTrans: $numOutTrans,
                 | inputStreamWidth: $inputStreamWidth, outputStreamWidth: $outputStreamWidth.
                 |""".stripMargin.replaceAll("\n",""))
-}
-
-object ProcessingElementSequential {
-    def apply(layer: Layer, options: LayerOptions) = new ProcessingElementWrapSimpleToSequential(layer, options)
 }

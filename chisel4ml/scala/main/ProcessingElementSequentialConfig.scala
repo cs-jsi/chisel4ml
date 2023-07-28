@@ -17,23 +17,34 @@ package chisel4ml
 import _root_.scala.math
 import _root_.lbir.{Layer, QTensor}
 
-case class ProcessingElementSequentialConfig(layer: Layer) {
+case class ProcessingElementSequentialConfigConv(layer: Layer) {
   val kernel = TensorConfig(layer.weights.get)
   val thresh = ThreshConfig(layer.thresh.get)
   val input  = TensorConfig(layer.input.get)
   val result = TensorConfig(layer.output.get)
 
-  require(kernel.numChannels == input.numChannels)
-  if (layer.ltype == Layer.Type.CONV2D) {
-    require(kernel.numKernels == result.numChannels)
-  }
+  require(kernel.numChannels == input.numChannels,
+      s"""Number of channels of the kernels should be the same as the number of channels of the input.
+      | Instead kernel ${kernel.numChannels} != input ${input.numChannels}. Kernel shape: ${kernel.shape},
+      | input shape: ${input.shape}.""".stripMargin.replaceAll("\n",""))
+  require(kernel.numKernels == result.numChannels,
+      s"""Number of kernels in the kernel should be equal to the number of channels in the result. Instead the kernel
+      | has ${kernel.numKernels} kernels, result ${result.numChannels} channels. Kernel shape: ${kernel.shape},
+      | result shape: ${result.shape}.""".stripMargin.replaceAll("\n", ""))
+}
+
+case class ProcessingElementSequentialConfigMaxPool(layer: Layer) {
+  val input  = TensorConfig(layer.input.get)
+  val result = TensorConfig(layer.output.get)
 }
 
 case class TensorConfig(qtensor: QTensor) {
-  val numKernels:      Int = if (qtensor.shape.length == 4) qtensor.shape(0) else -1
-  val numChannels:     Int = if (qtensor.shape.length == 4) qtensor.shape(1) else -1
-  val height:          Int = if (qtensor.shape.length == 4) qtensor.shape(2) else -1
-  val width:           Int = if (qtensor.shape.length == 4) qtensor.shape(3) else -1
+  val width:           Int = qtensor.shape.last
+  val height:          Int = qtensor.shape.reverse(1)
+  val numChannels:     Int = if (qtensor.shape.length >= 3) qtensor.shape.reverse(2) else 1
+  val numKernels:      Int = if (qtensor.shape.length == 4) qtensor.shape(0) else 1
+
+  val shape                = (numKernels, numChannels, height, width)
   val numParams:       Int = qtensor.shape.reduce(_ * _)
   val numKernelParams: Int = numChannels * height * width
   val paramBitwidth:   Int = qtensor.dtype.get.bitwidth

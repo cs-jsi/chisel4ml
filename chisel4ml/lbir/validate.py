@@ -24,8 +24,9 @@ def is_valid_lbir_model(model):
     is_valid = is_valid and isinstance(model, lbir.Model)
     is_valid = is_valid and model.name != ""
     for layer in model.layers:
-        is_valid = is_valid and layer.HasField("thresh")
-        is_valid = is_valid and layer.HasField("weights")
+        if layer.ltype != lbir.Layer.Type.MAX_POOL:
+            is_valid = is_valid and layer.HasField("thresh")
+            is_valid = is_valid and layer.HasField("weights")
         is_valid = is_valid and layer.HasField("input")
         is_valid = is_valid and layer.HasField("output")
 

@@ -15,12 +15,17 @@
  */
 package chisel4ml.sequential
 
+import scala.reflect.runtime.universe._
 import _root_.chisel4ml.lbir._
-import chisel4ml.{ProcessingElementSequential, MemWordSize}
+import chisel4ml.{ProcessingElementSequential,
+                  ProcessingElementSequentialConfigConv,
+                  MemWordSize}
 import memories.MemoryGenerator
 import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
-import _root_.lbir.Layer
+import _root_.lbir.{Layer, QTensor}
+import _root_.lbir.Datatype.QuantizationType._
+import _root_.lbir.Layer.Activation._
 import _root_.services.LayerOptions
 import chisel3._
 
@@ -33,26 +38,38 @@ import chisel3._
   * program code. This design, of course, comes at a price of utilization of the arithmetic units, which is low. But
   * thanks to the low bitwidths of parameters this should be an acceptable trade-off.
   */
+
 class ProcessingElementSequentialConv[
-    I <: Bits,
-    W <: Bits: WeightsProvider,
+    I <: Bits with Num[I]: TypeTag,
+    W <: Bits with Num[W]: TypeTag,
     M <: Bits,
-    S <: Bits: ThreshProvider,
-    A <: Bits: ThreshProvider,
-    O <: Bits,
+    S <: Bits: TypeTag,
+    A <: Bits: TypeTag,
+    O <: Bits: TypeTag,
   ](
     layer:      Layer,
     options:    LayerOptions,
-    genIn:      I,
-    genWeights: W,
-    genAccu:    S,
-    genThresh:  A,
-    genOut:     O,
     mul:        (I, W) => M,
     add:        Vec[M] => S,
     actFn:      (S, A) => S,
   ) extends ProcessingElementSequential(layer, options) {
 
+  def gen[T <: Bits: TypeTag](qt: QTensor): T = {
+    val tpe = implicitly[TypeTag[T]].tpe
+    val hwType = if (tpe =:= typeOf[UInt]) UInt(qt.dtype.get.bitwidth.W)
+    else if (tpe =:= typeOf[SInt]) SInt(qt.dtype.get.bitwidth.W)
+    else throw new NotImplementedError
+    hwType.asInstanceOf[T]
+  }
+
+
+  val genIn = gen[I](layer.input.get)
+  val genWeights = gen[W](layer.weights.get)
+  val genAccu = gen[S](layer.thresh.get)
+  val genThresh = gen[A](layer.thresh.get)
+  val genOut = gen[O](layer.output.get)
+
+  val cfg = ProcessingElementSequentialConfigConv(layer)
   val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr=layer.weights.get.toHexStr,
                                                             width=MemWordSize.bits))
 
@@ -71,14 +88,14 @@ class ProcessingElementSequentialConv[
                                            width = MemWordSize.bits))
 
   val dynamicNeuron = Module(new DynamicNeuron[I, W, M, S, A, O](genIn = genIn,
-                                                              numSynaps = cfg.kernel.numKernelParams,
-                                                              genWeights = genWeights,
-                                                              genAccu = genAccu,
-                                                              genThresh = genThresh,
-                                                              genOut = genOut,
-                                                              mul = mul,
-                                                              add = add,
-                                                              actFn = actFn))
+                                                                 numSynaps = cfg.kernel.numKernelParams,
+                                                                 genWeights = genWeights,
+                                                                 genAccu = genAccu,
+                                                                 genThresh = genThresh,
+                                                                 genOut = genOut,
+                                                                 mul = mul,
+                                                                 add = add,
+                                                                 actFn = actFn))
 
   val swu = Module(new SlidingWindowUnit(kernelSize = cfg.kernel.width,
                                          kernelDepth = cfg.kernel.numChannels,
@@ -167,4 +184,27 @@ class ProcessingElementSequentialConv[
 
   resMem.io.rdEna  := ctrl.io.resMemEna
   resMem.io.rdAddr := ctrl.io.resMemAddr
+}
+
+object ProcessingElementSequentialConv {
+  def reluFn(act: SInt, thresh: SInt): SInt = Mux((act - thresh) > 0.S, (act - thresh), 0.S)
+  def apply(layer: Layer, options: LayerOptions) = (layer.input.get.dtype.get.quantization,
+                                                    layer.input.get.dtype.get.signed,
+                                                    layer.weights.get.dtype.get.quantization,
+                                                    layer.activation) match {
+    case (UNIFORM, true, UNIFORM, RELU) => new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt, SInt](
+                                                            layer,
+                                                            options,
+                                                            mul = (x: SInt, y: SInt) => x * y,
+                                                            add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
+                                                            actFn = reluFn
+                                                        )
+    case (UNIFORM, false, UNIFORM, RELU) => new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, SInt](
+                                                            layer,
+                                                            options,
+                                                            mul = (x: UInt, y: SInt) => x * y,
+                                                            add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
+                                                            actFn = reluFn
+                                                        )
+  }
 }

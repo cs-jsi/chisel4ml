@@ -71,7 +71,7 @@ class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
 
   behavior.of("MaxPool2D module")
   it should "compute max pooling for stride 2" in {
-    test(new MaxPool2D(layer, options, UInt(5.W))).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+    test(new MaxPool2D(layer, options)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
       var res: lbir.QTensor = lbir.QTensor()
       fork {
         dut.inStream.enqueueQTensor(testParameters, dut.clock)

@@ -25,7 +25,7 @@ import chisel3.util._
 /** ThreshAndShiftUnit
   *
   */
-class ThreshAndShiftUnit[A <: Bits: ThreshProvider](numKernels: Int, genThresh: A, layer: lbir.Layer)
+class ThreshAndShiftUnit[A <: Bits](numKernels: Int, genThresh: A, layer: lbir.Layer)
 extends Module {
 
   val io = IO(new Bundle {

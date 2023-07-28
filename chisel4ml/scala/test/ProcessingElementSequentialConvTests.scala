@@ -145,11 +145,6 @@ with BeforeAndAfterEachTestData {
   it should "compute the convolution correctly" in { // .withAnnotations(Seq(VerilatorBackendAnnotation))
     test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, SInt](layer = testLayer0,
                                                                            options = testOptions0.layers(0),
-                                                                           genIn = UInt(4.W),
-                                                                           genWeights = SInt(4.W),
-                                                                           genAccu = SInt(8.W),
-                                                                           genThresh = SInt(4.W),
-                                                                           genOut = SInt(4.W),
                                                                            mul = (x:UInt, w: SInt) => (x * w),
                                                                            add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
                                                                            actFn = (x: SInt, y: SInt) => x)).
@@ -173,11 +168,6 @@ with BeforeAndAfterEachTestData {
   it should "compute a convolution with several channels correctly" in {
     test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, SInt](layer = testLayer1,
                                                                            options = testOptions0.layers(0),
-                                                                           genIn = UInt(6.W),
-                                                                           genWeights = SInt(7.W),
-                                                                           genAccu = SInt(8.W),
-                                                                           genThresh = SInt(7.W),
-                                                                           genOut = SInt(7.W),
                                                                            mul = (x:UInt, w: SInt) => (x * w),
                                                                            add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
                                                                            actFn = (x: SInt, y:SInt) => x + y)).
@@ -211,11 +201,6 @@ with BeforeAndAfterEachTestData {
   it should "compute a convolution with several kernels correctly" in {
     test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, UInt](layer = testLayer2,
                                                                            options = testOptions0.layers(0),
-                                                                           genIn = UInt(3.W),
-                                                                           genWeights = SInt(3.W),
-                                                                           genAccu = SInt(6.W),
-                                                                           genThresh = SInt(3.W),
-                                                                           genOut = UInt(3.W),
                                                                            mul = (x: UInt, y: SInt) => (x * y),
                                                                            add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
                                                                            actFn = reluFnS)){ dut =>
@@ -306,11 +291,6 @@ with BeforeAndAfterEachTestData {
                      |$actInpBW""".stripMargin.replaceAll("\n","") in {
         test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, UInt](layer = testLayerAuto,
                                                                                options = testOptions0.layers(0),
-                                                                               genIn = UInt(actInpBW.W),
-                                                                               genWeights = SInt(kernelBW.W),
-                                                                               genAccu = SInt((kernelBW + actInpBW).W),
-                                                                               genThresh = SInt(8.W),
-                                                                               genOut = UInt(actInpBW.W),
                                                                                mul = (x: UInt, y: SInt) => (x * y),
                                                                                add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
                                                                                actFn = reluFnS)).withAnnotations(

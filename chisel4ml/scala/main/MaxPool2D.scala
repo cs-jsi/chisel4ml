@@ -15,7 +15,7 @@
  */
 package chisel4ml.sequential
 
-import chisel4ml.ProcessingElementSequential
+import chisel4ml.{ProcessingElementSequential, ProcessingElementSequentialConfigMaxPool}
 import _root_.lbir.Layer
 import _root_.services.LayerOptions
 import chisel3._
@@ -29,13 +29,15 @@ import chisel3.util._
  * moments.
  *
  */
-class MaxPool2D[T <: Bits with Num[T]](layer: Layer, options: LayerOptions, genT: T)
+class MaxPool2D[T <: Bits with Num[T]](layer: Layer, options: LayerOptions)
 extends ProcessingElementSequential(layer, options) {
+    val cfg = ProcessingElementSequentialConfigMaxPool(layer)
     val maxPoolSize: Int = cfg.input.width / cfg.result.width
     require(cfg.input.width % maxPoolSize == 0)
     require(cfg.input.height % maxPoolSize == 0)
     val paramsPerWord: Int = options.busWidthIn / cfg.input.paramBitwidth
     val shiftRegsSize: Int = cfg.input.width * maxPoolSize
+    val genT: T = UInt(layer.input.get.dtype.get.bitwidth.W).asInstanceOf[T]
 
     logger.info(s""" MaxPool2D parameters are: maxPoolSize -> $maxPoolSize, paramsPerWord -> $paramsPerWord
                    | shiftRegsSize -> $shiftRegsSize, input width -> ${cfg.input.width}, input height ->

@@ -123,6 +123,11 @@ def _layer_to_shape(keras_layer: KerasLayer):
 
 
 def _layer_to_output_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
+    tf_shape = keras_layer.get_output_shape_at(0)[1:]
+    if isinstance(keras_layer, qkeras.QDense):
+        lbir_shape = tf_shape
+    else:
+        lbir_shape = (tf_shape[2],) + tf_shape[0:2]
     return lbir.QTensor(
         dtype=lbir.Datatype(
             quantization=_qact_to_qtype(keras_layer.activation),
@@ -133,7 +138,7 @@ def _layer_to_output_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
             ),
             offset=[0],
         ),
-        shape=keras_layer.get_output_shape_at(0)[1:],
+        shape=lbir_shape,
     )
 
 

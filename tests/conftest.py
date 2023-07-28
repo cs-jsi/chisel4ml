@@ -561,7 +561,7 @@ def qnn_audio_class():
     )
     model.add(
         qkeras.QConv2D(
-            32,
+            8,
             3,
             kernel_quantizer=qkeras.quantized_bits(
                 bits=8, integer=7, keep_negative=True, alpha="auto_po2"
@@ -570,10 +570,10 @@ def qnn_audio_class():
     )
     model.add(tf.keras.layers.BatchNormalization())
     model.add(qkeras.QActivation(qkeras.quantized_relu(bits=5, integer=5)))
-    model.add(tf.keras.layers.Dropout(0.30))
+    model.add(tf.keras.layers.Dropout(0.10))
     model.add(
         qkeras.QConv2D(
-            64,
+            16,
             3,
             kernel_quantizer=qkeras.quantized_bits(
                 bits=4, integer=3, keep_negative=True, alpha="auto_po2"
@@ -583,12 +583,12 @@ def qnn_audio_class():
     model.add(tf.keras.layers.BatchNormalization())
     model.add(qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3)))
     model.add(tf.keras.layers.MaxPooling2D())
-    model.add(tf.keras.layers.Dropout(0.30))
+    model.add(tf.keras.layers.Dropout(0.10))
     model.add(tf.keras.layers.Flatten())
     model.add(
         prune.prune_low_magnitude(
             qkeras.QDense(
-                128,
+                32,
                 kernel_quantizer=qkeras.quantized_bits(
                     bits=4, integer=3, keep_negative=True, alpha="auto_po2"
                 ),
@@ -599,7 +599,7 @@ def qnn_audio_class():
     )
     model.add(tf.keras.layers.BatchNormalization())
     model.add(qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3)))
-    model.add(tf.keras.layers.Dropout(0.30))
+    model.add(tf.keras.layers.Dropout(0.10))
     model.add(
         prune.prune_low_magnitude(
             qkeras.QDense(
@@ -616,7 +616,7 @@ def qnn_audio_class():
     model.summary()
 
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.5e-3),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         metrics=["accuracy"],
     )
@@ -633,7 +633,7 @@ def qnn_audio_class():
     opt_model = optimize.qkeras_model(model)
     opt_model.summary()
     opt_model.compile(
-        optimizer=tf.keras.optimizers.Adam(),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         metrics=["accuracy"],
     )

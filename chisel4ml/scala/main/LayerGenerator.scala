@@ -19,14 +19,19 @@ import chisel3._
 import _root_.lbir.{Layer}
 import _root_.services.LayerOptions
 import _root_.chisel4ml.LBIRStream
+import _root_.chisel4ml.sequential.{MaxPool2D, ProcessingElementSequentialConv}
 
 object LayerGenerator {
     // TODO: Rewrite the generation procedure to something more sensisble
     def apply(layer: Layer, options: LayerOptions): Module with LBIRStream = {
         if (layer.ltype == Layer.Type.PREPROC) {
             Module(new AudioFeaturesExtractWrapper(layer, options))
+        } else if (layer.ltype == Layer.Type.MAX_POOL) {
+            Module(new MaxPool2D(layer, options))
+        } else if (layer.ltype == Layer.Type.CONV2D) {
+            Module(ProcessingElementSequentialConv(layer, options))
         } else {
-            Module(ProcessingElementSequential(layer, options))
+            Module(new ProcessingElementWrapSimpleToSequential(layer, options))
         }
     }
 }
