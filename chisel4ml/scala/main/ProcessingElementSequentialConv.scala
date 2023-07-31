@@ -54,20 +54,20 @@ class ProcessingElementSequentialConv[
     actFn:      (S, A) => S,
   ) extends ProcessingElementSequential(layer, options) {
 
-  def gen[T <: Bits: TypeTag](qt: QTensor): T = {
+  def gen[T <: Bits: TypeTag](bitwidth: Int): T = {
     val tpe = implicitly[TypeTag[T]].tpe
-    val hwType = if (tpe =:= typeOf[UInt]) UInt(qt.dtype.get.bitwidth.W)
-    else if (tpe =:= typeOf[SInt]) SInt(qt.dtype.get.bitwidth.W)
+    val hwType = if (tpe =:= typeOf[UInt]) UInt(bitwidth.W)
+    else if (tpe =:= typeOf[SInt]) SInt(bitwidth.W)
     else throw new NotImplementedError
     hwType.asInstanceOf[T]
   }
 
 
-  val genIn = gen[I](layer.input.get)
-  val genWeights = gen[W](layer.weights.get)
-  val genAccu = gen[S](layer.thresh.get)
-  val genThresh = gen[A](layer.thresh.get)
-  val genOut = gen[O](layer.output.get)
+  val genIn = gen[I](layer.input.get.dtype.get.bitwidth)
+  val genWeights = gen[W](layer.weights.get.dtype.get.bitwidth)
+  val genAccu = gen[S](layer.input.get.dtype.get.bitwidth + layer.weights.get.dtype.get.bitwidth)
+  val genThresh = gen[A](layer.thresh.get.dtype.get.bitwidth)
+  val genOut = gen[O](layer.output.get.dtype.get.bitwidth)
 
   val cfg = ProcessingElementSequentialConfigConv(layer)
   val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr=layer.weights.get.toHexStr,
