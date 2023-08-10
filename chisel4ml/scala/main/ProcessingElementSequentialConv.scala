@@ -117,9 +117,12 @@ class ProcessingElementSequentialConv[
                                              resMemDepth = cfg.result.mem.depth,
                                              numKernels = cfg.kernel.numKernels))
 
+  val paramsPerTrans = math.floor(options.busWidthIn.toFloat / cfg.input.paramBitwidth.toFloat).toInt
+  val actMemTransfers = math.ceil(cfg.input.numParams.toFloat / paramsPerTrans.toFloat).toInt
   val ctrl = Module(new PeSeqConvController(numKernels = cfg.kernel.numKernels,
                                             resMemDepth = cfg.result.mem.depth,
-                                            actMemDepth = cfg.input.mem.depth))
+                                            actMemDepth = cfg.input.mem.depth,
+                                            actMemTransfers = actMemTransfers))
 
   kernelMem.io.rdEna  := kRFLoader.io.romRdEna
   kernelMem.io.rdAddr := kRFLoader.io.romRdAddr

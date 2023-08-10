@@ -47,4 +47,7 @@ def test_audio_classifier(qnn_audio_class):
     circuit = generate.circuit(
         opt_model, get_mfcc=True, use_verilator=True, gen_vcd=True
     )
+    titer = test_set_no_preproc.as_numpy_iterator()
+    sample, label = next(titer)
+    circuit.predict(sample.reshape(32, 512))
     assert circuit is not None

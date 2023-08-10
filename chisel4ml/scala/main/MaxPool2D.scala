@@ -52,22 +52,28 @@ extends ProcessingElementSequential(layer, options) {
     object mpState extends ChiselEnum {
         val sWAIT = Value(0.U)
         val sREAD_WORD = Value(1.U)
+        val sEMPTY_SHIFT_REGS = Value(2.U)
     }
     val state = RegInit(mpState.sWAIT)
-    val (widthCntValue, widthCntWrap) = Counter(state === mpState.sREAD_WORD, cfg.input.width)
-    val (heightCntValue, heightCntWrap) = Counter(widthCntWrap, cfg.input.height)
-    val (channelCntValue, channelCntWrap) = Counter(heightCntWrap, cfg.input.numChannels)
-    val isFirstOfWindow = (heightCntValue % maxPoolSize.U === 0.U) && (widthCntValue % maxPoolSize.U === 0.U)
+    val (totalElemCntValue, totalElemCntWrap) = Counter(state === mpState.sREAD_WORD,
+                                                        cfg.input.numParams)
+    val (widthCntValue, widthCntWrap) = Counter(state === mpState.sREAD_WORD,
+                                                cfg.input.width)
+    // totalElemCntWraps the counter in cases where widthCntValue doesn't reach full words. I.e. input not perfectly
+    // divisible by word size.
+    val (heightCntValue, heightCntWrap) = Counter(widthCntWrap || totalElemCntWrap, cfg.input.height)
+    val isFirstOfWindow = ((heightCntValue % maxPoolSize.U === 0.U) &&
+                          (widthCntValue % maxPoolSize.U === 0.U) &&
+                          state === mpState.sREAD_WORD)
     val (inputBufferCntValue, inputBufferCntWrap) = Counter(state === mpState.sREAD_WORD, paramsPerWord)
-    when (state === mpState.sWAIT && inStream.fire) {
-        state := mpState.sREAD_WORD
-    }.elsewhen(state === mpState.sREAD_WORD && inputBufferCntWrap) {
-        state := mpState.sWAIT
-    }
 
 
-    val shiftRegs = ShiftRegisters(inputsBuffer(inputBufferCntValue), shiftRegsSize, state === mpState.sREAD_WORD)
-    val shiftValidRegs = ShiftRegisters(isFirstOfWindow, shiftRegsSize, state === mpState.sREAD_WORD)
+    val shiftRegs = ShiftRegisters(inputsBuffer(inputBufferCntValue),
+                                   shiftRegsSize,
+                                   state =/= mpState.sWAIT)
+    val shiftValidRegs = ShiftRegisters(isFirstOfWindow,
+                                        shiftRegsSize,
+                                        state =/= mpState.sWAIT)
 
     inStream.ready := state === mpState.sWAIT  // outStream.ready
     val partialMaximums = VecInit((0 until maxPoolSize).map((i: Int) => {
@@ -77,13 +83,28 @@ extends ProcessingElementSequential(layer, options) {
     }))
 
 
-    val (outputCntValue, outputCntWrap) = Counter(shiftValidRegs.last && state === mpState.sREAD_WORD, paramsPerWord)
+    val (_, totalOutCntWrap) = Counter(shiftValidRegs.last && state =/= mpState.sWAIT, cfg.result.numParams)
+    val (outputCntValue, outputCntWrap) = Counter(shiftValidRegs.last && state =/= mpState.sWAIT, paramsPerWord)
     outputsBuffer(outputCntValue) := partialMaximums.reduceTree((in0:T, in1:T) => MaxSelect(in0, in1, genT))
+
+    when (state === mpState.sWAIT && inStream.fire) {
+        state := mpState.sREAD_WORD
+    }.elsewhen(state === mpState.sREAD_WORD) {
+        when (totalElemCntWrap) {
+            state := mpState.sEMPTY_SHIFT_REGS
+        }.elsewhen (inputBufferCntWrap) {
+            state := mpState.sWAIT
+        }
+    }.elsewhen(state === mpState.sEMPTY_SHIFT_REGS) {
+        when(totalOutCntWrap) {
+            state := mpState.sWAIT
+        }
+    }
 
 
     outStream.bits := outputsBuffer.asTypeOf(outStream.bits)
-    outStream.valid := outputCntWrap || outStream.last
-    outStream.last := RegNext(RegNext(RegNext(RegNext(channelCntWrap)))) // TODO
+    outStream.valid := outputCntWrap || totalOutCntWrap
+    outStream.last := totalOutCntWrap
 }
 
 class MaxSelect[T <: Bits with Num[T]](genT: T) extends Module {

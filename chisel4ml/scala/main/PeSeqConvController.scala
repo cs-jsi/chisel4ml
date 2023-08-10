@@ -25,8 +25,8 @@ import chisel3.util._
   */
 class PeSeqConvController(numKernels: Int,
                           resMemDepth: Int,
-                          actMemDepth: Int) extends Module {
-
+                          actMemDepth: Int,
+                          actMemTransfers: Int) extends Module {
   val io = IO(new Bundle {
     // SWU interface
     val swuEnd        = Input(Bool())
@@ -64,7 +64,7 @@ class PeSeqConvController(numKernels: Int,
   }
 
   val kernelCnt = RegInit(0.U(reqWidth(numKernels + 1).W))
-  val actMemCnt = RegInit(0.U(reqWidth(actMemDepth + 1).W))
+  val actMemCnt = RegInit(0.U(reqWidth(actMemTransfers + 1).W))
   val resMemCnt = RegInit(0.U(reqWidth(resMemDepth + 1).W))
 
   val state  = RegInit(ctrlState.sWAITFORDATA)
@@ -74,7 +74,7 @@ class PeSeqConvController(numKernels: Int,
   nstate := state
   when (state === ctrlState.sWAITFORDATA && io.inStreamValid) {
     nstate := ctrlState.sLOADINPACT
-  }.elsewhen(state === ctrlState.sLOADINPACT && actMemCnt === actMemDepth.U) {
+  }.elsewhen(state === ctrlState.sLOADINPACT && actMemCnt === actMemTransfers.U) {
     nstate := ctrlState.sLOADKERNEL
   }.elsewhen (state === ctrlState.sLOADKERNEL && io.krfReady) {
     nstate := ctrlState.sCOMP
@@ -110,8 +110,8 @@ class PeSeqConvController(numKernels: Int,
   resMemCnt := resMemCnt
   when (state === ctrlState.sLOADINPACT) {
     resMemCnt := 0.U
-  }.elsewhen (state === ctrlState.sSENDDATA ||
-              nstate === ctrlState.sSENDDATA) {
+  }.elsewhen ((state === ctrlState.sSENDDATA ||
+              nstate === ctrlState.sSENDDATA) && io.outStreamReady && io.outStreamValid) {
     resMemCnt := resMemCnt + 1.U
   }
 
@@ -123,7 +123,7 @@ class PeSeqConvController(numKernels: Int,
                               ((state === ctrlState.sLOADKERNEL) &&
                                RegNext(state === ctrlState.sLOADINPACT))))
 
-  io.inStreamReady := actMemCnt =/= actMemDepth.U
+  io.inStreamReady := actMemCnt =/= actMemTransfers.U
   io.actMemAddr    := actMemCnt
 
   io.outStreamValid := (state === ctrlState.sSENDDATA)

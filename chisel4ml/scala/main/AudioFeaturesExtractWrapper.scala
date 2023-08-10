@@ -55,15 +55,16 @@ class AudioFeaturesExtractWrapper(layer: Layer, options: LayerOptions) extends M
     	minSRAMdepth = 8
   	)
 
-
-    val inStream = IO(Flipped(AXIStream(UInt(wordSize.W))))
-    val outStream = IO(AXIStream(UInt(32.W)))
+    require(options.busWidthIn == wordSize)
+    require(options.busWidthOut == layer.output.get.dtype.get.bitwidth)
+    val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
+    val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 
     val afe = Module(new AudioFeaturesExtract(fftParams))
 
     // This counter fixes the discrepancy between the last signal semantics of LBIRDriver and fft.
     // The fft wants per frame last signals, while LBIRDriver provides per tensor last signal.
-    val (_, fftCounterWrap) = Counter(inStream.ready && inStream.valid, fftSize)
+    val (_, fftCounterWrap) = Counter(inStream.fire, fftSize)
 
 	object afeState extends ChiselEnum {
     	val sWAIT  = Value(0.U)

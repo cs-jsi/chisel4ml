@@ -52,8 +52,8 @@ class Circuit:
         )
         results = []
         for res in run_sim_return.values:
-            results.append(res.values)
-        return np.array(results)
+            results.append(np.array(res.values).reshape(res.shape))
+        return np.concatenate(results, axis=0)
 
     def predict(self, np_arr):
         return self.__call__(np_arr)

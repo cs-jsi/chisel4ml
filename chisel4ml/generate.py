@@ -56,7 +56,7 @@ def circuit(
                         shift=[0],
                         offset=[0],
                     ),
-                    shape=[512],  # KERNEL, CH, WIDTH, HEIGHT
+                    shape=[32, 512],  # KERNEL, CH, WIDTH, HEIGHT
                 ),
                 output=QTensor(
                     dtype=Datatype(
@@ -66,7 +66,7 @@ def circuit(
                         shift=[0],
                         offset=[0],
                     ),
-                    shape=[20],  # KERNEL, CH, WIDTH, HEIGHT
+                    shape=[32, 20],  # KERNEL, CH, WIDTH, HEIGHT
                 ),
                 preprocess_layer=PreprocessLayer(
                     ptype=PreprocessLayer.Type.MFCC,
@@ -111,11 +111,19 @@ def circuit(
     return circuit
 
 
+# TODO
 def generate_layer_options(lbir_model, axi_stream_width):
     options = []
     for layer in lbir_model.layers:
         if layer.ltype is Layer.Type.PREPROC:
             options.append(LayerOptions(bus_width_in=13, bus_width_out=6))
         else:
-            options.append(LayerOptions(bus_width_in=32, bus_width_out=32))
+            if len(options) > 0:
+                options.append(
+                    LayerOptions(
+                        bus_width_in=options[-1].bus_width_out, bus_width_out=32
+                    )
+                )
+            else:
+                options.append(LayerOptions(bus_width_in=32, bus_width_out=32))
     return options

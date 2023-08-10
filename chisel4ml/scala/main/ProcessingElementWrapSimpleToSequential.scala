@@ -23,18 +23,24 @@ import _root_.chisel4ml.util.log2
 import _root_.lbir.{Layer}
 import _root_.services.LayerOptions
 import _root_.scala.math
-
+import _root_.chisel4ml.ProcessingElementSequentialConfigDense
 
 class ProcessingElementWrapSimpleToSequential(layer: Layer, options: LayerOptions)
 extends ProcessingElementSequential(layer, options) {
-    val inputBuffer  = RegInit(VecInit(Seq.fill(numInTrans)(0.U(inputStreamWidth.W))))
-    val outputBuffer = RegInit(VecInit(Seq.fill(numOutTrans)(0.U(outputStreamWidth.W))))
+    val cfg = ProcessingElementSequentialConfigDense(layer)
+    val inputBuffer  = RegInit(VecInit(Seq.fill(cfg.input.numTransactions(options.busWidthIn))(0.U(options.busWidthIn.W))))
+    val outputBuffer = RegInit(VecInit(Seq.fill(cfg.result.numTransactions(options.busWidthOut))(0.U(options.busWidthOut.W))))
+
+    logger.info(s"""Created new ProcessingElementWrapSimpleToSequential module. Number of input transactions:
+                   |${cfg.input.numTransactions(options.busWidthIn)}, number of output transactions is:
+                   |${cfg.result.numTransactions(options.busWidthOut)}, busWidthIn: ${options.busWidthIn},
+                   | busWidthOut: ${options.busWidthOut}.""".stripMargin.replaceAll("\n", ""))
 
     val inputTransaction = inStream.valid && inStream.ready
     val outputTransaction = outStream.valid && outStream.ready
 
-    val (inputCntValue, inputCntWrap) = Counter(inputTransaction, numInTrans-1)
-    val (outputCntValue, outputCntWrap) = Counter(outputTransaction, numOutTrans-1)
+    val (inputCntValue, inputCntWrap) = Counter(inputTransaction, cfg.input.numTransactions(options.busWidthIn))
+    val (outputCntValue, outputCntWrap) = Counter(outputTransaction, cfg.result.numTransactions(options.busWidthOut))
     val outputBufferFull = RegInit(false.B)
 
     // (combinational) computational module

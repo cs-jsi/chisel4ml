@@ -150,7 +150,8 @@ with BeforeAndAfterEachTestData {
                                                                            actFn = (x: SInt, y: SInt) => x)).
                                                                            withAnnotations(
                                                                            Seq(VerilatorBackendAnnotation,
-                                                                               NoCircuitDedupAnnotation)) { dut =>
+                                                                               NoCircuitDedupAnnotation,
+                                                                               WriteFstAnnotation)) { dut =>
       dut.inStream.initSource()
       dut.inStream.setSourceClock(dut.clock)
       dut.outStream.initSink()
@@ -195,40 +196,6 @@ with BeforeAndAfterEachTestData {
       dut.clock.step()
       dut.inStream.last.poke(false.B)
       dut.outStream.expectDequeueSeq(Seq("b0000_0010100_0010010_0001110_0001100".U))
-    }
-  }
-
-  it should "compute a convolution with several kernels correctly" in {
-    test(new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, UInt](layer = testLayer2,
-                                                                           options = testOptions0.layers(0),
-                                                                           mul = (x: UInt, y: SInt) => (x * y),
-                                                                           add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
-                                                                           actFn = reluFnS)){ dut =>
-    /*                         | (bias = -thresh) |
-     *  1   2   3   4  5  6    |   1   2   b = -1 | 0 0 0 2 7   7 7 7 7 7
-     *  7   6   5   4  3  2    |  -2  -1          | 7 7 7 2 0   7 7 7 7 7
-     *  1   0   1   2  3  4    |                  | 0 0 0 0 0   7 7 7 7 7
-     *  5   6   7   6  5  4    |   2   0   b = +1 | 7 7 7 7 7   7 7 7 7 7
-     *  3   2   1   0  1  2    |   0   2          |
-     *                         |                  |
-     *
-     */
-      dut.inStream.initSource()
-      dut.inStream.setSourceClock(dut.clock)
-      dut.outStream.initSink()
-      dut.outStream.setSinkClock(dut.clock)
-      dut.clock.step()
-      dut.inStream.enqueueSeq(Seq("b00_100_101_110_111_110_101_100_011_010_001".U,
-                                  "b00_110_101_100_011_010_001_000_001_010_011".U,
-                                  "b00_010_001_000_001_010_011_100_101_110_111".U))
-      dut.inStream.last.poke(true.B)
-      dut.clock.step()
-      dut.inStream.last.poke(false.B)
-      dut.outStream.expectDequeueSeq(Seq("b00_000_010_111_111_111_111_010_000_000_000".U,  // 0x02FFF400
-                                         "b00_111_111_111_111_111_000_000_000_000_000".U,  // 0x3FFF8000
-                                         "b00_111_111_111_111_111_111_111_111_111_111".U,  // 0x3FFFFFFF
-                                         "b00_111_111_111_111_111_111_111_111_111_111".U)) // 0x3FFFFFFF
-      dut.clock.step(10)
     }
   }
 

@@ -31,20 +31,6 @@ import _root_.org.slf4j.LoggerFactory
 abstract class ProcessingElementSequential(layer: Layer, options: LayerOptions) extends Module with LBIRStream {
     val logger = LoggerFactory.getLogger(this.getClass())
 
-    val inputStreamWidth = 32
-    val outputStreamWidth = 32
-
-    val inSizeBits: Int = layer.input.get.totalBitwidth
-    val numInTrans: Int = math.ceil(inSizeBits.toFloat / inputStreamWidth.toFloat).toInt
-
-    val outSizeBits: Int = layer.output.get.totalBitwidth
-    val numOutTrans: Int = math.ceil(outSizeBits.toFloat / outputStreamWidth.toFloat).toInt
-
-    val inStream = IO(Flipped(AXIStream(UInt(inputStreamWidth.W))))
-    val outStream = IO(AXIStream(UInt(outputStreamWidth.W)))
-
-    logger.info(s"""Created new ProcessingElementSequential with inSizeBits: $inSizeBits,
-                | numInTrans: $numInTrans, outSizeBits: $outSizeBits, numOutTrans: $numOutTrans,
-                | inputStreamWidth: $inputStreamWidth, outputStreamWidth: $outputStreamWidth.
-                |""".stripMargin.replaceAll("\n",""))
+    val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
+    val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 }

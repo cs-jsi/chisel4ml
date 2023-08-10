@@ -17,6 +17,13 @@ package chisel4ml
 import _root_.scala.math
 import _root_.lbir.{Layer, QTensor}
 
+case class ProcessingElementSequentialConfigDense(layer: Layer) {
+  val kernel = TensorConfig(layer.weights.get)
+  val thresh = ThreshConfig(layer.thresh.get)
+  val input  = TensorConfig(layer.input.get)
+  val result = TensorConfig(layer.output.get)
+}
+
 case class ProcessingElementSequentialConfigConv(layer: Layer) {
   val kernel = TensorConfig(layer.weights.get)
   val thresh = ThreshConfig(layer.thresh.get)
@@ -40,7 +47,7 @@ case class ProcessingElementSequentialConfigMaxPool(layer: Layer) {
 
 case class TensorConfig(qtensor: QTensor) {
   val width:           Int = qtensor.shape.last
-  val height:          Int = qtensor.shape.reverse(1)
+  val height:          Int = if (qtensor.shape.length >= 2) qtensor.shape.reverse(1) else 1
   val numChannels:     Int = if (qtensor.shape.length >= 3) qtensor.shape.reverse(2) else 1
   val numKernels:      Int = if (qtensor.shape.length == 4) qtensor.shape(0) else 1
 
@@ -52,6 +59,11 @@ case class TensorConfig(qtensor: QTensor) {
                                           numKernelParams = numKernelParams,
                                           paramBitwidth = paramBitwidth,
                                           numKernels = numKernels)
+  def numTransactions(busWidth: Int): Int = {
+    require(busWidth > paramBitwidth)
+    val paramsPerTrans = math.floor(busWidth.toFloat / paramBitwidth.toFloat).toInt
+    math.ceil(numParams.toFloat / paramsPerTrans.toFloat).toInt
+  }
 }
 
 case class ThreshConfig(qtensor: QTensor) {
