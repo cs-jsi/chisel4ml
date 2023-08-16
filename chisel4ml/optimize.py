@@ -14,6 +14,7 @@ import qkeras
 from tensorflow_model_optimization.python.core.sparsity.keras import prune
 
 from chisel4ml.optimizations import qkeras_opt_list
+from chisel4ml.preprocess.audio_preprocessing_layer import AudioPreprocessingLayer
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +22,9 @@ log = logging.getLogger(__name__)
 def qkeras_model(model, skip_list=[]):
     "Applys optimizations to the model."
     new_model = prune.strip_pruning(model)
-    new_model = qkeras.utils.clone_model(new_model)
+    new_model = qkeras.utils.clone_model(
+        new_model, custom_objects={"AudioPreprocessingLayer": AudioPreprocessingLayer}
+    )
     new_model = qkeras.unfold_model(new_model)
 
     for opt in qkeras_opt_list:

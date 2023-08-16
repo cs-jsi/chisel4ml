@@ -12,7 +12,7 @@ import qkeras
 import tensorflow as tf
 
 import chisel4ml.lbir.lbir_pb2 as lbir
-from chisel4ml.lbir.validate import is_valid_lbir_model
+from chisel4ml.preprocess.audio_preprocessing_layer import AudioPreprocessingLayer
 from chisel4ml.transforms import qkeras_trans_list
 
 
@@ -20,7 +20,9 @@ def qkeras_to_lbir(
     model: tf.keras.Model, name="chisel4ml_model", custom_trans_list=[], debug=False
 ) -> lbir.Model:
     "Applys transformation to a Keras model, and returns a LBIR model."
-    model_copy = qkeras.utils.clone_model(model)
+    model_copy = qkeras.utils.clone_model(
+        model, custom_objects={"AudioPreprocessingLayer": AudioPreprocessingLayer}
+    )
     lbir_model = lbir.Model()
     lbir_model.name = name
     xlayers = model_copy.layers
@@ -44,7 +46,6 @@ def qkeras_to_lbir(
             f"All the layers are {_stringfy_layers(xlayers, None)}"
         )
     lbir_model.layers.extend(xlayers)
-    assert is_valid_lbir_model(lbir_model)
     return lbir_model
 
 

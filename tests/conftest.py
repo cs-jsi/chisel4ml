@@ -1,6 +1,5 @@
 import os
 
-import librosa
 import numpy as np
 import pytest
 import qkeras
@@ -13,6 +12,7 @@ from tensorflow_model_optimization.python.core.sparsity.keras import pruning_sch
 
 from chisel4ml import chisel4ml_server
 from chisel4ml import optimize
+from chisel4ml.preprocess.audio_preprocessing_layer import AudioPreprocessingLayer
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -447,68 +447,35 @@ def qnn_audio_class():
         print(name, info.features["label"].str2int(name))
         label_names = label_names[:] + [name]
 
-    def preprocess_frames(x):
-        frame_length = 512
-        sr = 16000
-        n_mels = 20
-        filter_banks = librosa.filters.mel(
-            n_fft=frame_length,
-            sr=sr,
-            n_mels=n_mels,
-            fmin=0,
-            fmax=((sr / 2) + 1),
-            norm=None,
-        )
-        hw = np.hamming(frame_length)
-        fft_res = np.fft.rfft(x * hw, norm="forward")
-        mag_frames = fft_res.real**2
-        mels = np.dot(filter_banks, mag_frames.T)
-        mels = np.where(mels == 0, np.finfo(float).eps, mels)  # Numerical Stabiity
-        log_mels = np.log2(mels, dtype=np.float32)
-        ret = np.reshape(np.floor(log_mels).transpose(), (32, 20, 1))
-        # assert np.all(np.isfinite(ret))
-        return ret
-
     def get_frames(x):
         npads = (32 * 512) - x.shape[0]
         frames = np.pad(x, (0, npads)).reshape([32, 512])
         frames = np.round(((frames / 2**15) + 1) * 2047 * 0.8)
-        return frames
+        return frames.reshape(32, 512)
 
     def train_gen():
         return map(
-            lambda x: tuple(
-                [preprocess_frames(get_frames(x[0])), np.array([float(x[1])])]
-            ),
+            lambda x: tuple([get_frames(x[0]), np.array([float(x[1])])]),
             iter(train_ds),
         )
 
     def val_gen():
         return map(
-            lambda x: tuple(
-                [preprocess_frames(get_frames(x[0])), np.array([float(x[1])])]
-            ),
+            lambda x: tuple([get_frames(x[0]), np.array([float(x[1])])]),
             iter(val_ds),
         )
 
     def test_gen():
         return map(
-            lambda x: tuple(
-                [preprocess_frames(get_frames(x[0])), np.array([float(x[1])])]
-            ),
+            lambda x: tuple([get_frames(x[0]), np.array([float(x[1])])]),
             iter(test_ds),
-        )
-
-    def test_gen_no_preproc():
-        return map(
-            lambda x: tuple([get_frames(x[0]), np.array([float(x[1])])]), iter(test_ds)
         )
 
     train_set = tf.data.Dataset.from_generator(  # noqa: F841
         train_gen,
         output_signature=tuple(
             [
-                tf.TensorSpec(shape=(32, 20, 1), dtype=tf.float32),
+                tf.TensorSpec(shape=(32, 512), dtype=tf.float32),
                 tf.TensorSpec(shape=(1), dtype=tf.float32),
             ]
         ),
@@ -518,7 +485,7 @@ def qnn_audio_class():
         val_gen,
         output_signature=tuple(
             [
-                tf.TensorSpec(shape=(32, 20, 1), dtype=tf.float32),
+                tf.TensorSpec(shape=(32, 512), dtype=tf.float32),
                 tf.TensorSpec(shape=(1), dtype=tf.float32),
             ]
         ),
@@ -527,21 +494,13 @@ def qnn_audio_class():
         test_gen,
         output_signature=tuple(
             [
-                tf.TensorSpec(shape=(32, 20, 1), dtype=tf.float32),
-                tf.TensorSpec(shape=(1), dtype=tf.float32),
-            ]
-        ),
-    )
-    test_set_no_preproc = tf.data.Dataset.from_generator(
-        test_gen_no_preproc,
-        output_signature=tuple(
-            [
                 tf.TensorSpec(shape=(32, 512), dtype=tf.float32),
                 tf.TensorSpec(shape=(1), dtype=tf.float32),
             ]
         ),
     )
-    input_shape = (32, 20, 1)
+
+    input_shape = (32, 512)
     print("Input shape:", input_shape)
     print("label names:", label_names)
     num_labels = len(label_names)
@@ -555,8 +514,9 @@ def qnn_audio_class():
     model = tf.keras.models.Sequential()
     model.add(tf.keras.layers.Input(shape=input_shape))
     model.add(
-        qkeras.QActivation(qkeras.quantized_bits(6, 5, keep_negative=True, alpha=1))
+        qkeras.QActivation(qkeras.quantized_bits(13, 12, keep_negative=True, alpha=1))
     )
+    model.add(AudioPreprocessingLayer())
     model.add(
         qkeras.QConv2D(
             1,
@@ -652,4 +612,4 @@ def qnn_audio_class():
     # opt_model.save_weights(os.path.join(SCRIPT_DIR, 'qnn_audio_class_opt.h5'))
     # opt_model.load_weights(os.path.join(SCRIPT_DIR, "qnn_audio_class_opt.h5"))
     opt_model.evaluate(x=test_set.batch(BATCH_SIZE), verbose=True)
-    return (opt_model, test_set, test_set_no_preproc)
+    return (opt_model, test_set)

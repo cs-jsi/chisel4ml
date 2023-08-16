@@ -23,7 +23,7 @@ class LbirFlattenShapeConvDense(QKerasTransform):
     """
 
     num_layers = 2
-    order = 5
+    order = 6
 
     def _call_impl(self, layers):
         layers[1].input.shape[:] = [reduce(lambda x, y: x * y, layers[0].output.shape)]

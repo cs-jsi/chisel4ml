@@ -30,7 +30,7 @@ class QKerasQActActiveFuse(QKerasTransform):
     """
 
     num_layers = 2
-    order = 3
+    order = 4
 
     def _call_impl(self, layers):
         shape = layers[0].get_output_shape_at(0)[1:]
