@@ -51,7 +51,7 @@ class AudioPreprocessingLayer(tf.keras.layers.Layer):
         mels = np.where(mels == 0, np.finfo(float).eps, mels)  # Numerical stability
         log_mels = np.log2(mels, dtype=np.float32)
         return np.expand_dims(
-            np.floor(log_mels).T, axis=-1
+            np.round(log_mels).T, axis=-1
         )  # Transpose to be equivalent to hw implementation
 
     def get_config(self):
