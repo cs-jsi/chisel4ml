@@ -19,7 +19,7 @@ def test_preproc_sine_wave():
     sr = 32 * 512  # approx 16000
 
     time_axis = np.linspace(0, 1, sr)
-    sine_wave = np.sin(2 * np.pi * tone_freq * time_axis)
+    sine_wave = np.cos(2 * np.pi * tone_freq * time_axis)
     frames = sine_wave.reshape([num_frames, frame_length])
     frames = np.round((frames + 0) * 2047 * 0.8)
 
@@ -27,7 +27,7 @@ def test_preproc_sine_wave():
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input(shape=(32, 512)))
     model.add(
-        qkeras.QActivation(qkeras.quantized_bits(13, 12, keep_negative=True, alpha=1))
+        qkeras.QActivation(qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1))
     )
     model.add(AudioPreprocessingLayer())
     opt_model = optimize.qkeras_model(model)

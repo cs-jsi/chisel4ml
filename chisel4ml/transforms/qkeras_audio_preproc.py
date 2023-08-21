@@ -35,7 +35,7 @@ class QKerasAudioPreprocess(QKerasTransform):
         bitwidth = _qact_to_bitwidth(layers[0].activation)
         signed = _qact_to_sign(layers[0].activation)
         assert shape == (32, 512), "Only 32 by 512 frames supported currently"
-        assert bitwidth == 13
+        assert bitwidth == 12
         assert signed
         return [
             Layer(
@@ -43,8 +43,8 @@ class QKerasAudioPreprocess(QKerasTransform):
                 input=QTensor(
                     dtype=Datatype(
                         quantization=Datatype.QuantizationType.UNIFORM,
-                        signed=False,
-                        bitwidth=13,
+                        signed=True,
+                        bitwidth=12,
                         shift=[0],
                         offset=[0],
                     ),
@@ -54,7 +54,7 @@ class QKerasAudioPreprocess(QKerasTransform):
                     dtype=Datatype(
                         quantization=Datatype.QuantizationType.UNIFORM,
                         signed=True,
-                        bitwidth=6,
+                        bitwidth=7,
                         shift=[0],
                         offset=[0],
                     ),

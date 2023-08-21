@@ -27,64 +27,40 @@ import dsptools._
 import afe._
 
 class AudioFeaturesExtractWrapper(layer: Layer, options: LayerOptions) extends Module with LBIRStream {
-	val wordSize = 13
   	val fftSize = 512
-  	val isBitReverse = true
   	val radix = "2"
-  	val separateVerilog = true
 
 	val fftParams = FFTParams.fixed(
-    	dataWidth = wordSize,
-    	binPoint = 0,
-    	trimEnable= false,
-    	//dataWidthOut = 16, // only appied when trimEnable=True
-    	//binPointOut = 0,
-    	twiddleWidth = 16,
+    	dataWidth = 12 + 4,
+    	binPoint = 4,
     	numPoints = fftSize,
-    	decimType = DIFDecimType,
+    	decimType = DITDecimType,
     	trimType = RoundHalfUp,
-    	useBitReverse = isBitReverse,
+    	useBitReverse = true,
     	windowFunc = WindowFunctionTypes.Hamming(),
     	overflowReg = true,
     	numAddPipes = 1,
     	numMulPipes = 1,
-    	sdfRadix = radix,
+    	sdfRadix = "2",
     	runTime = false,
-    	expandLogic =  Array.fill(log2Up(fftSize))(1),
+    	expandLogic =  Array.fill(log2Up(fftSize))(0),
     	keepMSBorLSB = Array.fill(log2Up(fftSize))(true),
-    	minSRAMdepth = 8
   	)
 
-    require(options.busWidthIn == wordSize)
-    require(options.busWidthOut == layer.output.get.dtype.get.bitwidth)
+    require(options.busWidthIn == 12, s"${options.busWidthIn}")
+    require(options.busWidthOut == layer.output.get.dtype.get.bitwidth, 
+            s"${options.busWidthOut} != ${layer.output.get.dtype.get.bitwidth}")
     val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
     val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 
     val afe = Module(new AudioFeaturesExtract(fftParams))
 
-    // This counter fixes the discrepancy between the last signal semantics of LBIRDriver and fft.
-    // The fft wants per frame last signals, while LBIRDriver provides per tensor last signal.
-    val (_, fftCounterWrap) = Counter(inStream.fire, fftSize)
 
-	object afeState extends ChiselEnum {
-    	val sWAIT  = Value(0.U)
-    	val sREADY = Value(1.U)
-  	}
-  	val state  = RegInit(afeState.sREADY)
-
-	// STATE MACHINE
-	when (state === afeState.sREADY && fftCounterWrap) {
-		state := afeState.sWAIT
-	}.elsewhen(state === afeState.sWAIT && !afe.io.busy) {
-		state := afeState.sREADY
-	}
-
-
-	inStream.ready := state === afeState.sREADY
+	inStream.ready := afe.io.inStream.ready
     afe.io.inStream.valid := inStream.valid
-    afe.io.inStream.bits.real := inStream.bits.asTypeOf(afe.io.inStream.bits.real)
+    afe.io.inStream.bits.real := (inStream.bits ## 0.U(4.W)).asTypeOf(afe.io.inStream.bits.real)
     afe.io.inStream.bits.imag := 0.U.asTypeOf(afe.io.inStream.bits.imag)
-    afe.io.inStream.last := inStream.last || fftCounterWrap
+    afe.io.inStream.last := inStream.last 
 
     afe.io.outStream.ready := outStream.ready
 	outStream.valid := afe.io.outStream.valid
