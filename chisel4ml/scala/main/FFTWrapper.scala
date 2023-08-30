@@ -29,12 +29,13 @@ class FFTWrapper(layer: Layer, options: LayerOptions) extends Module with LBIRSt
   	val fftSize = 512
 
 	val fftParams = FFTParams.fixed(
-    	dataWidth = 32,
-    	binPoint = 16,
+    	dataWidth = 16,
+    	binPoint = 4,
+        trimEnable = false,
     	numPoints = fftSize,
     	decimType = DITDecimType,
     	trimType = RoundHalfToEven,
-        twiddleWidth = 32,
+        twiddleWidth = 16,
     	useBitReverse = true,
     	//windowFunc = WindowFunctionTypes.None(), //WindowFunctionTypes.Hamming(32),
     	overflowReg = true,
@@ -73,7 +74,7 @@ class FFTWrapper(layer: Layer, options: LayerOptions) extends Module with LBIRSt
 
 	inStream.ready := state === fftState.sREADY
     sdffft.io.in.valid := inStream.valid
-    sdffft.io.in.bits.real := (inStream.bits(32-1-16, 0) ## 0.U(16.W)).asTypeOf(sdffft.io.in.bits.real)
+    sdffft.io.in.bits.real := (inStream.bits ## 0.U(4.W)).asTypeOf(sdffft.io.in.bits.real)
     sdffft.io.in.bits.imag := 0.U.asTypeOf(sdffft.io.in.bits.imag)
     sdffft.io.lastIn := inStream.last 
 

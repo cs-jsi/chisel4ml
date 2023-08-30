@@ -78,7 +78,7 @@ def generate_layer_options(lbir_model, axi_stream_width):
     options = []
     for layer in lbir_model.layers:
         if layer.ltype is Layer.Type.PREPROC:
-            options.append(LayerOptions(bus_width_in=32, bus_width_out=40))
+            options.append(LayerOptions(bus_width_in=12, bus_width_out=24))
         else:
             if len(options) > 0:
                 options.append(

@@ -12,7 +12,41 @@ from chisel4ml.preprocess.audio_preprocessing_layer import AudioPreprocessingLay
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-def test_preproc_sine_wave():
+def test_fft():
+    frame_length = 512
+    time = np.linspace(0, 1, frame_length)
+
+    tone_freqs = [1, 4, 20]
+    amplitudes = [0.2, 0.4, 0.8]
+    functions = [np.cos, np.sin]
+    for tone_freq in tone_freqs:
+        for amplitude in amplitudes:
+            for function in functions:
+                # Generate test wave function
+                wave = function(2 * np.pi * tone_freq * time)
+                frame = np.round((wave + 0) * 2047 * amplitude)
+
+                model = tf.keras.Sequential()
+                model.add(tf.keras.layers.Input(shape=(32, 512)))
+                model.add(
+                    qkeras.QActivation(qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1))
+                )
+                model.add(AudioPreprocessingLayer())
+                opt_model = optimize.qkeras_model(model)
+
+                audio_preproc = generate.circuit(
+                    opt_model=opt_model, use_verilator=True, gen_vcd=True
+                )
+                hw_res = audio_preproc(frame) / (2**4)
+                sw_res = np.fft.fft(frame, norm='backward').real
+                # import matplotlib.pyplot as plt
+                # plt.plot(hw_res, color='r')
+                # plt.plot(sw_res, color='g', linestyle='dashed')
+                # plt.show()
+                assert np.allclose(sw_res, hw_res, atol=10)
+
+
+def test_preproc_cosine_wave():
     tone_freq = 200
     num_frames = 32
     frame_length = 512
@@ -20,9 +54,8 @@ def test_preproc_sine_wave():
 
     time_axis = np.linspace(0, 1, sr)
     sine_wave = np.cos(2 * np.pi * tone_freq * time_axis)
-    # sine_wave = np.repeat(np.arange(512), 32)
     frames = sine_wave.reshape([num_frames, frame_length])
-    frames = np.round((frames + 0) * 512)  # * 2047 * 0.2)
+    frames = np.round((frames + 0) * 2047 * 0.8)
 
     # SW result
     model = tf.keras.Sequential()
@@ -36,15 +69,13 @@ def test_preproc_sine_wave():
     audio_preproc = generate.circuit(
         opt_model=opt_model, use_verilator=True, gen_vcd=True
     )
-    #hw_res = audio_preproc(frames)[0:257]
-    #sw_res = np.fft.fft(frames[0], norm='backward').real[0:257]
-    frame2 = np.arange(512)
-    hw_res = audio_preproc(frame2)
-    sw_res = np.fft.fft(frame2, norm='backward').real
-    assert np.allclose(sw_res, hw_res / 2 ** 16)
-    #sw_res = opt_model(frames.reshape(1, num_frames, frame_length))
-
-    #assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=1)
+    hw_res = audio_preproc(frames)[0:257]
+    sw_res = np.fft.fft(frames[0], norm='backward').real[0:257]
+    import matplotlib.pyplot as plt
+    plt.plot(hw_res / (2**16), color='r')
+    plt.plot(sw_res, color='g', linestyle='dashed')
+    assert np.allclose(sw_res, hw_res / 2 ** 16, rtol=0.01)
+    plt.show()
 
 
 def test_preproc_speech_commands(qnn_audio_class):
@@ -66,7 +97,7 @@ def test_preproc_speech_commands(qnn_audio_class):
         sample, _ = next(ts_iter)
         hw_res = audio_preproc(sample)
         sw_res = opt_model(sample.reshape(1, 32, 512))
-        assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=2)
+        assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res / (2**16), rtol=0.01)
 
 
 def test_audio_classifier(qnn_audio_class):

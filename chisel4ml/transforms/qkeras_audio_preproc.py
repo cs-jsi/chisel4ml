@@ -44,7 +44,7 @@ class QKerasAudioPreprocess(QKerasTransform):
                     dtype=Datatype(
                         quantization=Datatype.QuantizationType.UNIFORM,
                         signed=True,
-                        bitwidth=32,
+                        bitwidth=12,
                         shift=[0],
                         offset=[0],
                     ),
@@ -54,7 +54,7 @@ class QKerasAudioPreprocess(QKerasTransform):
                     dtype=Datatype(
                         quantization=Datatype.QuantizationType.UNIFORM,
                         signed=True,
-                        bitwidth=40,
+                        bitwidth=24,
                         shift=[0],
                         offset=[0],
                     ),
