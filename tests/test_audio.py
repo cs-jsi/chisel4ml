@@ -20,8 +20,9 @@ def test_preproc_sine_wave():
 
     time_axis = np.linspace(0, 1, sr)
     sine_wave = np.cos(2 * np.pi * tone_freq * time_axis)
+    # sine_wave = np.repeat(np.arange(512), 32)
     frames = sine_wave.reshape([num_frames, frame_length])
-    frames = np.round((frames + 0) * 2047 * 0.8)
+    frames = np.round((frames + 0) * 512)  # * 2047 * 0.2)
 
     # SW result
     model = tf.keras.Sequential()
@@ -35,10 +36,15 @@ def test_preproc_sine_wave():
     audio_preproc = generate.circuit(
         opt_model=opt_model, use_verilator=True, gen_vcd=True
     )
-    hw_res = audio_preproc(frames)
-    sw_res = opt_model(frames.reshape(1, num_frames, frame_length))
+    #hw_res = audio_preproc(frames)[0:257]
+    #sw_res = np.fft.fft(frames[0], norm='backward').real[0:257]
+    frame2 = np.arange(512)
+    hw_res = audio_preproc(frame2)
+    sw_res = np.fft.fft(frame2, norm='backward').real
+    assert np.allclose(sw_res, hw_res / 2 ** 16)
+    #sw_res = opt_model(frames.reshape(1, num_frames, frame_length))
 
-    assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=1)
+    #assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=1)
 
 
 def test_preproc_speech_commands(qnn_audio_class):

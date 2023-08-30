@@ -25,7 +25,7 @@ object LayerGenerator {
     // TODO: Rewrite the generation procedure to something more sensisble
     def apply(layer: Layer, options: LayerOptions): Module with LBIRStream = {
         if (layer.ltype == Layer.Type.PREPROC) {
-            Module(new AudioFeaturesExtractWrapper(layer, options))
+            Module(new FFTWrapper(layer, options))
         } else if (layer.ltype == Layer.Type.MAX_POOL) {
             Module(new MaxPool2D(layer, options))
         } else if (layer.ltype == Layer.Type.CONV2D) {

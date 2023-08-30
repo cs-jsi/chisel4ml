@@ -24,46 +24,61 @@ import interfaces.amba.axis._
 import _root_.services.LayerOptions
 import fft._
 import dsptools._
-import afe._
 
-class AudioFeaturesExtractWrapper(layer: Layer, options: LayerOptions) extends Module with LBIRStream {
+class FFTWrapper(layer: Layer, options: LayerOptions) extends Module with LBIRStream {
   	val fftSize = 512
-  	val radix = "2"
 
 	val fftParams = FFTParams.fixed(
-    	dataWidth = 12 + 4,
-    	binPoint = 4,
+    	dataWidth = 32,
+    	binPoint = 16,
     	numPoints = fftSize,
     	decimType = DITDecimType,
-    	trimType = RoundHalfUp,
+    	trimType = RoundHalfToEven,
+        twiddleWidth = 32,
     	useBitReverse = true,
-    	//windowFunc = WindowFunctionTypes.Hamming(),
+    	//windowFunc = WindowFunctionTypes.None(), //WindowFunctionTypes.Hamming(32),
     	overflowReg = true,
     	numAddPipes = 1,
     	numMulPipes = 1,
     	sdfRadix = "2",
     	runTime = false,
-    	expandLogic =  Array.fill(log2Up(fftSize))(0),
+    	expandLogic =  Array.fill(log2Up(fftSize))(1),
     	keepMSBorLSB = Array.fill(log2Up(fftSize))(true),
   	)
 
-    require(options.busWidthIn == 12, s"${options.busWidthIn}")
+    //require(options.busWidthIn == 12, s"${options.busWidthIn}")
     require(options.busWidthOut == layer.output.get.dtype.get.bitwidth, 
             s"${options.busWidthOut} != ${layer.output.get.dtype.get.bitwidth}")
     val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
     val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 
-    val afe = Module(new AudioFeaturesExtract(fftParams))
+    val sdffft = Module(new SDFFFT(fftParams))
+
+    // Fix discrepancy between last signal semantics of LBIRDriver and FFT.
+    // FFT has per frame last signals, LBIRDriver per tensor last signal.
+    val (_, fftCounterWrap) = Counter(inStream.fire, fftParams.numPoints)
+
+    object fftState extends ChiselEnum {
+        val sWAIT = Value(0.U)
+        val sREADY = Value(1.U)
+    }
+    val state = RegInit(fftState.sREADY)
+
+    when (state === fftState.sREADY && fftCounterWrap) {
+        state := fftState.sWAIT
+    }.elsewhen(state === fftState.sWAIT && outStream.last) {
+        state := fftState.sREADY
+    }
 
 
-	inStream.ready := afe.io.inStream.ready
-    afe.io.inStream.valid := inStream.valid
-    afe.io.inStream.bits.real := (inStream.bits ## 0.U(4.W)).asTypeOf(afe.io.inStream.bits.real)
-    afe.io.inStream.bits.imag := 0.U.asTypeOf(afe.io.inStream.bits.imag)
-    afe.io.inStream.last := inStream.last 
+	inStream.ready := state === fftState.sREADY
+    sdffft.io.in.valid := inStream.valid
+    sdffft.io.in.bits.real := (inStream.bits(32-1-16, 0) ## 0.U(16.W)).asTypeOf(sdffft.io.in.bits.real)
+    sdffft.io.in.bits.imag := 0.U.asTypeOf(sdffft.io.in.bits.imag)
+    sdffft.io.lastIn := inStream.last 
 
-    afe.io.outStream.ready := outStream.ready
-	outStream.valid := afe.io.outStream.valid
-    outStream.bits := afe.io.outStream.bits.asTypeOf(outStream.bits)
-    outStream.last := afe.io.outStream.last
+    sdffft.io.out.ready := outStream.ready
+	outStream.valid := sdffft.io.out.valid
+    outStream.bits := sdffft.io.out.bits.real.asTypeOf(outStream.bits)
+    outStream.last := sdffft.io.lastOut
 }
