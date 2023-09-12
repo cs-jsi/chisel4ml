@@ -36,8 +36,6 @@ package object implicits {
     }
 
     implicit class QTensorExtensions(qt: QTensor) {
-        def totalBitwidth: Int = qt.dtype.get.bitwidth * qt.shape.reduce(_ * _)
-
         /* LBIR Transactions contain all parameters bit packed, with no parameter being
          * separated into two transactions. Thus, depending on the bitwidth of parameters and
          * the bus width there could be some stuffing bits.
@@ -51,7 +49,7 @@ package object implicits {
          */
         def toLBIRTransactions(busWidth: Int): Seq[UInt] = {
             val binaryStr = qt.toBinaryString
-            val paramWidth = qt.dtype.get.bitwidth
+            val paramWidth = qt.dtype.bitwidth
             val emptyBits = busWidth % paramWidth
             val dataBits = busWidth - emptyBits
             val paramsPerTransaction: Int = busWidth / paramWidth
@@ -67,15 +65,15 @@ package object implicits {
 
         def toBinaryString: String = {
             var values =   qt.values.reverse
-            if (qt.dtype.get.quantization == BINARY) {
+            if (qt.dtype.quantization == BINARY) {
                 values = values.map(x => (x + 1) / 2) // 1 -> 1, -1 -> 0
             }
-            "b".concat(values.map(_.toInt).map(toBinary(_, qt.dtype.get.bitwidth)).mkString)
+            "b".concat(values.map(_.toInt).map(toBinary(_, qt.dtype.bitwidth)).mkString)
         }
 
-		def toHexStr: String = {
+		    def toHexStr: String = {
       		logger.debug("Convertin QTensor to a hex file string.")
-      		val bitwidth:       Int = qt.dtype.get.bitwidth
+      		val bitwidth:       Int = qt.dtype.bitwidth
       		val memWordWidth:   Int = 32
       		val paramsPerWord:  Int = memWordWidth / bitwidth
       		val memValidBits:   Int = paramsPerWord * bitwidth
@@ -124,7 +122,41 @@ package object implicits {
       		  hex = hex + tmp + s" // " + binStr
       		}
       		hex
-    	}
+    	  }
+
+        // KCHW layout
+        def width: Int = qt.shape.reverse(0)
+        def height: Int = qt.shape.reverse(1)
+        def numChannels: Int = {
+          qt.shape.length match {
+            case 4 => qt.shape(1)
+            case 3 => qt.shape(0)
+            case _ => throw new RuntimeException("Tensor shape not appropriate.")
+          }
+        }
+        def numKernels: Int = {
+          qt.shape.length match {
+            case 4 => qt.shape(0)
+            case _ => throw new RuntimeException("Shape to small.")
+          }
+        }
+        def numParams: Int = qt.shape.reduce(_ * _)
+        def numKernelParams: Int = numParams / numKernels
+        val paramsPerWord: Int = MemWordSize.bits / qt.dtype.bitwidth
+        def totalBitwidth: Int = qt.dtype.bitwidth * numParams
+        def memDepth: Int = {
+          qt.shape.length match {
+            // Each kernel goes to a new word!
+            case 4 => math.ceil(numKernelParams.toFloat / paramsPerWord.toFloat).toInt * numKernels
+            case _ => math.ceil(numParams.toFloat / paramsPerWord.toFloat).toInt
+          }
+          
+        }
+        def numTransactions(busWidth: Int): Int = {
+          require(busWidth > qt.dtype.bitwidth)
+          val paramsPerTrans = math.floor(busWidth.toFloat / qt.dtype.bitwidth.toFloat).toInt
+          math.ceil(numParams.toFloat / paramsPerTrans.toFloat).toInt
+        }
     }
 
     implicit class SeqBigIntExtensions(x: Seq[BigInt]) {
@@ -134,21 +166,21 @@ package object implicits {
          * does not contain enough information to know how to reconstruct the QTensor.
          */
         def toQTensor(stencil: QTensor, busWidth: Int) = {
-            val paramsPerTransaction: Int = busWidth / stencil.dtype.get.bitwidth
-            val bitsPerTransaction: Int = paramsPerTransaction * stencil.dtype.get.bitwidth
+            val paramsPerTransaction: Int = busWidth / stencil.dtype.bitwidth
+            val bitsPerTransaction: Int = paramsPerTransaction * stencil.dtype.bitwidth
 
             //val valuesString = toBinaryB(x.litValue, stencil.totalBitwidth).grouped(stencil.dtype.get.bitwidth).toList
             //val values = valuesString.reverse.map(BigInt(_, 2).toFloat)
             //val transactionToParams = (a: String) =>
             val binaryVals = x.map((a: BigInt) => toBinaryB(a, bitsPerTransaction)).map(
-                _.grouped(stencil.dtype.get.bitwidth).toList.reverse
+                _.grouped(stencil.dtype.bitwidth).toList.reverse
             )
             val flatVals = binaryVals.flatten.map(BigInt(_, 2).toFloat)
             val values = flatVals.toList.dropRight(flatVals.length - stencil.shape.reduce(_ * _))
-            val valuesMod = if (stencil.dtype.get.quantization == BINARY) {
+            val valuesMod = if (stencil.dtype.quantization == BINARY) {
                 values.map(x => (x * 2) - 1)
             } else {
-                values.map(signedCorrect(_, stencil.dtype.get))
+                values.map(signedCorrect(_, stencil.dtype))
             }
             logger.debug(s"""Converted Seq[BigInt] to QTensor. Values: $values, valuesMod: $valuesMod.
                            | Original Seq: $x, paramsPerTransaction: $paramsPerTransaction, bitsPerTransaction:
@@ -162,22 +194,22 @@ package object implicits {
 
     implicit class SeqIntHelperExtensions(x: Seq[Int]) {
         def BQ: QTensor = {
-            QTensor(dtype=Some(Datatype(quantization=BINARY,
+            QTensor(dtype=Datatype(quantization=BINARY,
                                         bitwidth=1,
                                         signed=true,
                                         shift=Seq(0),
-                                        offset=Seq(0))),
+                                        offset=Seq(0)),
                     shape=Seq(x.length),  // TODO: add multu-dim support
                     values=x.map(_.toFloat)
             )
         }
 
         def UQ(bw: Int): QTensor = {
-            QTensor(dtype=Some(Datatype(quantization=UNIFORM,
+            QTensor(dtype=Datatype(quantization=UNIFORM,
                                         bitwidth=bw,
                                         signed=false,
                                         shift=Seq(0),
-                                        offset=Seq(0))),
+                                        offset=Seq(0)),
                     shape=Seq(x.length),
                     values=x.map(_.toFloat)
             )

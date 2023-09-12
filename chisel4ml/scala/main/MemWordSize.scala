@@ -15,22 +15,6 @@
  */
 package chisel4ml
 
-import chisel3._
-import chisel3.util._
-
-import _root_.chisel4ml.implicits._
-import interfaces.amba.axis.AXIStream
-import _root_.chisel4ml.LBIRStream
-import _root_.chisel4ml.util.log2
-import _root_.lbir.{Layer}
-import _root_.services.LayerOptions
-
-import _root_.org.slf4j.LoggerFactory
-
-
-abstract class ProcessingElementSequential(layer: Layer, options: LayerOptions) extends Module with LBIRStream {
-    val logger = LoggerFactory.getLogger(this.getClass())
-
-    val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
-    val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
+object MemWordSize {
+  def bits: Int = 32
 }

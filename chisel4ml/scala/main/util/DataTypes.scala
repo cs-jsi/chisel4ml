@@ -43,7 +43,7 @@ object ThreshProvider {
 
   implicit object ThreshProviderSInt extends ThreshProvider[SInt] {
     def instance(tensor: QTensor, fanIn: Int): Seq[SInt] =
-      tensor.values.map(_.toInt.S(tensor.dtype.get.bitwidth.W))
+      tensor.values.map(_.toInt.S(tensor.dtype.bitwidth.W))
   }
 }
 

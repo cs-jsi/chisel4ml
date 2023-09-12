@@ -1,0 +1,47 @@
+/*
+ * Copyright 2022 Computer Systems Department, Jozef Stefan Insitute
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ syntax = "proto3";
+
+ package lbir;
+ import "datatype.proto";
+ import "scalapb/scalapb.proto";
+ 
+ option java_multiple_files = true;
+ option java_package = "lbir";
+ 
+ message QTensor {
+   option (scalapb.message).no_box = true;  // do not wrap in Option
+   /* Describes datatype of the tensor. I.e. signedness, scalling, bitwidth, etc.    */
+   Datatype dtype = 1;
+
+   /* KERNEL, CH, HEIGHT, WIDTH (memory layout)
+      Shape of QTensor of convolutional kernels is KCHW. Shape of conv2d thresh is (K).
+      Shape has no information on batches. So input to conv2d layers are 3d (C,H,W).
+      QTensors for dense layers (inputs) should have shape: (n), where n is the
+      number of inputs to the layer. A QTensor of the weights in dense layers is of
+      shape (m, n). Here n is the number of inputs to a dense layer and m the number
+      of outputs. The memory layout of the tensor follows the shape dimensions.
+      Note that tensorflow uses the NHWC layout, as opposed to the CHW by LBIR.
+   */
+   repeated uint32 shape = 2;
+
+   /* A single sequence (Seq[Float]) of the actual values of a given QTensor.
+      Actual values are those that are computed in a float implementation. For
+      example: binarized neural networks the actual values are (+1,-1), while
+      implementation values can be different (1,0).
+   */
+   repeated float values = 3;
+ }

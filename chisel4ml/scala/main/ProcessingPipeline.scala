@@ -18,7 +18,7 @@ package chisel4ml
 import _root_.chisel3._
 import _root_.chisel3.util._
 import _root_.chisel3.experimental._
-import _root_.lbir.{Model, Layer}
+import _root_.lbir.Model
 import _root_.chisel4ml.{LayerGenerator, LBIRStream}
 import interfaces.amba.axis._
 import _root_.services.GenerateCircuitParams.Options
@@ -34,7 +34,7 @@ class ProcessingPipeline(model: Model, options: Options) extends Module with LBI
 
     // Instantiate modules for seperate layers, for now we only support DENSE layers
     for ((layer, idx) <- model.layers.zipWithIndex) {
-        peList += LayerGenerator(layer, options.layers(idx))
+        peList += LayerGenerator(layer.get, options.layers(idx))
     }
 
     // Connect the inputs and outputs of the layers

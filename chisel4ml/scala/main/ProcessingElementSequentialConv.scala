@@ -16,18 +16,20 @@
 package chisel4ml.sequential
 
 import scala.reflect.runtime.universe._
+import interfaces.amba.axis._
 import _root_.chisel4ml.lbir._
-import chisel4ml.{ProcessingElementSequential,
-                  ProcessingElementSequentialConfigConv,
-                  MemWordSize}
+import _root_.chisel4ml.LBIRStream
+import chisel4ml.MemWordSize
 import memories.MemoryGenerator
 import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
-import _root_.lbir.{Layer, QTensor}
+import _root_.lbir.{Conv2DConfig, QTensor}
 import _root_.lbir.Datatype.QuantizationType._
-import _root_.lbir.Layer.Activation._
+import _root_.lbir.Activation._
 import _root_.services.LayerOptions
 import chisel3._
+
+
 
 /** A sequential processing element for convolutions.
   *
@@ -47,13 +49,12 @@ class ProcessingElementSequentialConv[
     A <: Bits: TypeTag,
     O <: Bits: TypeTag,
   ](
-    layer:      Layer,
+    layer:      Conv2DConfig,
     options:    LayerOptions,
     mul:        (I, W) => M,
     add:        Vec[M] => S,
     actFn:      (S, A) => S,
-  ) extends ProcessingElementSequential(layer, options) {
-
+  ) extends Module with LBIRStream {
   def gen[T <: Bits: TypeTag](bitwidth: Int): T = {
     val tpe = implicitly[TypeTag[T]].tpe
     val hwType = if (tpe =:= typeOf[UInt]) UInt(bitwidth.W)
@@ -63,32 +64,34 @@ class ProcessingElementSequentialConv[
   }
 
 
-  val genIn = gen[I](layer.input.get.dtype.get.bitwidth)
-  val genWeights = gen[W](layer.weights.get.dtype.get.bitwidth)
-  val genAccu = gen[S](layer.input.get.dtype.get.bitwidth + layer.weights.get.dtype.get.bitwidth)
-  val genThresh = gen[A](layer.thresh.get.dtype.get.bitwidth)
-  val genOut = gen[O](layer.output.get.dtype.get.bitwidth)
+  val genIn = gen[I](layer.input.dtype.bitwidth)
+  val genWeights = gen[W](layer.kernel.dtype.bitwidth)
+  val genAccu = gen[S](layer.input.dtype.bitwidth + layer.kernel.dtype.bitwidth)
+  val genThresh = gen[A](layer.thresh.dtype.bitwidth)
+  val genOut = gen[O](layer.output.dtype.bitwidth)
 
-  val cfg = ProcessingElementSequentialConfigConv(layer)
-  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr=layer.weights.get.toHexStr,
+  
+  val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
+  val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
+  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr=layer.kernel.toHexStr,
                                                             width=MemWordSize.bits))
 
-  val actMem = Module(MemoryGenerator.SRAM(depth = cfg.input.mem.depth,
+  val actMem = Module(MemoryGenerator.SRAM(depth = layer.input.memDepth,
 										   width = MemWordSize.bits))
 
-  val krf = Module(new KernelRegisterFile(kernelSize = cfg.kernel.width,
-                                          kernelDepth = cfg.kernel.numChannels,
-                                          kernelParamSize = cfg.kernel.paramBitwidth))
+  val krf = Module(new KernelRegisterFile(kernelSize = layer.kernel.width,
+                                          kernelDepth = layer.kernel.numChannels,
+                                          kernelParamSize = layer.kernel.dtype.bitwidth))
 
-  val actRegFile = Module(new RollingRegisterFile(kernelSize = cfg.kernel.width,
-                                                  kernelDepth = cfg.kernel.numChannels,
-                                                  paramSize = cfg.input.paramBitwidth))
+  val actRegFile = Module(new RollingRegisterFile(kernelSize = layer.kernel.width,
+                                                  kernelDepth = layer.kernel.numChannels,
+                                                  paramSize = layer.input.dtype.bitwidth))
 
-  val resMem = Module(MemoryGenerator.SRAM(depth = cfg.result.mem.depth,
+  val resMem = Module(MemoryGenerator.SRAM(depth = layer.output.memDepth,
                                            width = MemWordSize.bits))
 
   val dynamicNeuron = Module(new DynamicNeuron[I, W, M, S, A, O](genIn = genIn,
-                                                                 numSynaps = cfg.kernel.numKernelParams,
+                                                                 numSynaps = layer.kernel.numKernelParams,
                                                                  genWeights = genWeights,
                                                                  genAccu = genAccu,
                                                                  genThresh = genThresh,
@@ -97,31 +100,31 @@ class ProcessingElementSequentialConv[
                                                                  add = add,
                                                                  actFn = actFn))
 
-  val swu = Module(new SlidingWindowUnit(kernelSize = cfg.kernel.width,
-                                         kernelDepth = cfg.kernel.numChannels,
-                                         actWidth = cfg.input.width,
-                                         actHeight = cfg.input.height,
-                                         actParamSize = cfg.input.paramBitwidth))
+  val swu = Module(new SlidingWindowUnit(kernelSize = layer.kernel.width,
+                                         kernelDepth = layer.kernel.numChannels,
+                                         actWidth = layer.input.width,
+                                         actHeight = layer.input.height,
+                                         actParamSize = layer.input.dtype.bitwidth))
 
-  val kRFLoader = Module(new KernelRFLoader(kernelSize = cfg.kernel.width,
-                                            kernelDepth = cfg.kernel.numChannels,
-                                            kernelParamSize = cfg.kernel.paramBitwidth,
-                                            numKernels = cfg.kernel.numKernels))
+  val kRFLoader = Module(new KernelRFLoader(kernelSize = layer.kernel.width,
+                                            kernelDepth = layer.kernel.numChannels,
+                                            kernelParamSize = layer.kernel.dtype.bitwidth,
+                                            numKernels = layer.kernel.numKernels))
 
-  val tas = Module(new ThreshAndShiftUnit[A](numKernels = cfg.kernel.numKernels,
+  val tas = Module(new ThreshAndShiftUnit[A](numKernels = layer.kernel.numKernels,
                                              genThresh = genThresh,
                                              layer = layer))
 
   val rmb = Module(new ResultMemoryBuffer[O](genOut = genOut,
-                                             resultsPerKernel = cfg.result.height * cfg.result.width,
-                                             resMemDepth = cfg.result.mem.depth,
-                                             numKernels = cfg.kernel.numKernels))
+                                             resultsPerKernel = layer.output.height * layer.output.width,
+                                             resMemDepth = layer.output.memDepth,
+                                             numKernels = layer.kernel.numKernels))
 
-  val paramsPerTrans = math.floor(options.busWidthIn.toFloat / cfg.input.paramBitwidth.toFloat).toInt
-  val actMemTransfers = math.ceil(cfg.input.numParams.toFloat / paramsPerTrans.toFloat).toInt
-  val ctrl = Module(new PeSeqConvController(numKernels = cfg.kernel.numKernels,
-                                            resMemDepth = cfg.result.mem.depth,
-                                            actMemDepth = cfg.input.mem.depth,
+  val paramsPerTrans = math.floor(options.busWidthIn.toFloat / layer.input.dtype.bitwidth.toFloat).toInt
+  val actMemTransfers = math.ceil(layer.input.numParams.toFloat / paramsPerTrans.toFloat).toInt
+  val ctrl = Module(new PeSeqConvController(numKernels = layer.kernel.numKernels,
+                                            resMemDepth = layer.output.memDepth,
+                                            actMemDepth = layer.input.memDepth,
                                             actMemTransfers = actMemTransfers))
 
   kernelMem.io.rdEna  := kRFLoader.io.romRdEna
@@ -191,10 +194,10 @@ class ProcessingElementSequentialConv[
 
 object ProcessingElementSequentialConv {
   def reluFn(act: SInt, thresh: SInt): SInt = Mux((act - thresh) > 0.S, (act - thresh), 0.S)
-  def apply(layer: Layer, options: LayerOptions) = (layer.input.get.dtype.get.quantization,
-                                                    layer.input.get.dtype.get.signed,
-                                                    layer.weights.get.dtype.get.quantization,
-                                                    layer.activation) match {
+  def apply(layer: Conv2DConfig, options: LayerOptions) = (layer.input.dtype.quantization,
+                                                           layer.input.dtype.signed,
+                                                           layer.kernel.dtype.quantization,
+                                                           layer.activation) match {
     case (UNIFORM, true, UNIFORM, RELU) => new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt, SInt](
                                                             layer,
                                                             options,

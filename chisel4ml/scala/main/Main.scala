@@ -123,7 +123,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
             val circuitId = circuits.length
             circuits = circuits :+ new Circuit[ProcessingPipeline](
                                                dutGen = new ProcessingPipeline(params.model.get, params.options.get),
-                                               outputStencil = params.model.get.layers.last.output.get,
+                                               outputStencil = params.model.get.layers.last.get.output,
                                                directory = Paths.get(tempDir, s"circuit$circuitId"),
                                                useVerilator = params.useVerilator,
                                                genVcd = params.genVcd

@@ -18,9 +18,9 @@ package chisel4ml
 import chisel3._
 import chisel3.util._
 import chisel3.experimental._
-import _root_.lbir.{Datatype, Layer}
+import _root_.lbir.{Datatype, DenseConfig}
+import _root_.lbir.Activation.{BINARY_SIGN, RELU, NO_ACTIVATION}
 import _root_.lbir.Datatype.QuantizationType._
-import _root_.lbir.Layer.Activation._
 import _root_.services.GenerateCircuitParams.Options
 import _root_.chisel4ml._
 import _root_.chisel4ml.lbir._
@@ -68,10 +68,10 @@ object Neuron {
 }
 
 
-abstract class ProcessingElementSimple(layer: Layer) extends Module {
+abstract class ProcessingElementSimple(layer: DenseConfig) extends Module {
     val io = IO(new Bundle {
-        val in  = Input(UInt(layer.input.get.totalBitwidth.W))
-        val out = Output(UInt(layer.output.get.totalBitwidth.W))
+        val in  = Input(UInt(layer.input.totalBitwidth.W))
+        val out = Output(UInt(layer.output.totalBitwidth.W))
     })
 }
 
@@ -108,43 +108,43 @@ object ProcessingElementSimple {
         }
     }
 
-    def apply(layer: Layer) = (layer.input.get.dtype.get.quantization,
-                               layer.input.get.dtype.get.signed,
-                               layer.weights.get.dtype.get.quantization,
-                               layer.activation) match {
+    def apply(layer: DenseConfig) = (layer.input.dtype.quantization,
+                                     layer.input.dtype.signed,
+                                     layer.weights.dtype.quantization,
+                                     layer.activation) match {
         case (UNIFORM, true, UNIFORM, RELU) => new ProcessingElementSimpleDense[SInt, SInt, SInt, SInt, UInt](layer,
-                                                                        SInt(layer.input.get.dtype.get.bitwidth.W),
-                                                                        UInt(layer.output.get.dtype.get.bitwidth.W),
+                                                                        SInt(layer.input.dtype.bitwidth.W),
+                                                                        UInt(layer.output.dtype.bitwidth.W),
                                                                         mul,
                                                                         (x: Vec[SInt]) => x.reduceTree(_ +& _),
-                                                                        layer.weights.get.dtype.get.shift,
+                                                                        layer.weights.dtype.shift,
                                                                         reluFn,
                                                                         saturate
                                                                         )
         case (UNIFORM, false, UNIFORM, RELU) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, UInt](layer,
-                                                                        UInt(layer.input.get.dtype.get.bitwidth.W),
-                                                                        UInt(layer.output.get.dtype.get.bitwidth.W),
+                                                                        UInt(layer.input.dtype.bitwidth.W),
+                                                                        UInt(layer.output.dtype.bitwidth.W),
                                                                         mul,
                                                                         (x: Vec[SInt]) => x.reduceTree(_ +& _),
-                                                                        layer.weights.get.dtype.get.shift,
+                                                                        layer.weights.dtype.shift,
                                                                         reluFn,
                                                                         saturate
                                                                         )
         case (UNIFORM, false, UNIFORM, NO_ACTIVATION) => new ProcessingElementSimpleDense[UInt, SInt, SInt, SInt, SInt](layer,
-                                                                        UInt(layer.input.get.dtype.get.bitwidth.W),
-                                                                        SInt(layer.output.get.dtype.get.bitwidth.W),
+                                                                        UInt(layer.input.dtype.bitwidth.W),
+                                                                        SInt(layer.output.dtype.bitwidth.W),
                                                                         mul,
                                                                         (x: Vec[SInt]) => x.reduceTree(_ +& _),
-                                                                        layer.weights.get.dtype.get.shift,
+                                                                        layer.weights.dtype.shift,
                                                                         linFn,
                                                                         noSaturate
                                                                         )
         case (UNIFORM, _, BINARY, BINARY_SIGN) => new ProcessingElementSimpleDense[UInt, Bool, SInt, SInt, Bool](layer,
-                                                                        UInt(layer.input.get.dtype.get.bitwidth.W),
+                                                                        UInt(layer.input.dtype.bitwidth.W),
                                                                         Bool(),
                                                                         mul,
                                                                         (x: Vec[SInt]) => x.reduceTree(_ +& _),
-                                                                        layer.weights.get.dtype.get.shift,
+                                                                        layer.weights.dtype.shift,
                                                                         signFn,
                                                                         noSaturate
                                                                         )
@@ -153,7 +153,7 @@ object ProcessingElementSimple {
                                                                                                  Bool(),
                                                                                                     mul,
                                                                           (x: Vec[Bool]) => PopCount(x),
-                                                                      layer.weights.get.dtype.get.shift,
+                                                                          layer.weights.dtype.shift,
                                                                                                  signFn,
                                                                                                  noSaturate)
     }
@@ -163,7 +163,7 @@ class ProcessingElementSimpleDense[I <: Bits,
                                    W <: Bits : WeightsProvider,
                                    M <: Bits,
                                    A <: Bits : ThreshProvider,
-                                   O <: Bits](layer: Layer,
+                                   O <: Bits](layer: DenseConfig,
                                               genI: I,
                                               genO: O,
                                               mul: (I,W) => M,
@@ -174,17 +174,17 @@ class ProcessingElementSimpleDense[I <: Bits,
 
 extends ProcessingElementSimple(layer) {
     import ProcessingElementSimple.logger
-    val weights: Seq[Seq[W]] = LbirDataTransforms.transformWeights[W](layer.weights.get)
-    val thresh: Seq[A] = LbirDataTransforms.transformThresh[A](layer.thresh.get, layer.input.get.shape(0))
-    val shift: Seq[Int] = layer.weights.get.dtype.get.shift
+    val weights: Seq[Seq[W]] = LbirDataTransforms.transformWeights[W](layer.weights)
+    val thresh: Seq[A] = LbirDataTransforms.transformThresh[A](layer.thresh, layer.input.shape(0))
+    val shift: Seq[Int] = layer.weights.dtype.shift
 
-    val in_int  = Wire(Vec(layer.input.get.shape(0), genI))
-    val out_int = Wire(Vec(layer.output.get.shape(0), genO))
+    val in_int  = Wire(Vec(layer.input.shape(0), genI))
+    val out_int = Wire(Vec(layer.output.shape(0), genO))
 
     in_int := io.in.asTypeOf(in_int)
-    for (i <- 0 until layer.output.get.shape(0)) {
+    for (i <- 0 until layer.output.shape(0)) {
         out_int(i) := saturateFn(Neuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn, shift(i)),
-                                 layer.output.get.dtype.get.bitwidth
+                                 layer.output.dtype.bitwidth
                                  )
     }
 
@@ -193,10 +193,10 @@ extends ProcessingElementSimple(layer) {
     io.out := Cat(out_int.reverse)
 
     logger.info(s"""Created new ProcessingElementSimpleDense processing element. It has an input shape:
-                    | ${layer.input.get.shape} and output shape: ${layer.output.get.shape}. The input bitwidth
-                    | is ${layer.input.get.dtype.get.bitwidth}, the output bitwidth
-                    | ${layer.output.get.dtype.get.bitwidth}. Thus the total size of the input vector is
-                    | ${layer.input.get.totalBitwidth} bits, and the total size of the output vector
-                    | is ${layer.output.get.totalBitwidth} bits.
+                    | ${layer.input.shape} and output shape: ${layer.output.shape}. The input bitwidth
+                    | is ${layer.input.dtype.bitwidth}, the output bitwidth
+                    | ${layer.output.dtype.bitwidth}. Thus the total size of the input vector is
+                    | ${layer.input.totalBitwidth} bits, and the total size of the output vector
+                    | is ${layer.output.totalBitwidth} bits.
                     | The input quantization is ${genI}, output quantization is ${genO}.""".stripMargin.replaceAll("\n", ""))
 }

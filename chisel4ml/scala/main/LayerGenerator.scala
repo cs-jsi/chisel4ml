@@ -16,22 +16,23 @@
 package chisel4ml
 
 import chisel3._
-import _root_.lbir.{Layer}
+import _root_.lbir.LayerWrap
+import _root_.lbir.{DenseConfig, Conv2DConfig, MaxPool2DConfig, FFTConfig, LMFEConfig}
 import _root_.services.LayerOptions
 import _root_.chisel4ml.LBIRStream
 import _root_.chisel4ml.sequential.{MaxPool2D, ProcessingElementSequentialConv}
 
 object LayerGenerator {
     // TODO: Rewrite the generation procedure to something more sensisble
-    def apply(layer: Layer, options: LayerOptions): Module with LBIRStream = {
-        if (layer.ltype == Layer.Type.PREPROC) {
-            Module(new FFTWrapper(layer, options))
-        } else if (layer.ltype == Layer.Type.MAX_POOL) {
-            Module(new MaxPool2D(layer, options))
-        } else if (layer.ltype == Layer.Type.CONV2D) {
-            Module(ProcessingElementSequentialConv(layer, options))
-        } else {
-            Module(new ProcessingElementWrapSimpleToSequential(layer, options))
+    def apply(layer_wrap: LayerWrap, options: LayerOptions): Module with LBIRStream = {
+        layer_wrap match {
+            case l:DenseConfig => Module(new ProcessingElementWrapSimpleToSequential(l, options))
+            case l:Conv2DConfig => Module(ProcessingElementSequentialConv(l, options))
+            case l:MaxPool2DConfig => Module(new MaxPool2D(l, options))
+            case l:FFTConfig => Module(new FFTWrapper(l, options))
+            // case LMFEConfig(l) => M
+            case _ => throw new RuntimeException(f"Unsupported layer type")
         }
+        
     }
 }

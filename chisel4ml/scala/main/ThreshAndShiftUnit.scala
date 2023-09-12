@@ -17,7 +17,7 @@ package chisel4ml.sequential
 
 import _root_.chisel4ml.util.reqWidth
 import _root_.chisel4ml.lbir._
-import _root_.lbir.{Layer, QTensor}
+import _root_.lbir.{Conv2DConfig, QTensor}
 import chisel3._
 import chisel3.experimental.ChiselEnum
 import chisel3.util._
@@ -25,7 +25,7 @@ import chisel3.util._
 /** ThreshAndShiftUnit
   *
   */
-class ThreshAndShiftUnit[A <: Bits](numKernels: Int, genThresh: A, layer: lbir.Layer)
+class ThreshAndShiftUnit[A <: Bits](numKernels: Int, genThresh: A, layer: Conv2DConfig)
 extends Module {
 
   val io = IO(new Bundle {
@@ -47,8 +47,8 @@ extends Module {
     kernelNum := kernelNum + 1.U
   }
 
-  val threshWithIndex = layer.thresh.get.values.zipWithIndex
-  val shiftWithIndex  = layer.thresh.get.dtype.get.shift.zipWithIndex
+  val threshWithIndex = layer.thresh.values.zipWithIndex
+  val shiftWithIndex  = layer.thresh.dtype.shift.zipWithIndex
   io.thresh    := MuxLookup(kernelNum,
                             0.S.asTypeOf(genThresh),
                             threshWithIndex.map(x => (x._2.toInt.U -> x._1.toInt.S.asTypeOf(genThresh))))

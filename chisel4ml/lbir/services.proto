@@ -15,6 +15,7 @@
  */
 syntax = "proto3";
 import "lbir.proto";
+import "qtensor.proto";
 
 package services;
 

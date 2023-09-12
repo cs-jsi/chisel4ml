@@ -18,14 +18,14 @@ package chisel4ml
 import _root_.chisel3._
 import _root_.chisel3.util._
 import _root_.chisel3.experimental._
-import _root_.lbir.{Layer}
+import _root_.lbir.{FFTConfig}
 import _root_.chisel4ml.{LBIRStream}
 import interfaces.amba.axis._
 import _root_.services.LayerOptions
 import fft._
 import dsptools._
 
-class FFTWrapper(layer: Layer, options: LayerOptions) extends Module with LBIRStream {
+class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LBIRStream {
   	val fftSize = 512
 
 	val fftParams = FFTParams.fixed(
@@ -48,8 +48,8 @@ class FFTWrapper(layer: Layer, options: LayerOptions) extends Module with LBIRSt
   	)
 
     //require(options.busWidthIn == 12, s"${options.busWidthIn}")
-    require(options.busWidthOut == layer.output.get.dtype.get.bitwidth, 
-            s"${options.busWidthOut} != ${layer.output.get.dtype.get.bitwidth}")
+    require(options.busWidthOut == layer.output.dtype.bitwidth, 
+            s"${options.busWidthOut} != ${layer.output.dtype.bitwidth}")
     val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
     val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 

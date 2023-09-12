@@ -15,12 +15,17 @@
  */
 package chisel4ml.sequential
 
-import chisel4ml.{ProcessingElementSequential, ProcessingElementSequentialConfigMaxPool}
-import _root_.lbir.Layer
+import interfaces.amba.axis._
+import chisel4ml.LBIRStream
+import chisel4ml.implicits._
+import _root_.lbir.MaxPool2DConfig
 import _root_.services.LayerOptions
 import chisel3._
 import chisel3.util._
+import chisel4ml.LBIRStream
 
+import _root_.org.slf4j.Logger
+import _root_.org.slf4j.LoggerFactory
 
 /* MaxPool2D
  *
@@ -29,20 +34,23 @@ import chisel3.util._
  * moments.
  *
  */
-class MaxPool2D[T <: Bits with Num[T]](layer: Layer, options: LayerOptions)
-extends ProcessingElementSequential(layer, options) {
-    val cfg = ProcessingElementSequentialConfigMaxPool(layer)
-    val maxPoolSize: Int = cfg.input.width / cfg.result.width
-    require(cfg.input.width % maxPoolSize == 0)
-    require(cfg.input.height % maxPoolSize == 0)
-    val paramsPerWord: Int = options.busWidthIn / cfg.input.paramBitwidth
-    val shiftRegsSize: Int = cfg.input.width * maxPoolSize
-    val genT: T = UInt(layer.input.get.dtype.get.bitwidth.W).asInstanceOf[T]
+class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOptions)
+extends Module with LBIRStream {
+    val logger = LoggerFactory.getLogger(this.getClass())
+    val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
+    val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
+
+    val maxPoolSize: Int = layer.input.width / layer.output.width
+    require(layer.input.width % maxPoolSize == 0)
+    require(layer.input.height % maxPoolSize == 0)
+    val paramsPerWord: Int = options.busWidthIn / layer.input.dtype.bitwidth
+    val shiftRegsSize: Int = layer.input.width * maxPoolSize
+    val genT: T = UInt(layer.input.dtype.bitwidth.W).asInstanceOf[T]
 
     logger.info(s""" MaxPool2D parameters are: maxPoolSize -> $maxPoolSize, paramsPerWord -> $paramsPerWord
-                   | shiftRegsSize -> $shiftRegsSize, input width -> ${cfg.input.width}, input height ->
-                   | ${cfg.input.height}, output width -> ${cfg.result.width}, output height ->
-                   | ${cfg.result.height}.""".stripMargin.replaceAll("\n", ""))
+                   | shiftRegsSize -> $shiftRegsSize, input width -> ${layer.input.width}, input height ->
+                   | ${layer.input.height}, output width -> ${layer.output.width}, output height ->
+                   | ${layer.output.height}.""".stripMargin.replaceAll("\n", ""))
 
     val inputs = Wire(Vec(paramsPerWord, genT))
     inputs := inStream.bits.asTypeOf(inputs)
@@ -56,12 +64,12 @@ extends ProcessingElementSequential(layer, options) {
     }
     val state = RegInit(mpState.sWAIT)
     val (totalElemCntValue, totalElemCntWrap) = Counter(state === mpState.sREAD_WORD,
-                                                        cfg.input.numParams)
+                                                        layer.input.numParams)
     val (widthCntValue, widthCntWrap) = Counter(state === mpState.sREAD_WORD,
-                                                cfg.input.width)
+                                                layer.input.width)
     // totalElemCntWraps the counter in cases where widthCntValue doesn't reach full words. I.e. input not perfectly
     // divisible by word size.
-    val (heightCntValue, heightCntWrap) = Counter(widthCntWrap || totalElemCntWrap, cfg.input.height)
+    val (heightCntValue, heightCntWrap) = Counter(widthCntWrap || totalElemCntWrap, layer.input.height)
     val isFirstOfWindow = ((heightCntValue % maxPoolSize.U === 0.U) &&
                           (widthCntValue % maxPoolSize.U === 0.U) &&
                           state === mpState.sREAD_WORD)
@@ -77,13 +85,13 @@ extends ProcessingElementSequential(layer, options) {
 
     inStream.ready := state === mpState.sWAIT  // outStream.ready
     val partialMaximums = VecInit((0 until maxPoolSize).map((i: Int) => {
-        MaxSelect(shiftRegs.reverse(0 + (i * cfg.input.width)),
-                           shiftRegs.reverse(1 + (i * cfg.input.width)),
+        MaxSelect(shiftRegs.reverse(0 + (i * layer.input.width)),
+                           shiftRegs.reverse(1 + (i * layer.input.width)),
                            genT)
     }))
 
 
-    val (_, totalOutCntWrap) = Counter(shiftValidRegs.last && state =/= mpState.sWAIT, cfg.result.numParams)
+    val (_, totalOutCntWrap) = Counter(shiftValidRegs.last && state =/= mpState.sWAIT, layer.output.numParams)
     val (outputCntValue, outputCntWrap) = Counter(shiftValidRegs.last && state =/= mpState.sWAIT, paramsPerWord)
     outputsBuffer(outputCntValue) := partialMaximums.reduceTree((in0:T, in1:T) => MaxSelect(in0, in1, genT))
 

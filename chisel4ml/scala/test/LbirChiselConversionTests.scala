@@ -37,11 +37,11 @@ class LbirChiselConversionTests extends AnyFunSuite {
         val length = r.nextInt(128) + 1  // 1-128
         val signAdjust = if (signed) Math.pow(2, bitwidth - 1).toFloat else 0.0F
         val values = (0 until length).map(_ => r.nextInt(Math.pow(2, bitwidth).toInt).toFloat - signAdjust)
-        val dtype = Some(Datatype(quantization=UNIFORM,
-                                                  signed=signed,
-                                                  bitwidth=bitwidth,
-                                                  shift=Seq(0),
-                                                  offset=Seq(0)))
+        val dtype = Datatype(quantization=UNIFORM,
+                             signed=signed,
+                             bitwidth=bitwidth,
+                             shift=Seq(0),
+                             offset=Seq(0))
         val qtensor = QTensor(dtype=dtype,
                               shape=Seq(length),
                               values=values)

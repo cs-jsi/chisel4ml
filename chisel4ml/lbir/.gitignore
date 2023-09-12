@@ -2,4 +2,8 @@ lbir_pb2.py
 lbir_pb2_grpc.py
 services_pb2.py
 services_pb2_grpc.py
+qtensor_pb2.py
+qtensor_pb2_grpc.py
+datatype_pb2.py
+datatype_pb2_grpc.py
 *.pyi

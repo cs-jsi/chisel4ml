@@ -54,28 +54,27 @@ with BeforeAndAfterEachTestData {
   val dtypeUInt4 = lbir.Datatype(quantization = UNIFORM, bitwidth = 4, signed = false, shift = Seq(0), offset = Seq(0))
   val dtypeSInt4 = lbir.Datatype(quantization = UNIFORM, bitwidth = 4, signed = true, shift = Seq(0), offset = Seq(0))
 
-  val testLayer0 = lbir.Layer(
-                    ltype  = lbir.Layer.Type.CONV2D,
-                    thresh = Option(lbir.QTensor(
-                              dtype = Option(dtypeSInt4),
+  val testLayer0 = lbir.Conv2DConfig(
+                    thresh = lbir.QTensor(
+                              dtype = dtypeSInt4,
                               shape = Seq(1),
                               values = Seq(0)
-                             )),
-                    weights = Option(lbir.QTensor(
-                                dtype = Option(dtypeSInt4),
+                             ),
+                    kernel = lbir.QTensor(
+                                dtype = dtypeSInt4,
                                 shape = Seq(1, 1, 2, 2),
                                 values = Seq(1, 0,
                                              0, 0)
-                              )),
-                    input = Option(lbir.QTensor(
-                              dtype = Option(dtypeUInt4),
+                              ),
+                    input = lbir.QTensor(
+                              dtype = dtypeUInt4,
                               shape = Seq(1, 1, 3, 3)
-                            )),
-                    output = Option(lbir.QTensor(
-                              dtype = Option(dtypeSInt4),
+                            ),
+                    output = lbir.QTensor(
+                              dtype = dtypeSInt4,
                               shape = Seq(1, 1, 2, 2)
-                            )),
-                    activation = lbir.Layer.Activation.NO_ACTIVATION
+                            ),
+                    activation = lbir.Activation.NO_ACTIVATION
                    )
 
   val testOptions0 = services.GenerateCircuitParams.Options(isSimple=false,
@@ -86,58 +85,56 @@ with BeforeAndAfterEachTestData {
 
   val dtypeUInt6 = lbir.Datatype(quantization = UNIFORM, bitwidth = 6, signed = false, shift = Seq(0), offset = Seq(0))
   val dtypeSInt7 = lbir.Datatype(quantization = UNIFORM, bitwidth = 7, signed = true, shift = Seq(0), offset = Seq(0))
-  val testLayer1 = lbir.Layer(
-                    ltype = lbir.Layer.Type.CONV2D,
-                    thresh = Option(lbir.QTensor(
-                      dtype = Option(dtypeSInt7),
+  val testLayer1 = lbir.Conv2DConfig(
+                    thresh = lbir.QTensor(
+                      dtype = dtypeSInt7,
                       shape = Seq(1),
                       values = Seq(-2)
-                    )),
-                    weights = Option(lbir.QTensor(
-                      dtype = Option(dtypeSInt7),
+                    ),
+                    kernel = lbir.QTensor(
+                      dtype = dtypeSInt7,
                       shape = Seq(1, 2, 2, 2),
                       values = Seq(1, 0,
                                    0, 0,
                                    0, 0,
                                    1, 0)
-                    )),
-                    input = Option(lbir.QTensor(
-                      dtype = Option(dtypeUInt6),
+                    ),
+                    input = lbir.QTensor(
+                      dtype = dtypeUInt6,
                       shape = Seq(1, 2, 3, 3),
-                    )),
-                    output = Option(lbir.QTensor(
-                      dtype = Option(dtypeSInt7),
+                    ),
+                    output = lbir.QTensor(
+                      dtype = dtypeSInt7,
                       shape = Seq(1, 1, 2, 2)
-                    ))
+                    )
                    )
 
   val dtypeUInt3 = lbir.Datatype(quantization=UNIFORM, bitwidth=3, signed=false, shift = Seq(0, 0), offset = Seq(0,0))
   val dtypeSInt2 = lbir.Datatype(quantization=UNIFORM, bitwidth=2, signed=false, shift = Seq(0, 0), offset = Seq(0,0))
   val dtypeSInt3 = lbir.Datatype(quantization=UNIFORM, bitwidth=3, signed=false, shift = Seq(0, 0), offset = Seq(0,0))
 
-  val testLayer2 = lbir.Layer(
-                    ltype = lbir.Layer.Type.CONV2D,
-                    thresh = Option(lbir.QTensor(
-                      dtype = Option(dtypeSInt3),
+  val testLayer2 = lbir.Conv2DConfig(
+                    thresh = lbir.QTensor(
+                      dtype = dtypeSInt3,
                       shape = Seq(2),
                       values = Seq(1, -1)
-                    )),
-                    weights = Option(lbir.QTensor(
-                      dtype = Option(dtypeSInt3),
+                    ),
+                    kernel = lbir.QTensor(
+                      dtype = dtypeSInt3,
                       shape = Seq(2, 1, 2, 2),
                       values = Seq( 1,  2,
                                    -2, -1,
                                     2,  0,
                                     0,  2)
-                    )),
-                    input = Option(lbir.QTensor(
-                      dtype = Option(dtypeUInt3),
+                    ),
+                    input = lbir.QTensor(
+                      dtype = dtypeUInt3,
                       shape = Seq(1, 1, 5, 6),
-                    )),
-                    output = Option(lbir.QTensor(
-                      dtype = Option(dtypeUInt3),
+                    ),
+                    output = lbir.QTensor(
+                      dtype = dtypeUInt3,
                       shape = Seq(1, 2, 4, 5)
-                    ))
+                    )
                    )
 
 
@@ -228,30 +225,30 @@ with BeforeAndAfterEachTestData {
                                     shift        = Seq.fill(numKernels)(0),
                                     offset       = Seq.fill(numKernels)(0))
 
-    val testLayerAuto = lbir.Layer(ltype = lbir.Layer.Type.CONV2D,
-                                   thresh = Option(lbir.QTensor(dtype = Option(dtypeThresh),
-                                                                shape = Seq(numKernels),
-                                                                values = Seq.tabulate(numKernels)(_.toFloat) // 0, 1...
-                                   )),
-                                   weights = Option(lbir.QTensor(dtype = Option(dtypeKernel),
-                                                                 shape = Seq(numKernels,
-                                                                             imageDepth,
-                                                                             kernelSize,
-                                                                             kernelSize),
-                                                                 values = arrToSeq(kernel)
-                                   )),
-                                   input = Option(lbir.QTensor(dtype = Option(dtypeInOut),
-                                                               shape = Seq(1,
-                                                                           imageDepth,
-                                                                           imageHeight,
-                                                                           imageWidth),
-                                   )),
-                                   output = Option(lbir.QTensor(dtype = Option(dtypeInOut),
-                                                                shape = Seq(1,
-                                                                            numKernels,
-                                                                            imageHeight,
-                                                                            imageWidth)
-                                   ))
+    val testLayerAuto = lbir.Conv2DConfig(
+                                   thresh = lbir.QTensor(dtype = dtypeThresh,
+                                                         shape = Seq(numKernels),
+                                                         values = Seq.tabulate(numKernels)(_.toFloat) // 0, 1...
+                                   ),
+                                   kernel = lbir.QTensor(dtype = dtypeKernel,
+                                                         shape = Seq(numKernels,
+                                                                     imageDepth,
+                                                                     kernelSize,
+                                                                     kernelSize),
+                                                        values = arrToSeq(kernel)
+                                   ),
+                                   input = lbir.QTensor(dtype = dtypeInOut,
+                                                        shape = Seq(1,
+                                                                    imageDepth,
+                                                                    imageHeight,
+                                                                    imageWidth),
+                                   ),
+                                   output = lbir.QTensor(dtype = dtypeInOut,
+                                                         shape = Seq(1,
+                                                                     numKernels,
+                                                                     imageHeight,
+                                                                     imageWidth)
+                                   )
                    )
         it should s"""compute convolution for automatic test parameters: imageWidth=$imageWidth, imageHeight=$imageHeight,
                      |imageDepth=$imageDepth, kernelSize=$kernelSize, numKernels=$numKernels, kernelBW=$kernelBW, actInpBw=

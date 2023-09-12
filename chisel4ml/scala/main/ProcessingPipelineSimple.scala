@@ -18,23 +18,34 @@ package chisel4ml
 import _root_.chisel3._
 import _root_.chisel3.util._
 import _root_.chisel3.experimental._
-import _root_.lbir.{Model, Layer}
-import _root_.chisel4ml.implicits._
+import _root_.lbir.Model
+import _root_.lbir.DenseConfig
+import _root_.lbir.LayerWrap
 import _root_.services.GenerateCircuitParams.Options
+import _root_.chisel4ml.implicits._
+import _root_.chisel4ml.ProcessingElementSimple
 import _root_.scala.collection.mutable._
 
+
 class ProcessingPipelineSimple(model: Model, options: Options) extends Module {
+    def layerGeneratorSimple(layer: LayerWrap): ProcessingElementSimple = {
+        layer match {
+            case l:DenseConfig => Module(ProcessingElementSimple(l))
+            case _ => throw new RuntimeException(f"Unsupported layer type")
+        }
+    }
+
     // List of processing elements - one PE per layer
     val peList = new ListBuffer[ProcessingElementSimple]()
 
     // Instantiate modules for seperate layers, for now we only support DENSE layers
     for (layer <- model.layers) {
-        peList += Module(ProcessingElementSimple(layer))
+        peList += layerGeneratorSimple(layer.get)
     }
 
     val io = IO(new Bundle {
-        val in  = Input(UInt(model.layers.head.input.get.totalBitwidth.W))
-        val out = Output(UInt(model.layers.last.output.get.totalBitwidth.W))
+        val in  = Input(UInt(model.layers.head.get.input.totalBitwidth.W))
+        val out = Output(UInt(model.layers.last.get.output.totalBitwidth.W))
     })
 
     // Connect the inputs and outputs of the layers

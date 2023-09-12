@@ -46,7 +46,7 @@ with BeforeAndAfterEachTestData {
 
   val dtype = new lbir.Datatype(quantization = UNIFORM, bitwidth = 5, signed = false, shift = Seq(0), offset = Seq(0))
   val testParameters = lbir.QTensor(
-    dtype = Option(dtype),
+    dtype = dtype,
     shape = Seq(1, 2, 3, 3),
     values = Seq(1, 2, 3,
                  4, 5, 6,
@@ -58,7 +58,7 @@ with BeforeAndAfterEachTestData {
 
   val dtype2 = new lbir.Datatype(quantization = UNIFORM, bitwidth = 6, signed = false, shift = Seq(0), offset = Seq(0))
   val testParameters2 = lbir.QTensor(
-    dtype = Option(dtype2),
+    dtype = dtype2,
     shape = Seq(1, 2, 5, 4),
     values = Seq(1,   2,  3,  4,  5,
                  6,   7,  8,  9, 10,
@@ -167,7 +167,7 @@ with BeforeAndAfterEachTestData {
                                   shift = Seq(0),
                                   offset = Seq(0))
     val testParameters = lbir.QTensor(
-      dtype = Option(dtype),
+      dtype = dtype,
       shape = Seq(1, randKernelDepth, randImageWidth, randImageHeight),
       values = arrToSeq(randImage),
     )

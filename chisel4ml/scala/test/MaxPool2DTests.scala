@@ -32,7 +32,7 @@ class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
 
   val dtype = new lbir.Datatype(quantization = UNIFORM, bitwidth = 5, signed = false, shift = Seq(0), offset = Seq(0))
   val testParameters = lbir.QTensor(
-    dtype = Option(dtype),
+    dtype = dtype,
     shape = Seq(1, 2, 4, 4),
     values = Seq(1,  2,  3,  3,
                  4,  5,  6,  6,
@@ -45,11 +45,11 @@ class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
                  16, 17, 18, 18),
   )
   val stencil = lbir.QTensor(
-    dtype = Option(dtype),
+    dtype = dtype,
     shape = Seq(1, 2, 2, 2),
   )
   val expectedOutput = lbir.QTensor(
-    dtype = Option(dtype),
+    dtype = dtype,
     shape = Seq(1, 2, 2, 2),
     values = Seq(5,  6,
                  8,  9,
@@ -57,12 +57,9 @@ class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
                  14, 15,
                  17, 18)
   )
-  val layer = lbir.Layer(
-    ltype = lbir.Layer.Type.MAX_POOL,
-    input = Option(testParameters),
-    output = Option(stencil),
-    weights = Option(stencil),
-    thresh = Option(stencil),  // TODO: remove this
+  val layer = lbir.MaxPool2DConfig(
+    input = testParameters,
+    output = stencil,
   )
   val options = LayerOptions(
     busWidthIn = 32,
