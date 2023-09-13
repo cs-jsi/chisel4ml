@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-import chisel4ml.lbir.lbir_pb2 as lbir
+from chisel4ml.lbir.qtensor_pb2 import QTensor
 import chisel4ml.lbir.services_pb2 as services
 from chisel4ml import transforms
 from chisel4ml.chisel4ml_server import start_server_once
@@ -29,7 +29,7 @@ class Circuit:
     provides a python interface to that server via gRPC (via __call__ or predict).
     """
 
-    def __init__(self, circuit_id: int, input_quantizer, input_qtensor: lbir.QTensor):
+    def __init__(self, circuit_id: int, input_quantizer, input_qtensor: QTensor):
         assert circuit_id >= 0, (
             "Invalid circuitId provided. This parameter should be positive, but is"
             f" {circuit_id}."

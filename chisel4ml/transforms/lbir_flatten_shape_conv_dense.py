@@ -26,14 +26,14 @@ class LbirFlattenShapeConvDense(QKerasTransform):
     order = 6
 
     def _call_impl(self, layers):
-        layers[1].input.shape[:] = [reduce(lambda x, y: x * y, layers[0].output.shape)]
+        layers[1].dense.input.shape[:] = [reduce(lambda x, y: x * y, layers[0].conv2d.output.shape)]
         return layers
 
     def is_applicable(self, layers) -> bool:
         return (
-            isinstance(layers[0], lbir.Layer)
-            and isinstance(layers[1], lbir.Layer)
-            and layers[0].ltype == lbir.Layer.Type.CONV2D
-            and layers[1].ltype == lbir.Layer.Type.DENSE
-            and len(layers[1].input.shape) > 1  # prevents endless application
+            isinstance(layers[0], lbir.LayerWrap)
+            and layers[0].HasField('conv2d')
+            and isinstance(layers[1], lbir.LayerWrap)
+            and layers[1].HasField('dense')
+            and len(layers[1].dense.input.shape) > 1  # prevents endless application
         )

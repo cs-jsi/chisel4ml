@@ -1,12 +1,12 @@
 .PHONY = protobuf clean
 
-PROTOC = python -m grpc_tools.protoc --proto_path=chisel4ml/lbir/. \
+PROTOC = python -m grpc_tools.protoc --proto_path=chisel4ml/lbir/ \
 									 --python_out=chisel4ml/lbir/. \
 									 --grpc_python_out=chisel4ml/lbir/. \
-									 --mypy_out=chisel4ml/lbir/. \
-									 -I=scalapb/scalapb.proto
+									 --mypy_out=chisel4ml/lbir/.
 
 SRCS := $(wildcard chisel4ml/lbir/*.proto)
+SRCS += chisel4ml/lbir/scalapb/scalapb.proto
 BINS := $(SRCS:%.proto=%_pb2.py)
 BINS += $(SRCS:%.proto=%_pb2.pyi)
 BINS += $(SRCS:%.proto=%_pb2_grpc.py)
@@ -18,4 +18,4 @@ protobuf: ${BINS}
 
 
 clean:
-	rm ${BINS}
+	rm -f ${BINS}

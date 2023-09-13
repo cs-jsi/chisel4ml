@@ -11,6 +11,8 @@
 import qkeras
 
 import chisel4ml.lbir.lbir_pb2 as lbir
+from chisel4ml.lbir.qtensor_pb2 import QTensor
+from chisel4ml.lbir.datatype_pb2 import Datatype
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from chisel4ml.transforms.qkeras_util import _qact_to_bitwidth
@@ -36,8 +38,8 @@ class QKerasQActActiveFuse(QKerasTransform):
         shape = layers[0].get_output_shape_at(0)[1:]
         if isinstance(layers[1], qkeras.QConv2D):
             shape = [shape[2]] + [*shape[0:2]]
-        input_tensor = lbir.QTensor(
-            dtype=lbir.Datatype(
+        input_tensor = QTensor(
+            dtype=Datatype(
                 quantization=_qact_to_qtype(layers[0].activation),
                 signed=_qact_to_sign(layers[0].activation),
                 bitwidth=_qact_to_bitwidth(layers[0].activation),
@@ -49,7 +51,12 @@ class QKerasQActActiveFuse(QKerasTransform):
             shape=shape,
         )
         lbir_layer = _qkeras_base_transform_no_inp(layers[1])
-        lbir_layer.input.CopyFrom(input_tensor)
+        if lbir_layer.HasField('dense'):
+            lbir_layer.dense.input.CopyFrom(input_tensor)
+        elif lbir_layer.HasField('conv2d'):
+            lbir_layer.conv2d.input.CopyFrom(input_tensor)
+        else:
+            raise Exception("lbir_layer should have either dense or conv2d field set.")
         return [lbir_layer]
 
     def is_applicable(self, layers) -> bool:

@@ -49,7 +49,8 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
 
     //require(options.busWidthIn == 12, s"${options.busWidthIn}")
     require(options.busWidthOut == layer.output.dtype.bitwidth, 
-            s"${options.busWidthOut} != ${layer.output.dtype.bitwidth}")
+        s"This module requires buswidhts to equal the input/output datatypes. " +
+        s"${options.busWidthOut} != ${layer.output.dtype.bitwidth}")
     val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
     val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 

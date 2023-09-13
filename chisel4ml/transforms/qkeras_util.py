@@ -16,38 +16,43 @@ import numpy as np
 import qkeras
 import tensorflow as tf
 from tensorflow.keras.layers import Layer as KerasLayer
+from tensorflow.keras.layers import MaxPooling2D
+from qkeras import QDense, QConv2D
 
 import chisel4ml.lbir.lbir_pb2 as lbir
+from chisel4ml.lbir.qtensor_pb2 import QTensor
+from chisel4ml.lbir.datatype_pb2 import Datatype as LBIRDatatype
 
 log = logging.getLogger(__name__)
 
 
-def _qkeras_base_transform_no_inp(keras_layer: KerasLayer) -> lbir.Layer:
+def _qkeras_base_transform_no_inp(keras_layer: KerasLayer):
     """The base tranform transform transforms the parts of the layer that are common
     to all layers.
     """
-    return lbir.Layer(
-        ltype=_layer_to_ltype(keras_layer),
-        thresh=_layer_to_thresh_tensor(keras_layer),
-        weights=_layer_to_weight_tensor(keras_layer),
-        output=_layer_to_output_tensor(keras_layer),
-        activation=_qact_to_act(keras_layer.activation),
-    )
-
-
-def _layer_to_ltype(keras_layer: KerasLayer) -> lbir.Layer.Type:
-    if isinstance(keras_layer, qkeras.qlayers.QDense):
-        return lbir.Layer.Type.DENSE
-    elif isinstance(keras_layer, qkeras.qconvolutional.QConv2D):
-        return lbir.Layer.Type.CONV2D
+    if isinstance(keras_layer, QDense):
+        return lbir.LayerWrap(dense=lbir.DenseConfig(
+            thresh=_layer_to_thresh_tensor(keras_layer),
+            weights=_layer_to_weight_tensor(keras_layer),
+            output=_layer_to_output_tensor(keras_layer),
+            activation=_qact_to_act(keras_layer.activation),
+        ))
+    elif isinstance(keras_layer, QConv2D):
+        return lbir.LayerWrap(conv2d=lbir.Conv2DConfig(
+            thresh=_layer_to_thresh_tensor(keras_layer),
+            kernel=_layer_to_weight_tensor(keras_layer),
+            output=_layer_to_output_tensor(keras_layer),
+            activation=_qact_to_act(keras_layer.activation),
+        ))
+    elif isinstance(keras_layer, MaxPooling2D):
+        return lbir.LayerWrap(maxpool2d=lbir.MaxPool2DConfig(
+            output=_layer_to_output_tensor(keras_layer),
+        ))
     else:
-        raise ValueError(
-            f"Invalid layer of type: {keras_layer.__class}. Only the QDense and QConv2D"
-            " active layers may be used with chisel4ml."
-        )
+        raise NotImplemented(f"Layers of type {type(keras_layer)} are not currently supported by chisel4ml.") 
 
 
-def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
+def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> QTensor:
     if keras_layer.bias_quantizer_internal is None:
         keras_layer.bias_quantizer_internal = qkeras.quantized_bits(
             bits=16, integer=15, keep_negative=True, alpha=1
@@ -69,8 +74,8 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
             keras_layer.bias, keras_layer.bias_quantizer_internal
         ).numpy()
     thresh_values = (bias_values * (-1.0)).flatten().tolist()
-    return lbir.QTensor(
-        dtype=lbir.Datatype(
+    return QTensor(
+        dtype=LBIRDatatype(
             quantization=_quantizer_to_qtype(keras_layer.bias_quantizer_internal),
             signed=True,  # Some way to limit biases to only positive/only negative?
             bitwidth=_quantizer_to_bitwidth(keras_layer.bias_quantizer_internal),
@@ -82,7 +87,7 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
     )
 
 
-def _layer_to_weight_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
+def _layer_to_weight_tensor(keras_layer: KerasLayer) -> QTensor:
     # We run this so that scale wont be a place holder tensor
     _ = keras_layer.kernel_quantizer_internal(keras_layer.kernel)
 
@@ -92,8 +97,8 @@ def _layer_to_weight_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
     else:
         kernel_vals = keras_layer.kernel
 
-    return lbir.QTensor(
-        dtype=lbir.Datatype(
+    return QTensor(
+        dtype=LBIRDatatype(
             quantization=_quantizer_to_qtype(keras_layer.kernel_quantizer_internal),
             signed=True,  # can this be unsigned in some case?
             bitwidth=_quantizer_to_bitwidth(keras_layer.kernel_quantizer_internal),
@@ -122,14 +127,14 @@ def _layer_to_shape(keras_layer: KerasLayer):
         )
 
 
-def _layer_to_output_tensor(keras_layer: KerasLayer) -> lbir.QTensor:
+def _layer_to_output_tensor(keras_layer: KerasLayer) -> QTensor:
     tf_shape = keras_layer.get_output_shape_at(0)[1:]
     if isinstance(keras_layer, qkeras.QDense):
         lbir_shape = tf_shape
     else:
         lbir_shape = (tf_shape[2],) + tf_shape[0:2]
-    return lbir.QTensor(
-        dtype=lbir.Datatype(
+    return QTensor(
+        dtype=LBIRDatatype(
             quantization=_qact_to_qtype(keras_layer.activation),
             signed=_qact_to_sign(keras_layer.activation),
             bitwidth=_qact_to_bitwidth(keras_layer.activation),
@@ -167,17 +172,17 @@ def _qact_to_shift(activation, output_shape):
         )
 
 
-def _qact_to_qtype(activation) -> lbir.Datatype.QuantizationType:
+def _qact_to_qtype(activation) -> LBIRDatatype.QuantizationType:
     if isinstance(activation, (qkeras.quantized_relu, qkeras.quantized_bits)):
-        return lbir.Datatype.QuantizationType.UNIFORM
+        return LBIRDatatype.QuantizationType.UNIFORM
     elif isinstance(activation, qkeras.binary):
-        return lbir.Datatype.QuantizationType.BINARY
+        return LBIRDatatype.QuantizationType.BINARY
     elif isinstance(activation, str):
         if activation == "linear" or activation == "softmax":
-            return lbir.Datatype.QuantizationType.UNIFORM
+            return LBIRDatatype.QuantizationType.UNIFORM
     elif callable(activation):
         if activation.__name__ == "linear" or activation.__name__ == "softmax":
-            return lbir.Datatype.QuantizationType.UNIFORM
+            return LBIRDatatype.QuantizationType.UNIFORM
     else:
         raise ValueError(
             f"Unsupported activation function: {type(activation)}. Only quantized_relu,"
@@ -185,17 +190,17 @@ def _qact_to_qtype(activation) -> lbir.Datatype.QuantizationType:
         )
 
 
-def _qact_to_act(activation) -> lbir.Layer.Activation:
+def _qact_to_act(activation) -> lbir.Activation:
     if isinstance(activation, qkeras.quantized_relu):
-        return lbir.Layer.Activation.RELU
+        return lbir.Activation.RELU
     elif isinstance(activation, qkeras.binary):
-        return lbir.Layer.Activation.BINARY_SIGN
+        return lbir.Activation.BINARY_SIGN
     elif isinstance(activation, str):
         if activation == "linear" or activation == "softmax":
-            return lbir.Layer.Activation.NO_ACTIVATION
+            return lbir.Activation.NO_ACTIVATION
     elif callable(activation):
         if activation.__name__ == "linear" or activation.__name__ == "softmax":
-            return lbir.Layer.Activation.NO_ACTIVATION
+            return lbir.Activation.NO_ACTIVATION
     else:
         raise ValueError(
             f"Unsupported activation function: {activation}. Only quantized_relu,"
@@ -241,11 +246,11 @@ def _qact_to_bitwidth(activation) -> int:
 
 def _quantizer_to_qtype(
     quantizer: qkeras.BaseQuantizer,
-) -> lbir.Datatype.QuantizationType:
+) -> LBIRDatatype.QuantizationType:
     if isinstance(quantizer, qkeras.quantized_bits):
-        return lbir.Datatype.QuantizationType.UNIFORM
+        return LBIRDatatype.QuantizationType.UNIFORM
     elif isinstance(quantizer, qkeras.binary):
-        return lbir.Datatype.QuantizationType.BINARY
+        return LBIRDatatype.QuantizationType.BINARY
     else:
         raise ValueError(
             f"Unsupported quantizer: {quantizer}. Only quantized_bits and binary"

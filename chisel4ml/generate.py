@@ -15,7 +15,7 @@ import tensorflow as tf
 from chisel4ml import chisel4ml_server
 from chisel4ml import transform
 from chisel4ml.circuit import Circuit
-from chisel4ml.lbir.lbir_pb2 import Layer
+from chisel4ml.lbir.lbir_pb2 import FFTConfig
 from chisel4ml.lbir.services_pb2 import GenerateCircuitParams
 from chisel4ml.lbir.services_pb2 import GenerateCircuitReturn
 from chisel4ml.lbir.services_pb2 import LayerOptions
@@ -63,12 +63,15 @@ def circuit(
             f" the following error message:{gen_circt_ret.err.msg}"
         )
         return None
-
+    
+    input_layer_type = lbir_model.layers[0].WhichOneof('sealed_value_optional')
+    assert input_layer_type is not None
+    input_qt = getattr(lbir_model.layers[0], input_layer_type).input
     circuit = Circuit(
         gen_circt_ret.circuit_id,
         # TODO: this is temporary
         get_input_quantization(opt_model),
-        lbir_model.layers[0].input,
+        input_qt,
     )
     return circuit
 
@@ -77,7 +80,7 @@ def circuit(
 def generate_layer_options(lbir_model, axi_stream_width):
     options = []
     for layer in lbir_model.layers:
-        if layer.ltype is Layer.Type.PREPROC:
+        if layer.HasField('fft'):
             options.append(LayerOptions(bus_width_in=12, bus_width_out=24))
         else:
             if len(options) > 0:

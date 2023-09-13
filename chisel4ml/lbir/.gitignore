@@ -6,4 +6,6 @@ qtensor_pb2.py
 qtensor_pb2_grpc.py
 datatype_pb2.py
 datatype_pb2_grpc.py
+scalapb/scalapb_pb2.py
+scalapb/scalapb_pb2_grpc.py
 *.pyi

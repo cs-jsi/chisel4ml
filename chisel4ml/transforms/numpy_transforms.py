@@ -12,10 +12,10 @@ import copy
 
 import numpy as np
 
-import chisel4ml.lbir.lbir_pb2 as lbir
+from chisel4ml.lbir.qtensor_pb2 import QTensor
 
 
-def numpy_to_qtensor(arr: np.ndarray, input_quantizer, input_qtensor: lbir.QTensor):
+def numpy_to_qtensor(arr: np.ndarray, input_quantizer, input_qtensor: QTensor):
     """Converts numpy tensors to a list of qtensor objects."""
     if len(arr.shape) == len(input_qtensor.shape) + 1:
         narr = arr

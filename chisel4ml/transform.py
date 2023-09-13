@@ -40,7 +40,8 @@ def qkeras_to_lbir(
                 left = left + 1
                 right = right + 1
     for layer in xlayers:
-        assert isinstance(layer, lbir.Layer), (
+        # Is there a better way to check if a layer is a member of oneof field?
+        assert hasattr(layer, "__module__") and layer.__module__ == "lbir_pb2", (
             "Transformation to lbir model failed. Not all layers were able to be "
             f"transformed to lbir layers. Layers {layer} seems to be the problem."
             f"All the layers are {_stringfy_layers(xlayers, None)}"
@@ -52,8 +53,5 @@ def qkeras_to_lbir(
 def _stringfy_layers(layers, trans):
     temp = f"Printing layer status before applying trans: {type(trans)}.\n"
     for lay in layers:
-        if isinstance(lay, lbir.Layer):
-            temp = f"{temp}<lbir.Type.{lbir.Layer.Type.keys()[lay.ltype]}>\n"
-        else:
-            temp = f"{temp}{type(lay)}\n"
+        temp = f"{temp}{type(lay)}\n"
     return temp
