@@ -12,7 +12,7 @@ import qkeras
 import tensorflow as tf
 
 import chisel4ml.lbir.lbir_pb2 as lbir
-from chisel4ml.preprocess.audio_preprocessing_layer import AudioPreprocessingLayer
+from chisel4ml.preprocess.fft_layer import FFTLayer
 from chisel4ml.transforms import qkeras_trans_list
 
 
@@ -21,7 +21,7 @@ def qkeras_to_lbir(
 ) -> lbir.Model:
     "Applys transformation to a Keras model, and returns a LBIR model."
     model_copy = qkeras.utils.clone_model(
-        model, custom_objects={"AudioPreprocessingLayer": AudioPreprocessingLayer}
+        model, custom_objects={"FFTLayer": FFTLayer}
     )
     lbir_model = lbir.Model()
     lbir_model.name = name

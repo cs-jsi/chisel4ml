@@ -9,43 +9,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import qkeras
+import numpy as np
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.datatype_pb2 import Datatype
 from chisel4ml.lbir.qtensor_pb2 import QTensor
-from chisel4ml.preprocess.audio_preprocessing_layer import AudioPreprocessingLayer
+from chisel4ml.preprocess.fft_layer import FFTLayer
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from chisel4ml.transforms.qkeras_util import _qact_to_bitwidth
 from chisel4ml.transforms.qkeras_util import _qact_to_sign
-
-
-fft_config = lbir.FFTConfig(
-    fft_size=512,
-    step_size=512,
-    num_mels=20,
-    num_frames=32,
-    input=QTensor(
-        dtype=Datatype(
-            quantization=Datatype.QuantizationType.UNIFORM,
-            signed=True,
-            bitwidth=12,
-            shift=[0],
-            offset=[0],
-            ),
-        shape=[512],  # KERNEL, CH, WIDTH, HEIGHT
-        ),
-    output=QTensor(
-        dtype=Datatype(
-            quantization=Datatype.QuantizationType.UNIFORM,
-            signed=True,
-            bitwidth=24,
-            shift=[0],
-            offset=[0],
-        ),
-        shape=[512],  # KERNEL, CH, WIDTH, HEIGHT
-        ),
-    )
 
 
 @register_qkeras_transform
@@ -64,9 +37,34 @@ class QKerasAudioPreprocess(QKerasTransform):
         #assert shape == (512), "Only 32 by 512 frames supported currently"
         assert bitwidth == 12
         assert signed
+        fft_config = lbir.FFTConfig(
+            fft_size=512,
+            num_frames=32,
+            win_fn=layers[1].window_fn.tolist(),
+            input=QTensor(
+                dtype=Datatype(
+                    quantization=Datatype.QuantizationType.UNIFORM,
+                    signed=True,
+                    bitwidth=12,
+                    shift=[0],
+                    offset=[0],
+                    ),
+                shape=[32, 512],  # KERNEL, CH, WIDTH, HEIGHT
+                ),
+            output=QTensor(
+                dtype=Datatype(
+                    quantization=Datatype.QuantizationType.UNIFORM,
+                    signed=True,
+                    bitwidth=24,
+                    shift=[0],
+                    offset=[0],
+                ),
+                shape=[32, 512],  # KERNEL, CH, WIDTH, HEIGHT
+                ),
+            )
         return [lbir.LayerWrap(fft=fft_config)]
 
     def is_applicable(self, layers) -> bool:
         return isinstance(layers[0], qkeras.QActivation) and isinstance(
-            layers[1], AudioPreprocessingLayer
+            layers[1], FFTLayer
         )

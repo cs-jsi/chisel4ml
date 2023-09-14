@@ -12,7 +12,7 @@ from tensorflow_model_optimization.python.core.sparsity.keras import pruning_sch
 
 from chisel4ml import chisel4ml_server
 from chisel4ml import optimize
-from chisel4ml.preprocess.audio_preprocessing_layer import AudioPreprocessingLayer
+from chisel4ml.preprocess.fft_layer import FFTLayer
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -516,7 +516,7 @@ def qnn_audio_class():
     model.add(
         qkeras.QActivation(qkeras.quantized_bits(13, 12, keep_negative=True, alpha=1))
     )
-    model.add(AudioPreprocessingLayer())
+    model.add(FFTLayer())
     model.add(
         qkeras.QConv2D(
             2,

@@ -80,7 +80,8 @@ extends Runnable {
             // inQueue.take() blocks execution until data is available
             val validQTensor = inQueue.take()
             if (validQTensor.valid == false) break()
-            logger.info(s"Simulating a sequential circuit on a new input. Output stencil: $outputStencil")
+            logger.info(s"Simulating a sequential circuit on a new input. Input shape: ${validQTensor.qtensor.shape}" +
+                        s", input dtype: ${validQTensor.qtensor.dtype}, output stencil: $outputStencil.")
             var outSeq: Seq[BigInt] = Seq()
             fork {
                 dut.inStream.enqueueQTensor(validQTensor.qtensor, dut.clock)
