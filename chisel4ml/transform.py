@@ -13,6 +13,7 @@ import tensorflow as tf
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.preprocess.fft_layer import FFTLayer
+from chisel4ml.preprocess.lmfe_layer import LMFELayer
 from chisel4ml.transforms import qkeras_trans_list
 
 
@@ -21,7 +22,7 @@ def qkeras_to_lbir(
 ) -> lbir.Model:
     "Applys transformation to a Keras model, and returns a LBIR model."
     model_copy = qkeras.utils.clone_model(
-        model, custom_objects={"FFTLayer": FFTLayer}
+        model, custom_objects={"FFTLayer": FFTLayer, "LMFELayer": LMFELayer}
     )
     lbir_model = lbir.Model()
     lbir_model.name = name

@@ -17,34 +17,47 @@ import tensorflow as tf
 log = logging.getLogger(__name__)
 
 
-class FFTLayer(tf.keras.layers.Layer):
+class LMFELayer(tf.keras.layers.Layer):
     """TODO"""
 
-    def __init__(self, win_fn='hamming'):
-        super(FFTLayer, self).__init__()
+    def __init__(self):
+        super(LMFELayer, self).__init__()
         self.frame_length = 512
         self.num_frames = 32
         self.sr = self.num_frames * self.frame_length  # approx 16000
-        self.win_fn = win_fn
-        self.window_fn = np.hamming(self.frame_length) if win_fn =='hamming' else np.ones(self.frame_length)
+        self.n_mels = 20
+        self.filter_banks = librosa.filters.mel(
+            n_fft=self.frame_length,
+            sr=self.sr,
+            n_mels=self.n_mels,
+            fmin=0,
+            fmax=((self.sr / 2) + 1),
+            norm=None,
+        )
 
     @tf.function(
         input_signature=[tf.TensorSpec(shape=(None, 32, 512), dtype=tf.float32)]
     )
     def call(self, inputs):
         tensor = tf.numpy_function(self.np_call, [inputs], tf.float32, stateful=False)
-        tensor.set_shape(tf.TensorShape([inputs.shape[0], 32, 512]))
+        tensor.set_shape(tf.TensorShape([inputs.shape[0], 32, 20]))
         return tensor
 
     def np_call(self, inputs):
-        res = np.fft.fft(inputs * self.window_fn, norm='backward', axis=-1).real
-        return res.astype(np.float32)
+        fft_res = inputs[:, :, 0:257]
+        mag_frames = fft_res ** 2
+        mels = np.tensordot(mag_frames, self.filter_banks.T, axes=1)
+        mels = np.where(mels == 0, (1 / (2**40)), mels)  # Numerical stability
+        log_mels = np.log2(mels, dtype=np.float32)
+        return np.expand_dims(
+            np.round(log_mels), axis=-1
+        )
 
     def get_config(self):
         base_config = super().get_config()
-        config = {"win_fn": self.win_fn}
+        config = {}
         return {**base_config, **config}
 
     @classmethod
     def from_config(cls, config):
-        return cls(win_fn=config['win_fn'])
+        return cls()

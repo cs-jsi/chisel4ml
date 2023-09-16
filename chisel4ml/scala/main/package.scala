@@ -64,7 +64,7 @@ package object implicits {
         }
 
         def toBinaryString: String = {
-            var values =   qt.values.reverse
+            var values = qt.values.reverse
             if (qt.dtype.quantization == BINARY) {
                 values = values.map(x => (x + 1) / 2) // 1 -> 1, -1 -> 0
             }
@@ -166,12 +166,14 @@ package object implicits {
          * does not contain enough information to know how to reconstruct the QTensor.
          */
         def toQTensor(stencil: QTensor, busWidth: Int) = {
+            require(busWidth >= stencil.dtype.bitwidth, 
+                  s"""Invalid LBIR transaction. Buswidth must be greater than or equals 
+                  | to the bitwidth of a single qtensor element. Buswidth is $busWidth, 
+                  | bitwidth:${stencil.dtype.bitwidth}.""".stripMargin.replaceAll("\n", ""))
             val paramsPerTransaction: Int = busWidth / stencil.dtype.bitwidth
             val bitsPerTransaction: Int = paramsPerTransaction * stencil.dtype.bitwidth
+            logger.error(s"$stencil, busWidth:$busWidth, paramsPerTransactions:$paramsPerTransaction, bitsPerTranscation:$bitsPerTransaction")
 
-            //val valuesString = toBinaryB(x.litValue, stencil.totalBitwidth).grouped(stencil.dtype.get.bitwidth).toList
-            //val values = valuesString.reverse.map(BigInt(_, 2).toFloat)
-            //val transactionToParams = (a: String) =>
             val binaryVals = x.map((a: BigInt) => toBinaryB(a, bitsPerTransaction)).map(
                 _.grouped(stencil.dtype.bitwidth).toList.reverse
             )

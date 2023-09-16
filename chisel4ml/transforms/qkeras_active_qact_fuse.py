@@ -25,7 +25,7 @@ class QKerasActiveQActFuse(QKerasTransform):
     """
 
     num_layers = 2
-    order = 3
+    order = 4
 
     def _call_impl(self, layers):
         layers[0].activation = layers[1].activation

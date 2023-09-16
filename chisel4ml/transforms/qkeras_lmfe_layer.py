@@ -14,7 +14,7 @@ import numpy as np
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.datatype_pb2 import Datatype
 from chisel4ml.lbir.qtensor_pb2 import QTensor
-from chisel4ml.preprocess.fft_layer import FFTLayer
+from chisel4ml.preprocess.lmfe_layer import LMFELayer
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from chisel4ml.transforms.qkeras_util import _qact_to_bitwidth
@@ -27,44 +27,38 @@ class QKerasAudioPreprocess(QKerasTransform):
     Transforms an audio preprocess layer into the LBIR representation.
     """
 
-    num_layers = 2
-    order = 2
+    num_layers = 1
+    order = 3
 
     def _call_impl(self, layers):
-        shape = layers[0].get_output_shape_at(0)[1:]
-        bitwidth = _qact_to_bitwidth(layers[0].activation)
-        signed = _qact_to_sign(layers[0].activation)
-        #assert shape == (512), "Only 32 by 512 frames supported currently"
-        assert bitwidth == 12
-        assert signed
-        fft_config = lbir.FFTConfig(
+        lmfe_config = lbir.LMFEConfig(
             fft_size=512,
+            num_mels=20,
             num_frames=32,
-            win_fn=layers[1].window_fn.tolist(),
             input=QTensor(
                 dtype=Datatype(
                     quantization=Datatype.QuantizationType.UNIFORM,
                     signed=True,
-                    bitwidth=12,
+                    bitwidth=33,
                     shift=[0],
                     offset=[0],
                     ),
-                shape=[32, 512],  # KERNEL, CH, WIDTH, HEIGHT
+                shape=[32, 512], 
                 ),
             output=QTensor(
                 dtype=Datatype(
                     quantization=Datatype.QuantizationType.UNIFORM,
                     signed=True,
-                    bitwidth=24,
+                    bitwidth=8,
                     shift=[0],
                     offset=[0],
                 ),
-                shape=[32, 512],  # KERNEL, CH, WIDTH, HEIGHT
+                shape=[32, 20], 
                 ),
             )
-        return [lbir.LayerWrap(fft=fft_config)]
+        return [lbir.LayerWrap(lmfe=lmfe_config)]
 
     def is_applicable(self, layers) -> bool:
-        return isinstance(layers[0], qkeras.QActivation) and isinstance(
-            layers[1], FFTLayer
+        return isinstance(
+            layers[0], LMFELayer
         )

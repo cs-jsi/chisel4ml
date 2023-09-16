@@ -30,8 +30,8 @@ object LayerGenerator {
             case l:Conv2DConfig => Module(ProcessingElementSequentialConv(l, options))
             case l:MaxPool2DConfig => Module(new MaxPool2D(l, options))
             case l:FFTConfig => Module(new FFTWrapper(l, options))
-            // case LMFEConfig(l) => M
-            case _ => throw new RuntimeException(f"Unsupported layer type")
+            case l:LMFEConfig => Module(new LMFEWrapper(l, options))
+            case _ => throw new RuntimeException(f"Unsupported layer type: $layer_wrap")
         }
         
     }

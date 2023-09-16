@@ -25,7 +25,7 @@ class QKerasLbirQDenseFuse(QKerasTransform):
     """
 
     num_layers = 2
-    order = 5
+    order = 6
 
     def _call_impl(self, layers):
         if isinstance(layers[1], (qkeras.QDense, qkeras.QConv2D)):

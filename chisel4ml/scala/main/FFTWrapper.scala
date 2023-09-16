@@ -31,8 +31,8 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
     val logger = LoggerFactory.getLogger("FFTWrapper")
 
 	val fftParams = FFTParams.fixed(
-    	dataWidth = 16,
-    	binPoint = 4,
+    	dataWidth = 24,
+    	binPoint = 12,
         trimEnable = false,
     	numPoints = layer.fftSize,
     	decimType = DITDecimType,
@@ -83,8 +83,9 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
     sdffft.io.in.valid := inStream.valid && state === fftState.sREADY
     val currWindow = window(fftCounter).asUInt
     dontTouch(currWindow)
+    // U(12, 0) x S(0, 16) => S(12, 16) >> 4 => S(12,12)
     val windowedSignal = inStream.bits.asSInt * currWindow
-    sdffft.io.in.bits.real := (windowedSignal >> 12).asTypeOf(sdffft.io.in.bits.real)
+    sdffft.io.in.bits.real := (windowedSignal >> 4).asTypeOf(sdffft.io.in.bits.real)
     sdffft.io.in.bits.imag := 0.U.asTypeOf(sdffft.io.in.bits.imag)
     sdffft.io.lastIn := inStream.last || fftCounterWrap
 

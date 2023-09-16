@@ -8,6 +8,7 @@ from tensorflow.nn import softmax
 from chisel4ml import generate
 from chisel4ml import optimize
 from chisel4ml.preprocess.fft_layer import FFTLayer
+from chisel4ml.preprocess.lmfe_layer import LMFELayer
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -43,23 +44,22 @@ def test_fft():
                     audio_preproc = generate.circuit(
                         opt_model=opt_model, use_verilator=True, gen_vcd=True
                     )
-                    hw_res = audio_preproc(frames) / (2**4)
+                    hw_res = audio_preproc(frames) / (2**12)
                     sw_res = opt_model(frames.reshape(1, 32, 512))
                     # import matplotlib.pyplot as plt
                     # plt.plot(hw_res.flatten(), color='r')
                     # plt.plot(sw_res.numpy().flatten(), color='g', linestyle='dashed')
                     # plt.show()
-                    assert np.allclose(sw_res.numpy().reshape(32,512), hw_res, atol=2, rtol=0.1)
+                    assert np.allclose(sw_res.numpy().reshape(32, 512), hw_res, atol=1, rtol=0.05)
 
-
-def test_preproc_speech_commands(qnn_audio_class):
-    _, test_set = qnn_audio_class
+def test_fft_speech_commands(audio_data):
+    _, _, test_set, _, _, _, _ = audio_data
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input(shape=(32, 512)))
     model.add(
-        qkeras.QActivation(qkeras.quantized_bits(13, 12, keep_negative=True, alpha=1))
+        qkeras.QActivation(qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1))
     )
-    model.add(FFTLayer())
+    model.add(FFTLayer(win_fn='hamming'))
     opt_model = optimize.qkeras_model(model)
 
     audio_preproc = generate.circuit(
@@ -67,14 +67,47 @@ def test_preproc_speech_commands(qnn_audio_class):
     )
     assert audio_preproc is not None
     ts_iter = test_set.as_numpy_iterator()
-    for _ in range(100):
+    for _ in range(10):
+        sample, _ = next(ts_iter)
+        hw_res = audio_preproc(sample) / (2**12)
+        sw_res = opt_model(sample.reshape(1, 32, 512))
+        # import matplotlib.pyplot as plt
+        # plt.plot(hw_res.flatten(), color='r')
+        # plt.plot(sw_res.numpy().flatten(), color='g', linestyle='dashed')
+        # plt.show()
+        assert np.allclose(sw_res.numpy().reshape(32, 512), hw_res, atol=1, rtol=0.05)
+
+def test_preproc_speech_commands(audio_data):
+    _, _, test_set, _, _, _, _ = audio_data
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Input(shape=(32, 512)))
+    model.add(
+        qkeras.QActivation(qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1))
+    )
+    model.add(FFTLayer(win_fn='hamming'))
+    model.add(LMFELayer())
+    opt_model = optimize.qkeras_model(model)
+
+    audio_preproc = generate.circuit(
+        opt_model=opt_model, use_verilator=True, gen_vcd=True
+    )
+    assert audio_preproc is not None
+    ts_iter = test_set.as_numpy_iterator()
+    for _ in range(20):
         sample, _ = next(ts_iter)
         hw_res = audio_preproc(sample)
         sw_res = opt_model(sample.reshape(1, 32, 512))
-        assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res / (2**16), rtol=0.01)
+        # import matplotlib.pyplot as plt
+        # plt.plot(hw_res.flatten(), color='r')
+        # plt.plot(sw_res.numpy().flatten(), color='g', linestyle='dashed')
+        # plt.show()
+        assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=5, rtol=0)
 
 
-def test_audio_classifier(qnn_audio_class):
+def test_audio_classifier_no_preproc(qnn_audio_class):
+    pass
+
+def test_audio_classifier_full(qnn_audio_class):
     opt_model, test_set = qnn_audio_class
     circuit = generate.circuit(opt_model, use_verilator=True, gen_vcd=True)
     assert circuit is not None

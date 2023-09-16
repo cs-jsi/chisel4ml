@@ -91,9 +91,8 @@ message FFTConfig {
 
 message LMFEConfig {
     uint32 fft_size = 1;
-    uint32 step_size = 2;
-    uint32 num_mels = 3;
-    uint32 num_frames = 4;
-    QTensor input = 5;  // no values, just shape / dtype
-    QTensor output = 6;
+    uint32 num_mels = 2;
+    uint32 num_frames = 3;
+    QTensor input = 4;  // no values, just shape / dtype
+    QTensor output = 5;
 }
