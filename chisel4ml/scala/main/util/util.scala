@@ -15,14 +15,10 @@
  */
 package chisel4ml
 
-import _root_.chisel4ml.implicits._
-import _root_.java.io.{BufferedWriter, FileWriter}
-import _root_.java.nio.file.{Path, Paths}
 import _root_.lbir._
 import _root_.org.slf4j.LoggerFactory
 import _root_.scala.math.{log, pow}
 import chisel3._
-
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
 

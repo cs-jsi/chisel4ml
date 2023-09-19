@@ -15,26 +15,21 @@
  */
 package chisel4ml.tests
 
-import _root_.chisel4ml.tests.SlidingWindowUnitTestBed
-import _root_.chisel4ml.util._
 import _root_.chisel4ml.sequential.ProcessingElementSequentialConv
+import _root_.chisel4ml.util._
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
-import _root_.lbir._
-import _root_.services._
-
 import _root_.org.slf4j.LoggerFactory
+import _root_.services._
 import chisel3._
-import firrtl.transforms.NoCircuitDedupAnnotation
 import chiseltest._
+import firrtl.transforms.NoCircuitDedupAnnotation
+import memories.MemoryGenerator
+import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.factory.Nd4j
+import org.nd4j.linalg.ops.transforms.Transforms
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.{BeforeAndAfterEachTestData, TestData}
 
-import org.nd4j.linalg.api.ndarray.INDArray
-import org.nd4j.linalg.factory.Nd4j
-import org.nd4j.linalg.indexing.NDArrayIndex
-import org.nd4j.linalg.ops.transforms.Transforms
-
-import memories.MemoryGenerator
 import java.nio.file.Paths
 
 class ProcessingElementSequentialConvTests
@@ -142,7 +137,7 @@ class ProcessingElementSequentialConvTests
         options = testOptions0.layers(0),
         mul = (x: UInt, w: SInt) => (x * w),
         add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
-        actFn = (x: SInt, y: SInt) => x
+        actFn = (x: SInt, _: SInt) => x
       )
     ).withAnnotations(Seq(VerilatorBackendAnnotation, NoCircuitDedupAnnotation, WriteFstAnnotation)) { dut =>
       dut.inStream.initSource()

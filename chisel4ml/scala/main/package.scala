@@ -16,14 +16,12 @@
 package chisel4ml
 
 import _root_.chisel3._
-import _root_.lbir.{AXIStreamLBIRDriver, Datatype, QTensor}
 import _root_.lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
+import _root_.lbir.{AXIStreamLBIRDriver, Datatype, QTensor}
+import _root_.org.slf4j.LoggerFactory
 import chisel4ml.util._
 import interfaces.amba.axis._
 
-import _root_.org.slf4j.Logger
-import _root_.org.slf4j.LoggerFactory
-import _root_.scala.math.pow
 import scala.language.implicitConversions
 
 package object implicits {
@@ -51,7 +49,6 @@ package object implicits {
       val binaryStr = qt.toBinaryString
       val paramWidth = qt.dtype.bitwidth
       val emptyBits = busWidth % paramWidth
-      val dataBits = busWidth - emptyBits
       val paramsPerTransaction: Int = busWidth / paramWidth
       val transactions = binaryStr
         .drop(1)

@@ -15,13 +15,12 @@
  */
 package chisel4ml.tests
 
-import memories.MemoryGenerator
-import _root_.chisel4ml.sequential._
-import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
+import _root_.chisel4ml.sequential._
 import _root_.lbir.QTensor
 import chisel3._
 import chisel3.util._
+import memories.MemoryGenerator
 
 /** Kernel Register File Loader - test bed
   */

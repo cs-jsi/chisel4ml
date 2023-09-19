@@ -1,11 +1,10 @@
 package chisel4ml.tests
 
-import org.scalatest.funsuite.AnyFunSuite
-import _root_.lbir.{Datatype, QTensor}
-import _root_.lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
-import _root_.chisel4ml._
-import _root_.chisel4ml.implicits._
 import _root_.chisel3._
+import _root_.chisel4ml.implicits._
+import _root_.lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
+import _root_.lbir.{Datatype, QTensor}
+import org.scalatest.funsuite.AnyFunSuite
 
 class LbirChiselConversionTests extends AnyFunSuite {
   val binaryDatatype = Some(

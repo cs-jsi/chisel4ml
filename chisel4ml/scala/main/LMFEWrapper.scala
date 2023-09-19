@@ -17,16 +17,14 @@ package chisel4ml
 
 import _root_.chisel3._
 import _root_.chisel3.util._
-import _root_.lbir.{LMFEConfig}
-import _root_.chisel4ml.{LBIRStream}
-import interfaces.amba.axis._
+import _root_.chisel4ml.LBIRStream
+import _root_.lbir.LMFEConfig
+import _root_.org.slf4j.LoggerFactory
 import _root_.services.LayerOptions
-import fft._
 import afe._
 import dsptools._
-
-import _root_.org.slf4j.Logger
-import _root_.org.slf4j.LoggerFactory
+import fft._
+import interfaces.amba.axis._
 
 class LMFEWrapper(layer: LMFEConfig, options: LayerOptions) extends Module with LBIRStream {
   val logger = LoggerFactory.getLogger("LMFEWrapper")

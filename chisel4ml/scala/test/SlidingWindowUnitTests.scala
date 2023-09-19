@@ -21,14 +21,15 @@ import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
 import chisel3._
 import chiseltest._
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.{BeforeAndAfterEachTestData, TestData}
-import java.nio.file.Paths
 import memories.MemoryGenerator
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
 import org.nd4j.linalg.indexing.NDArrayIndex
 import org.nd4j.linalg.ops.transforms.Transforms
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.{BeforeAndAfterEachTestData, TestData}
+
+import java.nio.file.Paths
 
 class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester with BeforeAndAfterEachTestData {
   val logger = LoggerFactory.getLogger(classOf[SlidingWindowUnitTests])

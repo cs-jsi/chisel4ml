@@ -15,12 +15,11 @@
  */
 package chisel4ml
 
-import chisel3._
-import _root_.lbir.LayerWrap
-import _root_.lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, MaxPool2DConfig}
-import _root_.services.LayerOptions
 import _root_.chisel4ml.LBIRStream
 import _root_.chisel4ml.sequential.{MaxPool2D, ProcessingElementSequentialConv}
+import _root_.lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
+import _root_.services.LayerOptions
+import chisel3._
 
 object LayerGenerator {
   // TODO: Rewrite the generation procedure to something more sensisble

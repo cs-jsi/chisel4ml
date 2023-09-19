@@ -15,21 +15,16 @@
  */
 package chisel4ml.tests
 
-import _root_.chisel4ml.tests.SlidingWindowUnitTestBed
-import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
 import chisel3._
 import chiseltest._
+import memories.MemoryGenerator
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.{BeforeAndAfterEachTestData, TestData}
+
 import java.nio.file.Paths
-import memories.MemoryGenerator
-import org.nd4j.linalg.api.ndarray.INDArray
-import org.nd4j.linalg.factory.Nd4j
-import org.nd4j.linalg.indexing.NDArrayIndex
-import org.nd4j.linalg.ops.transforms.Transforms
 
 class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with BeforeAndAfterEachTestData {
   val logger = LoggerFactory.getLogger(classOf[KernelRFLoaderTests])

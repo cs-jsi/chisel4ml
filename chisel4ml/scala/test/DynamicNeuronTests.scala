@@ -19,7 +19,6 @@ import _root_.chisel4ml.sequential._
 import _root_.chisel4ml.util._
 import _root_.org.slf4j.LoggerFactory
 import chisel3._
-import chisel3.experimental.VecLiterals._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 

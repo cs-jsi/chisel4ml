@@ -15,8 +15,6 @@
  */
 package chisel4ml.sequential
 
-import _root_.chisel4ml.lbir._
-import _root_.lbir.{Conv2DConfig, QTensor}
 import chisel3._
 import chisel3.util._
 import chisel4ml.implicits._

@@ -15,21 +15,16 @@
  */
 package chisel4ml
 
-import chisel3._
-import chisel3.util._
-import _root_.lbir.{Datatype, DenseConfig}
+import _root_.chisel4ml.implicits._
+import _root_.chisel4ml.lbir._
 import _root_.lbir.Activation.{BINARY_SIGN, NO_ACTIVATION, RELU}
 import _root_.lbir.Datatype.QuantizationType._
-import _root_.services.GenerateCircuitParams.Options
-import _root_.chisel4ml._
-import _root_.chisel4ml.lbir._
-import _root_.chisel4ml.util._
-import _root_.chisel4ml.implicits._
+import _root_.lbir.DenseConfig
+import _root_.org.slf4j.LoggerFactory
+import chisel3._
+import chisel3.util._
 
 import scala.math.pow
-import _root_.org.slf4j.Logger
-import _root_.org.slf4j.LoggerFactory
-import javax.naming.directory.InvalidAttributesException
 
 object Neuron {
   val logger = LoggerFactory.getLogger(classOf[ProcessingElementSimple])

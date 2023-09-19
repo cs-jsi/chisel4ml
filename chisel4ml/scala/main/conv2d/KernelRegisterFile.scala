@@ -17,7 +17,6 @@ package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
-import chisel4ml.MemWordSize
 import chisel4ml.implicits._
 
 /** A register file for storing the weights/kernel of a convolution layer.

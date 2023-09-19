@@ -1,3 +1,5 @@
+chisel4ml/bin/
+
 dist/
 mem*.hex
 

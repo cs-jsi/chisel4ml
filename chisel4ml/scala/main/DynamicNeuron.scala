@@ -16,7 +16,6 @@
 package chisel4ml.sequential
 
 import _root_.chisel3._
-import _root_.chisel4ml.lbir._
 import _root_.chisel4ml.util.saturate
 
 class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <: Bits, A <: Bits, O <: Bits](

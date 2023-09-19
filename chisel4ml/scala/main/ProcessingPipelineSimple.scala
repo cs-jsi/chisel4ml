@@ -16,15 +16,11 @@
 package chisel4ml
 
 import _root_.chisel3._
-import _root_.chisel3.util._
-import _root_.chisel3.experimental._
-import _root_.lbir.Model
-import _root_.lbir.DenseConfig
-import _root_.lbir.LayerWrap
-import _root_.services.GenerateCircuitParams.Options
-import _root_.chisel4ml.implicits._
 import _root_.chisel4ml.ProcessingElementSimple
+import _root_.chisel4ml.implicits._
+import _root_.lbir.{DenseConfig, LayerWrap, Model}
 import _root_.scala.collection.mutable._
+import _root_.services.GenerateCircuitParams.Options
 
 class ProcessingPipelineSimple(model: Model, options: Options) extends Module {
   def layerGeneratorSimple(layer: LayerWrap): ProcessingElementSimple = {

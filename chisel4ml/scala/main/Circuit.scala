@@ -16,27 +16,17 @@
 package chisel4ml
 
 import _root_.chisel3._
-import _root_.chisel3.util._
-import _root_.firrtl.options.TargetDirAnnotation
-import _root_.firrtl.{AnnotationSeq, VerilogEmitter}
-import _root_.firrtl.stage.{FirrtlStage, OutputFileAnnotation}
+import _root_.chisel4ml._
+import _root_.chisel4ml.implicits._
 import _root_.chiseltest._
 import _root_.chiseltest.simulator.WriteFstAnnotation
-
-import _root_.chisel4ml.util._
-import _root_.chisel4ml.implicits._
-import _root_.chisel4ml._
-import _root_.chisel4ml.ProcessingPipelineSimple
-import _root_.lbir.{Model, QTensor}
-import _root_.services.GenerateCircuitParams.Options
-
-import _root_.scala.util.control.Breaks._
+import _root_.firrtl.AnnotationSeq
+import _root_.firrtl.options.TargetDirAnnotation
 import _root_.java.nio.file.{Path, Paths}
-import _root_.java.util.concurrent.TimeUnit
-import _root_.java.util.concurrent.CountDownLatch
-import _root_.java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
-import _root_.org.slf4j.Logger
+import _root_.java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, TimeUnit}
+import _root_.lbir.QTensor
 import _root_.org.slf4j.LoggerFactory
+import _root_.scala.util.control.Breaks._
 import memories.MemoryGenerator
 
 class Circuit[+T <: Module with LBIRStream](
@@ -85,7 +75,6 @@ class Circuit[+T <: Module with LBIRStream](
           s"Simulating a sequential circuit on a new input. Input shape: ${validQTensor.qtensor.shape}" +
             s", input dtype: ${validQTensor.qtensor.dtype}, output stencil: $outputStencil."
         )
-        var outSeq: Seq[BigInt] = Seq()
         fork {
           dut.inStream.enqueueQTensor(validQTensor.qtensor, dut.clock)
         }.fork {

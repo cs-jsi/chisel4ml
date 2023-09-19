@@ -17,9 +17,8 @@ package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
-
-import chisel4ml.implicits._
 import chisel4ml.MemWordSize
+import chisel4ml.implicits._
 
 /** Result Memory Buffer
   */

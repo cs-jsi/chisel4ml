@@ -15,19 +15,14 @@
  */
 package chisel4ml
 
-import chisel3._
-import chisel3.util._
-
-import interfaces.amba.axis._
-import _root_.chisel4ml.util.log2
 import _root_.chisel4ml.LBIRStream
 import _root_.chisel4ml.implicits._
-import _root_.lbir.{DenseConfig}
-import _root_.services.LayerOptions
-import _root_.scala.math
-
-import _root_.org.slf4j.Logger
+import _root_.lbir.DenseConfig
 import _root_.org.slf4j.LoggerFactory
+import _root_.services.LayerOptions
+import chisel3._
+import chisel3.util._
+import interfaces.amba.axis._
 
 class ProcessingElementWrapSimpleToSequential(layer: DenseConfig, options: LayerOptions)
     extends Module

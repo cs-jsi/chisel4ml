@@ -15,15 +15,11 @@
  */
 package chisel4ml.tests
 
-import _root_.chisel4ml.tests.SlidingWindowUnitTestBed
-import _root_.chisel4ml.sequential._
-import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
-import _root_.lbir._
+import _root_.chisel4ml.sequential._
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
-import _root_.services._
 import _root_.org.slf4j.LoggerFactory
-import chisel3._
+import _root_.services._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 

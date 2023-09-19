@@ -15,30 +15,17 @@
  */
 package chisel4ml
 
-import _root_.java.io.{File, IOException, RandomAccessFile}
-import _root_.java.nio.file.{Files, Path, Paths}
-import _root_.java.nio.channels.{FileChannel, FileLock}
-import _root_.java.util.concurrent.TimeUnit
-import _root_.scala.concurrent.{ExecutionContext, Future}
-
-import _root_.chisel3.stage._
 import _root_.chisel3._
-import _root_.firrtl.stage.FirrtlCircuitAnnotation
-import _root_.firrtl.{AnnotationSeq, EmittedCircuitAnnotation}
-import _root_.firrtl.annotations.{Annotation, DeletedAnnotation}
-
-import _root_.io.grpc.{Server, ServerBuilder}
-import _root_.services._
-import _root_.services.GenerateCircuitReturn.ErrorMsg
-import _root_.lbir.{Datatype, Model, QTensor}
-import _root_.chisel4ml.util._
 import _root_.chisel4ml.Circuit
-
-import _root_.chiseltest.simulator._
-
-import _root_.treadle.TreadleTester
-import _root_.org.slf4j.Logger
+import _root_.io.grpc.{Server, ServerBuilder}
+import _root_.java.io.{File, IOException, RandomAccessFile}
+import _root_.java.nio.channels.{FileChannel, FileLock}
+import _root_.java.nio.file.{Files, Paths}
+import _root_.java.util.concurrent.TimeUnit
 import _root_.org.slf4j.LoggerFactory
+import _root_.scala.concurrent.{ExecutionContext, Future}
+import _root_.services.GenerateCircuitReturn.ErrorMsg
+import _root_.services._
 
 /** Contains the main function.
   *

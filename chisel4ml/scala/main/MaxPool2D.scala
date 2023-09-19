@@ -15,17 +15,14 @@
  */
 package chisel4ml.sequential
 
-import interfaces.amba.axis._
-import chisel4ml.LBIRStream
-import chisel4ml.implicits._
 import _root_.lbir.MaxPool2DConfig
+import _root_.org.slf4j.LoggerFactory
 import _root_.services.LayerOptions
 import chisel3._
 import chisel3.util._
 import chisel4ml.LBIRStream
-
-import _root_.org.slf4j.Logger
-import _root_.org.slf4j.LoggerFactory
+import chisel4ml.implicits._
+import interfaces.amba.axis._
 
 /* MaxPool2D
  *

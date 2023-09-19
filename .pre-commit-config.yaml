@@ -2,17 +2,17 @@
 ---
 repos:
   - repo: https://github.com/psf/black.git
-    rev: 22.10.0
+    rev: 23.9.1
     hooks:
       - id: black
         language_version: python3
   - repo: https://github.com/PyCQA/flake8.git
-    rev: 5.0.4
+    rev: 6.0.0
     hooks:
       - id: flake8
         entry: pflake8
         additional_dependencies:
-          - flake8-black>=0.1.1
+          - flake8-black
           - pyproject-flake8
         language_version: python3
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -22,7 +22,7 @@ repos:
       - id: end-of-file-fixer
       - id: debug-statements
   - repo: https://github.com/asottile/reorder_python_imports
-    rev: v3.9.0
+    rev: v3.11.0
     hooks:
       - id: reorder-python-imports
   - repo: https://github.com/coyainsurance/pre-commit-scalafmt
