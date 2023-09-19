@@ -55,11 +55,11 @@ def test_sint_simple_conv_model_transform(sint_simple_conv_model):
                     values=[1, 2, 3, 4, -4, -3, -2, -1],
                 ),
                 input=QTensor(
-                    dtype=SQ(4, [0] * 9),
+                    dtype=SQ(4, [0]),
                     shape=[1, 3, 3],
                 ),
                 output=QTensor(
-                    dtype=UQ(3, [0] * 8),
+                    dtype=UQ(3, [0]),
                     shape=[2, 2, 2], # 2, 2, 2 -> flattened
                 ),
                 activation=lbir.Activation.RELU,
@@ -76,7 +76,7 @@ def test_sint_simple_conv_model_transform(sint_simple_conv_model):
                     values=[-1, 4, -3, -1, 2, 3, -3, -2],
                 ),
                 input=QTensor(
-                    dtype=UQ(3, [0] * 8),
+                    dtype=UQ(3, [0]),
                     shape=[8],
                 ),
                 output=QTensor(
@@ -105,7 +105,7 @@ def test_sint_simple_model_transform(sint_simple_model):
         layers=[
             lbir.LayerWrap(dense=lbir.DenseConfig(
                 thresh=QTensor(
-                    dtype=SQ(16, [0] * 4),
+                    dtype=SQ(16, [0]),
                     shape=[4],
                     values=[-1.0, -2.0, -0.0, -1.0],
                 ),
@@ -115,11 +115,11 @@ def test_sint_simple_model_transform(sint_simple_model):
                     values=[1, 2, 3, 4, -4, -3, -2, -1, 2, -1, 1, 1],
                 ),
                 input=QTensor(
-                    dtype=SQ(4, [0] * 3),
+                    dtype=SQ(4, [0]),
                     shape=[3],
                 ),
                 output=QTensor(
-                    dtype=UQ(3, [0] * 4),
+                    dtype=UQ(3, [0]),
                     shape=[4],
                 ),
                 activation=lbir.Activation.RELU,
@@ -136,7 +136,7 @@ def test_sint_simple_model_transform(sint_simple_model):
                     values=[-1, 4, -3, -1],
                 ),
                 input=QTensor(
-                    dtype=UQ(3, [0] * 4),
+                    dtype=UQ(3, [0]),
                     shape=[4],
                 ),
                 output=QTensor(
@@ -165,7 +165,7 @@ def test_bnn_simple_model_transform(bnn_simple_model):
         layers=[
             lbir.LayerWrap(dense=lbir.DenseConfig(
                 thresh=QTensor(
-                    dtype=SQ(16, [0] * 4),
+                    dtype=SQ(16, [0]),
                     shape=[4],
                     values=[-1.0, -2.0, -0.0, -1.0],
                 ),
@@ -175,11 +175,11 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                     values=[1, -1, -1, 1, -1, 1, 1, -1, -1, -1, 1, 1],
                 ),
                 input=QTensor(
-                    dtype=BQ([0] * 3),
+                    dtype=BQ([0]),
                     shape=[3],
                 ),
                 output=QTensor(
-                    dtype=BQ([0] * 4),
+                    dtype=BQ([0]),
                     shape=[4],
                 ),
                 activation=lbir.Activation.BINARY_SIGN,
@@ -196,7 +196,7 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                     values=[-1, 1, -1, -1],
                 ),
                 input=QTensor(
-                    dtype=BQ([0] * 4),
+                    dtype=BQ([0]),
                     shape=[4],
                 ),
                 output=QTensor(

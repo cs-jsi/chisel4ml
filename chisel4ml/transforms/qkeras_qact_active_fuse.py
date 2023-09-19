@@ -44,7 +44,7 @@ class QKerasQActActiveFuse(QKerasTransform):
                 signed=_qact_to_sign(layers[0].activation),
                 bitwidth=_qact_to_bitwidth(layers[0].activation),
                 shift=_qact_to_shift(
-                    layers[0].activation, layers[0].get_output_shape_at(0)[1:]
+                    layers[0].activation, [1]
                 ),
                 offset=[0],
             ),

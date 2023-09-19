@@ -391,7 +391,8 @@ def sint_simple_conv_model() -> tf.keras.Model:
     # conv2d kernel shape: [height, width, input_channels // groups, filters]
     # The filters are: [1 2  and [-4, -3
     #                   3 4]      -2, -1]
-    w1 = np.array([[[[1, -4]], [[2, -3]]], [[[3, -2]], [[4, -1]]]])
+    w1 = np.array([1, 2, 3, 4, -4, -3, -2, -1]).reshape(2, 2, 2, 1)
+    w1 = np.moveaxis(w1, [1, 2, 3, 0], [0, 1, 2, 3])
     b1 = np.array([1, 2])
 
     w2 = np.array([-1, 4, -3, -1, 2, 3, -3, -2]).reshape(8, 1)
