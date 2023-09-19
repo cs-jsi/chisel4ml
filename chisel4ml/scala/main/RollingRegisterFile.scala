@@ -15,8 +15,8 @@
  */
 package chisel4ml.sequential
 
-import _root_.chisel4ml.util.reqWidth
 import chisel3._
+import chisel3.util._
 
 /** A register file for storing the inputs (activations or image) of a convotional layer.
   *
@@ -28,8 +28,8 @@ class RollingRegisterFile(kernelSize: Int, kernelDepth: Int, paramSize: Int) ext
   val kernelNumOfElements: Int = kernelSize * kernelSize
   val outDataSize:         Int = kernelSize * kernelSize * kernelDepth * paramSize
   val wrDataWidth:         Int = kernelSize * paramSize
-  val chAddrWidth:         Int = reqWidth(kernelDepth)
-  val rowAddrWidth:        Int = reqWidth(kernelSize)
+  val chAddrWidth:         Int = log2Up(kernelDepth)
+  val rowAddrWidth:        Int = log2Up(kernelSize)
 
   val io = IO(new Bundle {
     val shiftRegs    = Input(Bool())

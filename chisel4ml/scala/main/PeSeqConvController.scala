@@ -15,9 +15,7 @@
  */
 package chisel4ml.sequential
 
-import _root_.chisel4ml.util.reqWidth
 import chisel3._
-import chisel3.experimental.ChiselEnum
 import chisel3.util._
 
 /** PeSeqConvController
@@ -34,7 +32,7 @@ class PeSeqConvController(numKernels: Int,
 
     // interface to the Kernel RF/loader
     val krfReady      = Input(Bool())
-    val krfKernelNum  = Output(UInt(reqWidth(numKernels).W))
+    val krfKernelNum  = Output(UInt(log2Up(numKernels).W))
     val krfLoadKernel = Output(Bool())
 
     val rmbStart      = Output(Bool())
@@ -43,13 +41,13 @@ class PeSeqConvController(numKernels: Int,
     val inStreamReady = Output(Bool())
     val inStreamValid = Input(Bool())
     val inStreamLast  = Input(Bool())
-    val actMemAddr    = Output(UInt(reqWidth(actMemDepth).W))
+    val actMemAddr    = Output(UInt(log2Up(actMemDepth).W))
 
     // output stream
     val outStreamReady = Input(Bool())
     val outStreamValid = Output(Bool())
     val outStreamLast  = Output(Bool())
-    val resMemAddr     = Output(UInt(reqWidth(resMemDepth).W))
+    val resMemAddr     = Output(UInt(log2Up(resMemDepth).W))
     val resMemEna      = Output(Bool())
   })
 
@@ -63,9 +61,9 @@ class PeSeqConvController(numKernels: Int,
     val sSENDDATA    = Value(6.U)
   }
 
-  val kernelCnt = RegInit(0.U(reqWidth(numKernels + 1).W))
-  val actMemCnt = RegInit(0.U(reqWidth(actMemTransfers + 1).W))
-  val resMemCnt = RegInit(0.U(reqWidth(resMemDepth + 1).W))
+  val kernelCnt = RegInit(0.U(log2Up(numKernels + 1).W))
+  val actMemCnt = RegInit(0.U(log2Up(actMemTransfers + 1).W))
+  val resMemCnt = RegInit(0.U(log2Up(resMemDepth + 1).W))
 
   val state  = RegInit(ctrlState.sWAITFORDATA)
   val nstate = WireInit(ctrlState.sCOMP)
@@ -101,7 +99,7 @@ class PeSeqConvController(numKernels: Int,
   }
 
   actMemCnt := actMemCnt
-  when (state === ctrlState.sCOMP && kernelCnt === (numKernels - 1).U && RegNext(io.swuEnd)) {
+  when (state === ctrlState.sWAITWRITE) {
     actMemCnt := 0.U
   }.elsewhen (io.inStreamReady && io.inStreamValid) {
     actMemCnt := actMemCnt + 1.U
@@ -123,7 +121,7 @@ class PeSeqConvController(numKernels: Int,
                               ((state === ctrlState.sLOADKERNEL) &&
                                RegNext(state === ctrlState.sLOADINPACT))))
 
-  io.inStreamReady := actMemCnt =/= actMemTransfers.U
+  io.inStreamReady := state === ctrlState.sLOADINPACT || state === ctrlState.sWAITFORDATA
   io.actMemAddr    := actMemCnt
 
   io.outStreamValid := (state === ctrlState.sSENDDATA)

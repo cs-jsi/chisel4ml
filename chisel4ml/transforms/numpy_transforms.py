@@ -24,7 +24,7 @@ def numpy_to_qtensor(arr: np.ndarray, input_quantizer, input_qtensor: QTensor):
     else:
         raise ValueError(
             f"Incompatible dimensions of the input array. Input array has shape "
-            f"{arr.shape}, but input should be of shape {input_qtensor} with possible"
+            f"{arr.shape}, but input should be of shape {input_qtensor.shape} with possible"
             f" batch dimension."
         )
     assert np.array_equal(arr, input_quantizer(arr)), "Input is not properly quantized."

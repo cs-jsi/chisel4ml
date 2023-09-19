@@ -17,7 +17,6 @@ package chisel4ml
 
 import _root_.chisel3._
 import _root_.chisel3.util._
-import _root_.chisel3.experimental._
 import _root_.lbir.Model
 import _root_.chisel4ml.{LayerGenerator, LBIRStream}
 import interfaces.amba.axis._
@@ -32,7 +31,7 @@ class ProcessingPipeline(model: Model, options: Options) extends Module with LBI
     // List of processing elements - one PE per layer
     val peList = new ListBuffer[Module with LBIRStream]()
 
-    // Instantiate modules for seperate layers, for now we only support DENSE layers
+    // Instantiate modules for seperate layers
     for ((layer, idx) <- model.layers.zipWithIndex) {
         peList += LayerGenerator(layer.get, options.layers(idx))
     }

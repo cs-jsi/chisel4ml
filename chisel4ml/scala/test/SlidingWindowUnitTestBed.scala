@@ -22,6 +22,7 @@ import _root_.chisel4ml.implicits._
 import _root_.lbir.QTensor
 import java.nio.file.Paths
 import chisel3._
+import chisel3.util._
 
 /** Sliding Window Unit - test bed
   */
@@ -48,8 +49,8 @@ class SlidingWindowUnitTestBed(
     val rrfInValid    = Output(Bool())
     val rrfImageValid = Output(Bool())
     val rrfInData     = Output(UInt((kernelSize * actParamSize).W))
-    val rrfRowAddr    = Output(UInt(reqWidth(kernelSize).W))
-    val rrfChAddr     = Output(UInt(reqWidth(kernelDepth).W))
+    val rrfRowAddr    = Output(UInt(log2Up(kernelSize).W))
+    val rrfChAddr     = Output(UInt(log2Up(kernelDepth).W))
     val rrfRowWrMode  = Output(Bool())
     val rrfOutData    = Output(UInt(outDataSize.W))
     val rrfEnd        = Output(Bool())

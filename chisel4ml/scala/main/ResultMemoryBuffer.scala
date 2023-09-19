@@ -15,9 +15,7 @@
  */
 package chisel4ml.sequential
 
-import _root_.chisel4ml.util.reqWidth
 import chisel3._
-import chisel3.experimental.ChiselEnum
 import chisel3.util._
 
 /** Result Memory Buffer
@@ -38,7 +36,7 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
 
     // result memory interface
     val resRamEn   = Output(Bool())
-    val resRamAddr = Output(UInt(reqWidth(resMemDepth).W))
+    val resRamAddr = Output(UInt(log2Up(resMemDepth).W))
     val resRamData = Output(UInt(memWordWidth.W))
 
     // control inerface
@@ -50,12 +48,12 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
     val sCOMP = Value(1.U)
   }
 
-  val resPerWordCnt   = RegInit(0.U(reqWidth(resultsPerWord + 1).W))
-  val resPerKernelCnt = RegInit(0.U(reqWidth(resultsPerKernel + 1).W))
-  val kernelCnt       = RegInit(0.U(reqWidth(numKernels).W))
+  val resPerWordCnt   = RegInit(0.U(log2Up(resultsPerWord + 1).W))
+  val resPerKernelCnt = RegInit(0.U(log2Up(resultsPerKernel + 1).W))
+  val kernelCnt       = RegInit(0.U(log2Up(numKernels).W))
 
   val dataBuf = RegInit(VecInit(Seq.fill(resultsPerWord)(0.U(genOut.getWidth.W))))
-  val ramAddr = RegInit(0.U(reqWidth(resMemDepth).W))
+  val ramAddr = RegInit(0.U(log2Up(resMemDepth).W))
 
   val state = RegInit(rmbState.sWAIT)
 

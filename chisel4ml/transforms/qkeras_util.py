@@ -67,8 +67,14 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> QTensor:
                 "The bias must be quantized with a scale factor of 1. This can be done"
                 " by setting the factor alpha to constant 1."
             )
-
-    bias_values = np.zeros(keras_layer.output_shape[1])
+        
+    if isinstance(keras_layer, QDense):
+        num_biases = keras_layer.output_shape[1]
+    elif isinstance(keras_layer, QConv2D):
+        num_biases = keras_layer.output.shape[-1]
+    else:
+        raise Exception(f"Invalid layer type: {type(keras_layer)}")
+    bias_values = np.zeros(num_biases)
     if keras_layer.use_bias:
         bias_values = get_integer_values(
             keras_layer.bias, keras_layer.bias_quantizer_internal
@@ -79,7 +85,7 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> QTensor:
             quantization=_quantizer_to_qtype(keras_layer.bias_quantizer_internal),
             signed=True,  # Some way to limit biases to only positive/only negative?
             bitwidth=_quantizer_to_bitwidth(keras_layer.bias_quantizer_internal),
-            shift=np.zeros(keras_layer.output_shape[1]).astype(np.int32),
+            shift=np.zeros(num_biases).astype(np.int32),
             offset=[0],
         ),
         shape=[keras_layer.output_shape[1]],
@@ -93,7 +99,8 @@ def _layer_to_weight_tensor(keras_layer: KerasLayer) -> QTensor:
 
     kernel_vals = np.empty(shape=keras_layer.kernel.shape)
     if isinstance(keras_layer, qkeras.QConv2D):
-        kernel_vals = np.moveaxis(keras_layer.kernel, [0, 1, 2, 3], [2, 3, 1, 0])
+        # NCHW
+        kernel_vals = np.moveaxis(keras_layer.kernel, [0, 1, 2, 3], [3, 2, 0, 1])
     else:
         kernel_vals = keras_layer.kernel
 
@@ -139,7 +146,7 @@ def _layer_to_output_tensor(keras_layer: KerasLayer) -> QTensor:
             signed=_qact_to_sign(keras_layer.activation),
             bitwidth=_qact_to_bitwidth(keras_layer.activation),
             shift=_qact_to_shift(
-                keras_layer.activation, keras_layer.get_output_shape_at(0)[1:]
+                keras_layer.activation, [1]
             ),
             offset=[0],
         ),

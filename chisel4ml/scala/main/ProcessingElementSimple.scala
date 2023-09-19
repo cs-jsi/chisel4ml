@@ -17,7 +17,6 @@ package chisel4ml
 
 import chisel3._
 import chisel3.util._
-import chisel3.experimental._
 import _root_.lbir.{Datatype, DenseConfig}
 import _root_.lbir.Activation.{BINARY_SIGN, RELU, NO_ACTIVATION}
 import _root_.lbir.Datatype.QuantizationType._
@@ -31,6 +30,7 @@ import _root_.chisel4ml.implicits._
 import scala.math.pow
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
+import javax.naming.directory.InvalidAttributesException
 
 object Neuron {
     val logger = LoggerFactory.getLogger(classOf[ProcessingElementSimple])
@@ -156,6 +156,7 @@ object ProcessingElementSimple {
                                                                           layer.weights.dtype.shift,
                                                                                                  signFn,
                                                                                                  noSaturate)
+        case _ => throw new RuntimeException()
     }
 }
 

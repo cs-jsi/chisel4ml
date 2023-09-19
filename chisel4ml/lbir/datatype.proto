@@ -33,7 +33,7 @@
      uint32 bitwidth = 3;
      /*
         In convolutional layers repeated shift(scale) factors signifies a per-channel quantization. In dense layers it
-        is per neuron.
+        is per neuron. Tensors with a uniform shift (generally input/output) should have just a single value.
      */
      repeated sint32 shift = 4;
      repeated sint32 offset = 5;

@@ -172,7 +172,7 @@ package object implicits {
                   | bitwidth:${stencil.dtype.bitwidth}.""".stripMargin.replaceAll("\n", ""))
             val paramsPerTransaction: Int = busWidth / stencil.dtype.bitwidth
             val bitsPerTransaction: Int = paramsPerTransaction * stencil.dtype.bitwidth
-            logger.error(s"$stencil, busWidth:$busWidth, paramsPerTransactions:$paramsPerTransaction, bitsPerTranscation:$bitsPerTransaction")
+            logger.debug(s"$stencil, busWidth:$busWidth, paramsPerTransactions:$paramsPerTransaction, bitsPerTranscation:$bitsPerTransaction")
 
             val binaryVals = x.map((a: BigInt) => toBinaryB(a, bitsPerTransaction)).map(
                 _.grouped(stencil.dtype.bitwidth).toList.reverse

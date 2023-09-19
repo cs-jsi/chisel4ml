@@ -18,16 +18,16 @@ def test_fft():
     num_frames = 32
     time = np.linspace(0, 1, num_frames * frame_length)
 
-    use_hamming_opts = [True, False]
+    windows = ['hamming', 'none']
     tone_freqs = [200, 36]
     amplitudes = [0.4, 0.8]
     functions = [np.cos, np.sin]
-    for use_hamming_opt in use_hamming_opts:
+    for win in windows:
         for tone_freq in tone_freqs:
             for amplitude in amplitudes:
                 for function in functions:
                     # Generate test wave function
-                    wave = function(2 * np.pi * tone_freq * time).reshape(32,512)
+                    wave = function(2 * np.pi * tone_freq * time).reshape(32, 512)
                     frames = np.round((wave + 0) * 2047 * amplitude)
                     
 
@@ -36,10 +36,7 @@ def test_fft():
                     model.add(
                         qkeras.QActivation(qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1))
                     )
-                    if use_hamming_opt:
-                        model.add(FFTLayer(win_fn='hamming'))
-                    else:
-                        model.add(FFTLayer(win_fn='none'))
+                    model.add(FFTLayer(win_fn=win))
                     opt_model = optimize.qkeras_model(model)
                     audio_preproc = generate.circuit(
                         opt_model=opt_model, use_verilator=True, gen_vcd=True
@@ -104,11 +101,23 @@ def test_preproc_speech_commands(audio_data):
         assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=5, rtol=0)
 
 
-def test_audio_classifier_no_preproc(qnn_audio_class):
-    pass
+def test_audio_classifier_no_preproc(qnn_audio_class_no_preproc, audio_data_preproc):
+    _, _, test_set, _, _, _, _ = audio_data_preproc
+    opt_model = qnn_audio_class_no_preproc
+    circuit = generate.circuit(opt_model, use_verilator=True, gen_vcd=True)
+    assert circuit is not None
+    ts_iter = test_set.as_numpy_iterator()
+    for _ in range(100):
+        sample, label = next(ts_iter)
+        hw_ret = circuit.predict(sample.reshape(1, 32, 20))
+        sw_ret = opt_model.predict(sample.reshape(1, 32, 20, 1))
+        print(f"hw_ret: {np.argmax(hw_ret)} - sw_ret: {np.argmax(sw_ret)}")
+        assert np.argmax(softmax(hw_ret)) == np.argmax(softmax(sw_ret))
 
-def test_audio_classifier_full(qnn_audio_class):
-    opt_model, test_set = qnn_audio_class
+
+def test_audio_classifier_full(qnn_audio_class, audio_data):
+    _, _, test_set, _, _, _, _ = audio_data
+    opt_model = qnn_audio_class
     circuit = generate.circuit(opt_model, use_verilator=True, gen_vcd=True)
     assert circuit is not None
     ts_iter = test_set.as_numpy_iterator()

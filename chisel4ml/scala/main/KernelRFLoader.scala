@@ -15,9 +15,7 @@
  */
 package chisel4ml.sequential
 
-import _root_.chisel4ml.util.reqWidth
 import chisel3._
-import chisel3.experimental.ChiselEnum
 import chisel3.util._
 
 /** KernelRFLoader
@@ -44,21 +42,21 @@ class KernelRFLoader(
 
   val io = IO(new Bundle {
     // interface to the kernel register file
-    val chAddr  = Output(UInt(reqWidth(kernelDepth).W))
-    val rowAddr = Output(UInt(reqWidth(kernelSize).W))
-    val colAddr = Output(UInt(reqWidth(kernelSize).W))
+    val chAddr  = Output(UInt(log2Up(kernelDepth).W))
+    val rowAddr = Output(UInt(log2Up(kernelSize).W))
+    val colAddr = Output(UInt(log2Up(kernelSize).W))
     val data    = Output(UInt(kernelParamSize.W))
     val valid   = Output(Bool())
 
     // interface to the kernel ROM
     val romRdEna  = Output(Bool())
-    val romRdAddr = Output(UInt(reqWidth(kernelMemDepthWords+1).W))
+    val romRdAddr = Output(UInt(log2Up(kernelMemDepthWords+1).W))
     val romRdData = Input(UInt(memWordWidth.W))
 
     // control interface
     val kernelReady = Output(Bool())
     val loadKernel  = Input(Bool())
-    val kernelNum   = Input(UInt(reqWidth(numKernels).W))
+    val kernelNum   = Input(UInt(log2Up(numKernels).W))
   })
 
   object krfState extends ChiselEnum {
@@ -73,18 +71,18 @@ class KernelRFLoader(
 
   val dataBuf = RegInit(0.U(kernelParamSize.W))
 
-  val kernelOffset = RegInit(0.U(reqWidth(kernelMemDepthWords).W))
-  val colCnt = RegInit(0.U(reqWidth(kernelSize).W))
-  val rowCnt = RegInit(0.U(reqWidth(kernelSize).W))
-  val chCnt  = RegInit(0.U(reqWidth(kernelDepth).W))
+  val kernelOffset = RegInit(0.U(log2Up(kernelMemDepthWords).W))
+  val colCnt = RegInit(0.U(log2Up(kernelSize).W))
+  val rowCnt = RegInit(0.U(log2Up(kernelSize).W))
+  val chCnt  = RegInit(0.U(log2Up(kernelDepth).W))
 
-  val elemBitOffset = WireInit(0.U(reqWidth(memWordWidth).W))
-  val ramAddr       = RegInit(0.U(reqWidth(kernelMemDepthWords+1).W))
-  val nramAddr      = WireInit(0.U(reqWidth(kernelMemDepthWords+1).W))
-  val wordElemCnt   = RegInit(0.U(reqWidth(kernelParamsPerWord).W))
-  val nwordElemCnt  = WireInit(0.U(reqWidth(kernelParamsPerWord).W))
-  val totalElemCnt  = RegInit(0.U(reqWidth(kernelNumOfElements).W))
-  val ntotalElemCnt = WireInit(0.U(reqWidth(kernelNumOfElements).W))
+  val elemBitOffset = WireInit(0.U(log2Up(memWordWidth).W))
+  val ramAddr       = RegInit(0.U(log2Up(kernelMemDepthWords+1).W))
+  val nramAddr      = WireInit(0.U(log2Up(kernelMemDepthWords+1).W))
+  val wordElemCnt   = RegInit(0.U(log2Up(kernelParamsPerWord).W))
+  val nwordElemCnt  = WireInit(0.U(log2Up(kernelParamsPerWord).W))
+  val totalElemCnt  = RegInit(0.U(log2Up(kernelNumOfElements).W))
+  val ntotalElemCnt = WireInit(0.U(log2Up(kernelNumOfElements).W))
   val romDataAsVec  = Wire(Vec(kernelParamsPerWord, UInt(kernelParamSize.W)))
 
   ///////////////////////

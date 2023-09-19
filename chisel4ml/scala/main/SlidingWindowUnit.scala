@@ -15,9 +15,7 @@
  */
 package chisel4ml.sequential
 
-import _root_.chisel4ml.util.reqWidth
 import chisel3._
-import chisel3.experimental.ChiselEnum
 import chisel3.util._
 
 /** Sliding Window Unit
@@ -38,8 +36,8 @@ class SlidingWindowUnit(
 
   val totalNumOfKernelElements: Int = kernelSize * kernelSize * kernelDepth
   val wrDataWidth:              Int = kernelSize * actParamSize
-  val chAddrWidth:              Int = reqWidth(kernelDepth.toFloat)
-  val rowAddrWidth:             Int = reqWidth(kernelSize.toFloat)
+  val chAddrWidth:              Int = log2Up(kernelDepth)
+  val rowAddrWidth:             Int = log2Up(kernelSize)
 
   val memWordWidth: Int = 32
 
@@ -76,7 +74,7 @@ class SlidingWindowUnit(
   val chAddConstant:    Int = chAddConstantBase +   (chAddConstantMod  * leftoverBits)
   val colModRowAddConstant: Int = colModRowAddConstantBase + (colModRowAddConstantMod * leftoverBits)
   val colModChAddConstant:  Int = colModChAddConstantBase  + (colModChAddConstantMod * leftoverBits)
-  val constantWireSize:     Int = if (reqWidth(colModChAddConstant) >= 5) reqWidth(colModChAddConstant) + 1 else 5
+  val constantWireSize:     Int = if (log2Up(colModChAddConstant) >= 5) log2Up(colModChAddConstant) + 1 else 5
 
   val io = IO(new Bundle {
     // interface to the RollingRegisterFile module.
@@ -90,7 +88,7 @@ class SlidingWindowUnit(
 
     // interface to the activation memory
     val actRdEna  = Output(Bool())
-    val actRdAddr = Output(UInt(reqWidth(actMemDepthWords).W))
+    val actRdAddr = Output(UInt(log2Up(actMemDepthWords).W))
     val actRdData = Input(UInt(memWordWidth.W))
 
     // control interface
@@ -101,15 +99,15 @@ class SlidingWindowUnit(
 
   val updateBase1     = WireInit(false.B)
   val updateBase2     = WireInit(false.B)
-  val baseBitAddr     = RegInit(0.U(reqWidth(actMemDepthRealBits).W))
-  val nbaseBitAddr    = WireInit(0.U(reqWidth(actMemDepthRealBits).W))
-  val nbaseBitAddrMod = WireInit(0.U(reqWidth(actMemDepthRealBits).W))
-  val bitAddr         = RegInit(0.U(reqWidth(actMemDepthRealBits).W)) // bit addressing, because params can be any width
-  val nbitAddr        = Wire(UInt(reqWidth(actMemDepthRealBits).W))
-  val nbitAddrMod     = Wire(UInt(reqWidth(actMemDepthRealBits).W))
+  val baseBitAddr     = RegInit(0.U(log2Up(actMemDepthRealBits).W))
+  val nbaseBitAddr    = WireInit(0.U(log2Up(actMemDepthRealBits).W))
+  val nbaseBitAddrMod = WireInit(0.U(log2Up(actMemDepthRealBits).W))
+  val bitAddr         = RegInit(0.U(log2Up(actMemDepthRealBits).W)) // bit addressing, because params can be any width
+  val nbitAddr        = Wire(UInt(log2Up(actMemDepthRealBits).W))
+  val nbitAddrMod     = Wire(UInt(log2Up(actMemDepthRealBits).W))
   val addConstant     = WireInit(0.U(constantWireSize.W))
   val addConstantMod  = WireInit(0.U(constantWireSize.W))
-  val subwordAddr     = Wire(UInt(reqWidth(memWordWidth).W))      // Which part of the memory word are we looking at?
+  val subwordAddr     = Wire(UInt(log2Up(memWordWidth).W))      // Which part of the memory word are we looking at?
   val ramDataAsVec    = Wire(Vec(actParamsPerWord, UInt(actParamSize.W)))
   val dataBuf         = RegInit(VecInit(Seq.fill(kernelSize)(0.U(actParamSize.W))))
   val dataIndex       = Wire(UInt())
@@ -138,13 +136,13 @@ class SlidingWindowUnit(
   val naddstate = WireInit(addState.sADDCOL)
   val addstate  = RegInit(addState.sADDCOL)
 
-  val colCnt = RegInit(0.U(reqWidth(kernelSize).W))
-  val rowCnt = RegInit(0.U(reqWidth(kernelSize).W))
-  val chCnt  = RegInit(0.U(reqWidth(kernelDepth).W))
-  val horizCnt  = RegInit(0.U(reqWidth(actWidth).W))
-  val nhorizCnt = WireInit(0.U(reqWidth(actWidth).W))
-  val vertiCnt  = RegInit(0.U(reqWidth(actHeight).W))
-  val nvertiCnt = WireInit(0.U(reqWidth(actHeight).W))
+  val colCnt = RegInit(0.U(log2Up(kernelSize).W))
+  val rowCnt = RegInit(0.U(log2Up(kernelSize).W))
+  val chCnt  = RegInit(0.U(log2Up(kernelDepth).W))
+  val horizCnt  = RegInit(0.U(log2Up(actWidth).W))
+  val nhorizCnt = WireInit(0.U(log2Up(actWidth).W))
+  val vertiCnt  = RegInit(0.U(log2Up(actHeight).W))
+  val nvertiCnt = WireInit(0.U(log2Up(actHeight).W))
   val allCntZero = Wire(Bool())
   val rowAndChCntZero = Wire(Bool())
   val allCntMax = Wire(Bool())

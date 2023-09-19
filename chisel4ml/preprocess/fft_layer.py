@@ -33,12 +33,12 @@ class FFTLayer(tf.keras.layers.Layer):
     )
     def call(self, inputs):
         tensor = tf.numpy_function(self.np_call, [inputs], tf.float32, stateful=False)
-        tensor.set_shape(tf.TensorShape([inputs.shape[0], 32, 512]))
+        tensor.set_shape(tf.TensorShape([None, 32, 512, 1]))
         return tensor
 
     def np_call(self, inputs):
         res = np.fft.fft(inputs * self.window_fn, norm='backward', axis=-1).real
-        return res.astype(np.float32)
+        return np.expand_dims(res, axis=-1).astype(np.float32)
 
     def get_config(self):
         base_config = super().get_config()

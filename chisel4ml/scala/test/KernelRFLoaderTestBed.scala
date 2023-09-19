@@ -21,6 +21,7 @@ import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
 import _root_.lbir.QTensor
 import chisel3._
+import chisel3.util._
 
 /** Kernel Register File Loader - test bed
   */
@@ -43,7 +44,7 @@ class KernelRFLoaderTestBed(
   val io = IO(new Bundle {
     val kernelReady = Output(Bool())
     val loadKernel  = Input(Bool())
-    val kernelNum   = Input(UInt(reqWidth(numKernels).W))
+    val kernelNum   = Input(UInt(log2Up(numKernels).W))
 
     val krfOutput   = Output(UInt(outDataSize.W))
   })

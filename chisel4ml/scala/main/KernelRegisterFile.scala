@@ -15,8 +15,8 @@
  */
 package chisel4ml.sequential
 
-import _root_.chisel4ml.util.reqWidth
 import chisel3._
+import chisel3.util._
 
 /** A register file for storing the weights/kernel of a convolution layer.
   *
@@ -28,9 +28,9 @@ class KernelRegisterFile(kernelSize: Int, kernelDepth: Int, kernelParamSize: Int
   val outDataSize: Int = kernelSize * kernelSize * kernelDepth * kernelParamSize
 
   val io = IO(new Bundle {
-    val chAddr     = Input(UInt(reqWidth(kernelDepth).W))
-    val rowAddr    = Input(UInt(reqWidth(kernelSize).W))
-    val colAddr    = Input(UInt(reqWidth(kernelSize).W))
+    val chAddr     = Input(UInt(log2Up(kernelDepth).W))
+    val rowAddr    = Input(UInt(log2Up(kernelSize).W))
+    val colAddr    = Input(UInt(log2Up(kernelSize).W))
     val inData     = Input(UInt(kernelParamSize.W))
     val inValid    = Input(Bool())
     val outData    = Output(UInt(outDataSize.W))

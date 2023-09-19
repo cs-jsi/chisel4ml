@@ -29,6 +29,8 @@ import _root_.lbir.Activation._
 import _root_.services.LayerOptions
 import chisel3._
 
+import _root_.org.slf4j.Logger
+import _root_.org.slf4j.LoggerFactory
 
 
 /** A sequential processing element for convolutions.
@@ -55,6 +57,8 @@ class ProcessingElementSequentialConv[
     add:        Vec[M] => S,
     actFn:      (S, A) => S,
   ) extends Module with LBIRStream {
+  val logger = LoggerFactory.getLogger("ProcessingElementSequentialConv")
+
   def gen[T <: Bits: TypeTag](bitwidth: Int): T = {
     val tpe = implicitly[TypeTag[T]].tpe
     val hwType = if (tpe =:= typeOf[UInt]) UInt(bitwidth.W)
@@ -71,6 +75,9 @@ class ProcessingElementSequentialConv[
   val genOut = gen[O](layer.output.dtype.bitwidth)
 
   
+  logger.info(s"""Generated new ProcessingElementSequentialConv with input shape:${layer.input.shape}, input dtype:
+          | ${layer.input.dtype}. Number of kernel parameters is ${layer.kernel.numKernelParams}.""")
+
   val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
   val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr=layer.kernel.toHexStr,
@@ -163,6 +170,10 @@ class ProcessingElementSequentialConv[
   dynamicNeuron.io.in        := actRegFile.io.outData
   dynamicNeuron.io.weights   := krf.io.outData
   dynamicNeuron.io.thresh    := tas.io.thresh
+  dontTouch(dynamicNeuron.io.thresh)
+  dontTouch(dynamicNeuron.io.shift)
+  dontTouch(dynamicNeuron.io.shiftLeft)
+  dontTouch(tas.io)
   dynamicNeuron.io.shift     := tas.io.shift
   dynamicNeuron.io.shiftLeft := tas.io.shiftLeft
 
