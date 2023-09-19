@@ -15,7 +15,7 @@
  */
 package chisel4ml.sequential
 
-import scala.reflect.runtime.universe._
+
 import interfaces.amba.axis._
 import _root_.chisel4ml.lbir._
 import _root_.chisel4ml.LBIRStream
@@ -31,6 +31,7 @@ import chisel3._
 
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
+import scala.reflect.runtime.universe._
 
 
 /** A sequential processing element for convolutions.
@@ -59,7 +60,7 @@ class ProcessingElementSequentialConv[
   ) extends Module with LBIRStream {
   val logger = LoggerFactory.getLogger("ProcessingElementSequentialConv")
 
-  def gen[T <: Bits: TypeTag](bitwidth: Int): T = {
+  def genType[T <: Bits: TypeTag](bitwidth: Int): T = {
     val tpe = implicitly[TypeTag[T]].tpe
     val hwType = if (tpe =:= typeOf[UInt]) UInt(bitwidth.W)
     else if (tpe =:= typeOf[SInt]) SInt(bitwidth.W)
@@ -67,11 +68,11 @@ class ProcessingElementSequentialConv[
     hwType.asInstanceOf[T]
   }
 
-  val genIn = gen[I](layer.input.dtype.bitwidth)
-  val genWeights = gen[W](layer.kernel.dtype.bitwidth)
-  val genAccu = gen[S](layer.input.dtype.bitwidth + layer.kernel.dtype.bitwidth)
-  val genThresh = gen[A](layer.thresh.dtype.bitwidth)
-  val genOut = gen[O](layer.output.dtype.bitwidth)
+  val genIn = genType[I](layer.input.dtype.bitwidth)
+  val genWeights = genType[W](layer.kernel.dtype.bitwidth)
+  val genAccu = genType[S](layer.input.dtype.bitwidth + layer.kernel.dtype.bitwidth)
+  val genThresh = genType[A](layer.thresh.dtype.bitwidth)
+  val genOut = genType[O](layer.output.dtype.bitwidth)
 
   
   logger.info(s"""Generated new ProcessingElementSequentialConv with input shape:${layer.input.shape}, input dtype:
@@ -112,14 +113,9 @@ class ProcessingElementSequentialConv[
 
   val kRFLoader = Module(new KernelRFLoader(layer.kernel))
 
-  val tas = Module(new ThreshAndShiftUnit[A](numKernels = layer.kernel.numKernels,
-                                             genThresh = genThresh,
-                                             layer = layer))
+  val tas = Module(new ThreshAndShiftUnit[A](genThresh = genThresh, thresh = layer.thresh, kernel = layer.kernel))
 
-  val rmb = Module(new ResultMemoryBuffer[O](genOut = genOut,
-                                             resultsPerKernel = layer.output.height * layer.output.width,
-                                             resMemDepth = layer.output.memDepth,
-                                             numKernels = layer.kernel.numKernels))
+  val rmb = Module(new ResultMemoryBuffer[O](genOut = genOut, output = layer.output))
 
   val ctrl = Module(new PeSeqConvController(layer))
 

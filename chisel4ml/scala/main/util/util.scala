@@ -32,7 +32,7 @@ package object util {
   def log2(x: Int): Int   = (log(x.toFloat) / log(2.0)).toInt
   def log2(x: Float): Float = (log(x) / log(2.0)).toFloat
 
-    def ndArrayToBinaryString(arr: INDArray, bits: Int): String = {
+  def ndArrayToBinaryString(arr: INDArray, bits: Int): String = {
     val flatArr      = Nd4j.toFlattened(arr)
     var binaryString = ""
     for (i <- 0 until arr.length) {

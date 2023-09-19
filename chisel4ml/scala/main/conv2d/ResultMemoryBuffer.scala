@@ -18,16 +18,17 @@ package chisel4ml.sequential
 import chisel3._
 import chisel3.util._
 
+import chisel4ml.implicits._
+import chisel4ml.MemWordSize
+
 /** Result Memory Buffer
   *
   */
-class ResultMemoryBuffer[O <: Bits](genOut: O,
-                                    resultsPerKernel: Int,
-                                    resMemDepth: Int,
-                                    numKernels: Int) extends Module {
-  val memWordWidth:     Int = 32
-  val resultsPerWord:   Int = memWordWidth / genOut.getWidth
+class ResultMemoryBuffer[O <: Bits](genOut: O, output: lbir.QTensor) extends Module {
 
+  val resultsPerKernel = output.width * output.height
+  val resultsPerWord:   Int = MemWordSize.bits / genOut.getWidth
+  val numKernels = output.numChannels // Number of channels in output tensor is the same as number of kernels in the weights
 
   val io = IO(new Bundle {
     // interface to the dynamic neuron (alu)
@@ -36,8 +37,8 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
 
     // result memory interface
     val resRamEn   = Output(Bool())
-    val resRamAddr = Output(UInt(log2Up(resMemDepth).W))
-    val resRamData = Output(UInt(memWordWidth.W))
+    val resRamAddr = Output(UInt(log2Up(output.memDepth).W))
+    val resRamData = Output(UInt(MemWordSize.bits.W))
 
     // control inerface
     val start  = Input(Bool())
@@ -53,7 +54,7 @@ class ResultMemoryBuffer[O <: Bits](genOut: O,
   val kernelCnt       = RegInit(0.U(log2Up(numKernels).W))
 
   val dataBuf = RegInit(VecInit(Seq.fill(resultsPerWord)(0.U(genOut.getWidth.W))))
-  val ramAddr = RegInit(0.U(log2Up(resMemDepth).W))
+  val ramAddr = RegInit(0.U(log2Up(output.memDepth).W))
 
   val state = RegInit(rmbState.sWAIT)
 
