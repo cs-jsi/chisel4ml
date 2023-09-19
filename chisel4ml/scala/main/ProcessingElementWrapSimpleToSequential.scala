@@ -42,11 +42,9 @@ class ProcessingElementWrapSimpleToSequential(layer: DenseConfig, options: Layer
                    |${layer.output.numTransactions(options.busWidthOut)}, busWidthIn: ${options.busWidthIn},
                    | busWidthOut: ${options.busWidthOut}.""".stripMargin.replaceAll("\n", ""))
 
-    val inputTransaction = inStream.valid && inStream.ready
-    val outputTransaction = outStream.valid && outStream.ready
 
-    val (inputCntValue, inputCntWrap) = Counter(inputTransaction, layer.input.numTransactions(options.busWidthIn))
-    val (outputCntValue, outputCntWrap) = Counter(outputTransaction, layer.output.numTransactions(options.busWidthOut))
+    val (inputCntValue, inputCntWrap) = Counter(inStream.fire, layer.input.numTransactions(options.busWidthIn))
+    val (outputCntValue, outputCntWrap) = Counter(outStream.fire, layer.output.numTransactions(options.busWidthOut))
     val outputBufferFull = RegInit(false.B)
 
     // (combinational) computational module
@@ -55,7 +53,7 @@ class ProcessingElementWrapSimpleToSequential(layer: DenseConfig, options: Layer
 
     /***** INPUT DATA INTERFACE *****/
     inStream.ready := !outputBufferFull
-    when(inputTransaction) {
+    when(inStream.fire) {
         inputBuffer(inputCntValue) := inStream.bits
     }
 

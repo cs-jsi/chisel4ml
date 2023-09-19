@@ -113,10 +113,7 @@ class ProcessingElementSequentialConv[
                                          actHeight = layer.input.height,
                                          actParamSize = layer.input.dtype.bitwidth))
 
-  val kRFLoader = Module(new KernelRFLoader(kernelSize = layer.kernel.width,
-                                            kernelDepth = layer.kernel.numChannels,
-                                            kernelParamSize = layer.kernel.dtype.bitwidth,
-                                            numKernels = layer.kernel.numKernels))
+  val kRFLoader = Module(new KernelRFLoader(layer.kernel))
 
   val tas = Module(new ThreshAndShiftUnit[A](numKernels = layer.kernel.numKernels,
                                              genThresh = genThresh,

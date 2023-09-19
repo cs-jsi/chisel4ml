@@ -49,10 +49,7 @@ class KernelRFLoaderTestBed(
     val krfOutput   = Output(UInt(outDataSize.W))
   })
 
-  val krfLoader = Module(new KernelRFLoader(kernelSize = kernelSize,
-                                            kernelDepth = kernelDepth,
-                                            kernelParamSize = kernelParamSize,
-                                            numKernels = numKernels))
+  val krfLoader = Module(new KernelRFLoader(kernel = parameters))
 
   val krf = Module(new KernelRegisterFile(kernelSize = kernelSize,
                                           kernelDepth = kernelDepth,
