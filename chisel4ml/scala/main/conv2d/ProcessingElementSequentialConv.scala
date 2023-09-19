@@ -67,7 +67,6 @@ class ProcessingElementSequentialConv[
     hwType.asInstanceOf[T]
   }
 
-
   val genIn = gen[I](layer.input.dtype.bitwidth)
   val genWeights = gen[W](layer.kernel.dtype.bitwidth)
   val genAccu = gen[S](layer.input.dtype.bitwidth + layer.kernel.dtype.bitwidth)
@@ -86,9 +85,7 @@ class ProcessingElementSequentialConv[
   val actMem = Module(MemoryGenerator.SRAM(depth = layer.input.memDepth,
 										   width = MemWordSize.bits))
 
-  val krf = Module(new KernelRegisterFile(kernelSize = layer.kernel.width,
-                                          kernelDepth = layer.kernel.numChannels,
-                                          kernelParamSize = layer.kernel.dtype.bitwidth))
+  val krf = Module(new KernelRegisterFile(layer.kernel))
 
   val actRegFile = Module(new RollingRegisterFile(kernelSize = layer.kernel.width,
                                                   kernelDepth = layer.kernel.numChannels,

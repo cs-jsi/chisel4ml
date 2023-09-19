@@ -17,6 +17,8 @@ package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
+import chisel4ml.MemWordSize
+import chisel4ml.implicits._
 
 /** A register file for storing the weights/kernel of a convolution layer.
   *
@@ -24,19 +26,17 @@ import chisel3.util._
   * kernelDepth: Int - The depth of the kernel (number of input channels) actParamSize: Int - The activation
   * parameterSize in bits. kernelParamSize: Int - Bitwidth of each kernel parameter.
   */
-class KernelRegisterFile(kernelSize: Int, kernelDepth: Int, kernelParamSize: Int) extends Module {
-  val outDataSize: Int = kernelSize * kernelSize * kernelDepth * kernelParamSize
-
+class KernelRegisterFile(kernel: lbir.QTensor) extends Module {
   val io = IO(new Bundle {
-    val chAddr     = Input(UInt(log2Up(kernelDepth).W))
-    val rowAddr    = Input(UInt(log2Up(kernelSize).W))
-    val colAddr    = Input(UInt(log2Up(kernelSize).W))
-    val inData     = Input(UInt(kernelParamSize.W))
+    val chAddr     = Input(UInt(log2Up(kernel.numChannels).W))
+    val rowAddr    = Input(UInt(log2Up(kernel.width).W))
+    val colAddr    = Input(UInt(log2Up(kernel.height).W))
+    val inData     = Input(UInt(kernel.dtype.bitwidth.W))
     val inValid    = Input(Bool())
-    val outData    = Output(UInt(outDataSize.W))
+    val outData    = Output(UInt((kernel.numKernelParams * kernel.dtype.bitwidth).W))
   })
 
-  val regs = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(kernelParamSize.W)))
+  val regs = RegInit(VecInit.fill(kernel.numChannels, kernel.width, kernel.height)(0.U(kernel.dtype.bitwidth.W)))
 
   when(io.inValid) {
     regs(io.chAddr)(io.rowAddr)(io.colAddr) := io.inData

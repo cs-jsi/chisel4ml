@@ -51,9 +51,7 @@ class KernelRFLoaderTestBed(
 
   val krfLoader = Module(new KernelRFLoader(kernel = parameters))
 
-  val krf = Module(new KernelRegisterFile(kernelSize = kernelSize,
-                                          kernelDepth = kernelDepth,
-                                          kernelParamSize = kernelParamSize))
+  val krf = Module(new KernelRegisterFile(kernel = parameters))
 
   val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr=parameters.toHexStr, width=memWordWidth))
 
