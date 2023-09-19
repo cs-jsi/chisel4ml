@@ -17,14 +17,14 @@ package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
+import lbir.Conv2DConfig
+import chisel4ml.implicits._
+import chisel4ml.MemWordSize
 
 /** PeSeqConvController
   *
   */
-class PeSeqConvController(numKernels: Int,
-                          resMemDepth: Int,
-                          actMemDepth: Int,
-                          actMemTransfers: Int) extends Module {
+class PeSeqConvController(layer: Conv2DConfig) extends Module {
   val io = IO(new Bundle {
     // SWU interface
     val swuEnd        = Input(Bool())
@@ -32,7 +32,7 @@ class PeSeqConvController(numKernels: Int,
 
     // interface to the Kernel RF/loader
     val krfReady      = Input(Bool())
-    val krfKernelNum  = Output(UInt(log2Up(numKernels).W))
+    val krfKernelNum  = Output(UInt(log2Up(layer.kernel.numKernels).W))
     val krfLoadKernel = Output(Bool())
 
     val rmbStart      = Output(Bool())
@@ -41,13 +41,13 @@ class PeSeqConvController(numKernels: Int,
     val inStreamReady = Output(Bool())
     val inStreamValid = Input(Bool())
     val inStreamLast  = Input(Bool())
-    val actMemAddr    = Output(UInt(log2Up(actMemDepth).W))
+    val actMemAddr    = Output(UInt(log2Up(layer.input.memDepth).W))
 
     // output stream
     val outStreamReady = Input(Bool())
     val outStreamValid = Output(Bool())
     val outStreamLast  = Output(Bool())
-    val resMemAddr     = Output(UInt(log2Up(resMemDepth).W))
+    val resMemAddr     = Output(UInt(log2Up(layer.output.memDepth).W))
     val resMemEna      = Output(Bool())
   })
 
@@ -61,9 +61,9 @@ class PeSeqConvController(numKernels: Int,
     val sSENDDATA    = Value(6.U)
   }
 
-  val kernelCnt = RegInit(0.U(log2Up(numKernels + 1).W))
-  val actMemCnt = RegInit(0.U(log2Up(actMemTransfers + 1).W))
-  val resMemCnt = RegInit(0.U(log2Up(resMemDepth + 1).W))
+  val kernelCnt = RegInit(0.U(log2Up(layer.kernel.numKernels + 1).W))
+  val actMemCnt = RegInit(0.U(log2Up(layer.input.numTransactions(MemWordSize.bits) + 1).W))
+  val resMemCnt = RegInit(0.U(log2Up(layer.output.memDepth + 1).W))
 
   val state  = RegInit(ctrlState.sWAITFORDATA)
   val nstate = WireInit(ctrlState.sCOMP)
@@ -72,12 +72,12 @@ class PeSeqConvController(numKernels: Int,
   nstate := state
   when (state === ctrlState.sWAITFORDATA && io.inStreamValid) {
     nstate := ctrlState.sLOADINPACT
-  }.elsewhen(state === ctrlState.sLOADINPACT && actMemCnt === actMemTransfers.U) {
+  }.elsewhen(state === ctrlState.sLOADINPACT && actMemCnt === layer.input.numTransactions(MemWordSize.bits).U) {
     nstate := ctrlState.sLOADKERNEL
   }.elsewhen (state === ctrlState.sLOADKERNEL && io.krfReady) {
     nstate := ctrlState.sCOMP
   }.elsewhen (state === ctrlState.sCOMP && io.swuEnd) {
-    when (kernelCnt === numKernels.U) {
+    when (kernelCnt === layer.kernel.numKernels.U) {
       nstate := ctrlState.sWAITWRITE
     }.otherwise {
       nstate := ctrlState.sLOADKERNEL
@@ -86,7 +86,7 @@ class PeSeqConvController(numKernels: Int,
     nstate := ctrlState.sWAITWRITE2
   }.elsewhen (state === ctrlState.sWAITWRITE2) {
     nstate := ctrlState.sSENDDATA
-  }.elsewhen (state === ctrlState.sSENDDATA && resMemCnt === resMemDepth.U) {
+  }.elsewhen (state === ctrlState.sSENDDATA && resMemCnt === layer.output.memDepth.U) {
     nstate := ctrlState.sWAITFORDATA
   }
   state := nstate
@@ -125,7 +125,7 @@ class PeSeqConvController(numKernels: Int,
   io.actMemAddr    := actMemCnt
 
   io.outStreamValid := (state === ctrlState.sSENDDATA)
-  io.outStreamLast  := ((resMemCnt === resMemDepth.U) && (state === ctrlState.sSENDDATA))
+  io.outStreamLast  := ((resMemCnt === layer.output.memDepth.U) && (state === ctrlState.sSENDDATA))
   io.resMemAddr     := resMemCnt
   io.resMemEna      := (state === ctrlState.sSENDDATA)
 
