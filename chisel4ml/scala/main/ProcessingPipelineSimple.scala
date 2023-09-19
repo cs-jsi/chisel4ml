@@ -26,36 +26,35 @@ import _root_.chisel4ml.implicits._
 import _root_.chisel4ml.ProcessingElementSimple
 import _root_.scala.collection.mutable._
 
-
 class ProcessingPipelineSimple(model: Model, options: Options) extends Module {
-    def layerGeneratorSimple(layer: LayerWrap): ProcessingElementSimple = {
-        layer match {
-            case l:DenseConfig => Module(ProcessingElementSimple(l))
-            case _ => throw new RuntimeException(f"Unsupported layer type")
-        }
+  def layerGeneratorSimple(layer: LayerWrap): ProcessingElementSimple = {
+    layer match {
+      case l: DenseConfig => Module(ProcessingElementSimple(l))
+      case _ => throw new RuntimeException(f"Unsupported layer type")
     }
+  }
 
-    // List of processing elements - one PE per layer
-    val peList = new ListBuffer[ProcessingElementSimple]()
+  // List of processing elements - one PE per layer
+  val peList = new ListBuffer[ProcessingElementSimple]()
 
-    // Instantiate modules for seperate layers, for now we only support DENSE layers
-    for (layer <- model.layers) {
-        peList += layerGeneratorSimple(layer.get)
+  // Instantiate modules for seperate layers, for now we only support DENSE layers
+  for (layer <- model.layers) {
+    peList += layerGeneratorSimple(layer.get)
+  }
+
+  val io = IO(new Bundle {
+    val in = Input(UInt(model.layers.head.get.input.totalBitwidth.W))
+    val out = Output(UInt(model.layers.last.get.output.totalBitwidth.W))
+  })
+
+  // Connect the inputs and outputs of the layers
+  peList(0).io.in := io.in
+  for (i <- 1 until model.layers.length) {
+    if (options.pipelineCircuit) {
+      peList(i).io.in := RegNext(peList(i - 1).io.out)
+    } else {
+      peList(i).io.in := peList(i - 1).io.out
     }
-
-    val io = IO(new Bundle {
-        val in  = Input(UInt(model.layers.head.get.input.totalBitwidth.W))
-        val out = Output(UInt(model.layers.last.get.output.totalBitwidth.W))
-    })
-
-    // Connect the inputs and outputs of the layers
-    peList(0).io.in := io.in
-    for (i <- 1 until model.layers.length) {
-        if (options.pipelineCircuit) {
-            peList(i).io.in := RegNext(peList(i - 1).io.out)
-        } else {
-            peList(i).io.in := peList(i - 1).io.out
-        }
-    }
-    io.out := peList.last.io.out
+  }
+  io.out := peList.last.io.out
 }

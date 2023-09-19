@@ -17,22 +17,22 @@ package chisel4ml
 
 import chisel3._
 import _root_.lbir.LayerWrap
-import _root_.lbir.{DenseConfig, Conv2DConfig, MaxPool2DConfig, FFTConfig, LMFEConfig}
+import _root_.lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, MaxPool2DConfig}
 import _root_.services.LayerOptions
 import _root_.chisel4ml.LBIRStream
 import _root_.chisel4ml.sequential.{MaxPool2D, ProcessingElementSequentialConv}
 
 object LayerGenerator {
-    // TODO: Rewrite the generation procedure to something more sensisble
-    def apply(layer_wrap: LayerWrap, options: LayerOptions): Module with LBIRStream = {
-        layer_wrap match {
-            case l:DenseConfig => Module(new ProcessingElementWrapSimpleToSequential(l, options))
-            case l:Conv2DConfig => Module(ProcessingElementSequentialConv(l, options))
-            case l:MaxPool2DConfig => Module(new MaxPool2D(l, options))
-            case l:FFTConfig => Module(new FFTWrapper(l, options))
-            case l:LMFEConfig => Module(new LMFEWrapper(l, options))
-            case _ => throw new RuntimeException(f"Unsupported layer type: $layer_wrap")
-        }
-        
+  // TODO: Rewrite the generation procedure to something more sensisble
+  def apply(layer_wrap: LayerWrap, options: LayerOptions): Module with LBIRStream = {
+    layer_wrap match {
+      case l: DenseConfig     => Module(new ProcessingElementWrapSimpleToSequential(l, options))
+      case l: Conv2DConfig    => Module(ProcessingElementSequentialConv(l, options))
+      case l: MaxPool2DConfig => Module(new MaxPool2D(l, options))
+      case l: FFTConfig       => Module(new FFTWrapper(l, options))
+      case l: LMFEConfig      => Module(new LMFEWrapper(l, options))
+      case _ => throw new RuntimeException(f"Unsupported layer type: $layer_wrap")
     }
+
+  }
 }

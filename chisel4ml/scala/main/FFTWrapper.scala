@@ -28,69 +28,69 @@ import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
 class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LBIRStream {
-    val logger = LoggerFactory.getLogger("FFTWrapper")
+  val logger = LoggerFactory.getLogger("FFTWrapper")
 
-	val fftParams = FFTParams.fixed(
-    	dataWidth = 24,
-    	binPoint = 12,
-        trimEnable = false,
-    	numPoints = layer.fftSize,
-    	decimType = DITDecimType,
-    	trimType = RoundHalfToEven,
-        twiddleWidth = 16,
-    	useBitReverse = true,
-    	windowFunc = WindowFunctionTypes.None(), // We do windowing in this module, because of issues with this
-    	overflowReg = true,
-    	numAddPipes = 1,
-    	numMulPipes = 1,
-    	sdfRadix = "2",
-    	runTime = false,
-    	expandLogic =  Array.fill(log2Up(layer.fftSize))(1),
-    	keepMSBorLSB = Array.fill(log2Up(layer.fftSize))(true),
-  	)
+  val fftParams = FFTParams.fixed(
+    dataWidth = 24,
+    binPoint = 12,
+    trimEnable = false,
+    numPoints = layer.fftSize,
+    decimType = DITDecimType,
+    trimType = RoundHalfToEven,
+    twiddleWidth = 16,
+    useBitReverse = true,
+    windowFunc = WindowFunctionTypes.None(), // We do windowing in this module, because of issues with this
+    overflowReg = true,
+    numAddPipes = 1,
+    numMulPipes = 1,
+    sdfRadix = "2",
+    runTime = false,
+    expandLogic = Array.fill(log2Up(layer.fftSize))(1),
+    keepMSBorLSB = Array.fill(log2Up(layer.fftSize))(true)
+  )
 
-    val window = VecInit(layer.winFn.map(_.F(16.BP)))
-     
+  val window = VecInit(layer.winFn.map(_.F(16.BP)))
 
-    require(layer.fftSize == 512)  // TODO: remove this restriction
-    require(options.busWidthOut == layer.output.dtype.bitwidth, 
-        s"This module requires buswidhts to equal the input/output datatypes. " +
-        s"${options.busWidthOut} != ${layer.output.dtype.bitwidth}")
-    val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
-    val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
+  require(layer.fftSize == 512) // TODO: remove this restriction
+  require(
+    options.busWidthOut == layer.output.dtype.bitwidth,
+    s"This module requires buswidhts to equal the input/output datatypes. " +
+      s"${options.busWidthOut} != ${layer.output.dtype.bitwidth}"
+  )
+  val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
+  val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 
-    val sdffft = Module(new SDFFFT(fftParams))
+  val sdffft = Module(new SDFFFT(fftParams))
 
-    // Fix discrepancy between last signal semantics of LBIRDriver and FFT.
-    // FFT has per frame last signals, LBIRDriver per tensor last signal.
-    val (fftCounter, fftCounterWrap) = Counter(inStream.fire, fftParams.numPoints)
-    val (_, outCounterWrap) = Counter(sdffft.io.lastOut, layer.numFrames)
+  // Fix discrepancy between last signal semantics of LBIRDriver and FFT.
+  // FFT has per frame last signals, LBIRDriver per tensor last signal.
+  val (fftCounter, fftCounterWrap) = Counter(inStream.fire, fftParams.numPoints)
+  val (_, outCounterWrap) = Counter(sdffft.io.lastOut, layer.numFrames)
 
-    object fftState extends ChiselEnum {
-        val sWAIT = Value(0.U)
-        val sREADY = Value(1.U)
-    }
-    val state = RegInit(fftState.sREADY)
+  object fftState extends ChiselEnum {
+    val sWAIT = Value(0.U)
+    val sREADY = Value(1.U)
+  }
+  val state = RegInit(fftState.sREADY)
 
-    when (state === fftState.sREADY && fftCounterWrap) {
-        state := fftState.sWAIT
-    }.elsewhen(state === fftState.sWAIT && sdffft.io.lastOut) {
-        state := fftState.sREADY
-    }
+  when(state === fftState.sREADY && fftCounterWrap) {
+    state := fftState.sWAIT
+  }.elsewhen(state === fftState.sWAIT && sdffft.io.lastOut) {
+    state := fftState.sREADY
+  }
 
+  inStream.ready := state === fftState.sREADY
+  sdffft.io.in.valid := inStream.valid && state === fftState.sREADY
+  val currWindow = window(fftCounter).asUInt
+  dontTouch(currWindow)
+  // U(12, 0) x S(0, 16) => S(12, 16) >> 4 => S(12,12)
+  val windowedSignal = inStream.bits.asSInt * currWindow
+  sdffft.io.in.bits.real := (windowedSignal >> 4).asTypeOf(sdffft.io.in.bits.real)
+  sdffft.io.in.bits.imag := 0.U.asTypeOf(sdffft.io.in.bits.imag)
+  sdffft.io.lastIn := inStream.last || fftCounterWrap
 
-	inStream.ready := state === fftState.sREADY
-    sdffft.io.in.valid := inStream.valid && state === fftState.sREADY
-    val currWindow = window(fftCounter).asUInt
-    dontTouch(currWindow)
-    // U(12, 0) x S(0, 16) => S(12, 16) >> 4 => S(12,12)
-    val windowedSignal = inStream.bits.asSInt * currWindow
-    sdffft.io.in.bits.real := (windowedSignal >> 4).asTypeOf(sdffft.io.in.bits.real)
-    sdffft.io.in.bits.imag := 0.U.asTypeOf(sdffft.io.in.bits.imag)
-    sdffft.io.lastIn := inStream.last || fftCounterWrap
-
-    sdffft.io.out.ready := outStream.ready
-	outStream.valid := sdffft.io.out.valid
-    outStream.bits := sdffft.io.out.bits.real.asTypeOf(outStream.bits)
-    outStream.last := outCounterWrap
+  sdffft.io.out.ready := outStream.ready
+  outStream.valid := sdffft.io.out.valid
+  outStream.bits := sdffft.io.out.bits.real.asTypeOf(outStream.bits)
+  outStream.last := outCounterWrap
 }

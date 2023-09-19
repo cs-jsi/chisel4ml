@@ -34,36 +34,25 @@ class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
   val testParameters = lbir.QTensor(
     dtype = dtype,
     shape = Seq(1, 2, 4, 4),
-    values = Seq(1,  2,  3,  3,
-                 4,  5,  6,  6,
-                 7,  8,  9,  9,
-                 7,  8,  9,  9,
-
-                 10, 11, 12, 12,
-                 13, 14, 15, 15,
-                 16, 17, 18, 18,
-                 16, 17, 18, 18),
+    values = Seq(1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 15, 16, 17, 18, 18, 16, 17,
+      18, 18)
   )
   val stencil = lbir.QTensor(
     dtype = dtype,
-    shape = Seq(1, 2, 2, 2),
+    shape = Seq(1, 2, 2, 2)
   )
   val expectedOutput = lbir.QTensor(
     dtype = dtype,
     shape = Seq(1, 2, 2, 2),
-    values = Seq(5,  6,
-                 8,  9,
-
-                 14, 15,
-                 17, 18)
+    values = Seq(5, 6, 8, 9, 14, 15, 17, 18)
   )
   val layer = lbir.MaxPool2DConfig(
     input = testParameters,
-    output = stencil,
+    output = stencil
   )
   val options = LayerOptions(
     busWidthIn = 32,
-    busWidthOut = 32,
+    busWidthOut = 32
   )
 
   behavior.of("MaxPool2D module")

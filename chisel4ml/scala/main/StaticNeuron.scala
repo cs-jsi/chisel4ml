@@ -21,14 +21,14 @@ import _root_.chisel4ml.lbir._
 
 object StaticNeuron {
   def apply[I <: Bits, W <: Bits: WeightsProvider, M <: Bits, A <: Bits: ThreshProvider, O <: Bits](
-      in:      Seq[I],
-      weights: Seq[W],
-      thresh:  A,
-      mul:     (I, W) => M,
-      add:     Vec[M] => A,
-      actFn:   (A, A) => O,
-      shift:   Int,
-    ): O = {
+    in:      Seq[I],
+    weights: Seq[W],
+    thresh:  A,
+    mul:     (I, W) => M,
+    add:     Vec[M] => A,
+    actFn:   (A, A) => O,
+    shift:   Int
+  ): O = {
     val muls = VecInit((in.zip(weights)).map { case (a, b) => mul(a, b) })
     val pAct = add(muls)
     val sAct = shiftAndRound(pAct, shift)

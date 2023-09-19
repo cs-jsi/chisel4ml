@@ -22,39 +22,35 @@ import chisel3.util._
 import chisel4ml.implicits._
 
 /** ThreshAndShiftUnit
-  *
   */
-class ThreshAndShiftUnit[A <: Bits](genThresh: A, thresh: lbir.QTensor, kernel: lbir.QTensor)
-extends Module {
+class ThreshAndShiftUnit[A <: Bits](genThresh: A, thresh: lbir.QTensor, kernel: lbir.QTensor) extends Module {
 
   val io = IO(new Bundle {
     // interface to the DynamicNeuron module
-    val thresh    = Output(genThresh)
-    val shift     = Output(UInt(8.W))
+    val thresh = Output(genThresh)
+    val shift = Output(UInt(8.W))
     val shiftLeft = Output(Bool())
 
     // control interface
-    val start      = Input(Bool())
+    val start = Input(Bool())
     val nextKernel = Input(Bool())
   })
 
   val kernelNum = RegInit(0.U(log2Up(thresh.width).W))
 
-  when (io.start) {
+  when(io.start) {
     kernelNum := 0.U
   }.elsewhen(io.nextKernel) {
     kernelNum := kernelNum + 1.U
   }
   dontTouch(kernelNum)
   val threshWithIndex = thresh.values.zipWithIndex
-  val shiftWithIndex  = kernel.dtype.shift.zipWithIndex
-  io.thresh    := MuxLookup(kernelNum,
-                            0.S.asTypeOf(genThresh),
-                            threshWithIndex.map(x => (x._2.toInt.U -> x._1.toInt.S.asTypeOf(genThresh))))
-  io.shift     := MuxLookup(kernelNum,
-                            0.U,
-                            shiftWithIndex.map(x => (x._2.toInt.U -> x._1.abs.U)))
-  io.shiftLeft := MuxLookup(kernelNum,
-                            true.B,
-                            shiftWithIndex.map(x => (x._2.toInt.U -> (x._1 == x._1.abs).B)))
+  val shiftWithIndex = kernel.dtype.shift.zipWithIndex
+  io.thresh := MuxLookup(
+    kernelNum,
+    0.S.asTypeOf(genThresh),
+    threshWithIndex.map(x => (x._2.toInt.U -> x._1.toInt.S.asTypeOf(genThresh)))
+  )
+  io.shift := MuxLookup(kernelNum, 0.U, shiftWithIndex.map(x => (x._2.toInt.U -> x._1.abs.U)))
+  io.shiftLeft := MuxLookup(kernelNum, true.B, shiftWithIndex.map(x => (x._2.toInt.U -> (x._1 == x._1.abs).B)))
 }

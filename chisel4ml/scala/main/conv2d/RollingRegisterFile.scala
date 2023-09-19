@@ -32,13 +32,13 @@ class RollingRegisterFile(kernelSize: Int, kernelDepth: Int, paramSize: Int) ext
   val rowAddrWidth:        Int = log2Up(kernelSize)
 
   val io = IO(new Bundle {
-    val shiftRegs    = Input(Bool())
+    val shiftRegs = Input(Bool())
     val rowWriteMode = Input(Bool())
-    val rowAddr      = Input(UInt(rowAddrWidth.W))
-    val chAddr       = Input(UInt(chAddrWidth.W))
-    val inData       = Input(UInt(wrDataWidth.W))
-    val inValid      = Input(Bool())
-    val outData      = Output(UInt(outDataSize.W))
+    val rowAddr = Input(UInt(rowAddrWidth.W))
+    val chAddr = Input(UInt(chAddrWidth.W))
+    val inData = Input(UInt(wrDataWidth.W))
+    val inValid = Input(Bool())
+    val outData = Output(UInt(outDataSize.W))
   })
 
   val regs = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(paramSize.W)))
@@ -56,9 +56,11 @@ class RollingRegisterFile(kernelSize: Int, kernelDepth: Int, paramSize: Int) ext
   }
 
   when(io.shiftRegs === true.B) {
-    for {i <- 0 until kernelDepth
-         k <- 0 until kernelSize - 1
-         j <- 0 until kernelSize} {
+    for {
+      i <- 0 until kernelDepth
+      k <- 0 until kernelSize - 1
+      j <- 0 until kernelSize
+    } {
       regs(i)(j)(k) := regs(i)(j)(k + 1)
     }
   }

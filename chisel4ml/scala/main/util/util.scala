@@ -29,11 +29,11 @@ import org.nd4j.linalg.factory.Nd4j
 package object util {
   val logger = LoggerFactory.getLogger("chisel4ml.util.")
 
-  def log2(x: Int): Int   = (log(x.toFloat) / log(2.0)).toInt
+  def log2(x: Int):   Int = (log(x.toFloat) / log(2.0)).toInt
   def log2(x: Float): Float = (log(x) / log(2.0)).toFloat
 
   def ndArrayToBinaryString(arr: INDArray, bits: Int): String = {
-    val flatArr      = Nd4j.toFlattened(arr)
+    val flatArr = Nd4j.toFlattened(arr)
     var binaryString = ""
     for (i <- 0 until arr.length) {
       binaryString = toBinary(flatArr.getDouble(i).toInt, bits) + binaryString
@@ -41,27 +41,27 @@ package object util {
     "b" + binaryString
   }
 
-  def toBinary(i: Int, digits: Int = 8): String = String.format(s"%${digits}s",
-                                                         i.toBinaryString.takeRight(digits)).replace(' ', '0')
+  def toBinary(i: Int, digits: Int = 8): String =
+    String.format(s"%${digits}s", i.toBinaryString.takeRight(digits)).replace(' ', '0')
   def toBinaryB(i: BigInt, digits: Int = 8): String = String.format("%" + digits + "s", i.toString(2)).replace(' ', '0')
 
   def signedCorrect(x: Float, dtype: Datatype): Float = {
-        if (dtype.signed && x > (pow(2,dtype.bitwidth-1) - 1))
-            x - pow(2, dtype.bitwidth).toFloat
-        else
-            x
-    }
+    if (dtype.signed && x > (pow(2, dtype.bitwidth - 1) - 1))
+      x - pow(2, dtype.bitwidth).toFloat
+    else
+      x
+  }
 
-  def signFn(act: UInt, thresh: UInt):    Bool = act >= thresh
-  def signFn(act: SInt, thresh: SInt):    Bool = act >= thresh
-  def reluFn(act: SInt, thresh: SInt):    UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
-  def reluFnS(act: SInt, thresh: SInt):   SInt = Mux((act - thresh) > 0.S, (act - thresh), 0.S)
-  def linFn(act: SInt, thresh: SInt):     SInt = act - thresh
+  def signFn(act:   UInt, thresh:   UInt): Bool = act >= thresh
+  def signFn(act:   SInt, thresh:   SInt): Bool = act >= thresh
+  def reluFn(act:   SInt, thresh:   SInt): UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
+  def reluFnS(act:  SInt, thresh:   SInt): SInt = Mux((act - thresh) > 0.S, (act - thresh), 0.S)
+  def linFn(act:    SInt, thresh:   SInt): SInt = act - thresh
   def noSaturate(x: Bool, bitwidth: Int): Bool = x
   def noSaturate(x: SInt, bitwidth: Int): SInt = Mux(
     x > (pow(2, bitwidth - 1) - 1).toInt.S,
     (pow(2, bitwidth - 1) - 1).toInt.S,
-    Mux(x < -pow(2, bitwidth - 1).toInt.S, -pow(2, bitwidth - 1).toInt.S, x),
+    Mux(x < -pow(2, bitwidth - 1).toInt.S, -pow(2, bitwidth - 1).toInt.S, x)
   )
 
   def saturate(x: UInt, bitwidth: Int): UInt =

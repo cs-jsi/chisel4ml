@@ -79,12 +79,12 @@ class RollingRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
   val rand = new scala.util.Random(seed = 42)
   Nd4j.getRandom().setSeed(42)
   for (testCaseId <- 0 until 10) { // Set this number to a bigger one for more exhaustive tests
-    val randKernSize          = rand.between(2, 7 + 1) // rand.between(inclusive, exclusive)
-    val randKernDepth         = rand.between(1, 16 + 1)
+    val randKernSize = rand.between(2, 7 + 1) // rand.between(inclusive, exclusive)
+    val randKernDepth = rand.between(1, 16 + 1)
     val randKernParamBitwidth = rand.between(1, 8 + 1)
-    val randImageSize         = rand.between(randKernSize + 1, randKernSize + 7)
-    val randImageNormal       = Nd4j.rand(Array(randKernDepth, randImageSize, randImageSize))
-    val randImage             = Transforms.round(randImageNormal.mul(scala.math.pow(2, randKernParamBitwidth) - 1))
+    val randImageSize = rand.between(randKernSize + 1, randKernSize + 7)
+    val randImageNormal = Nd4j.rand(Array(randKernDepth, randImageSize, randImageSize))
+    val randImage = Transforms.round(randImageNormal.mul(scala.math.pow(2, randKernParamBitwidth) - 1))
     it should s"""work with random params: kernelSize: $randKernSize, kernelDepth: $randKernDepth, kernelBitwidth:
                  |$randKernParamBitwidth, imageSize: $randImageSize.""".stripMargin.replaceAll("\n", "") in {
       test(new RollingRegisterFile(randKernSize, randKernDepth, randKernParamBitwidth)) { dut =>
@@ -92,9 +92,9 @@ class RollingRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
         for (i <- 0 until randImageSize - randKernSize + 1) {
           for (j <- 0 until randImageSize - randKernSize + 1) {
             var window = randImage.get(
-              NDArrayIndex.all(),                         // kernel
+              NDArrayIndex.all(), // kernel
               NDArrayIndex.interval(i, i + randKernSize), // row
-              NDArrayIndex.interval(j, j + randKernSize), // col
+              NDArrayIndex.interval(j, j + randKernSize) // col
             )
             if (j == 0) {
               fillWindow(window)
@@ -115,7 +115,7 @@ class RollingRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
           for (i <- 0 until added.shape()(0)) { // kernelDepth
             dut.io.chAddr.poke(i.U)
             logger.debug(
-              s"row: ${added.getRow(i)} -> ${ndArrayToBinaryString(added.getRow(i), randKernParamBitwidth)}",
+              s"row: ${added.getRow(i)} -> ${ndArrayToBinaryString(added.getRow(i), randKernParamBitwidth)}"
             )
             dut.io.inData.poke(ndArrayToBinaryString(added.getRow(i), randKernParamBitwidth).U)
             dut.clock.step()
@@ -137,14 +137,14 @@ class RollingRegisterFileTests extends AnyFlatSpec with ChiselScalatestTester {
               dut.io.inData.poke(
                 ndArrayToBinaryString(
                   window.get(NDArrayIndex.point(i), NDArrayIndex.point(j)),
-                  randKernParamBitwidth,
-                ).U,
+                  randKernParamBitwidth
+                ).U
               )
               dut.clock.step()
             }
           }
         }
       } // end test
-    }   // end it should "work..."
-  }     // end test cases for loop
+    } // end it should "work..."
+  } // end test cases for loop
 }

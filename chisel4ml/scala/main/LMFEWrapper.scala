@@ -29,39 +29,39 @@ import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
 class LMFEWrapper(layer: LMFEConfig, options: LayerOptions) extends Module with LBIRStream {
-    val logger = LoggerFactory.getLogger("LMFEWrapper")
-    // TODO: remove this
-    val fftParams = FFTParams.fixed(
-    	dataWidth = 24,
-    	binPoint = 12,
-        trimEnable = false,
-    	numPoints = layer.fftSize,
-    	decimType = DITDecimType,
-    	trimType = RoundHalfToEven,
-        twiddleWidth = 16,
-    	useBitReverse = true,
-    	windowFunc = WindowFunctionTypes.None(), // We do windowing in this module, because of issues with this
-    	overflowReg = true,
-    	numAddPipes = 1,
-    	numMulPipes = 1,
-    	sdfRadix = "2",
-    	runTime = false,
-    	expandLogic =  Array.fill(log2Up(layer.fftSize))(1),
-    	keepMSBorLSB = Array.fill(log2Up(layer.fftSize))(true),
-  	)
+  val logger = LoggerFactory.getLogger("LMFEWrapper")
+  // TODO: remove this
+  val fftParams = FFTParams.fixed(
+    dataWidth = 24,
+    binPoint = 12,
+    trimEnable = false,
+    numPoints = layer.fftSize,
+    decimType = DITDecimType,
+    trimType = RoundHalfToEven,
+    twiddleWidth = 16,
+    useBitReverse = true,
+    windowFunc = WindowFunctionTypes.None(), // We do windowing in this module, because of issues with this
+    overflowReg = true,
+    numAddPipes = 1,
+    numMulPipes = 1,
+    sdfRadix = "2",
+    runTime = false,
+    expandLogic = Array.fill(log2Up(layer.fftSize))(1),
+    keepMSBorLSB = Array.fill(log2Up(layer.fftSize))(true)
+  )
 
-	val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
-    val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
-    val melEngine = Module(new MelEngine(fftParams, 20, 32))
+  val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
+  val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
+  val melEngine = Module(new MelEngine(fftParams, 20, 32))
 
-    inStream.ready := melEngine.io.fftIn.ready
-    melEngine.io.fftIn.valid := inStream.valid
-    melEngine.io.fftIn.bits.real := inStream.bits.asTypeOf(melEngine.io.fftIn.bits.real)
-	melEngine.io.fftIn.bits.imag := 0.U.asTypeOf(melEngine.io.fftIn.bits.imag)
-    melEngine.io.lastFft := inStream.last
+  inStream.ready := melEngine.io.fftIn.ready
+  melEngine.io.fftIn.valid := inStream.valid
+  melEngine.io.fftIn.bits.real := inStream.bits.asTypeOf(melEngine.io.fftIn.bits.real)
+  melEngine.io.fftIn.bits.imag := 0.U.asTypeOf(melEngine.io.fftIn.bits.imag)
+  melEngine.io.lastFft := inStream.last
 
-    outStream.valid := melEngine.io.outStream.valid
-	melEngine.io.outStream.ready := outStream.ready
-	outStream.bits := melEngine.io.outStream.bits.asUInt
-	outStream.last := melEngine.io.outStream.last
+  outStream.valid := melEngine.io.outStream.valid
+  melEngine.io.outStream.ready := outStream.ready
+  outStream.bits := melEngine.io.outStream.bits.asUInt
+  outStream.last := melEngine.io.outStream.last
 }

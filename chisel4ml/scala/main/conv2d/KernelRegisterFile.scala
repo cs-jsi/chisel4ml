@@ -28,12 +28,12 @@ import chisel4ml.implicits._
   */
 class KernelRegisterFile(kernel: lbir.QTensor) extends Module {
   val io = IO(new Bundle {
-    val chAddr     = Input(UInt(log2Up(kernel.numChannels).W))
-    val rowAddr    = Input(UInt(log2Up(kernel.width).W))
-    val colAddr    = Input(UInt(log2Up(kernel.height).W))
-    val inData     = Input(UInt(kernel.dtype.bitwidth.W))
-    val inValid    = Input(Bool())
-    val outData    = Output(UInt((kernel.numKernelParams * kernel.dtype.bitwidth).W))
+    val chAddr = Input(UInt(log2Up(kernel.numChannels).W))
+    val rowAddr = Input(UInt(log2Up(kernel.width).W))
+    val colAddr = Input(UInt(log2Up(kernel.height).W))
+    val inData = Input(UInt(kernel.dtype.bitwidth.W))
+    val inValid = Input(Bool())
+    val outData = Output(UInt((kernel.numKernelParams * kernel.dtype.bitwidth).W))
   })
 
   val regs = RegInit(VecInit.fill(kernel.numChannels, kernel.width, kernel.height)(0.U(kernel.dtype.bitwidth.W)))

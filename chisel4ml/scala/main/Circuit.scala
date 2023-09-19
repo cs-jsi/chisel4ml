@@ -27,7 +27,7 @@ import _root_.chisel4ml.util._
 import _root_.chisel4ml.implicits._
 import _root_.chisel4ml._
 import _root_.chisel4ml.ProcessingPipelineSimple
-import _root_.lbir.{QTensor, Model}
+import _root_.lbir.{Model, QTensor}
 import _root_.services.GenerateCircuitParams.Options
 
 import _root_.scala.util.control.Breaks._
@@ -39,67 +39,70 @@ import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 import memories.MemoryGenerator
 
-class Circuit[+T <: Module with LBIRStream](dutGen: => T,
-                                            outputStencil: QTensor,
-                                            directory: Path,
-                                            useVerilator: Boolean,
-                                            genVcd: Boolean)
-extends Runnable {
-    case class ValidQTensor(qtensor: QTensor, valid: Boolean)
-    val logger = LoggerFactory.getLogger(classOf[Circuit[T]])
-    val inQueue = new LinkedBlockingQueue[ValidQTensor]()
-    val outQueue = new LinkedBlockingQueue[QTensor]()
-    val isGenerated = new CountDownLatch(1)
-    val isStoped = new CountDownLatch(1)
-    val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString
+class Circuit[+T <: Module with LBIRStream](
+  dutGen:        => T,
+  outputStencil: QTensor,
+  directory:     Path,
+  useVerilator:  Boolean,
+  genVcd:        Boolean)
+    extends Runnable {
+  case class ValidQTensor(qtensor: QTensor, valid: Boolean)
+  val logger = LoggerFactory.getLogger(classOf[Circuit[T]])
+  val inQueue = new LinkedBlockingQueue[ValidQTensor]()
+  val outQueue = new LinkedBlockingQueue[QTensor]()
+  val isGenerated = new CountDownLatch(1)
+  val isStoped = new CountDownLatch(1)
+  val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString
 
-    var annot: AnnotationSeq = Seq(TargetDirAnnotation(relDir)) // TODO - work with .pb instead of .lo.fir
-    if (genVcd) annot = annot :+ WriteFstAnnotation
-    if (useVerilator) annot = annot :+ VerilatorBackendAnnotation
+  var annot: AnnotationSeq = Seq(TargetDirAnnotation(relDir)) // TODO - work with .pb instead of .lo.fir
+  if (genVcd) annot = annot :+ WriteFstAnnotation
+  if (useVerilator) annot = annot :+ VerilatorBackendAnnotation
 
-    def stopSimulation(): Unit = {
-        inQueue.put(ValidQTensor(QTensor(), false))
-        isStoped.await(5, TimeUnit.SECONDS)
+  def stopSimulation(): Unit = {
+    inQueue.put(ValidQTensor(QTensor(), false))
+    isStoped.await(5, TimeUnit.SECONDS)
+  }
+
+  def run(): Unit = {
+    logger.info(s"Used annotations for generated circuit are: ${annot.map(_.toString)}.")
+    MemoryGenerator.setGenDir(directory)
+    RawTester.test(dutGen, annot)(this.simulate(_))
+    isStoped.countDown()
+  }
+
+  private[this] def simulate(dut: T): Unit = {
+    isGenerated.countDown()
+    logger.info(s"Generated circuit in directory: ${directory}.")
+    dut.inStream.initSource()
+    dut.outStream.initSink()
+    dut.clock.setTimeout(0)
+    breakable {
+      while (true) {
+        // inQueue.take() blocks execution until data is available
+        val validQTensor = inQueue.take()
+        if (validQTensor.valid == false) break()
+        logger.info(
+          s"Simulating a sequential circuit on a new input. Input shape: ${validQTensor.qtensor.shape}" +
+            s", input dtype: ${validQTensor.qtensor.dtype}, output stencil: $outputStencil."
+        )
+        var outSeq: Seq[BigInt] = Seq()
+        fork {
+          dut.inStream.enqueueQTensor(validQTensor.qtensor, dut.clock)
+        }.fork {
+          outQueue.put(dut.outStream.dequeueQTensor(outputStencil, dut.clock))
+        }.join()
+      }
     }
+  }
 
-    def run() : Unit = {
-        logger.info(s"Used annotations for generated circuit are: ${annot.map(_.toString)}.")
-        MemoryGenerator.setGenDir(directory)
-        RawTester.test(dutGen, annot)(this.simulate(_))
-        isStoped.countDown()
+  def sim(x: Seq[QTensor]): Seq[QTensor] = {
+    var result: Seq[QTensor] = Seq()
+    for (qtensor <- x) {
+      inQueue.put(ValidQTensor(qtensor, true))
     }
-
-    private[this] def simulate(dut: T): Unit = {
-        isGenerated.countDown()
-        logger.info(s"Generated circuit in directory: ${directory}.")
-        dut.inStream.initSource()
-        dut.outStream.initSink()
-        dut.clock.setTimeout(0)
-        breakable {
-        while(true) {
-            // inQueue.take() blocks execution until data is available
-            val validQTensor = inQueue.take()
-            if (validQTensor.valid == false) break()
-            logger.info(s"Simulating a sequential circuit on a new input. Input shape: ${validQTensor.qtensor.shape}" +
-                        s", input dtype: ${validQTensor.qtensor.dtype}, output stencil: $outputStencil.")
-            var outSeq: Seq[BigInt] = Seq()
-            fork {
-                dut.inStream.enqueueQTensor(validQTensor.qtensor, dut.clock)
-            }.fork {
-                outQueue.put(dut.outStream.dequeueQTensor(outputStencil, dut.clock))
-            }.join()
-         }
-        }
+    for (_ <- x) {
+      result = result :+ outQueue.take() // .take() is a blocking call
     }
-
-    def sim(x: Seq[QTensor]): Seq[QTensor] = {
-        var result: Seq[QTensor] = Seq()
-        for (qtensor <- x) {
-            inQueue.put(ValidQTensor(qtensor, true))
-        }
-        for (_ <- x) {
-            result = result :+ outQueue.take() // .take() is a blocking call
-        }
-        result
-    }
+    result
+  }
 }

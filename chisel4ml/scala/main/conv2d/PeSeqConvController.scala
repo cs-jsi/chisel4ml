@@ -22,112 +22,113 @@ import chisel4ml.implicits._
 import chisel4ml.MemWordSize
 
 /** PeSeqConvController
-  *
   */
 class PeSeqConvController(layer: Conv2DConfig) extends Module {
   val io = IO(new Bundle {
     // SWU interface
-    val swuEnd        = Input(Bool())
-    val swuStart      = Output(Bool())
+    val swuEnd = Input(Bool())
+    val swuStart = Output(Bool())
 
     // interface to the Kernel RF/loader
-    val krfReady      = Input(Bool())
-    val krfKernelNum  = Output(UInt(log2Up(layer.kernel.numKernels).W))
+    val krfReady = Input(Bool())
+    val krfKernelNum = Output(UInt(log2Up(layer.kernel.numKernels).W))
     val krfLoadKernel = Output(Bool())
 
-    val rmbStart      = Output(Bool())
+    val rmbStart = Output(Bool())
 
     // input stream
     val inStreamReady = Output(Bool())
     val inStreamValid = Input(Bool())
-    val inStreamLast  = Input(Bool())
-    val actMemAddr    = Output(UInt(log2Up(layer.input.memDepth).W))
+    val inStreamLast = Input(Bool())
+    val actMemAddr = Output(UInt(log2Up(layer.input.memDepth).W))
 
     // output stream
     val outStreamReady = Input(Bool())
     val outStreamValid = Output(Bool())
-    val outStreamLast  = Output(Bool())
-    val resMemAddr     = Output(UInt(log2Up(layer.output.memDepth).W))
-    val resMemEna      = Output(Bool())
+    val outStreamLast = Output(Bool())
+    val resMemAddr = Output(UInt(log2Up(layer.output.memDepth).W))
+    val resMemEna = Output(Bool())
   })
 
   object ctrlState extends ChiselEnum {
     val sWAITFORDATA = Value(0.U)
-    val sLOADINPACT  = Value(1.U)
-    val sLOADKERNEL  = Value(2.U)
-    val sCOMP        = Value(3.U)
-    val sWAITWRITE   = Value(4.U)
-    val sWAITWRITE2  = Value(5.U)
-    val sSENDDATA    = Value(6.U)
+    val sLOADINPACT = Value(1.U)
+    val sLOADKERNEL = Value(2.U)
+    val sCOMP = Value(3.U)
+    val sWAITWRITE = Value(4.U)
+    val sWAITWRITE2 = Value(5.U)
+    val sSENDDATA = Value(6.U)
   }
 
   val kernelCnt = RegInit(0.U(log2Up(layer.kernel.numKernels + 1).W))
   val actMemCnt = RegInit(0.U(log2Up(layer.input.numTransactions(MemWordSize.bits) + 1).W))
   val resMemCnt = RegInit(0.U(log2Up(layer.output.memDepth + 1).W))
 
-  val state  = RegInit(ctrlState.sWAITFORDATA)
+  val state = RegInit(ctrlState.sWAITFORDATA)
   val nstate = WireInit(ctrlState.sCOMP)
 
-
   nstate := state
-  when (state === ctrlState.sWAITFORDATA && io.inStreamValid) {
+  when(state === ctrlState.sWAITFORDATA && io.inStreamValid) {
     nstate := ctrlState.sLOADINPACT
   }.elsewhen(state === ctrlState.sLOADINPACT && actMemCnt === layer.input.numTransactions(MemWordSize.bits).U) {
     nstate := ctrlState.sLOADKERNEL
-  }.elsewhen (state === ctrlState.sLOADKERNEL && io.krfReady) {
+  }.elsewhen(state === ctrlState.sLOADKERNEL && io.krfReady) {
     nstate := ctrlState.sCOMP
-  }.elsewhen (state === ctrlState.sCOMP && io.swuEnd) {
-    when (kernelCnt === layer.kernel.numKernels.U) {
+  }.elsewhen(state === ctrlState.sCOMP && io.swuEnd) {
+    when(kernelCnt === layer.kernel.numKernels.U) {
       nstate := ctrlState.sWAITWRITE
     }.otherwise {
       nstate := ctrlState.sLOADKERNEL
     }
-  }.elsewhen (state === ctrlState.sWAITWRITE) { // we wait two cycle for results to be written to resMem
+  }.elsewhen(state === ctrlState.sWAITWRITE) { // we wait two cycle for results to be written to resMem
     nstate := ctrlState.sWAITWRITE2
-  }.elsewhen (state === ctrlState.sWAITWRITE2) {
+  }.elsewhen(state === ctrlState.sWAITWRITE2) {
     nstate := ctrlState.sSENDDATA
-  }.elsewhen (state === ctrlState.sSENDDATA && resMemCnt === layer.output.memDepth.U) {
+  }.elsewhen(state === ctrlState.sSENDDATA && resMemCnt === layer.output.memDepth.U) {
     nstate := ctrlState.sWAITFORDATA
   }
   state := nstate
 
-
-  when (state === ctrlState.sWAITFORDATA) {
+  when(state === ctrlState.sWAITFORDATA) {
     kernelCnt := 0.U
-  }.elsewhen (io.krfReady) {
+  }.elsewhen(io.krfReady) {
     kernelCnt := kernelCnt + 1.U
   }
 
   actMemCnt := actMemCnt
-  when (state === ctrlState.sWAITWRITE) {
+  when(state === ctrlState.sWAITWRITE) {
     actMemCnt := 0.U
-  }.elsewhen (io.inStreamReady && io.inStreamValid) {
+  }.elsewhen(io.inStreamReady && io.inStreamValid) {
     actMemCnt := actMemCnt + 1.U
   }
 
   resMemCnt := resMemCnt
-  when (state === ctrlState.sLOADINPACT) {
+  when(state === ctrlState.sLOADINPACT) {
     resMemCnt := 0.U
-  }.elsewhen ((state === ctrlState.sSENDDATA ||
-              nstate === ctrlState.sSENDDATA) && io.outStreamReady && io.outStreamValid) {
+  }.elsewhen(
+    (state === ctrlState.sSENDDATA ||
+      nstate === ctrlState.sSENDDATA) && io.outStreamReady && io.outStreamValid
+  ) {
     resMemCnt := resMemCnt + 1.U
   }
 
   io.swuStart := (((state === ctrlState.sLOADKERNEL) && io.krfReady) ||
-                   (state === ctrlState.sCOMP) && RegNext(RegNext(io.swuEnd)))
+    (state === ctrlState.sCOMP) && RegNext(RegNext(io.swuEnd)))
 
-  io.krfKernelNum  := kernelCnt
-  io.krfLoadKernel := RegNext((RegNext(io.swuEnd) ||
-                              ((state === ctrlState.sLOADKERNEL) &&
-                               RegNext(state === ctrlState.sLOADINPACT))))
+  io.krfKernelNum := kernelCnt
+  io.krfLoadKernel := RegNext(
+    (RegNext(io.swuEnd) ||
+      ((state === ctrlState.sLOADKERNEL) &&
+        RegNext(state === ctrlState.sLOADINPACT)))
+  )
 
   io.inStreamReady := state === ctrlState.sLOADINPACT || state === ctrlState.sWAITFORDATA
-  io.actMemAddr    := actMemCnt
+  io.actMemAddr := actMemCnt
 
   io.outStreamValid := (state === ctrlState.sSENDDATA)
-  io.outStreamLast  := ((resMemCnt === layer.output.memDepth.U) && (state === ctrlState.sSENDDATA))
-  io.resMemAddr     := resMemCnt
-  io.resMemEna      := (state === ctrlState.sSENDDATA)
+  io.outStreamLast := ((resMemCnt === layer.output.memDepth.U) && (state === ctrlState.sSENDDATA))
+  io.resMemAddr := resMemCnt
+  io.resMemEna := (state === ctrlState.sSENDDATA)
 
   io.rmbStart := (state === ctrlState.sWAITFORDATA) && (nstate === ctrlState.sLOADINPACT)
 }

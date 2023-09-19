@@ -19,23 +19,17 @@ import _root_.chisel3._
 import _root_.chisel4ml.lbir._
 import _root_.chisel4ml.util.saturate
 
-
-class DynamicNeuron[I <: Bits with Num[I],
-                    W <: Bits with Num[W],
-                    M <: Bits,
-                    S <: Bits,
-                    A <: Bits,
-                    O <: Bits](
-    genIn:      I,
-    numSynaps:  Int,
-    genWeights: W,
-    genAccu:    S,
-    genThresh:  A,
-    genOut:     O,
-    mul:        (I, W) => M,
-    add:        Vec[M] => S,
-    actFn:      (S, A) => S,
-  ) extends Module {
+class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <: Bits, A <: Bits, O <: Bits](
+  genIn:      I,
+  numSynaps:  Int,
+  genWeights: W,
+  genAccu:    S,
+  genThresh:  A,
+  genOut:     O,
+  mul:        (I, W) => M,
+  add:        Vec[M] => S,
+  actFn:      (S, A) => S)
+    extends Module {
 
   def shiftAndRound(pAct: S, shift: UInt, shiftLeft: Bool, genAccu: S): S = {
     val sout = Wire(genAccu)
@@ -50,13 +44,13 @@ class DynamicNeuron[I <: Bits with Num[I],
   val io = IO(new Bundle {
     val in:        UInt = Input(UInt((numSynaps * genIn.getWidth).W))
     val weights:   UInt = Input(UInt((numSynaps * genWeights.getWidth).W))
-    val thresh:    A    = Input(genThresh)
+    val thresh:    A = Input(genThresh)
     val shift:     UInt = Input(UInt(8.W)) // TODO: bitwidth?
     val shiftLeft: Bool = Input(Bool())
-    val out:       O    = Output(genOut)
+    val out:       O = Output(genOut)
   })
 
-  val inVec     = io.in.asTypeOf(Vec(numSynaps, genIn))
+  val inVec = io.in.asTypeOf(Vec(numSynaps, genIn))
   val inWeights = io.weights.asTypeOf(Vec(numSynaps, genWeights))
 
   val muls = VecInit((inVec.zip(inWeights)).map { case (a, b) => mul(a, b) })

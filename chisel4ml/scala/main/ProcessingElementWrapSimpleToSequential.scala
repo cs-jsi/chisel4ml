@@ -29,45 +29,52 @@ import _root_.scala.math
 import _root_.org.slf4j.Logger
 import _root_.org.slf4j.LoggerFactory
 
-class ProcessingElementWrapSimpleToSequential(layer: DenseConfig, options: LayerOptions) extends Module with LBIRStream {
-    val logger = LoggerFactory.getLogger(this.getClass())
+class ProcessingElementWrapSimpleToSequential(layer: DenseConfig, options: LayerOptions)
+    extends Module
+    with LBIRStream {
+  val logger = LoggerFactory.getLogger(this.getClass())
 
-    val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
-    val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
-    val inputBuffer  = RegInit(VecInit(Seq.fill(layer.input.numTransactions(options.busWidthIn))(0.U(options.busWidthIn.W))))
-    val outputBuffer = RegInit(VecInit(Seq.fill(layer.output.numTransactions(options.busWidthOut))(0.U(options.busWidthOut.W))))
+  val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
+  val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
+  val inputBuffer = RegInit(
+    VecInit(Seq.fill(layer.input.numTransactions(options.busWidthIn))(0.U(options.busWidthIn.W)))
+  )
+  val outputBuffer = RegInit(
+    VecInit(Seq.fill(layer.output.numTransactions(options.busWidthOut))(0.U(options.busWidthOut.W)))
+  )
 
-    logger.info(s"""Created new ProcessingElementWrapSimpleToSequential module. Number of input transactions:
-                   |${layer.input.numTransactions(options.busWidthIn)}, number of output transactions is:
-                   |${layer.output.numTransactions(options.busWidthOut)}, busWidthIn: ${options.busWidthIn},
-                   | busWidthOut: ${options.busWidthOut}.""".stripMargin.replaceAll("\n", ""))
+  logger.info(s"""Created new ProcessingElementWrapSimpleToSequential module. Number of input transactions:
+                 |${layer.input.numTransactions(options.busWidthIn)}, number of output transactions is:
+                 |${layer.output.numTransactions(options.busWidthOut)}, busWidthIn: ${options.busWidthIn},
+                 | busWidthOut: ${options.busWidthOut}.""".stripMargin.replaceAll("\n", ""))
 
+  val (inputCntValue, inputCntWrap) = Counter(inStream.fire, layer.input.numTransactions(options.busWidthIn))
+  val (outputCntValue, outputCntWrap) = Counter(outStream.fire, layer.output.numTransactions(options.busWidthOut))
+  val outputBufferFull = RegInit(false.B)
 
-    val (inputCntValue, inputCntWrap) = Counter(inStream.fire, layer.input.numTransactions(options.busWidthIn))
-    val (outputCntValue, outputCntWrap) = Counter(outStream.fire, layer.output.numTransactions(options.busWidthOut))
-    val outputBufferFull = RegInit(false.B)
+  // (combinational) computational module
+  val peSimple = Module(ProcessingElementSimple(layer))
 
-    // (combinational) computational module
-    val peSimple = Module(ProcessingElementSimple(layer))
+  /** *** INPUT DATA INTERFACE ****
+    */
+  inStream.ready := !outputBufferFull
+  when(inStream.fire) {
+    inputBuffer(inputCntValue) := inStream.bits
+  }
 
+  /** *** CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE ****
+    */
+  peSimple.io.in := inputBuffer.asUInt
+  when(RegNext(inStream.last)) {
+    outputBuffer := peSimple.io.out.asTypeOf(outputBuffer)
+    outputBufferFull := true.B
+  }.elsewhen(outStream.last) {
+    outputBufferFull := false.B
+  }
 
-    /***** INPUT DATA INTERFACE *****/
-    inStream.ready := !outputBufferFull
-    when(inStream.fire) {
-        inputBuffer(inputCntValue) := inStream.bits
-    }
-
-    /***** CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE *****/
-    peSimple.io.in := inputBuffer.asUInt
-    when (RegNext(inStream.last)) {
-        outputBuffer :=  peSimple.io.out.asTypeOf(outputBuffer)
-        outputBufferFull := true.B
-    } .elsewhen(outStream.last) {
-        outputBufferFull := false.B
-    }
-
-    /***** OUTPUT DATA INTERFACE *****/
-    outStream.valid := outputBufferFull
-    outStream.bits  := outputBuffer(outputCntValue)
-    outStream.last  := outputCntWrap
+  /** *** OUTPUT DATA INTERFACE ****
+    */
+  outStream.valid := outputBufferFull
+  outStream.bits := outputBuffer(outputCntValue)
+  outStream.last := outputCntWrap
 }

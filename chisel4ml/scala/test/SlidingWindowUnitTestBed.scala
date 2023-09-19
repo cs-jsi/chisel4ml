@@ -28,13 +28,13 @@ import chisel3.util._
   */
 
 class SlidingWindowUnitTestBed(
-    kernelSize:   Int,
-    kernelDepth:  Int,
-    actWidth:     Int,
-    actHeight:    Int,
-    actParamSize: Int,
-    parameters:   QTensor,
-  ) extends Module {
+  kernelSize:   Int,
+  kernelDepth:  Int,
+  actWidth:     Int,
+  actHeight:    Int,
+  actParamSize: Int,
+  parameters:   QTensor)
+    extends Module {
 
   val memWordWidth:     Int = 32
   val actParamsPerWord: Int = memWordWidth / actParamSize
@@ -45,15 +45,15 @@ class SlidingWindowUnitTestBed(
   val outDataSize: Int = kernelSize * kernelSize * kernelDepth * actParamSize
 
   val io = IO(new Bundle {
-    val start         = Input(Bool())
-    val rrfInValid    = Output(Bool())
+    val start = Input(Bool())
+    val rrfInValid = Output(Bool())
     val rrfImageValid = Output(Bool())
-    val rrfInData     = Output(UInt((kernelSize * actParamSize).W))
-    val rrfRowAddr    = Output(UInt(log2Up(kernelSize).W))
-    val rrfChAddr     = Output(UInt(log2Up(kernelDepth).W))
-    val rrfRowWrMode  = Output(Bool())
-    val rrfOutData    = Output(UInt(outDataSize.W))
-    val rrfEnd        = Output(Bool())
+    val rrfInData = Output(UInt((kernelSize * actParamSize).W))
+    val rrfRowAddr = Output(UInt(log2Up(kernelSize).W))
+    val rrfChAddr = Output(UInt(log2Up(kernelDepth).W))
+    val rrfRowWrMode = Output(Bool())
+    val rrfOutData = Output(UInt(outDataSize.W))
+    val rrfEnd = Output(Bool())
   })
 
   val swu = Module(
@@ -62,38 +62,38 @@ class SlidingWindowUnitTestBed(
       kernelDepth = kernelDepth,
       actWidth = actWidth,
       actHeight = actHeight,
-      actParamSize = actParamSize,
-    ),
+      actParamSize = actParamSize
+    )
   )
 
   val rrf = Module(
-    new RollingRegisterFile(kernelSize = kernelSize, kernelDepth = kernelDepth, paramSize = actParamSize),
+    new RollingRegisterFile(kernelSize = kernelSize, kernelDepth = kernelDepth, paramSize = actParamSize)
   )
 
   // For testing purposes we use a prewritten ROM
-  val actMem = Module(MemoryGenerator.SRAMInitFromString(hexStr=parameters.toHexStr, width=memWordWidth))
+  val actMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = parameters.toHexStr, width = memWordWidth))
 
-  rrf.io.shiftRegs    := swu.io.shiftRegs
+  rrf.io.shiftRegs := swu.io.shiftRegs
   rrf.io.rowWriteMode := swu.io.rowWriteMode
-  rrf.io.rowAddr      := swu.io.rowAddr
-  rrf.io.chAddr       := swu.io.chAddr
-  rrf.io.inData       := swu.io.data
-  rrf.io.inValid      := swu.io.valid
-  io.rrfOutData       := rrf.io.outData
+  rrf.io.rowAddr := swu.io.rowAddr
+  rrf.io.chAddr := swu.io.chAddr
+  rrf.io.inData := swu.io.data
+  rrf.io.inValid := swu.io.valid
+  io.rrfOutData := rrf.io.outData
 
-  io.rrfInData        := swu.io.data
-  io.rrfInValid       := swu.io.valid
-  io.rrfImageValid    := swu.io.imageValid
-  io.rrfRowAddr       := swu.io.rowAddr
-  io.rrfChAddr        := swu.io.chAddr
-  io.rrfRowWrMode     := swu.io.rowWriteMode
-  io.rrfEnd           := swu.io.end
+  io.rrfInData := swu.io.data
+  io.rrfInValid := swu.io.valid
+  io.rrfImageValid := swu.io.imageValid
+  io.rrfRowAddr := swu.io.rowAddr
+  io.rrfChAddr := swu.io.chAddr
+  io.rrfRowWrMode := swu.io.rowWriteMode
+  io.rrfEnd := swu.io.end
 
-  actMem.io.rdEna  := swu.io.actRdEna
+  actMem.io.rdEna := swu.io.actRdEna
   actMem.io.rdAddr := swu.io.actRdAddr
   swu.io.actRdData := actMem.io.rdData
   actMem.io.wrAddr := 0.U
-  actMem.io.wrEna  := false.B
+  actMem.io.wrEna := false.B
   actMem.io.wrData := 0.U
 
   swu.io.start := io.start

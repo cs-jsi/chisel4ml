@@ -27,12 +27,12 @@ import chisel3.util._
   */
 
 class KernelRFLoaderTestBed(
-    kernelSize:      Int,
-    kernelDepth:     Int,
-    kernelParamSize: Int,
-    numKernels:      Int,
-    parameters:      QTensor,
-  ) extends Module {
+  kernelSize:      Int,
+  kernelDepth:     Int,
+  kernelParamSize: Int,
+  numKernels:      Int,
+  parameters:      QTensor)
+    extends Module {
 
   val memWordWidth:                Int = 32
   val kernelParamsPerWord:         Int = memWordWidth / kernelParamSize
@@ -43,34 +43,34 @@ class KernelRFLoaderTestBed(
 
   val io = IO(new Bundle {
     val kernelReady = Output(Bool())
-    val loadKernel  = Input(Bool())
-    val kernelNum   = Input(UInt(log2Up(numKernels).W))
+    val loadKernel = Input(Bool())
+    val kernelNum = Input(UInt(log2Up(numKernels).W))
 
-    val krfOutput   = Output(UInt(outDataSize.W))
+    val krfOutput = Output(UInt(outDataSize.W))
   })
 
   val krfLoader = Module(new KernelRFLoader(kernel = parameters))
 
   val krf = Module(new KernelRegisterFile(kernel = parameters))
 
-  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr=parameters.toHexStr, width=memWordWidth))
+  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = parameters.toHexStr, width = memWordWidth))
 
-  krf.io.chAddr   := krfLoader.io.chAddr
-  krf.io.rowAddr  := krfLoader.io.rowAddr
-  krf.io.colAddr  := krfLoader.io.colAddr
-  krf.io.inData   := krfLoader.io.data
-  krf.io.inValid  := krfLoader.io.valid
+  krf.io.chAddr := krfLoader.io.chAddr
+  krf.io.rowAddr := krfLoader.io.rowAddr
+  krf.io.colAddr := krfLoader.io.colAddr
+  krf.io.inData := krfLoader.io.data
+  krf.io.inValid := krfLoader.io.valid
 
-  kernelMem.io.rdEna     := krfLoader.io.romRdEna
-  kernelMem.io.rdAddr    := krfLoader.io.romRdAddr
+  kernelMem.io.rdEna := krfLoader.io.romRdEna
+  kernelMem.io.rdAddr := krfLoader.io.romRdAddr
   krfLoader.io.romRdData := kernelMem.io.rdData
-  kernelMem.io.wrData    := 0.U
-  kernelMem.io.wrEna     := false.B
-  kernelMem.io.wrAddr    := 0.U
+  kernelMem.io.wrData := 0.U
+  kernelMem.io.wrEna := false.B
+  kernelMem.io.wrAddr := 0.U
 
   krfLoader.io.loadKernel := io.loadKernel
-  krfLoader.io.kernelNum  := io.kernelNum
-  io.kernelReady          := krfLoader.io.kernelReady
+  krfLoader.io.kernelNum := io.kernelNum
+  io.kernelReady := krfLoader.io.kernelReady
 
   io.krfOutput := krf.io.outData
 }
