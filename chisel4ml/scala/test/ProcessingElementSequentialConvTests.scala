@@ -254,7 +254,7 @@ class ProcessingElementSequentialConvTests
           options = testOptions0.layers(0),
           mul = (x: UInt, y: SInt) => (x * y),
           add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
-          actFn = reluFnS
+          actFn = reluFn
         )
       ).withAnnotations(Seq(VerilatorBackendAnnotation)) { dut =>
         dut.inStream.initSource()

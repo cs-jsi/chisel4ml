@@ -16,8 +16,9 @@
 package chisel4ml
 
 import _root_.chisel3._
+import _root_.lbir.Activation.BINARY_SIGN
 import _root_.lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
-import _root_.lbir.{AXIStreamLBIRDriver, Datatype, QTensor}
+import _root_.lbir.{AXIStreamLBIRDriver, Datatype, DenseConfig, QTensor}
 import _root_.org.slf4j.LoggerFactory
 import chisel4ml.util._
 import interfaces.amba.axis._
@@ -33,6 +34,22 @@ package object implicits {
     new AXIStreamLBIRDriver(new AXIStreamDriver(x))
   }
 
+  implicit class DenseConfigExtensions(layer: DenseConfig) {
+    def getThresh[T <: Bits]: Seq[T] =
+      (layer.input.dtype.quantization, layer.weights.dtype.quantization, layer.activation) match {
+        case (BINARY, BINARY, BINARY_SIGN) =>
+          layer.thresh.values.map(x => (layer.input.shape(0) + x) / 2).map(_.ceil).map(_.toInt.U).map(_.asInstanceOf[T])
+        case _ => layer.thresh.values.map(_.toInt.S(layer.thresh.dtype.bitwidth.W)).map(_.asInstanceOf[T])
+      }
+    def getWeights[T <: Bits]: Seq[Seq[T]] = layer.weights.dtype.quantization match {
+      case UNIFORM =>
+        layer.weights.values.map(_.toInt.S.asInstanceOf[T]).grouped(layer.weights.shape(0)).toSeq.transpose
+      case BINARY =>
+        layer.weights.values.map(_ > 0).map(_.B.asInstanceOf[T]).grouped(layer.weights.shape(0)).toSeq.transpose
+      case _ => throw new RuntimeException
+    }
+  }
+
   implicit class QTensorExtensions(qt: QTensor) {
     /* LBIR Transactions contain all parameters bit packed, with no parameter being
      * separated into two transactions. Thus, depending on the bitwidth of parameters and
@@ -45,6 +62,7 @@ package object implicits {
      *  xx_00010_00011_00100_00011_00010_00001
      *  xx_xxxxx_xxxxx_xxxxx_xxxxx_xxxxx_00001
      */
+
     def toLBIRTransactions(busWidth: Int): Seq[UInt] = {
       val binaryStr = qt.toBinaryString
       val paramWidth = qt.dtype.bitwidth

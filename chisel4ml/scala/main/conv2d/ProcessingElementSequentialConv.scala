@@ -17,6 +17,7 @@ package chisel4ml.sequential
 
 import _root_.chisel4ml.LBIRStream
 import _root_.chisel4ml.implicits._
+import _root_.chisel4ml.util.reluFn
 import _root_.lbir.Activation._
 import _root_.lbir.Conv2DConfig
 import _root_.lbir.Datatype.QuantizationType._
@@ -50,7 +51,7 @@ class ProcessingElementSequentialConv[
   options: LayerOptions,
   mul:     (I, W) => M,
   add:     Vec[M] => S,
-  actFn:   (S, A) => S)
+  actFn:   (S, A) => O)
     extends Module
     with LBIRStream {
   val logger = LoggerFactory.getLogger("ProcessingElementSequentialConv")
@@ -193,7 +194,6 @@ class ProcessingElementSequentialConv[
 }
 
 object ProcessingElementSequentialConv {
-  def reluFn(act:  SInt, thresh:          SInt): SInt = Mux((act - thresh) > 0.S, (act - thresh), 0.S)
   def apply(layer: Conv2DConfig, options: LayerOptions) = (
     layer.input.dtype.quantization,
     layer.input.dtype.signed,
@@ -201,7 +201,7 @@ object ProcessingElementSequentialConv {
     layer.activation
   ) match {
     case (UNIFORM, true, UNIFORM, RELU) =>
-      new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt, SInt](
+      new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt, UInt](
         layer,
         options,
         mul = (x: SInt, y: SInt) => x * y,
@@ -209,12 +209,13 @@ object ProcessingElementSequentialConv {
         actFn = reluFn
       )
     case (UNIFORM, false, UNIFORM, RELU) =>
-      new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, SInt](
+      new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, UInt](
         layer,
         options,
         mul = (x: UInt, y: SInt) => x * y,
         add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
         actFn = reluFn
       )
+    case _ => throw new RuntimeException()
   }
 }

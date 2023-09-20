@@ -17,10 +17,9 @@ package chisel4ml.combinational
 
 import _root_.chisel3._
 import _root_.chisel3.util._
-import _root_.chisel4ml.lbir._
 
 object StaticNeuron {
-  def apply[I <: Bits, W <: Bits: WeightsProvider, M <: Bits, A <: Bits: ThreshProvider, O <: Bits](
+  def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
     in:      Seq[I],
     weights: Seq[W],
     thresh:  A,
@@ -35,7 +34,7 @@ object StaticNeuron {
     actFn(sAct, thresh)
   }
 
-  def shiftAndRound[A <: Bits: ThreshProvider](pAct: A, shift: Int): A = shift.compare(0) match {
+  def shiftAndRound[A <: Bits](pAct: A, shift: Int): A = shift.compare(0) match {
     case 0 => pAct
     case -1 => {
       // Handles the case when the scale factor (shift) basically sets the output to zero always.

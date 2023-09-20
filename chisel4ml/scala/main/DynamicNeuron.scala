@@ -27,7 +27,7 @@ class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <
   genOut:     O,
   mul:        (I, W) => M,
   add:        Vec[M] => S,
-  actFn:      (S, A) => S)
+  actFn:      (S, A) => O)
     extends Module {
 
   def shiftAndRound(pAct: S, shift: UInt, shiftLeft: Bool, genAccu: S): S = {
