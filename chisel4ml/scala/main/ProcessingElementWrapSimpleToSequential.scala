@@ -59,9 +59,9 @@ class ProcessingElementWrapSimpleToSequential(layer: DenseConfig, options: Layer
 
   /** *** CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE ****
     */
-  peSimple.io.in := inputBuffer.asUInt
+  peSimple.in := inputBuffer.asTypeOf(peSimple.in)
   when(RegNext(inStream.last)) {
-    outputBuffer := peSimple.io.out.asTypeOf(outputBuffer)
+    outputBuffer := peSimple.out.asTypeOf(outputBuffer)
     outputBufferFull := true.B
   }.elsewhen(outStream.last) {
     outputBufferFull := false.B

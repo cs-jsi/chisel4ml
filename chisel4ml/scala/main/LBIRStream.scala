@@ -21,3 +21,8 @@ trait LBIRStream {
   val inStream:  AXIStreamIO[UInt]
   val outStream: AXIStreamIO[UInt]
 }
+
+trait LBIRStreamSimple {
+  val in:  Vec[UInt]
+  val out: Vec[UInt]
+}

@@ -21,9 +21,15 @@ import _root_.chisel4ml.implicits._
 import _root_.lbir.{DenseConfig, LayerWrap, Model}
 import _root_.scala.collection.mutable._
 import _root_.services.GenerateCircuitParams.Options
+import _root_.lbir.QTensor
 
-class ProcessingPipelineSimple(model: Model, options: Options) extends Module {
-  def layerGeneratorSimple(layer: LayerWrap): ProcessingElementSimple = {
+class LBIRStreamSimpleIO(input: QTensor, output: QTensor) extends Bundle {
+  val in = Input(Vec(input.width, UInt(input.dtype.bitwidth.W)))
+  val out = Output(Vec(output.width, UInt(output.dtype.bitwidth.W)))
+}
+
+class ProcessingPipelineSimple(model: Model, options: Options) extends Module with LBIRStreamSimple {
+  def layerGeneratorSimple(layer: LayerWrap): Module with LBIRStreamSimple = {
     layer match {
       case l: DenseConfig => Module(ProcessingElementSimple(l))
       case _ => throw new RuntimeException(f"Unsupported layer type")
@@ -31,26 +37,24 @@ class ProcessingPipelineSimple(model: Model, options: Options) extends Module {
   }
 
   // List of processing elements - one PE per layer
-  val peList = new ListBuffer[ProcessingElementSimple]()
+  val peList = new ListBuffer[Module with LBIRStreamSimple]()
 
   // Instantiate modules for seperate layers, for now we only support DENSE layers
   for (layer <- model.layers) {
     peList += layerGeneratorSimple(layer.get)
   }
 
-  val io = IO(new Bundle {
-    val in = Input(UInt(model.layers.head.get.input.totalBitwidth.W))
-    val out = Output(UInt(model.layers.last.get.output.totalBitwidth.W))
-  })
+  val in = IO(Input(Vec(model.layers.head.get.input.width, UInt(model.layers.head.get.input.dtype.bitwidth.W))))
+  val out = IO(Output(Vec(model.layers.last.get.output.width, UInt(model.layers.last.get.output.dtype.bitwidth.W))))
 
   // Connect the inputs and outputs of the layers
-  peList(0).io.in := io.in
+  peList(0).in := in
   for (i <- 1 until model.layers.length) {
     if (options.pipelineCircuit) {
-      peList(i).io.in := RegNext(peList(i - 1).io.out)
+      peList(i).in := RegNext(peList(i - 1).out)
     } else {
-      peList(i).io.in := peList(i - 1).io.out
+      peList(i).in := peList(i - 1).out
     }
   }
-  io.out := peList.last.io.out
+  out := peList.last.out
 }
