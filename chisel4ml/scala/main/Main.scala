@@ -112,7 +112,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
         outputStencil = params.model.get.layers.last.get.output,
         directory = Paths.get(tempDir, s"circuit$circuitId"),
         useVerilator = params.useVerilator,
-        genVcd = params.genVcd
+        genWaveform = params.genWaveform
       )
       logger.info(s"""Started generating hardware for circuit id:$circuitId in temporary directory $tempDir
                      | with a timeout of ${params.generationTimeoutSec} seconds.""".stripMargin.replaceAll("\n", ""))

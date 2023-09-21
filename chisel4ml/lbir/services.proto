@@ -39,7 +39,7 @@ message GenerateCircuitParams {
     lbir.Model model = 1;
     Options options = 2;
     bool use_verilator = 3;
-    bool gen_vcd = 4;
+    bool gen_waveform = 4;
     uint32 generation_timeout_sec = 5;
 }
 

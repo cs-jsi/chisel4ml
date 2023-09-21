@@ -34,7 +34,7 @@ class Circuit[+T <: Module with LBIRStream](
   outputStencil: QTensor,
   directory:     Path,
   useVerilator:  Boolean,
-  genVcd:        Boolean)
+  genWaveform:   Boolean)
     extends Runnable {
   case class ValidQTensor(qtensor: QTensor, valid: Boolean)
   val logger = LoggerFactory.getLogger(classOf[Circuit[T]])
@@ -45,7 +45,7 @@ class Circuit[+T <: Module with LBIRStream](
   val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString
 
   var annot: AnnotationSeq = Seq(TargetDirAnnotation(relDir)) // TODO - work with .pb instead of .lo.fir
-  if (genVcd) annot = annot :+ WriteFstAnnotation
+  if (genWaveform) annot = annot :+ WriteFstAnnotation
   if (useVerilator) annot = annot :+ VerilatorBackendAnnotation
 
   def stopSimulation(): Unit = {
