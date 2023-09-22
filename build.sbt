@@ -31,17 +31,13 @@ val dependencies = Seq(
   "edu.berkeley.cs" %% "chisel3" % chiselVersion,
   "edu.berkeley.cs" %% "chiseltest" % "0.5.6",
   "edu.berkeley.cs" %% "dsptools" % "1.5.6",
-  "org.scalanlp" %% "breeze" % "1.0",
   "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf",
   "io.grpc" % "grpc-netty" % scalapb.compiler.Version.grpcJavaVersion,
   "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
   "org.slf4j" % "slf4j-api" % slf4jVersion,
   "org.slf4j" % "slf4j-simple" % slf4jVersion,
   "org.scalatest" %% "scalatest" % scalatestVersion,
-  "org.scalatest" %% "scalatest" % scalatestVersion % "test",
-  "com.lihaoyi" %% "os-lib" % "0.9.1",
-  "org.nd4j" % "nd4j-native" % "0.5.0",
-  "org.nd4j" % "nd4j-native" % "0.5.0"
+  "org.scalatest" %% "scalatest" % scalatestVersion % "test"
 )
 
 val scalaOptions = Seq(
@@ -72,6 +68,7 @@ lazy val root = (project in file("."))
   .dependsOn(afe, interfaces, memories)
   .settings(
     commonSettings,
+    assembly / mainClass := Some("chisel4ml.Chisel4mlServer"),
     name := "chisel4ml",
     Compile / doc / scalacOptions := Seq("-groups", "-implicits")
   )

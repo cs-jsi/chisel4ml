@@ -223,18 +223,26 @@ package object implicits {
   }
 
   implicit class SeqIntHelperExtensions(x: Seq[Int]) {
-    def BQ: QTensor = {
+    def BQ(shape: Seq[Int] = Seq()): QTensor = {
       QTensor(
         dtype = Datatype(quantization = BINARY, bitwidth = 1, signed = true, shift = Seq(0), offset = Seq(0)),
-        shape = Seq(x.length), // TODO: add multu-dim support
+        shape = if (shape.isEmpty) Seq(x.length) else shape,
         values = x.map(_.toFloat)
       )
     }
 
-    def UQ(bw: Int): QTensor = {
+    def UQ(bw: Int, shape: Seq[Int] = Seq()): QTensor = {
       QTensor(
         dtype = Datatype(quantization = UNIFORM, bitwidth = bw, signed = false, shift = Seq(0), offset = Seq(0)),
-        shape = Seq(x.length),
+        shape = if (shape.isEmpty) Seq(x.length) else shape,
+        values = x.map(_.toFloat)
+      )
+    }
+
+    def SQ(bw: Int, shape: Seq[Int] = Seq()): QTensor = {
+      QTensor(
+        dtype = Datatype(quantization = UNIFORM, bitwidth = bw, signed = true, shift = Seq(0), offset = Seq(0)),
+        shape = if (shape.isEmpty) Seq(x.length) else shape,
         values = x.map(_.toFloat)
       )
     }

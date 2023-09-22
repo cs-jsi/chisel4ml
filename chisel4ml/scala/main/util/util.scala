@@ -19,23 +19,12 @@ import _root_.lbir._
 import _root_.org.slf4j.LoggerFactory
 import _root_.scala.math.{log, pow}
 import chisel3._
-import org.nd4j.linalg.api.ndarray.INDArray
-import org.nd4j.linalg.factory.Nd4j
 
 package object util {
   val logger = LoggerFactory.getLogger("chisel4ml.util.")
 
   def log2(x: Int):   Int = (log(x.toFloat) / log(2.0)).toInt
   def log2(x: Float): Float = (log(x) / log(2.0)).toFloat
-
-  def ndArrayToBinaryString(arr: INDArray, bits: Int): String = {
-    val flatArr = Nd4j.toFlattened(arr)
-    var binaryString = ""
-    for (i <- 0 until arr.length) {
-      binaryString = toBinary(flatArr.getDouble(i).toInt, bits) + binaryString
-    }
-    "b" + binaryString
-  }
 
   def toBinary(i: Int, digits: Int = 8): String =
     String.format(s"%${digits}s", i.toBinaryString.takeRight(digits)).replace(' ', '0')

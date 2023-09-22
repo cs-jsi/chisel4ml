@@ -13,8 +13,8 @@ class LbirChiselConversionTests extends AnyFunSuite {
 
   // TEST QTensor -> UInt WITH TEST VECTORS
   val testVectors = List(
-    Seq(-1, -1, -1, 1).BQ -> "b1000".U.litValue,
-    Seq(1, 1, 1, -1).BQ -> "b0111".U.litValue,
+    Seq(-1, -1, -1, 1).BQ() -> "b1000".U.litValue,
+    Seq(1, 1, 1, -1).BQ() -> "b0111".U.litValue,
     Seq(4, 3, 2, 1).UQ(bw = 4) -> "b0001_0010_0011_0100".U.litValue
   )
 
