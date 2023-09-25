@@ -15,11 +15,11 @@
  */
 package chisel4ml
 
-import _root_.chisel4ml.LBIRStream
-import _root_.chisel4ml.implicits._
-import _root_.lbir.DenseConfig
-import _root_.org.slf4j.LoggerFactory
-import _root_.services.LayerOptions
+import chisel4ml.LBIRStream
+import chisel4ml.implicits._
+import lbir.DenseConfig
+import org.slf4j.LoggerFactory
+import services.LayerOptions
 import chisel3._
 import chisel3.util._
 import interfaces.amba.axis._

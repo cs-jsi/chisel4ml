@@ -15,13 +15,13 @@
  */
 package chisel4ml
 
-import _root_.chisel4ml.combinational.StaticNeuron
-import _root_.chisel4ml.implicits._
-import _root_.chisel4ml.util._
-import _root_.lbir.Activation.{BINARY_SIGN, NO_ACTIVATION, RELU}
-import _root_.lbir.Datatype.QuantizationType._
-import _root_.lbir.DenseConfig
-import _root_.org.slf4j.LoggerFactory
+import chisel4ml.combinational.StaticNeuron
+import chisel4ml.implicits._
+import chisel4ml.util._
+import lbir.Activation.{BINARY_SIGN, NO_ACTIVATION, RELU}
+import lbir.Datatype.QuantizationType._
+import lbir.DenseConfig
+import org.slf4j.LoggerFactory
 import chisel3._
 import chisel3.util._
 

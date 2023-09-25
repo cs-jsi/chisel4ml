@@ -15,11 +15,11 @@
  */
 package chisel4ml
 
-import _root_.chisel3._
-import _root_.lbir.Activation.BINARY_SIGN
-import _root_.lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
-import _root_.lbir.{AXIStreamLBIRDriver, Datatype, DenseConfig, QTensor}
-import _root_.org.slf4j.LoggerFactory
+import chisel3._
+import lbir.Activation.BINARY_SIGN
+import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
+import lbir.{AXIStreamLBIRDriver, Datatype, DenseConfig, QTensor}
+import org.slf4j.LoggerFactory
 import chisel4ml.util._
 import interfaces.amba.axis._
 

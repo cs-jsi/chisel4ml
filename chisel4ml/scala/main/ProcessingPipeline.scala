@@ -15,11 +15,11 @@
  */
 package chisel4ml
 
-import _root_.chisel3._
-import _root_.chisel4ml.{LBIRStream, LayerGenerator}
-import _root_.lbir.Model
-import _root_.scala.collection.mutable._
-import _root_.services.GenerateCircuitParams.Options
+import chisel3._
+import chisel4ml.{LBIRStream, LayerGenerator}
+import lbir.Model
+import scala.collection.mutable._
+import services.GenerateCircuitParams.Options
 import interfaces.amba.axis._
 
 class ProcessingPipeline(model: Model, options: Options) extends Module with LBIRStream {

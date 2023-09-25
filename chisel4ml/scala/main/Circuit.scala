@@ -15,18 +15,18 @@
  */
 package chisel4ml
 
-import _root_.chisel3._
-import _root_.chisel4ml._
-import _root_.chisel4ml.implicits._
-import _root_.chiseltest._
-import _root_.chiseltest.simulator.WriteFstAnnotation
-import _root_.firrtl.AnnotationSeq
-import _root_.firrtl.options.TargetDirAnnotation
-import _root_.java.nio.file.{Path, Paths}
-import _root_.java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, TimeUnit}
-import _root_.lbir.QTensor
-import _root_.org.slf4j.LoggerFactory
-import _root_.scala.util.control.Breaks._
+import chisel3._
+import chisel4ml._
+import chisel4ml.implicits._
+import chiseltest._
+import chiseltest.simulator.WriteFstAnnotation
+import firrtl.AnnotationSeq
+import firrtl.options.TargetDirAnnotation
+import java.nio.file.{Path, Paths}
+import java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, TimeUnit}
+import lbir.QTensor
+import org.slf4j.LoggerFactory
+import scala.util.control.Breaks._
 import memories.MemoryGenerator
 
 class Circuit[+T <: Module with LBIRStream](

@@ -15,12 +15,12 @@
  */
 package chisel4ml
 
-import _root_.chisel3._
-import _root_.chisel3.util._
-import _root_.chisel4ml.LBIRStream
-import _root_.lbir.FFTConfig
-import _root_.org.slf4j.LoggerFactory
-import _root_.services.LayerOptions
+import chisel3._
+import chisel3.util._
+import chisel4ml.LBIRStream
+import lbir.FFTConfig
+import org.slf4j.LoggerFactory
+import services.LayerOptions
 import dsptools._
 import fft._
 import interfaces.amba.axis._

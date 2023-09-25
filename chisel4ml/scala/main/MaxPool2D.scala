@@ -15,9 +15,9 @@
  */
 package chisel4ml.sequential
 
-import _root_.lbir.MaxPool2DConfig
-import _root_.org.slf4j.LoggerFactory
-import _root_.services.LayerOptions
+import lbir.MaxPool2DConfig
+import org.slf4j.LoggerFactory
+import services.LayerOptions
 import chisel3._
 import chisel3.util._
 import chisel4ml.LBIRStream

@@ -15,17 +15,17 @@
  */
 package chisel4ml
 
-import _root_.chisel3._
-import _root_.chisel4ml.Circuit
-import _root_.io.grpc.{Server, ServerBuilder}
-import _root_.java.io.{File, IOException, RandomAccessFile}
-import _root_.java.nio.channels.{FileChannel, FileLock}
-import _root_.java.nio.file.{Files, Paths}
-import _root_.java.util.concurrent.TimeUnit
-import _root_.org.slf4j.LoggerFactory
-import _root_.scala.concurrent.{ExecutionContext, Future}
-import _root_.services.GenerateCircuitReturn.ErrorMsg
-import _root_.services._
+import chisel3._
+import chisel4ml.Circuit
+import io.grpc.{Server, ServerBuilder}
+import java.io.{File, RandomAccessFile}
+import java.nio.channels.{FileChannel, FileLock}
+import java.nio.file.{Files, Paths}
+import java.util.concurrent.TimeUnit
+import org.slf4j.LoggerFactory
+import scala.concurrent.{ExecutionContext, Future}
+import services.GenerateCircuitReturn.ErrorMsg
+import services._
 
 /** Contains the main function.
   *
@@ -44,26 +44,22 @@ object Chisel4mlServer {
     val tempDir = args(0)
     val lockFile = Paths.get(tempDir, ".lockfile")
     // We use lockfiles to ensure only one instance of a chisel4ml server is running.
-    try {
-      f = new File(lockFile.toString)
-      if (f.exists()) {
-        f.delete() // We try deleting it, if it exists
-      }
-      fRwChannel = new RandomAccessFile(f, "rw").getChannel()
-      lock = fRwChannel.tryLock()
-      if (lock == null) {
-        // Lock occupied by other instance
-        fRwChannel.close()
-        throw new RuntimeException("Only one instance of chisel4ml server may run at a time.")
-      }
-      // We add a shutdown hook to release the lock on shutdown
-      sys.addShutdownHook { closeFileLockHook() }
-      val server = new Chisel4mlServer(ExecutionContext.global, tempDir = tempDir)
-      server.start()
-      server.blockUntilShutdown()
-    } catch {
-      case e: IOException => throw new RuntimeException("Could not aquire lock to start a new instace of server.", e)
+    f = new File(lockFile.toString)
+    if (f.exists()) {
+      f.delete() // We try deleting it, if it exists
     }
+    fRwChannel = new RandomAccessFile(f, "rw").getChannel()
+    lock = fRwChannel.tryLock()
+    if (lock == null) {
+      // Lock occupied by other instance
+      fRwChannel.close()
+      throw new RuntimeException("Only one instance of chisel4ml server may run at a time.")
+    }
+    // We add a shutdown hook to release the lock on shutdown
+    sys.addShutdownHook { closeFileLockHook() }
+    val server = new Chisel4mlServer(ExecutionContext.global, tempDir = tempDir)
+    server.start()
+    server.blockUntilShutdown()
   }
 
   private def closeFileLockHook(): Unit = {

@@ -15,10 +15,10 @@
  */
 package chisel4ml
 
-import _root_.chisel4ml.LBIRStream
-import _root_.chisel4ml.sequential.{MaxPool2D, ProcessingElementSequentialConv}
-import _root_.lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
-import _root_.services.LayerOptions
+import chisel4ml.LBIRStream
+import chisel4ml.sequential.{MaxPool2D, ProcessingElementSequentialConv}
+import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
+import services.LayerOptions
 import chisel3._
 
 object LayerGenerator {

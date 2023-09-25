@@ -15,8 +15,8 @@
  */
 package chisel4ml.combinational
 
-import _root_.chisel3._
-import _root_.chisel3.util._
+import chisel3._
+import chisel3.util._
 
 object StaticNeuron {
   def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](

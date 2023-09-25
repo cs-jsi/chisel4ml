@@ -15,14 +15,14 @@
  */
 package chisel4ml.sequential
 
-import _root_.chisel4ml.LBIRStream
-import _root_.chisel4ml.implicits._
-import _root_.chisel4ml.util.reluFn
-import _root_.lbir.Activation._
-import _root_.lbir.Conv2DConfig
-import _root_.lbir.Datatype.QuantizationType._
-import _root_.org.slf4j.LoggerFactory
-import _root_.services.LayerOptions
+import chisel4ml.LBIRStream
+import chisel4ml.implicits._
+import chisel4ml.util.reluFn
+import lbir.Activation._
+import lbir.Conv2DConfig
+import lbir.Datatype.QuantizationType._
+import org.slf4j.LoggerFactory
+import services.LayerOptions
 import chisel3._
 import chisel4ml.MemWordSize
 import interfaces.amba.axis._

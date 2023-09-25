@@ -15,13 +15,13 @@
  */
 package chisel4ml
 
-import _root_.chisel3._
-import _root_.chisel4ml.ProcessingElementSimple
-import _root_.chisel4ml.implicits._
-import _root_.lbir.{DenseConfig, LayerWrap, Model}
-import _root_.scala.collection.mutable._
-import _root_.services.GenerateCircuitParams.Options
-import _root_.lbir.QTensor
+import chisel3._
+import chisel4ml.ProcessingElementSimple
+import chisel4ml.implicits._
+import lbir.{DenseConfig, LayerWrap, Model}
+import scala.collection.mutable._
+import services.GenerateCircuitParams.Options
+import lbir.QTensor
 
 class LBIRStreamSimpleIO(input: QTensor, output: QTensor) extends Bundle {
   val in = Input(Vec(input.width, UInt(input.dtype.bitwidth.W)))
