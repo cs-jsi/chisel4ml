@@ -16,7 +16,7 @@
 package chisel4ml.combinational
 
 import chisel3._
-import chisel3.util._
+import chisel4ml.util.shiftAndRound
 
 object StaticNeuron {
   def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
@@ -32,20 +32,5 @@ object StaticNeuron {
     val pAct = add(muls)
     val sAct = shiftAndRound(pAct, shift)
     actFn(sAct, thresh)
-  }
-
-  def shiftAndRound[A <: Bits](pAct: A, shift: Int): A = shift.compare(0) match {
-    case 0 => pAct
-    case -1 => {
-      // Handles the case when the scale factor (shift) basically sets the output to zero always.
-      if (-shift >= pAct.getWidth) {
-        0.U.asTypeOf(pAct)
-      } else {
-        // We add the "cutt-off" bit to round the same way a convential rounding is done (1 >= 0.5, 0 < 0.5)
-        ((pAct >> shift.abs).asSInt + Cat(0.S((pAct.getWidth - 1).W), pAct(shift.abs - 1)).asSInt)
-          .asTypeOf(pAct)
-      }
-    }
-    case 1 => (pAct << shift.abs).asTypeOf(pAct)
   }
 }
