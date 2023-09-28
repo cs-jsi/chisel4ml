@@ -29,6 +29,7 @@ import interfaces.amba.axis._
 import memories.MemoryGenerator
 
 import scala.reflect.runtime.universe._
+import memories.SRAMWrite
 
 /** A sequential processing element for convolutions.
   *
@@ -124,27 +125,14 @@ class ProcessingElementSequentialConv[
 
   val ctrl = Module(new PeSeqConvController(layer))
 
-  kernelMem.io.rdEna := kRFLoader.io.romRdEna
-  kernelMem.io.rdAddr := kRFLoader.io.romRdAddr
-  kRFLoader.io.romRdData := kernelMem.io.rdData
+  kernelMem.io.write.enable := false.B // io.kernelMemWrEna
+  kernelMem.io.write.address := 0.U // io.kernelMemWrAddr
+  kernelMem.io.write.data := 0.U // io.kernelMemWrData
+  kernelMem.io.read <> kRFLoader.io.rom
 
-  kernelMem.io.wrEna := false.B // io.kernelMemWrEna
-  kernelMem.io.wrAddr := 0.U // io.kernelMemWrAddr
-  kernelMem.io.wrData := 0.U // io.kernelMemWrData
-
-  actMem.io.rdEna := swu.io.actRdEna
-  actMem.io.rdAddr := swu.io.actRdAddr
-  swu.io.actRdData := actMem.io.rdData
-
-  resMem.io.wrEna := rmb.io.resRamEn
-  resMem.io.wrAddr := rmb.io.resRamAddr
-  resMem.io.wrData := rmb.io.resRamData
-
-  krf.io.chAddr := kRFLoader.io.chAddr
-  krf.io.rowAddr := kRFLoader.io.rowAddr
-  krf.io.colAddr := kRFLoader.io.colAddr
-  krf.io.inData := kRFLoader.io.data
-  krf.io.inValid := kRFLoader.io.valid
+  actMem.io.read <> swu.io.actMem
+  resMem.io.write <> rmb.io.resRam
+  krf.io.write <> kRFLoader.io.krf
 
   actRegFile.io.shiftRegs := swu.io.shiftRegs
   actRegFile.io.rowWriteMode := swu.io.rowWriteMode
@@ -158,7 +146,7 @@ class ProcessingElementSequentialConv[
   rmb.io.start := ctrl.io.rmbStart
 
   dynamicNeuron.io.in := actRegFile.io.outData
-  dynamicNeuron.io.weights := krf.io.outData
+  dynamicNeuron.io.weights := krf.io.kernel
   dynamicNeuron.io.thresh := tas.io.thresh
   dontTouch(dynamicNeuron.io.thresh)
   dontTouch(dynamicNeuron.io.shift)
@@ -178,19 +166,19 @@ class ProcessingElementSequentialConv[
   kRFLoader.io.kernelNum := ctrl.io.krfKernelNum
 
   inStream.ready := ctrl.io.inStreamReady
-  actMem.io.wrEna := inStream.ready && inStream.valid
-  actMem.io.wrAddr := ctrl.io.actMemAddr
-  actMem.io.wrData := inStream.bits
+  actMem.io.write.enable := inStream.ready && inStream.valid
+  actMem.io.write.address := ctrl.io.actMemAddr
+  actMem.io.write.data := inStream.bits
   ctrl.io.inStreamLast := inStream.last
   ctrl.io.inStreamValid := inStream.valid
 
   outStream.valid := ctrl.io.outStreamValid
-  outStream.bits := resMem.io.rdData
+  outStream.bits := resMem.io.read.data
   outStream.last := ctrl.io.outStreamLast
   ctrl.io.outStreamReady := outStream.ready
 
-  resMem.io.rdEna := ctrl.io.resMemEna
-  resMem.io.rdAddr := ctrl.io.resMemAddr
+  resMem.io.read.enable := ctrl.io.resMemEna
+  resMem.io.read.address := ctrl.io.resMemAddr
 }
 
 object ProcessingElementSequentialConv {

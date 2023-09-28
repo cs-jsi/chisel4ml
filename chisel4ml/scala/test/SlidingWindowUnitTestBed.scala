@@ -86,13 +86,14 @@ class SlidingWindowUnitTestBed(
   io.rrfChAddr := swu.io.chAddr
   io.rrfRowWrMode := swu.io.rowWriteMode
   io.rrfEnd := swu.io.end
-
-  actMem.io.rdEna := swu.io.actRdEna
-  actMem.io.rdAddr := swu.io.actRdAddr
-  swu.io.actRdData := actMem.io.rdData
-  actMem.io.wrAddr := 0.U
-  actMem.io.wrEna := false.B
-  actMem.io.wrData := 0.U
+  /*
+  actMem.io.read.enable := swu.io.actRdEna
+  actMem.io.read.address := swu.io.actRdAddr
+  swu.io.actRdData := actMem.io.read.data*/
+  actMem.io.read <> swu.io.actMem
+  actMem.io.write.address := 0.U
+  actMem.io.write.enable := false.B
+  actMem.io.write.data := 0.U
 
   swu.io.start := io.start
 

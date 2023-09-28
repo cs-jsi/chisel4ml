@@ -17,6 +17,7 @@ package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
+import memories.SRAMRead
 
 /** Sliding Window Unit
   *
@@ -87,9 +88,7 @@ class SlidingWindowUnit(
     val imageValid = Output(Bool())
 
     // interface to the activation memory
-    val actRdEna = Output(Bool())
-    val actRdAddr = Output(UInt(log2Up(actMemDepthWords).W))
-    val actRdData = Input(UInt(memWordWidth.W))
+    val actMem = Flipped(new SRAMRead(actMemDepthWords, memWordWidth))
 
     // control interface
     val start = Input(Bool())
@@ -369,8 +368,8 @@ class SlidingWindowUnit(
   bitAddr := nbitAddrMod
 
   ////// ACTIVATION MEMORY INTERFACE //////
-  io.actRdEna := (state === swuState.sROWMODE || state === swuState.sCOLMODE)
-  io.actRdAddr := (bitAddr >> 5)
+  io.actMem.enable := (state === swuState.sROWMODE || state === swuState.sCOLMODE)
+  io.actMem.address := (bitAddr >> 5)
 
   // Subword (bit) address is translated into indexes via a lookup table
   subwordAddr := bitAddr(4, 0)
@@ -379,7 +378,7 @@ class SlidingWindowUnit(
     0.U,
     Seq.tabulate(actParamsPerWord)(_ * actParamSize).zipWithIndex.map(x => (x._1.U -> x._2.U))
   )
-  ramDataAsVec := io.actRdData(actMemValidBits - 1, 0).asTypeOf(ramDataAsVec)
+  ramDataAsVec := io.actMem.data(actMemValidBits - 1, 0).asTypeOf(ramDataAsVec)
   when(
     (prevstate === swuState.sROWMODE) ||
       (state === swuState.sROWMODE && prevstate === swuState.sWAITSTART)

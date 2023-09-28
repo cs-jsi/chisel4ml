@@ -19,6 +19,7 @@ import chisel3._
 import chisel3.util._
 import chisel4ml.MemWordSize
 import chisel4ml.implicits._
+import memories.SRAMWrite
 
 /** Result Memory Buffer
   */
@@ -35,9 +36,7 @@ class ResultMemoryBuffer[O <: Bits](genOut: O, output: lbir.QTensor) extends Mod
     val resultValid = Input(Bool())
 
     // result memory interface
-    val resRamEn = Output(Bool())
-    val resRamAddr = Output(UInt(log2Up(output.memDepth).W))
-    val resRamData = Output(UInt(MemWordSize.bits.W))
+    val resRam = new SRAMWrite(depth = output.memDepth, width = MemWordSize.bits)
 
     // control inerface
     val start = Input(Bool())
@@ -91,7 +90,7 @@ class ResultMemoryBuffer[O <: Bits](genOut: O, output: lbir.QTensor) extends Mod
   ramAddr := ramAddr
   when(io.start) {
     ramAddr := 0.U
-  }.elsewhen(io.resRamEn) {
+  }.elsewhen(io.resRam.enable) {
     ramAddr := ramAddr + 1.U
   }
 
@@ -101,12 +100,12 @@ class ResultMemoryBuffer[O <: Bits](genOut: O, output: lbir.QTensor) extends Mod
     dataBuf(resPerWordCnt) := io.result.asUInt
   }
 
-  io.resRamEn := RegNext(
+  io.resRam.enable := RegNext(
     (RegNext(state === rmbState.sCOMP) &&
       ((resPerWordCnt === (resultsPerWord - 1).U) ||
         resPerKernelCnt === (resultsPerKernel - 1).U) &&
       io.resultValid)
   )
-  io.resRamAddr := ramAddr
-  io.resRamData := dataBuf.asUInt
+  io.resRam.address := ramAddr
+  io.resRam.data := dataBuf.asUInt
 }

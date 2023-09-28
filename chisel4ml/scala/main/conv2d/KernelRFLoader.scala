@@ -19,6 +19,7 @@ import chisel3._
 import chisel3.util._
 import chisel4ml.MemWordSize
 import chisel4ml.implicits._
+import memories.SRAMRead
 
 /** KernelRFLoader
   */
@@ -28,16 +29,10 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
 
   val io = IO(new Bundle {
     // interface to the kernel register file
-    val chAddr = Output(UInt(log2Up(kernel.numChannels).W))
-    val rowAddr = Output(UInt(log2Up(kernel.width).W))
-    val colAddr = Output(UInt(log2Up(kernel.width).W))
-    val data = Output(UInt(kernel.dtype.bitwidth.W))
-    val valid = Output(Bool())
+    val krf = Valid(new KernelRegisterFileInput(kernel))
 
     // interface to the kernel ROM
-    val romRdEna = Output(Bool())
-    val romRdAddr = Output(UInt(log2Up(kernel.memDepth + 1).W))
-    val romRdData = Input(UInt(MemWordSize.bits.W))
+    val rom = Flipped(new SRAMRead(depth = kernel.memDepth, width = MemWordSize.bits))
 
     // control interface
     val kernelReady = Output(Bool())
@@ -45,14 +40,14 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
     val kernelNum = Input(UInt(log2Up(kernel.numKernels).W))
   })
 
-  object krfState extends ChiselEnum {
+  object krlState extends ChiselEnum {
     val sWAIT = Value(0.U)
     val sFILLRF = Value(1.U)
     val sEND = Value(2.U)
   }
 
-  val nstate = WireInit(krfState.sEND)
-  val state = RegInit(krfState.sWAIT)
+  val nstate = WireInit(krlState.sEND)
+  val state = RegInit(krlState.sWAIT)
   val stall = RegInit(false.B)
 
   val dataBuf = RegInit(0.U(kernel.dtype.bitwidth.W))
@@ -75,12 +70,12 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   // NEXT STATE LOGIC  //
   ///////////////////////
   nstate := state
-  when(state === krfState.sWAIT && io.loadKernel) {
-    nstate := krfState.sFILLRF
-  }.elsewhen(state === krfState.sFILLRF && totalElemCnt === (kernel.numKernelParams - 1).U) {
-    nstate := krfState.sEND
-  }.elsewhen(state === krfState.sEND) {
-    nstate := krfState.sWAIT
+  when(state === krlState.sWAIT && io.loadKernel) {
+    nstate := krlState.sFILLRF
+  }.elsewhen(state === krlState.sFILLRF && totalElemCnt === (kernel.numKernelParams - 1).U) {
+    nstate := krlState.sEND
+  }.elsewhen(state === krlState.sEND) {
+    nstate := krlState.sWAIT
   }
   when(!stall) {
     state := nstate
@@ -92,7 +87,7 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   nramAddr := ramAddr
   nwordElemCnt := wordElemCnt
   ntotalElemCnt := totalElemCnt
-  when(state === krfState.sWAIT && io.loadKernel) {
+  when(state === krlState.sWAIT && io.loadKernel) {
     // we map the index to the offset with a static lookup table
     nramAddr := MuxLookup(
       io.kernelNum,
@@ -101,7 +96,7 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
     )
     nwordElemCnt := 0.U
     ntotalElemCnt := 0.U
-  }.elsewhen(state === krfState.sFILLRF) {
+  }.elsewhen(state === krlState.sFILLRF) {
     when(wordElemCnt === (kernel.paramsPerWord - 1).U) {
       nramAddr := ramAddr + 1.U
       nwordElemCnt := 0.U
@@ -120,15 +115,15 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   //////////////////////////////
   // HANDLE KERNEL ROM INPUT  //
   //////////////////////////////
-  romDataAsVec := io.romRdData(kernelMemValidBits - 1, 0).asTypeOf(romDataAsVec)
-  when(state === krfState.sFILLRF && !stall) {
+  romDataAsVec := io.rom.data(kernelMemValidBits - 1, 0).asTypeOf(romDataAsVec)
+  when(state === krlState.sFILLRF && !stall) {
     dataBuf := romDataAsVec(wordElemCnt)
   }
 
   /////////////////////
   // COUNTERS LOGIC  //
   /////////////////////
-  when(state === krfState.sWAIT && io.loadKernel) {
+  when(state === krlState.sWAIT && io.loadKernel) {
     colCnt := 0.U
     rowCnt := 0.U
     chCnt := 0.U
@@ -156,16 +151,16 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   ///////////////////////
 
   // kernel RF interface
-  io.chAddr := RegNext(chCnt)
-  io.rowAddr := RegNext(rowCnt)
-  io.colAddr := RegNext(colCnt)
-  io.data := dataBuf
-  io.valid := RegNext((state === krfState.sFILLRF) && !stall)
+  io.krf.bits.channelAddress := RegNext(chCnt)
+  io.krf.bits.rowAddress := RegNext(rowCnt)
+  io.krf.bits.columnAddress := RegNext(colCnt)
+  io.krf.bits.data := dataBuf
+  io.krf.valid := RegNext((state === krlState.sFILLRF) && !stall)
 
   // kernel ROM interface
-  io.romRdEna := (state === krfState.sFILLRF)
-  io.romRdAddr := ramAddr
+  io.rom.enable := (state === krlState.sFILLRF)
+  io.rom.address := ramAddr
 
   // control interface
-  io.kernelReady := (state === krfState.sEND) && !stall
+  io.kernelReady := (state === krlState.sEND) && !stall
 }

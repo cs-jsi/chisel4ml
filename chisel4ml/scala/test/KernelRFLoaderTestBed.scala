@@ -54,22 +54,18 @@ class KernelRFLoaderTestBed(
 
   val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = parameters.toHexStr, width = memWordWidth))
 
-  krf.io.chAddr := krfLoader.io.chAddr
-  krf.io.rowAddr := krfLoader.io.rowAddr
-  krf.io.colAddr := krfLoader.io.colAddr
-  krf.io.inData := krfLoader.io.data
-  krf.io.inValid := krfLoader.io.valid
+  krf.io.write <> krfLoader.io.krf
 
-  kernelMem.io.rdEna := krfLoader.io.romRdEna
-  kernelMem.io.rdAddr := krfLoader.io.romRdAddr
-  krfLoader.io.romRdData := kernelMem.io.rdData
-  kernelMem.io.wrData := 0.U
-  kernelMem.io.wrEna := false.B
-  kernelMem.io.wrAddr := 0.U
+  kernelMem.io.read.enable := krfLoader.io.rom.enable
+  kernelMem.io.read.address := krfLoader.io.rom.address
+  krfLoader.io.rom.data := kernelMem.io.read.data
+  kernelMem.io.write.data := 0.U
+  kernelMem.io.write.enable := false.B
+  kernelMem.io.write.address := 0.U
 
   krfLoader.io.loadKernel := io.loadKernel
   krfLoader.io.kernelNum := io.kernelNum
   io.kernelReady := krfLoader.io.kernelReady
 
-  io.krfOutput := krf.io.outData
+  io.krfOutput := krf.io.kernel
 }
