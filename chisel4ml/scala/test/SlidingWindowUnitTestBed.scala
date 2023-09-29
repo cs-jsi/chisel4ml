@@ -21,56 +21,31 @@ import _root_.lbir.QTensor
 import chisel3._
 import chisel3.util._
 import memories.MemoryGenerator
+import chisel4ml.MemWordSize
 
 /** Sliding Window Unit - test bed
   */
 
-class SlidingWindowUnitTestBed(
-  kernelSize:   Int,
-  kernelDepth:  Int,
-  actWidth:     Int,
-  actHeight:    Int,
-  actParamSize: Int,
-  kernel:       QTensor,
-  inputs:       QTensor)
-    extends Module {
-
-  val memWordWidth:     Int = 32
-  val actParamsPerWord: Int = memWordWidth / actParamSize
-  val actMemValidBits:  Int = actParamsPerWord * actParamSize
-  val actMemDepthBits:  Int = actWidth * actHeight * kernelDepth * actParamSize
-  val actMemDepthWords: Int = (actMemDepthBits / actMemValidBits) + 1
-
-  val outDataSize: Int = kernelSize * kernelSize * kernelDepth * actParamSize
+class SlidingWindowUnitTestBed(kernel: QTensor, input: QTensor) extends Module {
+  val outDataSize: Int = kernel.width * kernel.height * kernel.numChannels * input.dtype.bitwidth
 
   val io = IO(new Bundle {
     val start = Input(Bool())
     val rrfInValid = Output(Bool())
     val rrfImageValid = Output(Bool())
-    val rrfInData = Output(UInt((kernelSize * actParamSize).W))
-    val rrfRowAddr = Output(UInt(log2Up(kernelSize).W))
-    val rrfChAddr = Output(UInt(log2Up(kernelDepth).W))
+    val rrfInData = Output(UInt((kernel.width * input.dtype.bitwidth).W))
+    val rrfRowAddr = Output(UInt(log2Up(kernel.width).W))
+    val rrfChAddr = Output(UInt(log2Up(kernel.numChannels).W))
     val rrfRowWrMode = Output(Bool())
     val rrfOutData = Output(UInt(outDataSize.W))
     val rrfEnd = Output(Bool())
   })
 
-  val swu = Module(
-    new SlidingWindowUnit(
-      kernelSize = kernelSize,
-      kernelDepth = kernelDepth,
-      actWidth = actWidth,
-      actHeight = actHeight,
-      actParamSize = actParamSize
-    )
-  )
-
-  val rrf = Module(
-    new RollingRegisterFile(input = inputs, kernel = kernel)
-  )
+  val swu = Module(new SlidingWindowUnit(input = input, kernel = kernel))
+  val rrf = Module(new RollingRegisterFile(input = input, kernel = kernel))
 
   // For testing purposes we use a prewritten ROM
-  val actMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = inputs.toHexStr, width = memWordWidth))
+  val actMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = input.toHexStr, width = MemWordSize.bits))
 
   rrf.io.shiftRegs := swu.io.shiftRegs
   rrf.io.rowWriteMode := swu.io.rowWriteMode

@@ -63,17 +63,7 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester with
 
   behavior.of("SlidingWindowUnit module")
   it should "show appropirate window as it cycles through the input image" in {
-    test(
-      new SlidingWindowUnitTestBed(
-        kernelSize = 2,
-        kernelDepth = 2,
-        actWidth = 3,
-        actHeight = 3,
-        actParamSize = 5,
-        kernel = kernelParameters,
-        inputs = testParameters
-      )
-    ) { dut =>
+    test(new SlidingWindowUnitTestBed(kernel = kernelParameters, input = testParameters)) { dut =>
       //                  data,            rowAddr, chAddr, rowWriteMode
       val testVec = Seq(
         ("b00010_00001".U(10.W), 0, 0, true), // (1, 2)
@@ -104,17 +94,7 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester with
     }
   }
   it should "show appropirate window as it cycles through the input image with a bigger window" in {
-    test(
-      new SlidingWindowUnitTestBed(
-        kernelSize = 3,
-        kernelDepth = 2,
-        actWidth = 5,
-        actHeight = 4,
-        actParamSize = 6,
-        kernel = kernelParameters2,
-        inputs = testParameters2
-      )
-    ) { dut =>
+    test(new SlidingWindowUnitTestBed(kernel = kernelParameters2, input = testParameters2)) { dut =>
       //                  data                      rowAddr, ChAddr, rowWriteMode
       val testVec = Seq(
         ("b000011_000010_000001".U(18.W), 0, 0, true), // (1, 2, 3)

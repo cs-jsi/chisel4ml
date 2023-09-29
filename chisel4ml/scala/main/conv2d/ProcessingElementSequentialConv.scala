@@ -100,15 +100,7 @@ class ProcessingElementSequentialConv[
     )
   )
 
-  val swu = Module(
-    new SlidingWindowUnit(
-      kernelSize = layer.kernel.width,
-      kernelDepth = layer.kernel.numChannels,
-      actWidth = layer.input.width,
-      actHeight = layer.input.height,
-      actParamSize = layer.input.dtype.bitwidth
-    )
-  )
+  val swu = Module(new SlidingWindowUnit(input = layer.input, kernel = layer.kernel))
 
   val kRFLoader = Module(new KernelRFLoader(layer.kernel))
 

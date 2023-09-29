@@ -18,77 +18,53 @@ package chisel4ml.sequential
 import chisel3._
 import chisel3.util._
 import memories.SRAMRead
+import chisel4ml.implicits._
+import chisel4ml.MemWordSize
 
-/** Sliding Window Unit
-  *
-  * kernelSize - Size of one side of a square 2d kernel (i.e. kernelSize=3 for a 3x3 kernel).
-  * kernelDepth - The depth of a kernel/actMap, i.e. for a RGB image, the kernel depth is 3. (i.e. num of channels)
-  * actWidth - the width of the activation map/image (in num of elements)
-  * actHeight - the height of the activation map/image (in num of elements)
-  * actParamSize - The bitwidth of each activation parameter.
-  */
-class SlidingWindowUnit(
-  kernelSize:   Int,
-  kernelDepth:  Int,
-  actWidth:     Int,
-  actHeight:    Int,
-  actParamSize: Int)
-    extends Module {
+/** Sliding Window Unit */
+class SlidingWindowUnit(input: lbir.QTensor, kernel: lbir.QTensor) extends Module {
+  val inputValidBits:      Int = input.paramsPerWord * input.dtype.bitwidth
+  val inputLefoverBits:    Int = MemWordSize.bits - inputValidBits
+  val actMemDepthBits:     Int = input.numKernelParams * input.dtype.bitwidth
+  val actMemDepthWords:    Int = math.ceil(actMemDepthBits.toFloat / inputValidBits.toFloat).toInt
+  val actMemDepthRealBits: Int = actMemDepthWords * MemWordSize.bits
 
-  val totalNumOfKernelElements: Int = kernelSize * kernelSize * kernelDepth
-  val wrDataWidth:              Int = kernelSize * actParamSize
-  val chAddrWidth:              Int = log2Up(kernelDepth)
-  val rowAddrWidth:             Int = log2Up(kernelSize)
-
-  val memWordWidth: Int = 32
-
-  val actParamsPerWord: Int = memWordWidth / actParamSize
-  val actMemValidBits:  Int = actParamsPerWord * actParamSize
-  val leftoverBits:     Int = memWordWidth - actMemValidBits
-
-  val actMemChSize:  Int = kernelSize * kernelSize * actParamSize
-  val actMemRowSize: Int = kernelSize * actParamSize
-  val actMemColSize: Int = kernelSize
-
-  val actMemDepthBits:     Int = actWidth * actHeight * kernelDepth * actParamSize
-  val actMemDepthWords:    Int = (actMemDepthBits / actMemValidBits) + 1
-  val actMemDepthRealBits: Int = actMemDepthWords * memWordWidth
-
-  val baseAddConstantBase:      Int = kernelSize * actParamSize
-  val colAddConstantBase:       Int = actParamSize
-  val rowAddConstantBase:       Int = (actWidth - kernelSize + 1) * actParamSize
-  val chAddConstantBase:        Int = ((actWidth - kernelSize) + ((actHeight - kernelSize) * actWidth) + 1) * actParamSize
-  val colModRowAddConstantBase: Int = actWidth * actParamSize
+  val baseAddConstantBase: Int = kernel.width * input.dtype.bitwidth
+  val colAddConstantBase:  Int = input.dtype.bitwidth
+  val rowAddConstantBase:  Int = (input.height - kernel.width + 1) * input.dtype.bitwidth
+  val chAddConstantBase: Int =
+    ((input.height - kernel.width) + ((input.width - kernel.width) * input.height) + 1) * input.dtype.bitwidth
+  val colModRowAddConstantBase: Int = input.height * input.dtype.bitwidth
   val colModChAddConstantBase: Int =
-    (actWidth * actHeight * actParamSize) - ((kernelSize - 1) * colModRowAddConstantBase)
+    (input.height * input.width * input.dtype.bitwidth) - ((kernel.width - 1) * colModRowAddConstantBase)
 
-  val baseAddConstantMod:      Int = baseAddConstantBase / actMemValidBits
-  val colAddConstantMod:       Int = colAddConstantBase / actMemValidBits
-  val rowAddConstantMod:       Int = rowAddConstantBase / actMemValidBits
-  val chAddConstantMod:        Int = chAddConstantBase / actMemValidBits
-  val colModRowAddConstantMod: Int = colModRowAddConstantBase / actMemValidBits
-  val colModChAddConstantMod:  Int = colModChAddConstantBase / actMemValidBits
+  val baseAddConstantMod:      Int = baseAddConstantBase / inputValidBits
+  val colAddConstantMod:       Int = colAddConstantBase / inputValidBits
+  val rowAddConstantMod:       Int = rowAddConstantBase / inputValidBits
+  val chAddConstantMod:        Int = chAddConstantBase / inputValidBits
+  val colModRowAddConstantMod: Int = colModRowAddConstantBase / inputValidBits
+  val colModChAddConstantMod:  Int = colModChAddConstantBase / inputValidBits
 
-  val baseAddConstant:      Int = baseAddConstantBase + (baseAddConstantMod * leftoverBits)
-  val colAddConstant:       Int = colAddConstantBase + (colAddConstantMod * leftoverBits)
-  val rowAddConstant:       Int = rowAddConstantBase + (rowAddConstantMod * leftoverBits)
-  val chAddConstant:        Int = chAddConstantBase + (chAddConstantMod * leftoverBits)
-  val colModRowAddConstant: Int = colModRowAddConstantBase + (colModRowAddConstantMod * leftoverBits)
-  val colModChAddConstant:  Int = colModChAddConstantBase + (colModChAddConstantMod * leftoverBits)
+  val baseAddConstant:      Int = baseAddConstantBase + (baseAddConstantMod * inputLefoverBits)
+  val colAddConstant:       Int = colAddConstantBase + (colAddConstantMod * inputLefoverBits)
+  val rowAddConstant:       Int = rowAddConstantBase + (rowAddConstantMod * inputLefoverBits)
+  val chAddConstant:        Int = chAddConstantBase + (chAddConstantMod * inputLefoverBits)
+  val colModRowAddConstant: Int = colModRowAddConstantBase + (colModRowAddConstantMod * inputLefoverBits)
+  val colModChAddConstant:  Int = colModChAddConstantBase + (colModChAddConstantMod * inputLefoverBits)
   val constantWireSize:     Int = if (log2Up(colModChAddConstant) >= 5) log2Up(colModChAddConstant) + 1 else 5
 
   val io = IO(new Bundle {
     // interface to the RollingRegisterFile module.
     val shiftRegs = Output(Bool())
     val rowWriteMode = Output(Bool())
-    val rowAddr = Output(UInt(rowAddrWidth.W))
-    val chAddr = Output(UInt(chAddrWidth.W))
-    val data = Output(UInt(wrDataWidth.W))
+    val rowAddr = Output(UInt(log2Up(kernel.width).W))
+    val chAddr = Output(UInt(log2Up(kernel.numChannels).W))
+    val data = Output(UInt((kernel.width * input.dtype.bitwidth).W))
     val valid = Output(Bool())
     val imageValid = Output(Bool())
 
     // interface to the activation memory
-    val actMem = Flipped(new SRAMRead(actMemDepthWords, memWordWidth))
+    val actMem = Flipped(new SRAMRead(actMemDepthWords, MemWordSize.bits))
 
     // control interface
     val start = Input(Bool())
@@ -105,9 +81,9 @@ class SlidingWindowUnit(
   val nbitAddrMod = Wire(UInt(log2Up(actMemDepthRealBits).W))
   val addConstant = WireInit(0.U(constantWireSize.W))
   val addConstantMod = WireInit(0.U(constantWireSize.W))
-  val subwordAddr = Wire(UInt(log2Up(memWordWidth).W)) // Which part of the memory word are we looking at?
-  val ramDataAsVec = Wire(Vec(actParamsPerWord, UInt(actParamSize.W)))
-  val dataBuf = RegInit(VecInit(Seq.fill(kernelSize)(0.U(actParamSize.W))))
+  val subwordAddr = Wire(UInt(log2Up(MemWordSize.bits).W)) // Which part of the memory word are we looking at?
+  val ramDataAsVec = Wire(Vec(input.paramsPerWord, UInt(input.dtype.bitwidth.W)))
+  val dataBuf = RegInit(VecInit(Seq.fill(kernel.width)(0.U(input.dtype.bitwidth.W))))
   val dataIndex = Wire(UInt())
 
   object swuState extends ChiselEnum {
@@ -134,13 +110,13 @@ class SlidingWindowUnit(
   val naddstate = WireInit(addState.sADDCOL)
   val addstate = RegInit(addState.sADDCOL)
 
-  val colCnt = RegInit(0.U(log2Up(kernelSize).W))
-  val rowCnt = RegInit(0.U(log2Up(kernelSize).W))
-  val chCnt = RegInit(0.U(log2Up(kernelDepth).W))
-  val horizCnt = RegInit(0.U(log2Up(actWidth).W))
-  val nhorizCnt = WireInit(0.U(log2Up(actWidth).W))
-  val vertiCnt = RegInit(0.U(log2Up(actHeight).W))
-  val nvertiCnt = WireInit(0.U(log2Up(actHeight).W))
+  val colCnt = RegInit(0.U(log2Up(kernel.width).W))
+  val rowCnt = RegInit(0.U(log2Up(kernel.width).W))
+  val chCnt = RegInit(0.U(log2Up(kernel.numChannels).W))
+  val horizCnt = RegInit(0.U(log2Up(input.height).W))
+  val nhorizCnt = WireInit(0.U(log2Up(input.height).W))
+  val vertiCnt = RegInit(0.U(log2Up(input.width).W))
+  val nvertiCnt = WireInit(0.U(log2Up(input.width).W))
   val allCntZero = Wire(Bool())
   val rowAndChCntZero = Wire(Bool())
   val allCntMax = Wire(Bool())
@@ -167,11 +143,11 @@ class SlidingWindowUnit(
   }.elsewhen(state === swuState.sCOLMODE) {
     when(
       rowAndChCntMax &&
-        horizCnt === (actWidth - kernelSize).U &&
-        vertiCnt === (actHeight - kernelSize).U
+        horizCnt === (input.height - kernel.width).U &&
+        vertiCnt === (input.width - kernel.width).U
     ) {
       nstate := swuState.sEND
-    }.elsewhen(rowAndChCntMax && horizCnt === (actWidth - kernelSize).U) {
+    }.elsewhen(rowAndChCntMax && horizCnt === (input.height - kernel.width).U) {
       nstate := swuState.sROWMODE
     }.otherwise {
       nstate := swuState.sCOLMODE
@@ -188,11 +164,11 @@ class SlidingWindowUnit(
     }.elsewhen(addstate === addState.sADDROW || addstate === addState.sADDCH) {
       naddstate := addState.sADDCOL
     }.elsewhen(
-      colCnt === (kernelSize - 2).U &&
-        rowCnt === (kernelSize - 1).U
+      colCnt === (kernel.width - 2).U &&
+        rowCnt === (kernel.width - 1).U
     ) {
       naddstate := addState.sADDCH
-    }.elsewhen(colCnt === (kernelSize - 2).U) {
+    }.elsewhen(colCnt === (kernel.width - 2).U) {
       naddstate := addState.sADDROW
     }.otherwise {
       naddstate := addState.sADDCOL
@@ -200,10 +176,10 @@ class SlidingWindowUnit(
   }.elsewhen(state === swuState.sCOLMODE) {
     when(
       rowAndChCntMax &&
-        horizCnt === (actWidth - kernelSize).U
+        horizCnt === (input.height - kernel.width).U
     ) {
       naddstate := addState.sADDCOL // state will change to ROWMODE - so add mode should be addcol
-    }.elsewhen(rowCnt === (kernelSize - 2).U) {
+    }.elsewhen(rowCnt === (kernel.width - 2).U) {
       naddstate := addState.sADDCH
     }.otherwise {
       naddstate := addState.sADDROW
@@ -276,7 +252,7 @@ class SlidingWindowUnit(
           colCnt := 0.U
         }
         is(addState.sADDCH) {
-          when(chCnt === (kernelDepth - 1).U) {
+          when(chCnt === (kernel.numChannels - 1).U) {
             chCnt := 0.U
           }.otherwise {
             chCnt := chCnt + 1.U
@@ -290,12 +266,12 @@ class SlidingWindowUnit(
 
   rowAndChCntZero := (rowCnt === 0.U) && (chCnt === 0.U)
   allCntZero := (colCnt === 0.U) && rowAndChCntZero
-  if (kernelDepth > 1) {
-    rowAndChCntMax := (rowCnt === (kernelSize - 1).U) && (chCnt === (kernelDepth - 1).U)
+  if (kernel.numChannels > 1) {
+    rowAndChCntMax := (rowCnt === (kernel.width - 1).U) && (chCnt === (kernel.numChannels - 1).U)
   } else {
-    rowAndChCntMax := (rowCnt === (kernelSize - 1).U)
+    rowAndChCntMax := (rowCnt === (kernel.width - 1).U)
   }
-  allCntMax := (colCnt === (kernelSize - 1).U) && rowAndChCntMax
+  allCntMax := (colCnt === (kernel.width - 1).U) && rowAndChCntMax
 
   nbaseBitAddr := baseBitAddr
   nhorizCnt := horizCnt
@@ -309,14 +285,14 @@ class SlidingWindowUnit(
     updateBase1 := true.B
   }.elsewhen(state === swuState.sROWMODE && allCntMax) {
     nhorizCnt := horizCnt + 1.U
-    nbaseBitAddr := baseBitAddr + actParamSize.U
+    nbaseBitAddr := baseBitAddr + input.dtype.bitwidth.U
     updateBase2 := true.B
   }.elsewhen(state === swuState.sCOLMODE) {
-    when(horizCnt < (actWidth - kernelSize).U && rowAndChCntMax) {
+    when(horizCnt < (input.height - kernel.width).U && rowAndChCntMax) {
       updateBase2 := true.B
       nhorizCnt := horizCnt + 1.U
       when(horizCnt =/= 0.U) {
-        nbaseBitAddr := baseBitAddr + actParamSize.U
+        nbaseBitAddr := baseBitAddr + input.dtype.bitwidth.U
       }
     }.elsewhen(rowAndChCntMax) {
       updateBase1 := true.B
@@ -327,9 +303,9 @@ class SlidingWindowUnit(
   }
   when(
     (((nbaseBitAddr >> 5) - (baseBitAddr >> 5) =/= baseAddConstantMod.U) && updateBase1) ||
-      nbaseBitAddr(4, 0) === actMemValidBits.U
+      nbaseBitAddr(4, 0) === inputValidBits.U
   ) {
-    nbaseBitAddrMod := nbaseBitAddr + leftoverBits.U
+    nbaseBitAddrMod := nbaseBitAddr + inputLefoverBits.U
   }.otherwise {
     nbaseBitAddrMod := nbaseBitAddr
   }
@@ -359,9 +335,9 @@ class SlidingWindowUnit(
     (state === swuState.sROWMODE || state === swuState.sCOLMODE) &&
       !stall &&
       (((((nbitAddr >> 5) - (bitAddr >> 5)) =/= addConstantMod) && nbitAddr > bitAddr) ||
-        (nbitAddr(4, 0) === actMemValidBits.U))
+        (nbitAddr(4, 0) === inputValidBits.U))
   ) {
-    nbitAddrMod := nbitAddr + leftoverBits.U
+    nbitAddrMod := nbitAddr + inputLefoverBits.U
   }.otherwise {
     nbitAddrMod := nbitAddr
   }
@@ -376,9 +352,9 @@ class SlidingWindowUnit(
   dataIndex := MuxLookup(
     subwordAddr,
     0.U,
-    Seq.tabulate(actParamsPerWord)(_ * actParamSize).zipWithIndex.map(x => (x._1.U -> x._2.U))
+    Seq.tabulate(input.paramsPerWord)(_ * input.dtype.bitwidth).zipWithIndex.map(x => (x._1.U -> x._2.U))
   )
-  ramDataAsVec := io.actMem.data(actMemValidBits - 1, 0).asTypeOf(ramDataAsVec)
+  ramDataAsVec := io.actMem.data(inputValidBits - 1, 0).asTypeOf(ramDataAsVec)
   when(
     (prevstate === swuState.sROWMODE) ||
       (state === swuState.sROWMODE && prevstate === swuState.sWAITSTART)
@@ -392,16 +368,16 @@ class SlidingWindowUnit(
   io.shiftRegs := RegNext(io.imageValid)
   io.rowWriteMode := (prevstate === swuState.sROWMODE) && !io.shiftRegs
   io.rowAddr := RegNext(rowCnt)
-  if (kernelDepth > 1) {
+  if (kernel.numChannels > 1) {
     io.chAddr := RegNext(chCnt)
   } else {
     io.chAddr := 0.U
   }
   io.data := dataBuf.asUInt
   when(io.rowWriteMode) {
-    io.valid := RegNext(colCnt === (kernelSize - 1).U) && !prevstall
+    io.valid := RegNext(colCnt === (kernel.width - 1).U) && !prevstall
   }.otherwise {
-    io.valid := RegNext(rowCnt === (kernelSize - 1).U) && rowCnt === 0.U && !prevstall // rowCnt reset
+    io.valid := RegNext(rowCnt === (kernel.width - 1).U) && rowCnt === 0.U && !prevstall // rowCnt reset
   }
   io.imageValid := (RegNext(allCntMax) && prevstate === swuState.sROWMODE && !prevstall) ||
     (RegNext(rowAndChCntMax) && prevstate === swuState.sCOLMODE && !prevstall)
