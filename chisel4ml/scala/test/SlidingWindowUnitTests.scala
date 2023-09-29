@@ -44,6 +44,10 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester with
     shape = Seq(1, 2, 3, 3),
     values = Seq(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
   )
+  val kernelParameters = lbir.QTensor(
+    dtype = new lbir.Datatype(quantization = UNIFORM),
+    shape = Seq(1, 2, 2, 2)
+  )
 
   val dtype2 = new lbir.Datatype(quantization = UNIFORM, bitwidth = 6, signed = false, shift = Seq(0), offset = Seq(0))
   val testParameters2 = lbir.QTensor(
@@ -51,6 +55,10 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester with
     shape = Seq(1, 2, 5, 4),
     values = Seq(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
       29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40)
+  )
+  val kernelParameters2 = lbir.QTensor(
+    dtype = new lbir.Datatype(quantization = UNIFORM),
+    shape = Seq(1, 2, 3, 3)
   )
 
   behavior.of("SlidingWindowUnit module")
@@ -62,7 +70,8 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester with
         actWidth = 3,
         actHeight = 3,
         actParamSize = 5,
-        parameters = testParameters
+        kernel = kernelParameters,
+        inputs = testParameters
       )
     ) { dut =>
       //                  data,            rowAddr, chAddr, rowWriteMode
@@ -102,7 +111,8 @@ class SlidingWindowUnitTests extends AnyFlatSpec with ChiselScalatestTester with
         actWidth = 5,
         actHeight = 4,
         actParamSize = 6,
-        parameters = testParameters2
+        kernel = kernelParameters2,
+        inputs = testParameters2
       )
     ) { dut =>
       //                  data                      rowAddr, ChAddr, rowWriteMode

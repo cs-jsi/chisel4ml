@@ -77,21 +77,14 @@ class ProcessingElementSequentialConv[
 
   val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
-  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = layer.kernel.toHexStr, width = MemWordSize.bits))
 
+  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = layer.kernel.toHexStr, width = MemWordSize.bits))
   val actMem = Module(MemoryGenerator.SRAM(depth = layer.input.memDepth, width = MemWordSize.bits))
+  val resMem = Module(MemoryGenerator.SRAM(depth = layer.output.memDepth, width = MemWordSize.bits))
 
   val krf = Module(new KernelRegisterFile(layer.kernel))
 
-  val actRegFile = Module(
-    new RollingRegisterFile(
-      kernelSize = layer.kernel.width,
-      kernelDepth = layer.kernel.numChannels,
-      paramSize = layer.input.dtype.bitwidth
-    )
-  )
-
-  val resMem = Module(MemoryGenerator.SRAM(depth = layer.output.memDepth, width = MemWordSize.bits))
+  val actRegFile = Module(new RollingRegisterFile(layer.input, layer.kernel))
 
   val dynamicNeuron = Module(
     new DynamicNeuron[I, W, M, S, A, O](

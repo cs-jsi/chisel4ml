@@ -31,7 +31,8 @@ class SlidingWindowUnitTestBed(
   actWidth:     Int,
   actHeight:    Int,
   actParamSize: Int,
-  parameters:   QTensor)
+  kernel:       QTensor,
+  inputs:       QTensor)
     extends Module {
 
   val memWordWidth:     Int = 32
@@ -65,11 +66,11 @@ class SlidingWindowUnitTestBed(
   )
 
   val rrf = Module(
-    new RollingRegisterFile(kernelSize = kernelSize, kernelDepth = kernelDepth, paramSize = actParamSize)
+    new RollingRegisterFile(input = inputs, kernel = kernel)
   )
 
   // For testing purposes we use a prewritten ROM
-  val actMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = parameters.toHexStr, width = memWordWidth))
+  val actMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = inputs.toHexStr, width = memWordWidth))
 
   rrf.io.shiftRegs := swu.io.shiftRegs
   rrf.io.rowWriteMode := swu.io.rowWriteMode

@@ -24,7 +24,6 @@ import memories.SRAMWrite
 /** Result Memory Buffer
   */
 class ResultMemoryBuffer[O <: Bits](genOut: O, output: lbir.QTensor) extends Module {
-
   val resultsPerKernel = output.width * output.height
   val resultsPerWord: Int = MemWordSize.bits / genOut.getWidth
   val numKernels =

@@ -163,7 +163,7 @@ package object implicits {
     }
     def numParams:       Int = qt.shape.reduce(_ * _)
     def numKernelParams: Int = numParams / numKernels
-    val paramsPerWord:   Int = MemWordSize.bits / qt.dtype.bitwidth
+    def paramsPerWord:   Int = MemWordSize.bits / qt.dtype.bitwidth
     def totalBitwidth:   Int = qt.dtype.bitwidth * numParams
     def memDepth: Int = {
       qt.shape.length match {

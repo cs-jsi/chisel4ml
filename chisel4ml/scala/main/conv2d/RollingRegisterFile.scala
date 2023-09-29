@@ -17,49 +17,40 @@ package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
+import chisel4ml.implicits._
 
 /** A register file for storing the inputs (activations or image) of a convotional layer.
-  *
-  * kernelSize: Int - Signifies one dimension of a square kernel (If its a 3x3 kernel then kernelSize=3) kernelDepth:
-  * Int - The depth of the kernel (number of input channels) actParamSize: Int - The activation parameterSize in bits.
   */
-class RollingRegisterFile(kernelSize: Int, kernelDepth: Int, paramSize: Int) extends Module {
-  val totalNumOfElements:  Int = kernelSize * kernelSize * kernelDepth
-  val kernelNumOfElements: Int = kernelSize * kernelSize
-  val outDataSize:         Int = kernelSize * kernelSize * kernelDepth * paramSize
-  val wrDataWidth:         Int = kernelSize * paramSize
-  val chAddrWidth:         Int = log2Up(kernelDepth)
-  val rowAddrWidth:        Int = log2Up(kernelSize)
-
+class RollingRegisterFile(input: lbir.QTensor, kernel: lbir.QTensor) extends Module {
   val io = IO(new Bundle {
     val shiftRegs = Input(Bool())
     val rowWriteMode = Input(Bool())
-    val rowAddr = Input(UInt(rowAddrWidth.W))
-    val chAddr = Input(UInt(chAddrWidth.W))
-    val inData = Input(UInt(wrDataWidth.W))
+    val rowAddr = Input(UInt(log2Up(kernel.width).W))
+    val chAddr = Input(UInt(log2Up(kernel.numChannels).W))
+    val inData = Input(UInt((kernel.width * input.dtype.bitwidth).W))
     val inValid = Input(Bool())
-    val outData = Output(UInt(outDataSize.W))
+    val outData = Output(UInt((kernel.numKernelParams * input.dtype.bitwidth).W))
   })
 
-  val regs = RegInit(VecInit.fill(kernelDepth, kernelSize, kernelSize)(0.U(paramSize.W)))
+  val regs = RegInit(VecInit.fill(kernel.numChannels, kernel.width, kernel.height)(0.U(input.dtype.bitwidth.W)))
   io.outData := regs.asUInt
 
   regs := regs
   when(io.inValid) {
     when(io.rowWriteMode === true.B) {
-      regs(io.chAddr)(io.rowAddr) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))
+      regs(io.chAddr)(io.rowAddr) := io.inData.asTypeOf(Vec(kernel.width, UInt(input.dtype.bitwidth.W)))
     }.otherwise {
-      for (i <- 0 until kernelSize) {
-        regs(io.chAddr)(i)(kernelSize - 1) := io.inData.asTypeOf(Vec(kernelSize, UInt(paramSize.W)))(i)
+      for (i <- 0 until kernel.width) {
+        regs(io.chAddr)(i)(kernel.width - 1) := io.inData.asTypeOf(Vec(kernel.width, UInt(input.dtype.bitwidth.W)))(i)
       }
     }
   }
 
   when(io.shiftRegs === true.B) {
     for {
-      i <- 0 until kernelDepth
-      k <- 0 until kernelSize - 1
-      j <- 0 until kernelSize
+      i <- 0 until kernel.numChannels
+      k <- 0 until kernel.width - 1
+      j <- 0 until kernel.width
     } {
       regs(i)(j)(k) := regs(i)(j)(k + 1)
     }
