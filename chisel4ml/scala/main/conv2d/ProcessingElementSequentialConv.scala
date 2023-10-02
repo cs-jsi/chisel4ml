@@ -29,7 +29,6 @@ import interfaces.amba.axis._
 import memories.MemoryGenerator
 
 import scala.reflect.runtime.universe._
-import memories.SRAMWrite
 
 /** A sequential processing element for convolutions.
   *

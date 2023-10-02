@@ -20,7 +20,6 @@ import chisel3.util._
 import chisel4ml.MemWordSize
 import chisel4ml.implicits._
 import lbir.Conv2DConfig
-import interfaces.amba.axis.AXIStreamIO
 
 /** PeSeqConvController
   */
