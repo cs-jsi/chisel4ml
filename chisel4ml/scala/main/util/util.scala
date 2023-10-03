@@ -85,4 +85,14 @@ package object util {
     }
     case 1 => (pAct << shift.abs).asTypeOf(pAct)
   }
+
+  def shiftAndRoundDynamic[S <: Bits](pAct: S, shift: UInt, shiftLeft: Bool, genAccu: S): S = {
+    val sout = Wire(genAccu)
+    when(shiftLeft) {
+      sout := (pAct << shift).asUInt.asTypeOf(sout)
+    }.otherwise {
+      sout := ((pAct >> shift).asSInt + pAct(shift - 1.U).asSInt).asUInt.asTypeOf(sout)
+    }
+    sout
+  }
 }

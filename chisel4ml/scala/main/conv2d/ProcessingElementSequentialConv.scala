@@ -85,7 +85,7 @@ class ProcessingElementSequentialConv[
   val dynamicNeuron = Module(
     new DynamicNeuron[I, W, M, S, A, O](
       genIn = genIn,
-      numSynaps = layer.kernel.numKernelParams,
+      kernel = layer.kernel,
       genWeights = genWeights,
       genAccu = genAccu,
       genThresh = genThresh,
@@ -101,7 +101,7 @@ class ProcessingElementSequentialConv[
   val rmb = Module(new ResultMemoryBuffer[O](genOut = genOut, output = layer.output))
 
   val ctrl = Module(new PeSeqConvController(layer))
-  val kernelSubsystem = Module(new KernelSubsystem(layer.kernel, layer.thresh, genIn, genThresh))
+  val kernelSubsystem = Module(new KernelSubsystem(layer.kernel, layer.thresh, genThresh))
 
   actMem.io.read <> swu.io.actMem
   resMem.io.write <> rmb.io.resRam
@@ -118,17 +118,14 @@ class ProcessingElementSequentialConv[
   rmb.io.start := ctrl.io.rmbStart
 
   dynamicNeuron.io.in := actRegFile.io.outData
-  dynamicNeuron.io.weights := kernelSubsystem.kernelIO.bits.kernel.asUInt
-  dynamicNeuron.io.thresh := kernelSubsystem.kernelIO.bits.thresh.thresh
-  dynamicNeuron.io.shift := kernelSubsystem.kernelIO.bits.thresh.shift
-  dynamicNeuron.io.shiftLeft := kernelSubsystem.kernelIO.bits.thresh.shiftLeft
+  dynamicNeuron.io.weights <> kernelSubsystem.io.kernel.bits
 
   swu.io.start := ctrl.io.swuStart
   ctrl.io.swuEnd := swu.io.end
 
-  ctrl.io.krfReady := kernelSubsystem.ctrlIO.ready
-  kernelSubsystem.ctrlIO.loadKernel.valid := ctrl.io.krfLoadKernel
-  kernelSubsystem.ctrlIO.loadKernel.bits := ctrl.io.krfKernelNum
+  ctrl.io.krfReady := kernelSubsystem.io.ctrl.ready
+  kernelSubsystem.io.ctrl.loadKernel.valid := ctrl.io.krfLoadKernel
+  kernelSubsystem.io.ctrl.loadKernel.bits := ctrl.io.krfKernelNum
 
   inStream.ready := ctrl.io.inStreamReady
   actMem.io.write.enable := inStream.ready && inStream.valid

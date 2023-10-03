@@ -25,12 +25,14 @@ import org.scalatest.flatspec.AnyFlatSpec
 class DynamicNeuronTests extends AnyFlatSpec with ChiselScalatestTester {
   val logger = LoggerFactory.getLogger(classOf[DynamicNeuronTests])
 
+  val kernel = lbir.QTensor(shape = Seq(1, 1, 2, 2), dtype = lbir.Datatype(bitwidth = 4))
+
   behavior.of("DynamicNeuron module")
   it should "Compute the right value" in {
     test(
       new DynamicNeuron[UInt, SInt, SInt, SInt, SInt, UInt](
         genIn = UInt(4.W),
-        numSynaps = 4,
+        kernel = kernel,
         genWeights = SInt(4.W),
         genAccu = SInt(4.W),
         genThresh = SInt(4.W),
@@ -41,10 +43,10 @@ class DynamicNeuronTests extends AnyFlatSpec with ChiselScalatestTester {
       )
     ) { dut =>
       dut.io.in.poke("b0011_0010_0001_0000".U)
-      dut.io.weights.poke("b0001_0001_0001_0001".U)
-      dut.io.thresh.poke(0.S)
-      dut.io.shift.poke(0.U)
-      dut.io.shiftLeft.poke(true.B)
+      dut.io.weights.kernel.poke("b0001_0001_0001_0001".U)
+      dut.io.weights.thresh.thresh.poke(0.S)
+      dut.io.weights.thresh.shift.poke(0.U)
+      dut.io.weights.thresh.shiftLeft.poke(true.B)
       dut.clock.step()
       dut.io.out.expect(6.U)
       dut.clock.step()

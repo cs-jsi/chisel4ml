@@ -35,9 +35,7 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
     val rom = Flipped(new SRAMRead(depth = kernel.memDepth, width = MemWordSize.bits))
 
     // control interface
-    val kernelReady = Output(Bool())
-    val loadKernel = Input(Bool())
-    val kernelNum = Input(UInt(log2Up(kernel.numKernels).W))
+    val ctrl = new KernelControlIO(kernel.numKernels)
   })
 
   object krlState extends ChiselEnum {
@@ -70,7 +68,7 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   // NEXT STATE LOGIC  //
   ///////////////////////
   nstate := state
-  when(state === krlState.sWAIT && io.loadKernel) {
+  when(state === krlState.sWAIT && io.ctrl.loadKernel.valid) {
     nstate := krlState.sFILLRF
   }.elsewhen(state === krlState.sFILLRF && totalElemCnt === (kernel.numKernelParams - 1).U) {
     nstate := krlState.sEND
@@ -87,10 +85,10 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   nramAddr := ramAddr
   nwordElemCnt := wordElemCnt
   ntotalElemCnt := totalElemCnt
-  when(state === krlState.sWAIT && io.loadKernel) {
+  when(state === krlState.sWAIT && io.ctrl.loadKernel.valid) {
     // we map the index to the offset with a static lookup table
     nramAddr := MuxLookup(
-      io.kernelNum,
+      io.ctrl.loadKernel.bits,
       0.U,
       Seq.tabulate(kernel.numKernels)(_ * wordsPerKernel).zipWithIndex.map(x => (x._2.U -> x._1.U))
     )
@@ -123,7 +121,7 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   /////////////////////
   // COUNTERS LOGIC  //
   /////////////////////
-  when(state === krlState.sWAIT && io.loadKernel) {
+  when(state === krlState.sWAIT && io.ctrl.loadKernel.valid) {
     colCnt := 0.U
     rowCnt := 0.U
     chCnt := 0.U
@@ -162,5 +160,5 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   io.rom.address := ramAddr
 
   // control interface
-  io.kernelReady := (state === krlState.sEND) && !stall
+  io.ctrl.ready := (state === krlState.sEND) && !stall
 }

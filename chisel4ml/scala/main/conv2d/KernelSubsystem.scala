@@ -21,8 +21,8 @@ import memories.MemoryGenerator
 import chisel4ml.MemWordSize
 import chisel4ml.conv2d.KernelRegisterFile
 
-class KernelThreshIO[I <: Bits, A <: Bits](qt: lbir.QTensor, genIn: I, genThresh: A) extends Bundle {
-  val kernel = Output(Vec(qt.numKernelParams, genIn.cloneType))
+class KernelThreshIO[I <: Bits, A <: Bits](qt: lbir.QTensor, genThresh: A) extends Bundle {
+  val kernel = Output(UInt((qt.numKernelParams * qt.dtype.bitwidth).W))
   val thresh = new ThreshAndShiftIO(genThresh)
 }
 
@@ -31,15 +31,16 @@ class KernelControlIO(numberOfKernels: Int) extends Bundle {
   val loadKernel = Input(Valid(UInt(log2Up(numberOfKernels).W)))
 }
 
-class KernelSubsystem[I <: Bits, A <: Bits](kernel: lbir.QTensor, thresh: lbir.QTensor, genIn: I, genThresh: A)
-    extends Module {
-  val kernelIO = IO(Valid(new KernelThreshIO(kernel, genIn, genThresh)))
-  val ctrlIO = IO(new KernelControlIO(kernel.numKernels))
+class KernelSubsystem[I <: Bits, A <: Bits](kernelQt: lbir.QTensor, thresh: lbir.QTensor, genThresh: A) extends Module {
+  val io = IO(new Bundle {
+    val kernel = Valid(new KernelThreshIO(kernelQt, genThresh))
+    val ctrl = new KernelControlIO(kernelQt.numKernels)
+  })
 
-  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = kernel.toHexStr, width = MemWordSize.bits))
-  val kRFLoader = Module(new KernelRFLoader(kernel))
-  val krf = Module(new KernelRegisterFile(kernel))
-  val tas = Module(new ThreshAndShiftUnit[A](genThresh, thresh, kernel))
+  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = kernelQt.toHexStr, width = MemWordSize.bits))
+  val kRFLoader = Module(new KernelRFLoader(kernelQt))
+  val krf = Module(new KernelRegisterFile(kernelQt))
+  val tas = Module(new ThreshAndShiftUnit[A](genThresh, thresh, kernelQt))
 
   kernelMem.io.write.enable := false.B // io.kernelMemWrEna
   kernelMem.io.write.address := 0.U // io.kernelMemWrAddr
@@ -48,13 +49,11 @@ class KernelSubsystem[I <: Bits, A <: Bits](kernel: lbir.QTensor, thresh: lbir.Q
 
   krf.io.write <> kRFLoader.io.krf
 
-  ctrlIO.ready := kRFLoader.io.kernelReady
-  kRFLoader.io.loadKernel := ctrlIO.loadKernel.valid
-  kRFLoader.io.kernelNum := ctrlIO.loadKernel.bits
+  io.ctrl <> kRFLoader.io.ctrl
 
-  kernelIO.bits.thresh <> tas.tasIO
-  kernelIO.bits.kernel := krf.io.kernel.asTypeOf(kernelIO.bits.kernel)
-  kernelIO.valid := false.B
+  io.kernel.bits.thresh <> tas.tasIO
+  io.kernel.bits.kernel := krf.io.kernel
+  io.kernel.valid := false.B
 
-  tas.loadKernel := ctrlIO.loadKernel
+  tas.loadKernel := io.ctrl.loadKernel
 }

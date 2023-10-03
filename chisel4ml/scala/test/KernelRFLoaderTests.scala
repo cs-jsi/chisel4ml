@@ -76,11 +76,11 @@ class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with Be
       )
     ) { dut =>
       dut.clock.step()
-      dut.io.loadKernel.poke(true.B)
-      dut.io.kernelNum.poke(0.U)
+      dut.io.ctrl.loadKernel.valid.poke(true.B)
+      dut.io.ctrl.loadKernel.bits.poke(0.U)
       dut.clock.step()
-      dut.io.loadKernel.poke(false.B)
-      while (!dut.io.kernelReady.peek().litToBoolean) { dut.clock.step() } // wait for ready
+      dut.io.ctrl.loadKernel.valid.poke(false.B)
+      while (!dut.io.ctrl.ready.peek().litToBoolean) { dut.clock.step() } // wait for ready
       dut.clock.step()
       dut.io.krfOutput.expect(testParameters.toUInt)
       dut.clock.step()
@@ -97,19 +97,19 @@ class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with Be
       )
     ) { dut =>
       dut.clock.step()
-      dut.io.loadKernel.poke(true.B)
-      dut.io.kernelNum.poke(0.U)
+      dut.io.ctrl.loadKernel.valid.poke(true.B)
+      dut.io.ctrl.loadKernel.bits.poke(0.U)
       dut.clock.step()
-      dut.io.loadKernel.poke(false.B)
-      while (!dut.io.kernelReady.peek().litToBoolean) { dut.clock.step() } // wait for ready
+      dut.io.ctrl.loadKernel.valid.poke(false.B)
+      while (!dut.io.ctrl.ready.peek().litToBoolean) { dut.clock.step() } // wait for ready
       dut.clock.step()
       dut.io.krfOutput.expect(testParamsA.toUInt)
       dut.clock.step()
-      dut.io.loadKernel.poke(true.B)
-      dut.io.kernelNum.poke(1.U)
+      dut.io.ctrl.loadKernel.valid.poke(true.B)
+      dut.io.ctrl.loadKernel.bits.poke(1.U)
       dut.clock.step()
-      dut.io.loadKernel.poke(false.B)
-      while (!dut.io.kernelReady.peek().litToBoolean) { dut.clock.step() } // wait for ready
+      dut.io.ctrl.loadKernel.valid.poke(false.B)
+      while (!dut.io.ctrl.ready.peek().litToBoolean) { dut.clock.step() } // wait for ready
       dut.clock.step()
       dut.io.krfOutput.expect(testParamsB.toUInt)
       dut.clock.step()

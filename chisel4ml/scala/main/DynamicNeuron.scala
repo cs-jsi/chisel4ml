@@ -16,14 +16,13 @@
 package chisel4ml
 
 import chisel3._
-import chisel3.util._
-import chisel4ml.util.saturate
+import chisel4ml.util.{saturate, shiftAndRoundDynamic}
+import chisel4ml.conv2d.KernelThreshIO
 import chisel4ml.implicits._
-import chisel4ml.conv2d.ThreshAndShiftIO
 
 class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <: Bits, A <: Bits, O <: Bits](
+  kernel:     lbir.QTensor,
   genIn:      I,
-  numSynaps:  Int,
   genWeights: W,
   genAccu:    S,
   genThresh:  A,
@@ -32,31 +31,17 @@ class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <
   add:        Vec[M] => S,
   actFn:      (S, A) => O)
     extends Module {
-
-  def shiftAndRound(pAct: S, shift: UInt, shiftLeft: Bool, genAccu: S): S = {
-    val sout = Wire(genAccu)
-    when(shiftLeft) {
-      sout := (pAct << shift).asUInt.asTypeOf(sout)
-    }.otherwise {
-      sout := ((pAct >> shift).asSInt + pAct(shift - 1.U).asSInt).asUInt.asTypeOf(sout)
-    }
-    sout
-  }
-
   val io = IO(new Bundle {
-    val in:        UInt = Input(UInt((numSynaps * genIn.getWidth).W))
-    val weights:   UInt = Input(UInt((numSynaps * genWeights.getWidth).W))
-    val thresh:    A = Input(genThresh)
-    val shift:     UInt = Input(UInt(8.W)) // TODO: bitwidth?
-    val shiftLeft: Bool = Input(Bool())
-    val out:       O = Output(genOut)
+    val in: UInt = Input(UInt((kernel.numKernelParams * genIn.getWidth).W))
+    val weights = Flipped(new KernelThreshIO(kernel, genThresh))
+    val out: O = Output(genOut)
   })
 
-  val inVec = io.in.asTypeOf(Vec(numSynaps, genIn))
-  val inWeights = io.weights.asTypeOf(Vec(numSynaps, genWeights))
+  val inVec = io.in.asTypeOf(Vec(kernel.numKernelParams, genIn))
+  val inWeights = io.weights.kernel.asTypeOf(Vec(kernel.numKernelParams, genWeights))
 
   val muls = VecInit((inVec.zip(inWeights)).map { case (a, b) => mul(a, b) })
   val pAct = add(muls)
-  val sAct = shiftAndRound(pAct, io.shift, io.shiftLeft, genAccu)
-  io.out := saturate(actFn(sAct, io.thresh).asUInt, genOut.getWidth).asTypeOf(io.out)
+  val sAct = shiftAndRoundDynamic(pAct, io.weights.thresh.shift, io.weights.thresh.shiftLeft, genAccu)
+  io.out := saturate(actFn(sAct, io.weights.thresh.thresh).asUInt, genOut.getWidth).asTypeOf(io.out)
 }

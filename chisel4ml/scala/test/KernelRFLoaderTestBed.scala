@@ -19,7 +19,6 @@ import _root_.chisel4ml.implicits._
 import _root_.chisel4ml.conv2d._
 import _root_.lbir.QTensor
 import chisel3._
-import chisel3.util._
 import memories.MemoryGenerator
 
 /** Kernel Register File Loader - test bed
@@ -41,10 +40,7 @@ class KernelRFLoaderTestBed(
   val kernelMemDepthWords:         Int = wordsPerKernel * numKernels
 
   val io = IO(new Bundle {
-    val kernelReady = Output(Bool())
-    val loadKernel = Input(Bool())
-    val kernelNum = Input(UInt(log2Up(numKernels).W))
-
+    val ctrl = new KernelControlIO(parameters.numKernels)
     val krfOutput = Output(UInt(outDataSize.W))
   })
 
@@ -63,9 +59,7 @@ class KernelRFLoaderTestBed(
   kernelMem.io.write.enable := false.B
   kernelMem.io.write.address := 0.U
 
-  krfLoader.io.loadKernel := io.loadKernel
-  krfLoader.io.kernelNum := io.kernelNum
-  io.kernelReady := krfLoader.io.kernelReady
+  krfLoader.io.ctrl <> io.ctrl
 
   io.krfOutput := krf.io.kernel
 }
