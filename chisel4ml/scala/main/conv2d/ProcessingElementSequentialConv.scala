@@ -29,6 +29,7 @@ import interfaces.amba.axis._
 import memories.MemoryGenerator
 
 import scala.reflect.runtime.universe._
+import spire.std.option
 
 /** A sequential processing element for convolutions.
   *
@@ -77,10 +78,7 @@ class ProcessingElementSequentialConv[
   val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 
-  val actMem = Module(MemoryGenerator.SRAM(depth = layer.input.memDepth, width = MemWordSize.bits))
   val resMem = Module(MemoryGenerator.SRAM(depth = layer.output.memDepth, width = MemWordSize.bits))
-
-  val actRegFile = Module(new RollingRegisterFile(layer.input, layer.kernel))
 
   val dynamicNeuron = Module(
     new DynamicNeuron[I, W, M, S, A, O](
@@ -96,41 +94,31 @@ class ProcessingElementSequentialConv[
     )
   )
 
-  val swu = Module(new SlidingWindowUnit(input = layer.input, kernel = layer.kernel))
-
   val rmb = Module(new ResultMemoryBuffer[O](genOut = genOut, output = layer.output))
 
   val ctrl = Module(new PeSeqConvController(layer))
   val kernelSubsystem = Module(new KernelSubsystem(layer.kernel, layer.thresh, genThresh))
+  val inputSubsytem = Module(new InputActivationsSubsystem(layer.input, layer.kernel, options))
 
-  actMem.io.read <> swu.io.actMem
   resMem.io.write <> rmb.io.resRam
 
-  actRegFile.io.shiftRegs := swu.io.shiftRegs
-  actRegFile.io.rowWriteMode := swu.io.rowWriteMode
-  actRegFile.io.rowAddr := swu.io.rowAddr
-  actRegFile.io.chAddr := swu.io.chAddr
-  actRegFile.io.inData := swu.io.data
-  actRegFile.io.inValid := swu.io.valid
-
-  rmb.io.resultValid := RegNext(swu.io.imageValid)
+  rmb.io.resultValid := inputSubsytem.io.outData.valid
   rmb.io.result := dynamicNeuron.io.out
   rmb.io.start := ctrl.io.rmbStart
 
-  dynamicNeuron.io.in := actRegFile.io.outData
+  dynamicNeuron.io.in := inputSubsytem.io.outData.bits
   dynamicNeuron.io.weights <> kernelSubsystem.io.kernel.bits
 
-  swu.io.start := ctrl.io.swuStart
-  ctrl.io.swuEnd := swu.io.end
+  inputSubsytem.io.start := ctrl.io.swuStart
+  ctrl.io.swuEnd := inputSubsytem.io.end
 
   ctrl.io.krf <> kernelSubsystem.io.ctrl
 
-  inStream.ready := ctrl.io.inStreamReady
-  actMem.io.write.enable := inStream.ready && inStream.valid
-  actMem.io.write.address := ctrl.io.actMemAddr
-  actMem.io.write.data := inStream.bits
-  ctrl.io.inStreamLast := inStream.last
-  ctrl.io.inStreamValid := inStream.valid
+  inStream <> inputSubsytem.io.inStream
+  inputSubsytem.io.inStreamReady := ctrl.io.inStreamReady
+  inputSubsytem.io.actMemAddr := ctrl.io.actMemAddr
+  ctrl.io.inStreamLast := inputSubsytem.io.inStreamLast
+  ctrl.io.inStreamValid := inputSubsytem.io.inStreamValid
 
   outStream.valid := ctrl.io.outStreamValid
   outStream.bits := resMem.io.read.data
