@@ -30,9 +30,7 @@ class PeSeqConvController(layer: Conv2DConfig) extends Module {
     val swuStart = Output(Bool())
 
     // interface to the Kernel RF/loader
-    val krfReady = Input(Bool())
-    val krfKernelNum = Output(UInt(log2Up(layer.kernel.numKernels).W))
-    val krfLoadKernel = Output(Bool())
+    val krf = Flipped(new KernelControlIO(layer.kernel.numKernels))
 
     val rmbStart = Output(Bool())
 
@@ -72,7 +70,7 @@ class PeSeqConvController(layer: Conv2DConfig) extends Module {
     nstate := ctrlState.sLOADINPACT
   }.elsewhen(state === ctrlState.sLOADINPACT && actMemCnt === layer.input.numTransactions(MemWordSize.bits).U) {
     nstate := ctrlState.sLOADKERNEL
-  }.elsewhen(state === ctrlState.sLOADKERNEL && io.krfReady) {
+  }.elsewhen(state === ctrlState.sLOADKERNEL && io.krf.ready) {
     nstate := ctrlState.sCOMP
   }.elsewhen(state === ctrlState.sCOMP && io.swuEnd) {
     when(kernelCnt === layer.kernel.numKernels.U) {
@@ -91,7 +89,7 @@ class PeSeqConvController(layer: Conv2DConfig) extends Module {
 
   when(state === ctrlState.sWAITFORDATA) {
     kernelCnt := 0.U
-  }.elsewhen(io.krfReady) {
+  }.elsewhen(io.krf.ready) {
     kernelCnt := kernelCnt + 1.U
   }
 
@@ -112,11 +110,11 @@ class PeSeqConvController(layer: Conv2DConfig) extends Module {
     resMemCnt := resMemCnt + 1.U
   }
 
-  io.swuStart := (((state === ctrlState.sLOADKERNEL) && io.krfReady) ||
+  io.swuStart := (((state === ctrlState.sLOADKERNEL) && io.krf.ready) ||
     (state === ctrlState.sCOMP) && RegNext(RegNext(io.swuEnd)))
 
-  io.krfKernelNum := kernelCnt
-  io.krfLoadKernel := RegNext(
+  io.krf.loadKernel.bits := kernelCnt
+  io.krf.loadKernel.valid := RegNext(
     (RegNext(io.swuEnd) ||
       ((state === ctrlState.sLOADKERNEL) &&
         RegNext(state === ctrlState.sLOADINPACT)))

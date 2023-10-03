@@ -123,9 +123,7 @@ class ProcessingElementSequentialConv[
   swu.io.start := ctrl.io.swuStart
   ctrl.io.swuEnd := swu.io.end
 
-  ctrl.io.krfReady := kernelSubsystem.io.ctrl.ready
-  kernelSubsystem.io.ctrl.loadKernel.valid := ctrl.io.krfLoadKernel
-  kernelSubsystem.io.ctrl.loadKernel.bits := ctrl.io.krfKernelNum
+  ctrl.io.krf <> kernelSubsystem.io.ctrl
 
   inStream.ready := ctrl.io.inStreamReady
   actMem.io.write.enable := inStream.ready && inStream.valid
