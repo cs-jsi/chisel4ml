@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.sequential
+package chisel4ml.conv2d
 
-import chisel4ml.LBIRStream
+import chisel4ml.{DynamicNeuron, LBIRStream}
 import chisel4ml.implicits._
-import chisel4ml.util.reluFn
+import chisel4ml.util.{linFn, reluFn}
 import lbir.Activation._
 import lbir.Conv2DConfig
 import lbir.Datatype.QuantizationType._
@@ -77,11 +77,8 @@ class ProcessingElementSequentialConv[
   val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 
-  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = layer.kernel.toHexStr, width = MemWordSize.bits))
   val actMem = Module(MemoryGenerator.SRAM(depth = layer.input.memDepth, width = MemWordSize.bits))
   val resMem = Module(MemoryGenerator.SRAM(depth = layer.output.memDepth, width = MemWordSize.bits))
-
-  val krf = Module(new KernelRegisterFile(layer.kernel))
 
   val actRegFile = Module(new RollingRegisterFile(layer.input, layer.kernel))
 
@@ -101,22 +98,13 @@ class ProcessingElementSequentialConv[
 
   val swu = Module(new SlidingWindowUnit(input = layer.input, kernel = layer.kernel))
 
-  val kRFLoader = Module(new KernelRFLoader(layer.kernel))
-
-  val tas = Module(new ThreshAndShiftUnit[A](genThresh = genThresh, thresh = layer.thresh, kernel = layer.kernel))
-
   val rmb = Module(new ResultMemoryBuffer[O](genOut = genOut, output = layer.output))
 
   val ctrl = Module(new PeSeqConvController(layer))
-
-  kernelMem.io.write.enable := false.B // io.kernelMemWrEna
-  kernelMem.io.write.address := 0.U // io.kernelMemWrAddr
-  kernelMem.io.write.data := 0.U // io.kernelMemWrData
-  kernelMem.io.read <> kRFLoader.io.rom
+  val kernelSubsystem = Module(new KernelSubsystem(layer.kernel, layer.thresh, genIn, genThresh))
 
   actMem.io.read <> swu.io.actMem
   resMem.io.write <> rmb.io.resRam
-  krf.io.write <> kRFLoader.io.krf
 
   actRegFile.io.shiftRegs := swu.io.shiftRegs
   actRegFile.io.rowWriteMode := swu.io.rowWriteMode
@@ -130,24 +118,17 @@ class ProcessingElementSequentialConv[
   rmb.io.start := ctrl.io.rmbStart
 
   dynamicNeuron.io.in := actRegFile.io.outData
-  dynamicNeuron.io.weights := krf.io.kernel
-  dynamicNeuron.io.thresh := tas.io.thresh
-  dontTouch(dynamicNeuron.io.thresh)
-  dontTouch(dynamicNeuron.io.shift)
-  dontTouch(dynamicNeuron.io.shiftLeft)
-  dontTouch(tas.io)
-  dynamicNeuron.io.shift := tas.io.shift
-  dynamicNeuron.io.shiftLeft := tas.io.shiftLeft
-
-  tas.io.start := ctrl.io.swuStart
-  tas.io.nextKernel := ctrl.io.krfLoadKernel
+  dynamicNeuron.io.weights := kernelSubsystem.kernelIO.bits.kernel.asUInt
+  dynamicNeuron.io.thresh := kernelSubsystem.kernelIO.bits.thresh.thresh
+  dynamicNeuron.io.shift := kernelSubsystem.kernelIO.bits.thresh.shift
+  dynamicNeuron.io.shiftLeft := kernelSubsystem.kernelIO.bits.thresh.shiftLeft
 
   swu.io.start := ctrl.io.swuStart
   ctrl.io.swuEnd := swu.io.end
 
-  ctrl.io.krfReady := kRFLoader.io.kernelReady
-  kRFLoader.io.loadKernel := ctrl.io.krfLoadKernel
-  kRFLoader.io.kernelNum := ctrl.io.krfKernelNum
+  ctrl.io.krfReady := kernelSubsystem.ctrlIO.ready
+  kernelSubsystem.ctrlIO.loadKernel.valid := ctrl.io.krfLoadKernel
+  kernelSubsystem.ctrlIO.loadKernel.bits := ctrl.io.krfKernelNum
 
   inStream.ready := ctrl.io.inStreamReady
   actMem.io.write.enable := inStream.ready && inStream.valid
@@ -187,6 +168,14 @@ object ProcessingElementSequentialConv {
         mul = (x: UInt, y: SInt) => x * y,
         add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
         actFn = reluFn
+      )
+    case (UNIFORM, true, UNIFORM, NO_ACTIVATION) =>
+      new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt, SInt](
+        layer,
+        options,
+        mul = (x: SInt, y: SInt) => x * y,
+        add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
+        actFn = linFn
       )
     case _ => throw new RuntimeException()
   }

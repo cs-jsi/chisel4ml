@@ -16,7 +16,8 @@
 package chisel4ml
 
 import chisel4ml.LBIRStream
-import chisel4ml.sequential.{MaxPool2D, ProcessingElementSequentialConv}
+import chisel4ml.conv2d.ProcessingElementSequentialConv
+import chisel4ml.sequential.MaxPool2D
 import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
 import services.LayerOptions
 import chisel3._

@@ -295,7 +295,7 @@ def sint_mnist_qdense_relu_pruned() -> tf.keras.Model:
                 kernel_quantizer=qkeras.quantized_bits(**kernel_quant_params),
                 use_bias=True,
             ),
-            **pruning_params
+            **pruning_params,
         )
     )
     model.add(tf.keras.layers.BatchNormalization())
@@ -308,7 +308,7 @@ def sint_mnist_qdense_relu_pruned() -> tf.keras.Model:
                 kernel_quantizer=qkeras.quantized_bits(**kernel_quant_params),
                 use_bias=True,
             ),
-            **pruning_params
+            **pruning_params,
         )
     )
     model.add(tf.keras.layers.BatchNormalization())
@@ -321,7 +321,7 @@ def sint_mnist_qdense_relu_pruned() -> tf.keras.Model:
                 kernel_quantizer=qkeras.quantized_bits(**kernel_quant_params),
                 use_bias=True,
             ),
-            **pruning_params
+            **pruning_params,
         )
     )
     model.add(tf.keras.layers.BatchNormalization())
@@ -337,7 +337,7 @@ def sint_mnist_qdense_relu_pruned() -> tf.keras.Model:
                 use_bias=True,
                 activation="softmax",
             ),
-            **pruning_params
+            **pruning_params,
         )
     )
 
@@ -387,6 +387,60 @@ def sint_simple_model() -> tf.keras.Model:
 
 
 @pytest.fixture(scope="session")
+def sint_conv_layer() -> tf.keras.Model:
+    # conv2d kernel shape: [height, width, input_channels // groups, filters]
+    # The filters are: [1 2
+    #                   3 4]
+    w1 = np.array([1, 2, 3, 4]).reshape(2, 2, 1, 1)
+    b1 = np.array([0])
+
+    x = x_in = tf.keras.layers.Input(shape=(3, 3, 1))  # 3x3 monochrome images
+    x = qkeras.QActivation(
+        qkeras.quantized_bits(bits=4, integer=3, keep_negative=True)
+    )(x)
+    x = qkeras.QConv2D(
+        filters=1,
+        kernel_size=[2, 2],
+        strides=[1, 1],
+        kernel_quantizer=qkeras.quantized_bits(
+            bits=4, integer=3, keep_negative=True, alpha=np.array([1])
+        ),
+    )(x)
+    x = qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3))(x)
+    model = tf.keras.Model(inputs=[x_in], outputs=[x])
+    model.compile()
+    model.layers[2].set_weights([w1, b1])
+    return model
+
+
+@pytest.fixture(scope="session")
+def sint_conv_layer_2_kernels() -> tf.keras.Model:
+    # conv2d kernel shape: [height, width, input_channels // groups, filters]
+    # The filters are: [1 2  and [-4, -3
+    #                   3 4]      -2, -1]
+    w1 = np.array([1, 2, 3, 4, -4, -3, -2, -1]).reshape(2, 2, 2, 1)
+    w1 = np.moveaxis(w1, [1, 2, 3, 0], [0, 1, 2, 3])
+    b1 = np.array([1, 2])
+
+    x = x_in = tf.keras.layers.Input(shape=(3, 3, 1))  # 3x3 monochrome images
+    x = qkeras.QActivation(
+        qkeras.quantized_bits(bits=4, integer=3, keep_negative=True)
+    )(x)
+    x = qkeras.QConv2D(
+        filters=2,
+        kernel_size=[2, 2],
+        strides=[1, 1],
+        kernel_quantizer=qkeras.quantized_bits(
+            bits=4, integer=3, keep_negative=True, alpha=np.array([2, 1])
+        ),
+    )(x)
+    model = tf.keras.Model(inputs=[x_in], outputs=[x])
+    model.compile()
+    model.layers[2].set_weights([w1, b1])
+    return model
+
+
+@pytest.fixture(scope="session")
 def sint_simple_conv_model() -> tf.keras.Model:
     # conv2d kernel shape: [height, width, input_channels // groups, filters]
     # The filters are: [1 2  and [-4, -3
@@ -424,6 +478,7 @@ def sint_simple_conv_model() -> tf.keras.Model:
     model.layers[5].set_weights([w2, b2])
     return model
 
+
 @pytest.fixture(scope="session")
 def audio_data():
     train_ds, info = tfds.load(
@@ -439,12 +494,12 @@ def audio_data():
     test_ds = tfds.load(
         "speech_commands", split="test", shuffle_files=False, as_supervised=True
     )
-    
+
     label_names = []
     for name in info.features["label"].names:
         print(name, info.features["label"].str2int(name))
         label_names = label_names[:] + [name]
-    
+
     def get_frames(x):
         npads = (32 * 512) - x.shape[0]
         frames = np.pad(x, (0, npads)).reshape([32, 512])
@@ -497,13 +552,16 @@ def audio_data():
             ]
         ),
     )
-    return [train_set,
-            val_set,
-            test_set,
-            label_names,
-            len(train_ds),
-            len(val_ds),
-            len(test_ds)]
+    return [
+        train_set,
+        val_set,
+        test_set,
+        label_names,
+        len(train_ds),
+        len(val_ds),
+        len(test_ds),
+    ]
+
 
 @pytest.fixture(scope="session")
 def audio_data_preproc():
@@ -520,15 +578,15 @@ def audio_data_preproc():
     test_ds = tfds.load(
         "speech_commands", split="test", shuffle_files=False, as_supervised=True
     )
-    
+
     label_names = []
     for name in info.features["label"].names:
         print(name, info.features["label"].str2int(name))
         label_names = label_names[:] + [name]
-    
 
-    fft_layer = FFTLayer('hamming')
+    fft_layer = FFTLayer("hamming")
     lmfe_layer = LMFELayer()
+
     def preproc(sample):
         return lmfe_layer(fft_layer(sample))
 
@@ -584,24 +642,25 @@ def audio_data_preproc():
             ]
         ),
     )
-    return [train_set,
-            val_set,
-            test_set,
-            label_names,
-            len(train_ds),
-            len(val_ds),
-            len(test_ds)]
+    return [
+        train_set,
+        val_set,
+        test_set,
+        label_names,
+        len(train_ds),
+        len(val_ds),
+        len(test_ds),
+    ]
 
-    
 
 @pytest.fixture(scope="session")
 def qnn_audio_class_no_preproc(audio_data_preproc):
-    train_set = audio_data_preproc[0]
-    val_set = audio_data_preproc[1]
-    test_set = audio_data_preproc[2]
+    train_set = audio_data_preproc[0]  # noqa: F841
+    val_set = audio_data_preproc[1]  # noqa: F841
+    test_set = audio_data_preproc[2]  # noqa: F841
     label_names = audio_data_preproc[3]
-    TRAIN_SET_LENGTH = audio_data_preproc[4]
-    VAL_SET_LENGTH = audio_data_preproc[5]
+    TRAIN_SET_LENGTH = audio_data_preproc[4]  # noqa: F841
+    VAL_SET_LENGTH = audio_data_preproc[5]  # noqa: F841
 
     EPOCHS = 10  # noqa: F841
     BATCH_SIZE = 128  # noqa: F841
@@ -657,7 +716,7 @@ def qnn_audio_class_no_preproc(audio_data_preproc):
                 ),
                 use_bias=False,
             ),
-            **pruning_params
+            **pruning_params,
         )
     )
     model.add(tf.keras.layers.BatchNormalization())
@@ -672,7 +731,7 @@ def qnn_audio_class_no_preproc(audio_data_preproc):
                 ),
                 use_bias=False,
             ),
-            **pruning_params
+            **pruning_params,
         )
     )
 
@@ -714,18 +773,21 @@ def qnn_audio_class_no_preproc(audio_data_preproc):
     #     verbose=True,
     #     callbacks=[pruning_callbacks.UpdatePruningStep()],
     # )
-    # opt_model.save_weights(os.path.join(SCRIPT_DIR, 'qnn_audio_class_opt_no_preproc.h5'))
-    opt_model.load_weights(os.path.join(SCRIPT_DIR, "qnn_audio_class_opt_no_preproc.h5"))
+    # opt_model.save_weights(os.path.join(SCRIPT_DIR, 'qnn_audio_class_opt_no_preproc.h5'))  # noqa: E501
+    opt_model.load_weights(
+        os.path.join(SCRIPT_DIR, "qnn_audio_class_opt_no_preproc.h5")
+    )
     return opt_model
+
 
 @pytest.fixture(scope="session")
 def qnn_audio_class(audio_data):
-    train_set = audio_data[0]
-    val_set = audio_data[1]
+    train_set = audio_data[0]  # noqa: F841
+    val_set = audio_data[1]  # noqa: F841
     test_set = audio_data[2]
     label_names = audio_data[3]
-    TRAIN_SET_LENGTH = audio_data[4]
-    VAL_SET_LENGTH = audio_data[5]
+    TRAIN_SET_LENGTH = audio_data[4]  # noqa: F841
+    VAL_SET_LENGTH = audio_data[5]  # noqa: F841
 
     EPOCHS = 10  # noqa: F841
     BATCH_SIZE = 128  # noqa: F841
@@ -746,7 +808,7 @@ def qnn_audio_class(audio_data):
     model.add(
         qkeras.QActivation(qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1))
     )
-    model.add(FFTLayer(win_fn='hamming'))
+    model.add(FFTLayer(win_fn="hamming"))
     model.add(LMFELayer())
     model.add(
         qkeras.QConv2D(
@@ -783,7 +845,7 @@ def qnn_audio_class(audio_data):
                 ),
                 use_bias=False,
             ),
-            **pruning_params
+            **pruning_params,
         )
     )
     model.add(tf.keras.layers.BatchNormalization())
@@ -798,7 +860,7 @@ def qnn_audio_class(audio_data):
                 ),
                 use_bias=False,
             ),
-            **pruning_params
+            **pruning_params,
         )
     )
 

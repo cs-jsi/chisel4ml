@@ -13,10 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.sequential
+package chisel4ml
 
 import chisel3._
+import chisel3.util._
 import chisel4ml.util.saturate
+import chisel4ml.implicits._
+import chisel4ml.conv2d.ThreshAndShiftIO
 
 class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <: Bits, A <: Bits, O <: Bits](
   genIn:      I,

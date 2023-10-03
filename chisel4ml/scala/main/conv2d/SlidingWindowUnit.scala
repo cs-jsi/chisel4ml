@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.sequential
+package chisel4ml.conv2d
 
 import chisel3._
 import chisel3.util._
@@ -25,7 +25,7 @@ import chisel4ml.MemWordSize
 class SlidingWindowUnit(input: lbir.QTensor, kernel: lbir.QTensor) extends Module {
   val inputValidBits:      Int = input.paramsPerWord * input.dtype.bitwidth
   val inputLefoverBits:    Int = MemWordSize.bits - inputValidBits
-  val actMemDepthBits:     Int = input.numKernelParams * input.dtype.bitwidth
+  val actMemDepthBits:     Int = input.numParams * input.dtype.bitwidth
   val actMemDepthWords:    Int = math.ceil(actMemDepthBits.toFloat / inputValidBits.toFloat).toInt
   val actMemDepthRealBits: Int = actMemDepthWords * MemWordSize.bits
 

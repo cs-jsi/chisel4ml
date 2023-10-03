@@ -16,7 +16,7 @@
 package chisel4ml.tests
 
 import _root_.chisel4ml.implicits._
-import _root_.chisel4ml.sequential._
+import _root_.chisel4ml.conv2d._
 import _root_.lbir.QTensor
 import chisel3._
 import chisel3.util._

@@ -13,42 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.sequential
+package chisel4ml.conv2d
 
 import chisel3._
 import chisel3.util._
 import chisel4ml.implicits._
 
+class ThreshAndShiftIO[A <: Bits](genThresh: A) extends Bundle {
+  val thresh = Output(genThresh)
+  val shift = Output(UInt(8.W))
+  val shiftLeft = Output(Bool())
+}
+
 /** ThreshAndShiftUnit
   */
 class ThreshAndShiftUnit[A <: Bits](genThresh: A, thresh: lbir.QTensor, kernel: lbir.QTensor) extends Module {
+  val tasIO = IO(new ThreshAndShiftIO(genThresh))
+  val loadKernel = IO(Input(Valid(UInt(log2Up(kernel.numKernels).W))))
+  val kernelNum = RegInit(0.U(log2Up(kernel.numKernels).W))
 
-  val io = IO(new Bundle {
-    // interface to the DynamicNeuron module
-    val thresh = Output(genThresh)
-    val shift = Output(UInt(8.W))
-    val shiftLeft = Output(Bool())
-
-    // control interface
-    val start = Input(Bool())
-    val nextKernel = Input(Bool())
-  })
-
-  val kernelNum = RegInit(0.U(log2Up(thresh.width).W))
-
-  when(io.start) {
-    kernelNum := 0.U
-  }.elsewhen(io.nextKernel) {
-    kernelNum := kernelNum + 1.U
+  when(loadKernel.valid) {
+    kernelNum := loadKernel.bits
   }
-  dontTouch(kernelNum)
   val threshWithIndex = thresh.values.zipWithIndex
   val shiftWithIndex = kernel.dtype.shift.zipWithIndex
-  io.thresh := MuxLookup(
+  tasIO.thresh := MuxLookup(
     kernelNum,
     0.S.asTypeOf(genThresh),
     threshWithIndex.map(x => (x._2.toInt.U -> x._1.toInt.S.asTypeOf(genThresh)))
   )
-  io.shift := MuxLookup(kernelNum, 0.U, shiftWithIndex.map(x => (x._2.toInt.U -> x._1.abs.U)))
-  io.shiftLeft := MuxLookup(kernelNum, true.B, shiftWithIndex.map(x => (x._2.toInt.U -> (x._1 == x._1.abs).B)))
+  tasIO.shift := MuxLookup(kernelNum, 0.U, shiftWithIndex.map(x => (x._2.toInt.U -> x._1.abs.U)))
+  tasIO.shiftLeft := MuxLookup(kernelNum, true.B, shiftWithIndex.map(x => (x._2.toInt.U -> (x._1 == x._1.abs).B)))
 }

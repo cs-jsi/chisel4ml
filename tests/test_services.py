@@ -207,3 +207,86 @@ def test_run_service_7(sint_mnist_qdense_relu_pruned):
             f" {sw_index}, and the hardware model at index: {hw_index}. Something is"
             f" wrong here. The stated results are for the mnist test image index {i}. "
         )
+
+
+def test_run_service_conv_8(sint_conv_layer):
+    x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(
+        1, 3, 3, 1
+    )
+    x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(
+        1, 3, 3, 1
+    )
+    x2 = np.zeros(9).reshape(1, 3, 3, 1)
+
+    opt_model = optimize.qkeras_model(sint_conv_layer)
+    circuit = generate.circuit(opt_model, is_simple=False)
+    assert circuit is not None
+    for x in [x0, x1, x2]:
+        sw_res = opt_model.predict(x)
+        hw_res = circuit(x)
+        assert np.array_equal(
+            hw_res, sw_res.reshape(1, 2, 2)
+        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+
+
+def test_run_service_conv_9(sint_conv_layer):
+    opt_model = optimize.qkeras_model(sint_conv_layer)
+    circuit = generate.circuit(opt_model, is_simple=False, gen_waveform=True)
+    assert circuit is not None
+
+    np.random.default_rng(42)
+    for x in range(20):
+        x = np.random.rand(9).reshape(1, 3, 3, 1)  # [0, 1]
+        x = (x * 2) - 1  # [-1, 1]
+        x = np.round(x * (2**3))
+        x = np.clip(x, -(2**3), (2**3) - 1)
+        sw_res = opt_model.predict(x)
+        hw_res = circuit(x)
+        assert np.array_equal(
+            hw_res, sw_res.reshape(1, 2, 2)
+        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+
+
+def test_run_service_conv_10(sint_conv_layer_2_kernels):
+    x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(
+        1, 3, 3, 1
+    )
+    x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(
+        1, 3, 3, 1
+    )
+    x2 = np.zeros(9).reshape(1, 3, 3, 1)
+
+    opt_model = optimize.qkeras_model(sint_conv_layer_2_kernels)
+    circuit = generate.circuit(
+        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
+    )
+    assert circuit is not None
+    for x in [x0, x1, x2]:
+        sw_res = opt_model.predict(x).reshape(2, 2, 2)
+        sw_res = np.moveaxis(sw_res, 2, 0)  # move channels dimension
+        hw_res = circuit(x)
+        assert np.array_equal(
+            hw_res, sw_res.reshape(2, 2, 2)
+        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+
+
+def test_run_service_conv_11(sint_simple_conv_model):
+    x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(
+        1, 3, 3, 1
+    )
+    x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(
+        1, 3, 3, 1
+    )
+    x2 = np.zeros(9).reshape(1, 3, 3, 1)
+
+    opt_model = optimize.qkeras_model(sint_simple_conv_model)
+    circuit = generate.circuit(
+        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
+    )
+    assert circuit is not None
+    for x in [x0, x1, x2]:
+        sw_res = opt_model.predict(x)
+        hw_res = circuit(x)
+        assert np.array_equal(
+            hw_res, sw_res.reshape(1)
+        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."

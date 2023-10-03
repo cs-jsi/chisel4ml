@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.sequential
+package chisel4ml.conv2d
 
 import chisel3._
 import chisel3.util._
@@ -29,7 +29,7 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
 
   val io = IO(new Bundle {
     // interface to the kernel register file
-    val krf = Valid(new KernelRegisterFileInput(kernel))
+    val krf = Output(Valid(new KernelRegisterFileInput(kernel)))
 
     // interface to the kernel ROM
     val rom = Flipped(new SRAMRead(depth = kernel.memDepth, width = MemWordSize.bits))

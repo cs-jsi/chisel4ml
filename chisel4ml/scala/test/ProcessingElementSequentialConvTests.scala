@@ -15,7 +15,7 @@
  */
 package chisel4ml.tests
 
-import _root_.chisel4ml.sequential.ProcessingElementSequentialConv
+import _root_.chisel4ml.conv2d.ProcessingElementSequentialConv
 import _root_.chisel4ml.implicits._
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory

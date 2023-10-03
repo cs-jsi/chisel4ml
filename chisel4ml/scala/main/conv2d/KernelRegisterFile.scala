@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.sequential
+package chisel4ml.conv2d
 
 import chisel3._
 import chisel3.util._
@@ -27,7 +27,7 @@ class KernelRegisterFileInput(qt: lbir.QTensor) extends Bundle {
 }
 
 class KernelRegisterFileIO(qt: lbir.QTensor) extends Bundle {
-  val write = Flipped(Valid(new KernelRegisterFileInput(qt)))
+  val write = Input(Valid(new KernelRegisterFileInput(qt)))
   val kernel = UInt((qt.numKernelParams * qt.dtype.bitwidth).W)
 }
 
