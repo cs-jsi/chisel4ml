@@ -15,7 +15,7 @@
  */
 package chisel4ml.conv2d
 
-import chisel4ml.{DynamicNeuron, LBIRStream}
+import chisel4ml.LBIRStream
 import chisel4ml.implicits._
 import chisel4ml.util.{linFn, reluFn}
 import lbir.Activation._
@@ -24,12 +24,9 @@ import lbir.Datatype.QuantizationType._
 import org.slf4j.LoggerFactory
 import services.LayerOptions
 import chisel3._
-import chisel4ml.MemWordSize
 import interfaces.amba.axis._
-import memories.MemoryGenerator
 
 import scala.reflect.runtime.universe._
-import spire.std.option
 
 /** A sequential processing element for convolutions.
   *
@@ -78,12 +75,10 @@ class ProcessingElementSequentialConv[
   val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 
-  val resMem = Module(MemoryGenerator.SRAM(depth = layer.output.memDepth, width = MemWordSize.bits))
-
   val dynamicNeuron = Module(
-    new DynamicNeuron[I, W, M, S, A, O](
-      genIn = genIn,
+    new DynamicNeuron(
       kernel = layer.kernel,
+      genIn = genIn,
       genWeights = genWeights,
       genAccu = genAccu,
       genThresh = genThresh,
@@ -93,40 +88,19 @@ class ProcessingElementSequentialConv[
       actFn = actFn
     )
   )
-
-  val rmb = Module(new ResultMemoryBuffer[O](genOut = genOut, output = layer.output))
-
   val ctrl = Module(new PeSeqConvController(layer))
   val kernelSubsystem = Module(new KernelSubsystem(layer.kernel, layer.thresh, genThresh))
   val inputSubsytem = Module(new InputActivationsSubsystem(layer.input, layer.kernel, options))
+  val resultSubsystem = Module(new ResultSubsystem(layer.output, options, genOut))
 
-  resMem.io.write <> rmb.io.resRam
+  inputSubsytem.io.inStream <> inStream
+  dynamicNeuron.io.in <> inputSubsytem.io.data
+  dynamicNeuron.io.weights <> kernelSubsystem.io.weights
+  resultSubsystem.io.result <> dynamicNeuron.io.out
+  outStream <> resultSubsystem.io.outStream
 
-  rmb.io.resultValid := inputSubsytem.io.outData.valid
-  rmb.io.result := dynamicNeuron.io.out
-  rmb.io.start := ctrl.io.rmbStart
-
-  dynamicNeuron.io.in := inputSubsytem.io.outData.bits
-  dynamicNeuron.io.weights <> kernelSubsystem.io.kernel.bits
-
-  inputSubsytem.io.start := ctrl.io.swuStart
-  ctrl.io.swuEnd := inputSubsytem.io.end
-
-  ctrl.io.krf <> kernelSubsystem.io.ctrl
-
-  inStream <> inputSubsytem.io.inStream
-  inputSubsytem.io.inStreamReady := ctrl.io.inStreamReady
-  inputSubsytem.io.actMemAddr := ctrl.io.actMemAddr
-  ctrl.io.inStreamLast := inputSubsytem.io.inStreamLast
-  ctrl.io.inStreamValid := inputSubsytem.io.inStreamValid
-
-  outStream.valid := ctrl.io.outStreamValid
-  outStream.bits := resMem.io.read.data
-  outStream.last := ctrl.io.outStreamLast
-  ctrl.io.outStreamReady := outStream.ready
-
-  resMem.io.read.enable := ctrl.io.resMemEna
-  resMem.io.read.address := ctrl.io.resMemAddr
+  inputSubsytem.io.next := ctrl.io.nextInputTensor
+  kernelSubsystem.io.loadKernel := ctrl.io.loadKernel
 }
 
 object ProcessingElementSequentialConv {

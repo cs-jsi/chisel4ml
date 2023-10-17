@@ -28,14 +28,10 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   val kernelMemValidBits: Int = kernel.paramsPerWord * kernel.dtype.bitwidth
 
   val io = IO(new Bundle {
-    // interface to the kernel register file
-    val krf = Output(Valid(new KernelRegisterFileInput(kernel)))
-
-    // interface to the kernel ROM
+    val krf = Flipped(Valid(new KernelRegisterFileInput(kernel)))
+    val kernelLoaded = Output(Bool())
     val rom = Flipped(new SRAMRead(depth = kernel.memDepth, width = MemWordSize.bits))
-
-    // control interface
-    val ctrl = new KernelControlIO(kernel.numKernels)
+    val loadKernel = Valid(UInt(log2Up(kernel.numKernels).W))
   })
 
   object krlState extends ChiselEnum {
@@ -68,7 +64,7 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   // NEXT STATE LOGIC  //
   ///////////////////////
   nstate := state
-  when(state === krlState.sWAIT && io.ctrl.loadKernel.valid) {
+  when(state === krlState.sWAIT && io.loadKernel.valid) {
     nstate := krlState.sFILLRF
   }.elsewhen(state === krlState.sFILLRF && totalElemCnt === (kernel.numKernelParams - 1).U) {
     nstate := krlState.sEND
@@ -85,10 +81,10 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   nramAddr := ramAddr
   nwordElemCnt := wordElemCnt
   ntotalElemCnt := totalElemCnt
-  when(state === krlState.sWAIT && io.ctrl.loadKernel.valid) {
+  when(state === krlState.sWAIT && io.loadKernel.valid) {
     // we map the index to the offset with a static lookup table
     nramAddr := MuxLookup(
-      io.ctrl.loadKernel.bits,
+      io.loadKernel.bits,
       0.U,
       Seq.tabulate(kernel.numKernels)(_ * wordsPerKernel).zipWithIndex.map(x => (x._2.U -> x._1.U))
     )
@@ -121,7 +117,7 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   /////////////////////
   // COUNTERS LOGIC  //
   /////////////////////
-  when(state === krlState.sWAIT && io.ctrl.loadKernel.valid) {
+  when(state === krlState.sWAIT && io.loadKernel.valid) {
     colCnt := 0.U
     rowCnt := 0.U
     chCnt := 0.U
@@ -147,6 +143,7 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   ///////////////////////
   // MODULE INTERFACES //
   ///////////////////////
+  io.kernelLoaded := state === krlState.sEND
 
   // kernel RF interface
   io.krf.bits.channelAddress := RegNext(chCnt)
@@ -158,7 +155,4 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   // kernel ROM interface
   io.rom.enable := (state === krlState.sFILLRF)
   io.rom.address := ramAddr
-
-  // control interface
-  io.ctrl.ready := (state === krlState.sEND) && !stall
 }

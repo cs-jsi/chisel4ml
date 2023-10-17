@@ -14,30 +14,20 @@
  * limitations under the License.
  */
 package chisel4ml.conv2d
-
 import chisel3._
-import chisel3.util._
+import chisel4ml.MemWordSize
 import chisel4ml.implicits._
-import lbir.Conv2DConfig
+import services.LayerOptions
+import memories.MemoryGenerator
+import interfaces.amba.axis.AXIStream
+import chisel3.util.Decoupled
 
-object ctrlState extends ChiselEnum {
-  val sWAITFORDATA = Value(0.U)
-  val sLOADINPACT = Value(1.U)
-  val sLOADKERNEL = Value(2.U)
-  val sCOMP = Value(3.U)
-  val sWAITWRITE = Value(4.U)
-  val sWAITWRITE2 = Value(5.U)
-  val sSENDDATA = Value(6.U)
-}
-
-/** PeSeqConvController
-  */
-class PeSeqConvController(layer: Conv2DConfig) extends Module {
+class ResultSubsystem[O <: Bits](output: lbir.QTensor, options: LayerOptions, genOut: O) extends Module {
   val io = IO(new Bundle {
-    val loadKernel = Output(Valid(UInt(log2Up(layer.kernel.numKernels).W)))
-    val nextInputTensor = Output(Bool())
+    val outStream = AXIStream(UInt(options.busWidthOut.W))
+    val result = Decoupled(genOut.cloneType)
   })
-  io.loadKernel.valid := false.B
-  io.loadKernel.bits := 0.U
-  io.nextInputTensor := false.B
+
+  val resMem = Module(MemoryGenerator.SRAM(depth = output.memDepth, width = MemWordSize.bits)) // ni potrebno?
+  val rmb = Module(new ResultMemoryBuffer[O](genOut = genOut, output = output))
 }

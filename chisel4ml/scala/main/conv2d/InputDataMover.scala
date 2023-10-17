@@ -17,27 +17,27 @@ package chisel4ml.conv2d
 
 import chisel3._
 import chisel3.util._
+import memories.SRAMRead
 import chisel4ml.implicits._
-import lbir.Conv2DConfig
+import chisel4ml.MemWordSize
 
-object ctrlState extends ChiselEnum {
-  val sWAITFORDATA = Value(0.U)
-  val sLOADINPACT = Value(1.U)
-  val sLOADKERNEL = Value(2.U)
-  val sCOMP = Value(3.U)
-  val sWAITWRITE = Value(4.U)
-  val sWAITWRITE2 = Value(5.U)
-  val sSENDDATA = Value(6.U)
-}
-
-/** PeSeqConvController
-  */
-class PeSeqConvController(layer: Conv2DConfig) extends Module {
+class InputDataMover(input: lbir.QTensor, kernel: lbir.QTensor) extends Module {
   val io = IO(new Bundle {
-    val loadKernel = Output(Valid(UInt(log2Up(layer.kernel.numKernels).W)))
-    val nextInputTensor = Output(Bool())
+    // interface to the RollingRegisterFile module.
+    val shiftRegs = Output(Bool())
+    val rowWriteMode = Output(Bool())
+    val rowAddr = Output(UInt(log2Up(kernel.width).W))
+    val chAddr = Output(UInt(log2Up(kernel.numChannels).W))
+    val data = Output(UInt((kernel.width * input.dtype.bitwidth).W))
+    val valid = Output(Bool())
+    val imageValid = Output(Bool())
+
+    // interface to the activation memory
+    val actMem = Flipped(new SRAMRead(input.memDepth, MemWordSize.bits))
+
+    // control interface
+    val start = Input(Bool())
+    val end = Output(Bool())
   })
-  io.loadKernel.valid := false.B
-  io.loadKernel.bits := 0.U
-  io.nextInputTensor := false.B
+
 }

@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml
+package chisel4ml.conv2d
 
 import chisel3._
+import chisel3.util._
 import chisel4ml.util.{saturate, shiftAndRoundDynamic}
-import chisel4ml.conv2d.KernelThreshIO
 import chisel4ml.implicits._
 
 class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <: Bits, A <: Bits, O <: Bits](
@@ -32,16 +32,20 @@ class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <
   actFn:      (S, A) => O)
     extends Module {
   val io = IO(new Bundle {
-    val in: UInt = Input(UInt((kernel.numKernelParams * genIn.getWidth).W))
-    val weights = Flipped(new KernelThreshIO(kernel, genThresh))
-    val out: O = Output(genOut)
+    val in = Decoupled(UInt((kernel.numKernelParams * genIn.getWidth).W))
+    val weights = Valid(new KernelSubsystemIO(kernel, genThresh))
+    val out = Flipped(Decoupled(genOut))
   })
 
   val inVec = io.in.asTypeOf(Vec(kernel.numKernelParams, genIn))
-  val inWeights = io.weights.kernel.asTypeOf(Vec(kernel.numKernelParams, genWeights))
+  val inWeights = io.weights.bits.activeKernel.asTypeOf(Vec(kernel.numKernelParams, genWeights))
 
   val muls = VecInit((inVec.zip(inWeights)).map { case (a, b) => mul(a, b) })
   val pAct = add(muls)
-  val sAct = shiftAndRoundDynamic(pAct, io.weights.thresh.shift, io.weights.thresh.shiftLeft, genAccu)
-  io.out := saturate(actFn(sAct, io.weights.thresh.thresh).asUInt, genOut.getWidth).asTypeOf(io.out)
+  val sAct =
+    shiftAndRoundDynamic(pAct, io.weights.bits.threshShift.shift, io.weights.bits.threshShift.shiftLeft, genAccu)
+  io.out := saturate(actFn(sAct, io.weights.bits.threshShift.thresh).asUInt, genOut.getWidth).asTypeOf(io.out)
+
+  io.out.valid := io.in.valid && io.weights.valid
+  io.in.ready := io.out.ready
 }

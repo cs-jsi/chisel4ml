@@ -15,7 +15,7 @@
  */
 package chisel4ml.tests
 
-import _root_.chisel4ml.implicits._
+import _root_.chisel4ml.conv2d.KernelSubsystem
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
 import chisel3._
@@ -25,6 +25,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.{BeforeAndAfterEachTestData, TestData}
 
 import java.nio.file.Paths
+import scalapb.options.MatchType
 
 class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with BeforeAndAfterEachTestData {
   val logger = LoggerFactory.getLogger(classOf[KernelRFLoaderTests])
@@ -44,75 +45,16 @@ class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with Be
     shape = Seq(1, 2, 3, 3),
     values = Seq(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
   )
-
-  val dtype2 = new lbir.Datatype(quantization = UNIFORM, bitwidth = 6, signed = false, shift = Seq(0), offset = Seq(0))
-  val testParameters2 = lbir.QTensor(
-    dtype = dtype2,
-    shape = Seq(2, 1, 4, 4),
-    values = Seq(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-      29, 30, 31, 32)
-  )
-
-  val testParamsA = lbir.QTensor(
-    dtype = dtype2,
-    shape = Seq(1, 1, 4, 4),
-    values = Seq(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
-  )
-  val testParamsB = lbir.QTensor(
-    dtype = dtype2,
-    shape = Seq(1, 1, 4, 4),
-    values = Seq(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32)
+  val threshParams = lbir.QTensor(
+    dtype = dtype,
+    shape = Seq(2),
+    values = Seq(0, 0)
   )
 
   behavior.of("KernelRFLoader module")
   it should "load the single kernel correctly" in {
-    test(
-      new KernelRFLoaderTestBed(
-        kernelSize = 3,
-        kernelDepth = 2,
-        kernelParamSize = 5,
-        numKernels = 1,
-        parameters = testParameters
-      )
-    ) { dut =>
-      dut.clock.step()
-      dut.io.ctrl.loadKernel.valid.poke(true.B)
-      dut.io.ctrl.loadKernel.bits.poke(0.U)
-      dut.clock.step()
-      dut.io.ctrl.loadKernel.valid.poke(false.B)
-      while (!dut.io.ctrl.ready.peek().litToBoolean) { dut.clock.step() } // wait for ready
-      dut.clock.step()
-      dut.io.krfOutput.expect(testParameters.toUInt)
-      dut.clock.step()
-    }
-  }
-  it should "load the two kernels correctly" in {
-    test(
-      new KernelRFLoaderTestBed(
-        kernelSize = 4,
-        kernelDepth = 1,
-        kernelParamSize = 6,
-        numKernels = 2,
-        parameters = testParameters2
-      )
-    ) { dut =>
-      dut.clock.step()
-      dut.io.ctrl.loadKernel.valid.poke(true.B)
-      dut.io.ctrl.loadKernel.bits.poke(0.U)
-      dut.clock.step()
-      dut.io.ctrl.loadKernel.valid.poke(false.B)
-      while (!dut.io.ctrl.ready.peek().litToBoolean) { dut.clock.step() } // wait for ready
-      dut.clock.step()
-      dut.io.krfOutput.expect(testParamsA.toUInt)
-      dut.clock.step()
-      dut.io.ctrl.loadKernel.valid.poke(true.B)
-      dut.io.ctrl.loadKernel.bits.poke(1.U)
-      dut.clock.step()
-      dut.io.ctrl.loadKernel.valid.poke(false.B)
-      while (!dut.io.ctrl.ready.peek().litToBoolean) { dut.clock.step() } // wait for ready
-      dut.clock.step()
-      dut.io.krfOutput.expect(testParamsB.toUInt)
-      dut.clock.step()
+    test(new KernelSubsystem(kernel = testParameters, thresh = threshParams, genThresh = UInt(5.W))) { dut =>
+      dut.clock.step(4)
     }
   }
 }

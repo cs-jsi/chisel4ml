@@ -19,41 +19,59 @@ import chisel3.util._
 import chisel4ml.implicits._
 import memories.MemoryGenerator
 import chisel4ml.MemWordSize
-import chisel4ml.conv2d.KernelRegisterFile
 
-class KernelThreshIO[I <: Bits, A <: Bits](qt: lbir.QTensor, genThresh: A) extends Bundle {
-  val kernel = Output(UInt((qt.numKernelParams * qt.dtype.bitwidth).W))
-  val thresh = new ThreshAndShiftIO(genThresh)
+class KernelRegisterFileInput(kernel: lbir.QTensor) extends Bundle {
+  val channelAddress = UInt(log2Up(kernel.numChannels).W)
+  val rowAddress = UInt(log2Up(kernel.width).W)
+  val columnAddress = UInt(log2Up(kernel.height).W)
+  val data = UInt(kernel.dtype.bitwidth.W)
 }
 
-class KernelControlIO(numberOfKernels: Int) extends Bundle {
-  val ready = Output(Bool())
-  val loadKernel = Input(Valid(UInt(log2Up(numberOfKernels).W)))
+class ThreshAndShiftIO[A <: Bits](genThresh: A) extends Bundle {
+  val thresh = Wire(genThresh)
+  val shift = UInt(8.W)
+  val shiftLeft = Bool()
 }
 
-class KernelSubsystem[I <: Bits, A <: Bits](kernelQt: lbir.QTensor, thresh: lbir.QTensor, genThresh: A) extends Module {
+class KernelSubsystemIO[A <: Bits](kernel: lbir.QTensor, genThresh: A) extends Bundle {
+  val activeKernel = UInt((kernel.numKernelParams * kernel.dtype.bitwidth).W)
+  val threshShift = new ThreshAndShiftIO(genThresh)
+}
+
+class KernelRegisterFile(kernel: lbir.QTensor) extends Module {
   val io = IO(new Bundle {
-    val kernel = Valid(new KernelThreshIO(kernelQt, genThresh))
-    val ctrl = new KernelControlIO(kernelQt.numKernels)
+    val write = Valid(new KernelRegisterFileInput(kernel))
+    val activeKernel = Flipped(Valid(UInt((kernel.numKernelParams * kernel.dtype.bitwidth).W)))
+  })
+  val regs = RegInit(VecInit.fill(kernel.numChannels, kernel.width, kernel.height)(0.U(kernel.dtype.bitwidth.W)))
+
+  when(io.write.valid) {
+    regs(io.write.bits.channelAddress)(io.write.bits.rowAddress)(io.write.bits.columnAddress) := io.write.bits.data
+  }
+
+  io.activeKernel.bits := regs.asUInt
+}
+
+class KernelSubsystem[I <: Bits, A <: Bits](kernel: lbir.QTensor, thresh: lbir.QTensor, genThresh: A) extends Module {
+  val io = IO(new Bundle {
+    val weights = Flipped(Valid(new KernelSubsystemIO(kernel, genThresh)))
+    val loadKernel = Valid(UInt(log2Up(kernel.numKernels).W))
   })
 
-  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = kernelQt.toHexStr, width = MemWordSize.bits))
-  val kRFLoader = Module(new KernelRFLoader(kernelQt))
-  val krf = Module(new KernelRegisterFile(kernelQt))
-  val tas = Module(new ThreshAndShiftUnit[A](genThresh, thresh, kernelQt))
+  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = kernel.toHexStr, width = MemWordSize.bits))
+  val kRFLoader = Module(new KernelRFLoader(kernel))
+  val krf = Module(new KernelRegisterFile(kernel))
+  val tasu = Module(new ThreshAndShiftUnit[A](genThresh, thresh, kernel))
 
-  kernelMem.io.write.enable := false.B // io.kernelMemWrEna
-  kernelMem.io.write.address := 0.U // io.kernelMemWrAddr
-  kernelMem.io.write.data := 0.U // io.kernelMemWrData
-  kernelMem.io.read <> kRFLoader.io.rom
-
+  //kernelMem.io.write <> MemoryGenerator.getTieOffBundle(depth = kernel.memDepth, width = MemWordSize.bits)
+  kRFLoader.io.rom <> kernelMem.io.read
   krf.io.write <> kRFLoader.io.krf
 
-  io.ctrl <> kRFLoader.io.ctrl
+  io.weights.bits.activeKernel := krf.io.activeKernel.bits
+  io.weights.bits.threshShift <> tasu.io.tas.bits
+  //io.weights.valid := tasu.io.tas.valid && krf.io.valid
+  //krf.io.ready := io.weights.ready
 
-  io.kernel.bits.thresh <> tas.tasIO
-  io.kernel.bits.kernel := krf.io.kernel
-  io.kernel.valid := false.B
-
-  tas.loadKernel := io.ctrl.loadKernel
+  kRFLoader.io.loadKernel <> io.loadKernel
+  tasu.io.loadKernel <> io.loadKernel
 }

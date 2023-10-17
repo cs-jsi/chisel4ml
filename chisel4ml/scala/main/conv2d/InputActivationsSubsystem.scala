@@ -8,20 +8,33 @@ import memories.MemoryGenerator
 import chisel4ml.MemWordSize
 import chisel4ml.implicits._
 
+/* InputActivationSubsystem
+ * Handles the input data stream, and stores it in to a input buffer. It also "rolls" through the input activation
+ * as a convolution opperation would; and does so continously until the next signal is asserted. This allows looping
+ * through the input to convolve it with more than one kernel.
+ */
 class InputActivationsSubsystem(input: lbir.QTensor, kernel: lbir.QTensor, options: LayerOptions) extends Module {
   val io = IO(new Bundle {
     val inStream = Flipped(AXIStream(UInt(options.busWidthIn.W)))
-    val outData = Output(Valid(UInt((kernel.numKernelParams * input.dtype.bitwidth).W)))
-    val start = Input(Bool())
-    val end = Output(Bool())
-    val inStreamReady = Input(Bool())
-    val inStreamValid = Output(Bool())
-    val inStreamLast = Output(Bool())
-    val actMemAddr = Input(UInt(input.memDepth.W))
+    val data = Output(Decoupled(UInt((kernel.numKernelParams * input.dtype.bitwidth).W)))
+    val next = Input(Bool())
   })
   val actMem = Module(MemoryGenerator.SRAM(depth = input.memDepth, width = MemWordSize.bits))
-  val swu = Module(new SlidingWindowUnit(input = input, kernel = kernel))
-  val actRegFile = Module(new RollingRegisterFile(input, kernel))
+  val dataMover = Module(new InputDataMover(input, kernel))
+  val shiftRegConvolver = Module(new ShiftRegisterConvolver(input, kernel))
+
+  object InSubState extends ChiselEnum {
+    val sEMPTY = Value(0.U)
+    val sRECEVING_DATA = Value(1.U)
+    val sFULL = Value(2.U)
+  }
+  val state = RegInit(ctrlState.sWAITFORDATA)
+  val nstate = WireInit(ctrlState.sCOMP)
+
+  /* INPUT STREAM LOGIC*/
+  /*val (actMemCntValue, actMemCntWrap) = Counter(io.inStream.fire, input.memDepth)
+  io.inStream.ready := state =/= InSubState.sFULL
+
 
   actMem.io.read <> swu.io.actMem
 
@@ -32,16 +45,14 @@ class InputActivationsSubsystem(input: lbir.QTensor, kernel: lbir.QTensor, optio
   actRegFile.io.inData := swu.io.data
   actRegFile.io.inValid := swu.io.valid
 
-  io.outData.bits := actRegFile.io.outData
-  io.outData.valid := RegNext(swu.io.imageValid)
+  io.data.bits := actRegFile.io.outData
+  io.data.valid := RegNext(swu.io.imageValid)
 
   swu.io.start := io.start
   io.end := swu.io.end
 
-  io.inStream.ready := io.inStreamReady
+  io.inStream.ready :=  io.state === ctrlState.sLOADINPACT || io.state === ctrlState.sWAITFORDATA
   actMem.io.write.enable := io.inStream.ready && io.inStream.valid
-  actMem.io.write.address := io.actMemAddr
-  actMem.io.write.data := io.inStream.bits
-  io.inStreamLast := io.inStream.last
-  io.inStreamValid := io.inStream.valid
+  actMem.io.write.address := actMemCnt
+  actMem.io.write.data := io.inStream.bits*/
 }
