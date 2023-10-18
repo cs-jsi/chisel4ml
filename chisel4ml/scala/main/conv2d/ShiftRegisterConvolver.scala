@@ -24,7 +24,7 @@ import chisel4ml.implicits._
  * Shifts the inputs in standard LBIR order (one by one), and generates the active output window.
  *
  */
-class ShiftRegisterConvolver(input: lbir.QTensor, kernel: lbir.QTensor) extends Module {
+class ShiftRegisterConvolver(input: lbir.QTensor, kernel: lbir.QTensor, output: lbir.QTensor) extends Module {
   require(kernel.numChannels == 1, "Module only works with single channel input Conv2D or DepthWise Conv2D.")
   private def transformIndex(ind: Int): Int = {
     require(ind >= 0 && ind < kernel.numKernelParams)
@@ -35,13 +35,17 @@ class ShiftRegisterConvolver(input: lbir.QTensor, kernel: lbir.QTensor) extends 
   val io = IO(new Bundle {
     val nextElement = Flipped(Decoupled(UInt(input.dtype.bitwidth.W)))
     val inputActivationsWindow = Decoupled(Vec(kernel.numKernelParams, UInt(input.dtype.bitwidth.W)))
-    //val channelDone = Output(Bool())
+    val channelDone = Output(Bool())
   })
 
   val numRegs = input.width * kernel.height - (input.width - kernel.width)
   val regs = ShiftRegisters(io.nextElement.bits, numRegs, io.nextElement.fire)
-  val (regsFilledCntValue, _) = Counter(0 until (input.numKernelParams + kernel.height - 1), io.nextElement.fire)
-  val (lineCntValue, _) = Counter(0 until input.width, regsFilledCntValue >= numRegs.U)
+  val (regsFilledCntValue, _) =
+    Counter(0 until (input.numKernelParams + kernel.height - 1), io.nextElement.fire, io.channelDone)
+  val (lineCntValue, _) = Counter(0 until input.width, regsFilledCntValue >= numRegs.U, io.channelDone)
+  val (_, outputCntWrap) = Counter(0 until output.numKernelParams, io.inputActivationsWindow.fire)
+
+  io.channelDone := outputCntWrap
   io.inputActivationsWindow.bits.zipWithIndex.foreach {
     case (elem: UInt, ind: Int) => elem := regs(transformIndex(ind))
   }

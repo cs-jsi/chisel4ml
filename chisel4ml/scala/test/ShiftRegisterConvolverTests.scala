@@ -37,6 +37,9 @@ class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester
     dtype = new lbir.Datatype(quantization = UNIFORM),
     shape = Seq(1, 1, 2, 2)
   )
+  val outputParams = lbir.QTensor(
+    shape = Seq(1, 1, 2, 2)
+  )
   val goldenVec = Seq(
     Vec.Lit(1.U(5.W), 2.U(5.W), 4.U(5.W), 5.U(5.W)),
     Vec.Lit(2.U(5.W), 3.U(5.W), 5.U(5.W), 6.U(5.W)),
@@ -46,7 +49,7 @@ class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester
 
   behavior.of("ShiftRegisterConvolver module")
   it should "show appropirate window as it cycles through the input image" in {
-    test(new ShiftRegisterConvolver(input = inputParams, kernel = kernelParams)) { dut =>
+    test(new ShiftRegisterConvolver(input = inputParams, kernel = kernelParams, output = outputParams)) { dut =>
       dut.io.nextElement.initSource()
       dut.io.nextElement.setSourceClock(dut.clock)
       dut.io.inputActivationsWindow.initSink()
@@ -90,7 +93,9 @@ class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester
     }
   }
 
-  def genShiftRegisterConvolverTestCase(p: RandShiftRegConvTestParams): (Seq[Vec[UInt]], lbir.QTensor, lbir.QTensor) = {
+  def genShiftRegisterConvolverTestCase(
+    p: RandShiftRegConvTestParams
+  ): (Seq[Vec[UInt]], lbir.QTensor, lbir.QTensor, lbir.QTensor) = {
     def tensorValue(c: Int, h: Int, w: Int): Int =
       ((h * p.inWidth + w + c * (p.inHeight * p.inWidth)) % Math.pow(2, p.bitwidth)).toInt
 
@@ -108,6 +113,9 @@ class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester
       //          kernels, channels, height, width
       shape = Seq(p.inChannels, 1, p.kernelHeight, p.kernelWidth)
     )
+    val outputTensor = lbir.QTensor(
+      shape = Seq(p.inChannels, 1, p.inHeight - p.kernelHeight + 1, p.inWidth - p.kernelWidth + 1)
+    )
     var expectedValues: Seq[Vec[UInt]] = Seq()
     for (ch <- 0 until p.inChannels) {
       val mtrx = DenseMatrix.tabulate(p.inHeight, p.inWidth) { case (h, w) => tensorValue(ch, h, w) }
@@ -123,16 +131,16 @@ class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester
 
     val immutableExpectedValues = Seq.empty ++ expectedValues
 
-    (immutableExpectedValues, inputTensor, kernelTensor)
+    (immutableExpectedValues, inputTensor, kernelTensor, outputTensor)
   }
 
   val rand = new scala.util.Random(seed = 42)
   for (testId <- 0 until 20) {
     val p = RandShiftRegConvTestParams(rand)
-    val (goldenVector, inputTensor, kernelTensor) = genShiftRegisterConvolverTestCase(p)
+    val (goldenVector, inputTensor, kernelTensor, outputTensor) = genShiftRegisterConvolverTestCase(p)
     it should f"Compute random test $testId correctly. Parameters inHeight:${p.inHeight}, " +
       f"inWidth:${p.inWidth}, kernelHeight:${p.kernelHeight}, kernelWidth:${p.kernelWidth}" in {
-      test(new ShiftRegisterConvolver(input = inputTensor, kernel = kernelTensor)) { dut =>
+      test(new ShiftRegisterConvolver(input = inputTensor, kernel = kernelTensor, output = outputTensor)) { dut =>
         dut.io.nextElement.initSource()
         dut.io.nextElement.setSourceClock(dut.clock)
         dut.io.inputActivationsWindow.initSink()

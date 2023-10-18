@@ -90,7 +90,7 @@ class ProcessingElementSequentialConv[
   )
   val ctrl = Module(new PeSeqConvController(layer))
   val kernelSubsystem = Module(new KernelSubsystem(layer.kernel, layer.thresh, genThresh))
-  val inputSubsytem = Module(new InputActivationsSubsystem(layer.input, layer.kernel, options))
+  val inputSubsytem = Module(new InputActivationsSubsystem(layer.input, layer.kernel, layer.output, options))
   val resultSubsystem = Module(new ResultSubsystem(layer.output, options, genOut))
 
   inputSubsytem.io.inStream <> inStream

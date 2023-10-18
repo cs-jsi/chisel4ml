@@ -13,7 +13,8 @@ import chisel4ml.implicits._
  * as a convolution opperation would; and does so continously until the next signal is asserted. This allows looping
  * through the input to convolve it with more than one kernel.
  */
-class InputActivationsSubsystem(input: lbir.QTensor, kernel: lbir.QTensor, options: LayerOptions) extends Module {
+class InputActivationsSubsystem(input: lbir.QTensor, kernel: lbir.QTensor, output: lbir.QTensor, options: LayerOptions)
+    extends Module {
   val io = IO(new Bundle {
     val inStream = Flipped(AXIStream(UInt(options.busWidthIn.W)))
     val data = Output(Decoupled(UInt((kernel.numKernelParams * input.dtype.bitwidth).W)))
@@ -21,7 +22,7 @@ class InputActivationsSubsystem(input: lbir.QTensor, kernel: lbir.QTensor, optio
   })
   val actMem = Module(MemoryGenerator.SRAM(depth = input.memDepth, width = MemWordSize.bits))
   val dataMover = Module(new InputDataMover(input, kernel))
-  val shiftRegConvolver = Module(new ShiftRegisterConvolver(input, kernel))
+  val shiftRegConvolver = Module(new ShiftRegisterConvolver(input, kernel, output))
 
   object InSubState extends ChiselEnum {
     val sEMPTY = Value(0.U)
