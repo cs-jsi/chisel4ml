@@ -17,12 +17,12 @@ package chisel4ml.tests
 
 import chisel3._
 import chisel3.experimental.VecLiterals._
-import scala.language.implicitConversions
 import chiseltest._
 import chisel4ml.conv2d.ShiftRegisterConvolver
 import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.LoggerFactory
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
+import breeze.linalg.DenseMatrix
 
 class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester {
   val logger = LoggerFactory.getLogger(classOf[ShiftRegisterConvolverTests])
@@ -63,4 +63,90 @@ class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester
     }
   }
 
+  case class RandShiftRegConvTestParams(
+    bitwidth:     Int,
+    inKernels:    Int,
+    inChannels:   Int,
+    inHeight:     Int,
+    inWidth:      Int,
+    kernelHeight: Int,
+    kernelWidth:  Int)
+  object RandShiftRegConvTestParams {
+    def apply(rand: scala.util.Random) = {
+      val bw = rand.between(2, 8)
+      val inHeight = rand.between(3, 8)
+      val inWidth = rand.between(3, 8)
+      val kernelHeight = rand.between(2, inHeight)
+      val kernelWidth = rand.between(2, inWidth)
+      new RandShiftRegConvTestParams(
+        bitwidth = bw,
+        inKernels = 1,
+        inChannels = 1,
+        inHeight = inHeight,
+        inWidth = inWidth,
+        kernelHeight = kernelHeight,
+        kernelWidth = kernelWidth
+      )
+    }
+  }
+
+  def genShiftRegisterConvolverTestCase(p: RandShiftRegConvTestParams): (Seq[Vec[UInt]], lbir.QTensor, lbir.QTensor) = {
+    def tensorValue(c: Int, h: Int, w: Int): Int =
+      ((h * p.inWidth + w + c * (p.inHeight * p.inWidth)) % Math.pow(2, p.bitwidth)).toInt
+
+    val inputTensor = lbir.QTensor(
+      dtype =
+        lbir.Datatype(quantization = UNIFORM, signed = false, bitwidth = p.bitwidth, shift = Seq(0), offset = Seq(0)),
+      shape = Seq(p.inKernels, p.inChannels, p.inHeight, p.inWidth),
+      values = Seq
+        .tabulate(p.inChannels, p.inHeight, p.inWidth)((c, h, w) => tensorValue(c, h, w))
+        .flatten
+        .flatten
+        .map(_.toFloat)
+    )
+    val kernelTensor = lbir.QTensor(
+      //          kernels, channels, height, width
+      shape = Seq(p.inChannels, 1, p.kernelHeight, p.kernelWidth)
+    )
+    var expectedValues: Seq[Vec[UInt]] = Seq()
+    for (ch <- 0 until p.inChannels) {
+      val mtrx = DenseMatrix.tabulate(p.inHeight, p.inWidth) { case (h, w) => tensorValue(ch, h, w) }
+      for {
+        i <- 0 until (p.inHeight - p.kernelHeight + 1)
+        j <- 0 until (p.inWidth - p.kernelWidth + 1)
+      } {
+        val activeWindow = mtrx(i until (i + p.kernelHeight), j until (j + p.kernelWidth)).valuesIterator.toList
+          .map(_.toInt.U(p.bitwidth.W))
+        expectedValues = expectedValues :+ Vec.Lit(activeWindow: _*)
+      }
+    }
+
+    val immutableExpectedValues = Seq.empty ++ expectedValues
+
+    (immutableExpectedValues, inputTensor, kernelTensor)
+  }
+
+  val rand = new scala.util.Random(seed = 42)
+  for (testId <- 0 until 20) {
+    val p = RandShiftRegConvTestParams(rand)
+    val (goldenVector, inputTensor, kernelTensor) = genShiftRegisterConvolverTestCase(p)
+    it should f"Compute random test $testId correctly. Parameters inHeight:${p.inHeight}, " +
+      f"inWidth:${p.inWidth}, kernelHeight:${p.kernelHeight}, kernelWidth:${p.kernelWidth}" in {
+      test(new ShiftRegisterConvolver(input = inputTensor, kernel = kernelTensor)) { dut =>
+        dut.io.nextElement.initSource()
+        dut.io.nextElement.setSourceClock(dut.clock)
+        dut.io.inputActivationsWindow.initSink()
+        dut.io.inputActivationsWindow.setSinkClock(dut.clock)
+
+        dut.reset.poke(true.B)
+        dut.clock.step()
+        dut.reset.poke(false.B)
+        fork {
+          dut.io.nextElement.enqueueSeq(inputTensor.values.map(_.toInt.U))
+        }.fork {
+          dut.io.inputActivationsWindow.expectDequeueSeq(goldenVector)
+        }.join()
+      }
+    }
+  }
 }
