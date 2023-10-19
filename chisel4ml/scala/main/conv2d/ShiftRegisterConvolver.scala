@@ -42,7 +42,8 @@ class ShiftRegisterConvolver(input: lbir.QTensor, kernel: lbir.QTensor, output: 
   val regs = ShiftRegisters(io.nextElement.bits, numRegs, io.nextElement.fire)
   val (regsFilledCntValue, _) =
     Counter(0 until (input.numKernelParams + kernel.height - 1), io.nextElement.fire, io.channelDone)
-  val (lineCntValue, _) = Counter(0 until input.width, regsFilledCntValue >= numRegs.U, io.channelDone)
+  val (lineCntValue, _) =
+    Counter(0 until input.width, regsFilledCntValue >= numRegs.U && io.nextElement.fire, io.channelDone)
   val (_, outputCntWrap) = Counter(0 until output.numKernelParams, io.inputActivationsWindow.fire)
 
   io.channelDone := outputCntWrap
@@ -51,5 +52,8 @@ class ShiftRegisterConvolver(input: lbir.QTensor, kernel: lbir.QTensor, output: 
   }
 
   io.nextElement.ready := io.inputActivationsWindow.ready
-  io.inputActivationsWindow.valid := (regsFilledCntValue >= numRegs.U) && (lineCntValue <= (input.width - kernel.width).U)
+  // first condition is waiting for shift registers to fill up. Second is when filter goes over the width of image, third is backpressure from input data mover.
+  io.inputActivationsWindow.valid := (regsFilledCntValue >= numRegs.U) && (lineCntValue <= (input.width - kernel.width).U) && RegNext(
+    io.nextElement.fire
+  )
 }

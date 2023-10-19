@@ -94,12 +94,11 @@ class ProcessingElementSequentialConv[
   val resultSubsystem = Module(new ResultSubsystem(layer.output, options, genOut))
 
   inputSubsytem.io.inStream <> inStream
-  dynamicNeuron.io.in <> inputSubsytem.io.data
+  dynamicNeuron.io.in <> inputSubsytem.io.inputActivationsWindow
   dynamicNeuron.io.weights <> kernelSubsystem.io.weights
   resultSubsystem.io.result <> dynamicNeuron.io.out
   outStream <> resultSubsystem.io.outStream
 
-  inputSubsytem.io.next := ctrl.io.nextInputTensor
   kernelSubsystem.io.loadKernel := ctrl.io.loadKernel
 }
 

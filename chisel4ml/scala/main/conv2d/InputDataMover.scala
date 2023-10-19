@@ -21,23 +21,41 @@ import memories.SRAMRead
 import chisel4ml.implicits._
 import chisel4ml.MemWordSize
 
-class InputDataMover(input: lbir.QTensor, kernel: lbir.QTensor) extends Module {
+class InputDataMover(input: lbir.QTensor) extends Module {
+  object IDMState extends ChiselEnum {
+    val sWAIT = Value(0.U)
+    val sMOVEDATA = Value(1.U)
+  }
+
   val io = IO(new Bundle {
-    // interface to the RollingRegisterFile module.
-    val shiftRegs = Output(Bool())
-    val rowWriteMode = Output(Bool())
-    val rowAddr = Output(UInt(log2Up(kernel.width).W))
-    val chAddr = Output(UInt(log2Up(kernel.numChannels).W))
-    val data = Output(UInt((kernel.width * input.dtype.bitwidth).W))
-    val valid = Output(Bool())
-    val imageValid = Output(Bool())
-
-    // interface to the activation memory
+    val nextElement = Decoupled(UInt(input.dtype.bitwidth.W))
     val actMem = Flipped(new SRAMRead(input.memDepth, MemWordSize.bits))
-
-    // control interface
+    val actMemWrittenTo = Input(UInt(input.memDepth.W))
     val start = Input(Bool())
-    val end = Output(Bool())
+    val done = Output(Bool())
   })
 
+  val (elemCntValue, elemCntWrap) = Counter(0 until input.numParams, io.nextElement.fire)
+  val (memLineCntValue, memlineCntWrap) = Counter(0 until input.paramsPerWord, io.nextElement.fire)
+  val (addrCntValue, addrCntWrap) = Counter(0 until input.memDepth, memlineCntWrap)
+
+  val state = RegInit(IDMState.sWAIT)
+  when(io.start) {
+    state := IDMState.sMOVEDATA
+  }.elsewhen(elemCntWrap) {
+    state := IDMState.sWAIT
+  }
+
+  io.actMem.address := addrCntValue
+  io.actMem.enable := state === IDMState.sMOVEDATA
+
+  val actMemAsVec = io.actMem
+    .data(input.paramsPerWord * input.dtype.bitwidth - 1, 0)
+    .asTypeOf(Vec(input.paramsPerWord, UInt(input.dtype.bitwidth.W)))
+  io.nextElement.bits := actMemAsVec(memLineCntValue)
+  io.nextElement.valid := (addrCntValue === RegNext(
+    addrCntValue
+  ) && addrCntValue <= io.actMemWrittenTo) && state === IDMState.sMOVEDATA
+
+  io.done := state === IDMState.sWAIT && RegNext(state === IDMState.sMOVEDATA)
 }

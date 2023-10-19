@@ -17,11 +17,11 @@ class InputActivationsSubsystem(input: lbir.QTensor, kernel: lbir.QTensor, outpu
     extends Module {
   val io = IO(new Bundle {
     val inStream = Flipped(AXIStream(UInt(options.busWidthIn.W)))
-    val data = Output(Decoupled(UInt((kernel.numKernelParams * input.dtype.bitwidth).W)))
-    val next = Input(Bool())
+    val inputActivationsWindow = Decoupled(Vec(kernel.numKernelParams, UInt(input.dtype.bitwidth.W)))
+    val channelDone = Output(Bool())
   })
   val actMem = Module(MemoryGenerator.SRAM(depth = input.memDepth, width = MemWordSize.bits))
-  val dataMover = Module(new InputDataMover(input, kernel))
+  val dataMover = Module(new InputDataMover(input))
   val shiftRegConvolver = Module(new ShiftRegisterConvolver(input, kernel, output))
 
   object InSubState extends ChiselEnum {
@@ -29,31 +29,33 @@ class InputActivationsSubsystem(input: lbir.QTensor, kernel: lbir.QTensor, outpu
     val sRECEVING_DATA = Value(1.U)
     val sFULL = Value(2.U)
   }
-  val state = RegInit(ctrlState.sWAITFORDATA)
-  val nstate = WireInit(ctrlState.sCOMP)
+  val state = RegInit(InSubState.sEMPTY)
 
   /* INPUT STREAM LOGIC*/
-  /*val (actMemCntValue, actMemCntWrap) = Counter(io.inStream.fire, input.memDepth)
+  val inputTensorFinnished = state === InSubState.sEMPTY && RegNext(state === InSubState.sFULL)
+  val (actMemCntValue, _) = Counter(0 to input.memDepth, io.inStream.fire, inputTensorFinnished)
   io.inStream.ready := state =/= InSubState.sFULL
+  actMem.io.write.address := actMemCntValue
+  actMem.io.write.data := io.inStream.bits
+  actMem.io.write.enable := io.inStream.fire
 
+  dataMover.io.actMem <> actMem.io.read
+  dataMover.io.actMemWrittenTo := actMemCntValue
 
-  actMem.io.read <> swu.io.actMem
+  val startOfTransmission = state === InSubState.sRECEVING_DATA && RegNext(state === InSubState.sEMPTY)
+  dataMover.io.start := RegNext(startOfTransmission) // Start one cycle after start of transmission of the input packet
 
-  actRegFile.io.shiftRegs := swu.io.shiftRegs
-  actRegFile.io.rowWriteMode := swu.io.rowWriteMode
-  actRegFile.io.rowAddr := swu.io.rowAddr
-  actRegFile.io.chAddr := swu.io.chAddr
-  actRegFile.io.inData := swu.io.data
-  actRegFile.io.inValid := swu.io.valid
+  shiftRegConvolver.io.nextElement <> dataMover.io.nextElement
+  io.inputActivationsWindow <> shiftRegConvolver.io.inputActivationsWindow
+  io.channelDone := shiftRegConvolver.io.channelDone
 
-  io.data.bits := actRegFile.io.outData
-  io.data.valid := RegNext(swu.io.imageValid)
-
-  swu.io.start := io.start
-  io.end := swu.io.end
-
-  io.inStream.ready :=  io.state === ctrlState.sLOADINPACT || io.state === ctrlState.sWAITFORDATA
-  actMem.io.write.enable := io.inStream.ready && io.inStream.valid
-  actMem.io.write.address := actMemCnt
-  actMem.io.write.data := io.inStream.bits*/
+  when(state === InSubState.sEMPTY && io.inStream.fire) {
+    state := InSubState.sRECEVING_DATA
+  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCntValue === (input.memDepth - 1).U) {
+    state := InSubState.sFULL
+  }.otherwise {
+    when(dataMover.io.done) {
+      state := InSubState.sEMPTY
+    }
+  }
 }
