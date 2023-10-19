@@ -74,4 +74,24 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
       }.join()
     }
   }
+
+  val rand = new scala.util.Random(seed = 42)
+  for (testId <- 0 until 20) {
+    val p = RandShiftRegConvTestParams(rand, numChannels = rand.between(1, 8))
+    val (goldenVec, input, kernel, output) = RandShiftRegConvTestParams.genShiftRegisterConvolverTestCase(p)
+    it should f"Test $testId window a random input tensor with bw:${p.bitwidth} kernelHeight:${p.kernelHeight} " +
+      f"kernelWidth:${p.kernelWidth}, inChannels:${p.inChannels}, inHeight:${p.inHeight}, inWidth:${p.inWidth}" in {
+      test(new InputActivationsSubsystem(input, kernel, output, options)) { dut =>
+        dut.io.inputActivationsWindow.initSink()
+        dut.io.inputActivationsWindow.setSinkClock(dut.clock)
+
+        dut.clock.step()
+        fork {
+          dut.io.inStream.enqueueQTensor(input, dut.clock)
+        }.fork {
+          dut.io.inputActivationsWindow.expectDequeueSeq(goldenVec)
+        }.join()
+      }
+    }
+  }
 }

@@ -25,7 +25,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.{BeforeAndAfterEachTestData, TestData}
 
 import java.nio.file.Paths
-import scalapb.options.MatchType
 
 class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with BeforeAndAfterEachTestData {
   val logger = LoggerFactory.getLogger(classOf[KernelRFLoaderTests])

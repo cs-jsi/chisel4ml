@@ -15,7 +15,6 @@
  */
 package chisel4ml.tests
 
-import _root_.chisel4ml._
 import _root_.chisel4ml.conv2d._
 import _root_.chisel4ml.util._
 import _root_.org.slf4j.LoggerFactory

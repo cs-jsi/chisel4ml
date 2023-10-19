@@ -51,8 +51,8 @@ class ShiftRegisterConvolver(input: lbir.QTensor, kernel: lbir.QTensor, output: 
     case (elem: UInt, ind: Int) => elem := regs(transformIndex(ind))
   }
 
-  io.nextElement.ready := io.inputActivationsWindow.ready
-  // first condition is waiting for shift registers to fill up. Second is when filter goes over the width of image, third is backpressure from input data mover.
+  io.nextElement.ready := io.inputActivationsWindow.ready && !io.channelDone
+  // First condition: waiting for shift registers to initially fill up. Second: filter goes over the width of image. Third: backpressure from input data mover.
   io.inputActivationsWindow.valid := (regsFilledCntValue >= numRegs.U) && (lineCntValue <= (input.width - kernel.width).U) && RegNext(
     io.nextElement.fire
   )
