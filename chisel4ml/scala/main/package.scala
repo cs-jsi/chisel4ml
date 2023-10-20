@@ -161,10 +161,11 @@ package object implicits {
         case _ => throw new RuntimeException("Shape to small.")
       }
     }
-    def numParams:       Int = qt.shape.reduce(_ * _)
-    def numKernelParams: Int = numParams / numKernels
-    def paramsPerWord:   Int = MemWordSize.bits / qt.dtype.bitwidth
-    def totalBitwidth:   Int = qt.dtype.bitwidth * numParams
+    def numParams:        Int = qt.shape.reduce(_ * _)
+    def numKernelParams:  Int = numParams / numKernels
+    def numChannelParams: Int = width * height * numChannels
+    def paramsPerWord:    Int = MemWordSize.bits / qt.dtype.bitwidth
+    def totalBitwidth:    Int = qt.dtype.bitwidth * numParams
     def memDepth: Int = {
       qt.shape.length match {
         // Each kernel goes to a new word!

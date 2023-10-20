@@ -32,9 +32,9 @@ class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <
   actFn:      (S, A) => O)
     extends Module {
   val io = IO(new Bundle {
-    val in = Decoupled(UInt((kernel.numKernelParams * genIn.getWidth).W))
-    val weights = Valid(new KernelSubsystemIO(kernel, genThresh))
-    val out = Flipped(Decoupled(genOut))
+    val in = Flipped(Decoupled(Vec(kernel.numKernelParams, UInt())))
+    val weights = Flipped(Valid(new KernelSubsystemIO(kernel, genThresh)))
+    val out = Decoupled(genOut)
   })
 
   val inVec = io.in.asTypeOf(Vec(kernel.numKernelParams, genIn))
@@ -44,7 +44,7 @@ class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <
   val pAct = add(muls)
   val sAct =
     shiftAndRoundDynamic(pAct, io.weights.bits.threshShift.shift, io.weights.bits.threshShift.shiftLeft, genAccu)
-  io.out := saturate(actFn(sAct, io.weights.bits.threshShift.thresh).asUInt, genOut.getWidth).asTypeOf(io.out)
+  io.out.bits := saturate(actFn(sAct, io.weights.bits.threshShift.thresh).asUInt, genOut.getWidth).asTypeOf(io.out.bits)
 
   io.out.valid := io.in.valid && io.weights.valid
   io.in.ready := io.out.ready

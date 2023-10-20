@@ -91,14 +91,15 @@ class ProcessingElementSequentialConv[
   val ctrl = Module(new PeSeqConvController(layer))
   val kernelSubsystem = Module(new KernelSubsystem(layer.kernel, layer.thresh, genThresh))
   val inputSubsytem = Module(new InputActivationsSubsystem(layer.input, layer.kernel, layer.output, options))
-  val resultSubsystem = Module(new ResultSubsystem(layer.output, options, genOut))
+  val rmb = Module(new ResultMemoryBuffer(layer.output, options, genOut))
 
   inputSubsytem.io.inStream <> inStream
   dynamicNeuron.io.in <> inputSubsytem.io.inputActivationsWindow
   dynamicNeuron.io.weights <> kernelSubsystem.io.weights
-  resultSubsystem.io.result <> dynamicNeuron.io.out
-  outStream <> resultSubsystem.io.outStream
+  rmb.io.result <> dynamicNeuron.io.out
+  outStream <> rmb.io.outStream
 
+  ctrl.io.channelDone := inputSubsytem.io.channelDone
   kernelSubsystem.io.loadKernel := ctrl.io.loadKernel
 }
 

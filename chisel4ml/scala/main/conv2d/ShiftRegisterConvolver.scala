@@ -41,10 +41,10 @@ class ShiftRegisterConvolver(input: lbir.QTensor, kernel: lbir.QTensor, output: 
   val numRegs = input.width * kernel.height - (input.width - kernel.width)
   val regs = ShiftRegisters(io.nextElement.bits, numRegs, io.nextElement.fire)
   val (regsFilledCntValue, _) =
-    Counter(0 until (input.numKernelParams + kernel.height - 1), io.nextElement.fire, io.channelDone)
+    Counter(0 until (input.numChannelParams + kernel.height - 1), io.nextElement.fire, io.channelDone)
   val (lineCntValue, _) =
     Counter(0 until input.width, regsFilledCntValue >= numRegs.U && io.nextElement.fire, io.channelDone)
-  val (_, outputCntWrap) = Counter(0 until output.numKernelParams, io.inputActivationsWindow.fire)
+  val (_, outputCntWrap) = Counter(0 until output.numChannelParams, io.inputActivationsWindow.fire)
 
   io.channelDone := outputCntWrap
   io.inputActivationsWindow.bits.zipWithIndex.foreach {

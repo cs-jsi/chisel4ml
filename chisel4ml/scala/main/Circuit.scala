@@ -28,6 +28,7 @@ import lbir.QTensor
 import org.slf4j.LoggerFactory
 import scala.util.control.Breaks._
 import memories.MemoryGenerator
+import firrtl.transforms.NoCircuitDedupAnnotation
 
 class Circuit[+T <: Module with LBIRStream](
   dutGen:        => T,
@@ -44,7 +45,10 @@ class Circuit[+T <: Module with LBIRStream](
   val isStoped = new CountDownLatch(1)
   val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString
 
-  var annot: AnnotationSeq = Seq(TargetDirAnnotation(relDir)) // TODO - work with .pb instead of .lo.fir
+  // NoCircuitDedupAnnotation is needed because memory deduplication is causing problems
+  // This can likely be removed when upgrading to newer chisel/firrtl versions. TODO
+  var annot: AnnotationSeq =
+    Seq(TargetDirAnnotation(relDir), NoCircuitDedupAnnotation) // TODO - work with .pb instead of .lo.fir
   if (genWaveform) annot = annot :+ WriteFstAnnotation
   if (useVerilator) annot = annot :+ VerilatorBackendAnnotation
 

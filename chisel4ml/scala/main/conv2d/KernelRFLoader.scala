@@ -28,10 +28,10 @@ class KernelRFLoader(kernel: lbir.QTensor) extends Module {
   val kernelMemValidBits: Int = kernel.paramsPerWord * kernel.dtype.bitwidth
 
   val io = IO(new Bundle {
-    val krf = Flipped(Valid(new KernelRegisterFileInput(kernel)))
+    val krf = Valid(new KernelRegisterFileInput(kernel))
     val kernelLoaded = Output(Bool())
     val rom = Flipped(new SRAMRead(depth = kernel.memDepth, width = MemWordSize.bits))
-    val loadKernel = Valid(UInt(log2Up(kernel.numKernels).W))
+    val loadKernel = Flipped(Valid(UInt(log2Up(kernel.numKernels).W)))
   })
 
   object krlState extends ChiselEnum {

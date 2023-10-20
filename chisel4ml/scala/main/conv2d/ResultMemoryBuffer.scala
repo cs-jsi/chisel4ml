@@ -14,97 +14,29 @@
  * limitations under the License.
  */
 package chisel4ml.conv2d
-
-import chisel3._
-import chisel3.util._
-import chisel4ml.MemWordSize
 import chisel4ml.implicits._
-import memories.SRAMWrite
+import chisel3._
+import services.LayerOptions
+import interfaces.amba.axis.AXIStream
+import chisel3.util._
 
-/** Result Memory Buffer
-  */
-class ResultMemoryBuffer[O <: Bits](genOut: O, output: lbir.QTensor) extends Module {
-  val resultsPerKernel = output.width * output.height
-  val resultsPerWord: Int = MemWordSize.bits / genOut.getWidth
-  val numKernels =
-    output.numChannels // Number of channels in output tensor is the same as number of kernels in the weights
-
+class ResultMemoryBuffer[O <: Bits](output: lbir.QTensor, options: LayerOptions, genOut: O) extends Module {
   val io = IO(new Bundle {
-    // interface to the dynamic neuron (alu)
-    val result = Input(genOut)
-    val resultValid = Input(Bool())
-
-    // result memory interface
-    val resRam = new SRAMWrite(depth = output.memDepth, width = MemWordSize.bits)
-
-    // control inerface
-    val start = Input(Bool())
+    val outStream = AXIStream(UInt(options.busWidthOut.W))
+    val result = Flipped(Decoupled(genOut.cloneType))
   })
+  val numRegs = if (output.numParams >= output.paramsPerWord) output.paramsPerWord else output.numParams
+  val regs = Reg(Vec(numRegs, UInt(output.dtype.bitwidth.W)))
+  val (regsCntVal, regsCntWrap) = Counter(0 until numRegs, io.result.fire)
+  val (_, totalCntWrap) = Counter(0 until output.numParams, io.result.fire)
 
-  object rmbState extends ChiselEnum {
-    val sWAIT = Value(0.U)
-    val sCOMP = Value(1.U)
+  when(io.result.fire) {
+    regs(regsCntVal) := io.result.bits
   }
 
-  val resPerWordCnt = RegInit(0.U(log2Up(resultsPerWord + 1).W))
-  val resPerKernelCnt = RegInit(0.U(log2Up(resultsPerKernel + 1).W))
-  val kernelCnt = RegInit(0.U(log2Up(numKernels).W))
+  io.outStream.bits := regs.asUInt
+  io.outStream.valid := RegNext(regsCntWrap)
+  io.outStream.last := RegNext(totalCntWrap)
 
-  val dataBuf = RegInit(VecInit(Seq.fill(resultsPerWord)(0.U(genOut.getWidth.W))))
-  val ramAddr = RegInit(0.U(log2Up(output.memDepth).W))
-
-  val state = RegInit(rmbState.sWAIT)
-
-  state := state
-  when(io.start) {
-    state := rmbState.sCOMP
-  }.elsewhen(state === rmbState.sCOMP) {
-    when(
-      resPerKernelCnt === resultsPerKernel.U &&
-        kernelCnt === (numKernels - 1).U
-    ) {
-      state := rmbState.sWAIT
-    }
-  }
-
-  when(io.start) {
-    resPerWordCnt := 0.U
-    resPerKernelCnt := 0.U
-    kernelCnt := 0.U
-  }.otherwise {
-    when(io.resultValid) {
-      resPerKernelCnt := resPerKernelCnt + 1.U
-      when(resPerKernelCnt === resultsPerKernel.U) {
-        kernelCnt := kernelCnt + 1.U
-        resPerKernelCnt := 0.U
-        resPerWordCnt := 0.U
-      }.elsewhen(resPerWordCnt === (resultsPerWord - 1).U) {
-        resPerWordCnt := 0.U
-      }.otherwise {
-        resPerWordCnt := resPerWordCnt + 1.U
-      }
-    }
-  }
-
-  ramAddr := ramAddr
-  when(io.start) {
-    ramAddr := 0.U
-  }.elsewhen(io.resRam.enable) {
-    ramAddr := ramAddr + 1.U
-  }
-
-  when(io.start) {
-    dataBuf := VecInit(Seq.fill(resultsPerWord)(0.U(genOut.getWidth.W)))
-  }.elsewhen(io.resultValid) {
-    dataBuf(resPerWordCnt) := io.result.asUInt
-  }
-
-  io.resRam.enable := RegNext(
-    (RegNext(state === rmbState.sCOMP) &&
-      ((resPerWordCnt === (resultsPerWord - 1).U) ||
-        resPerKernelCnt === (resultsPerKernel - 1).U) &&
-      io.resultValid)
-  )
-  io.resRam.address := ramAddr
-  io.resRam.data := dataBuf.asUInt
+  io.result.ready := io.outStream.ready
 }

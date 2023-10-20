@@ -20,24 +20,24 @@ import chisel3.util._
 import chisel4ml.implicits._
 import lbir.Conv2DConfig
 
-object ctrlState extends ChiselEnum {
-  val sWAITFORDATA = Value(0.U)
-  val sLOADINPACT = Value(1.U)
-  val sLOADKERNEL = Value(2.U)
-  val sCOMP = Value(3.U)
-  val sWAITWRITE = Value(4.U)
-  val sWAITWRITE2 = Value(5.U)
-  val sSENDDATA = Value(6.U)
-}
-
 /** PeSeqConvController
   */
 class PeSeqConvController(layer: Conv2DConfig) extends Module {
   val io = IO(new Bundle {
     val loadKernel = Output(Valid(UInt(log2Up(layer.kernel.numKernels).W)))
-    val nextInputTensor = Output(Bool())
+    val channelDone = Input(Bool())
   })
-  io.loadKernel.valid := false.B
-  io.loadKernel.bits := 0.U
-  io.nextInputTensor := false.B
+  val (chCntVal, _) = Counter(0 until layer.kernel.numChannels, io.channelDone)
+  object CtrlState extends ChiselEnum {
+    val sLOADKERNEL = Value(0.U)
+    val sCOMP = Value(1.U)
+  }
+  val state = RegInit(CtrlState.sLOADKERNEL)
+  when(state === CtrlState.sLOADKERNEL) {
+    state := CtrlState.sCOMP
+  }.elsewhen(state === CtrlState.sCOMP && io.channelDone) {
+    state := CtrlState.sLOADKERNEL
+  }
+  io.loadKernel.valid := state === CtrlState.sLOADKERNEL
+  io.loadKernel.bits := chCntVal
 }
