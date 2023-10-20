@@ -47,7 +47,7 @@ class InputDataMover(input: lbir.QTensor) extends Module {
   }
 
   io.actMem.address := addrCntValue
-  io.actMem.enable := state === IDMState.sMOVEDATA
+  io.actMem.enable := state === IDMState.sMOVEDATA || io.start
 
   val actMemAsVec = io.actMem
     .data(input.paramsPerWord * input.dtype.bitwidth - 1, 0)

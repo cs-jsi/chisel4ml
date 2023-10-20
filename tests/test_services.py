@@ -231,7 +231,9 @@ def test_run_service_conv_8(sint_conv_layer):
 
 def test_run_service_conv_9(sint_conv_layer):
     opt_model = optimize.qkeras_model(sint_conv_layer)
-    circuit = generate.circuit(opt_model, is_simple=False, gen_waveform=True)
+    circuit = generate.circuit(
+        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
+    )
     assert circuit is not None
 
     np.random.default_rng(42)
