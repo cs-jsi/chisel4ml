@@ -25,7 +25,7 @@ option (scalapb.options) = {
     // All classes that extend a sealed trait need to be in the same Scala
     // file, so we set single_file to true.
     single_file: true
-  
+
     // Generate the base trait.
     preamble: [
       "sealed trait HasInputOutputQTensor {",
@@ -73,6 +73,7 @@ message Conv2DConfig {
     QTensor input = 5;  // no values, just shape / dtype
     QTensor output = 6;
     Activation activation = 7;
+    bool depthwise = 8;
 }
 
 message MaxPool2DConfig {
@@ -84,7 +85,7 @@ message MaxPool2DConfig {
 message FFTConfig {
     uint32 fft_size = 1;
     uint32 num_frames = 2;
-    repeated float win_fn = 3; 
+    repeated float win_fn = 3;
     QTensor input = 4;  // no values, just shape / dtype
     QTensor output = 5;
 }

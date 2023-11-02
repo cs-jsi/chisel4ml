@@ -48,7 +48,7 @@ class ProcessingPipelineSimple(model: Model, options: Options) extends Module wi
   val out = IO(Output(Vec(model.layers.last.get.output.width, UInt(model.layers.last.get.output.dtype.bitwidth.W))))
 
   // Connect the inputs and outputs of the layers
-  peList(0).in := in
+  peList.head.in := in
   for (i <- 1 until model.layers.length) {
     if (options.pipelineCircuit) {
       peList(i).in := RegNext(peList(i - 1).out)

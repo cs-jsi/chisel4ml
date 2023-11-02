@@ -219,7 +219,9 @@ def test_run_service_conv_8(sint_conv_layer):
     x2 = np.zeros(9).reshape(1, 3, 3, 1)
 
     opt_model = optimize.qkeras_model(sint_conv_layer)
-    circuit = generate.circuit(opt_model, is_simple=False)
+    circuit = generate.circuit(
+        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
+    )
     assert circuit is not None
     for x in [x0, x1, x2]:
         sw_res = opt_model.predict(x)
@@ -250,22 +252,23 @@ def test_run_service_conv_9(sint_conv_layer):
 
 
 def test_run_service_conv_10(sint_conv_layer_2_kernels):
-    x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(
-        1, 3, 3, 1
-    )
-    x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(
-        1, 3, 3, 1
-    )
-    x2 = np.zeros(9).reshape(1, 3, 3, 1)
-
+    x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(1, 3, 3)
+    x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(1, 3, 3)
+    x2 = np.zeros(9).reshape(1, 3, 3)
+    x01 = np.concatenate((x0, x1))
+    x10 = np.concatenate((x1, x0))
+    x21 = np.concatenate((x2, x1))
+    x12 = np.concatenate((x1, x2))
     opt_model = optimize.qkeras_model(sint_conv_layer_2_kernels)
     circuit = generate.circuit(
         opt_model, is_simple=False, use_verilator=True, gen_waveform=True
     )
     assert circuit is not None
-    for x in [x0, x1, x2]:
-        sw_res = opt_model.predict(x).reshape(2, 2, 2)
-        sw_res = np.moveaxis(sw_res, 2, 0)  # move channels dimension
+    for x in [x01, x10, x21, x12]:
+        sw_inp = np.moveaxis(x, 0, 2)
+        sw_inp = np.expand_dims(sw_inp, axis=0)
+        sw_res = opt_model.predict(sw_inp)
+        sw_res = np.moveaxis(sw_res, 3, 0)  # move channels dimension
         hw_res = circuit(x)
         assert np.array_equal(
             hw_res, sw_res.reshape(2, 2, 2)

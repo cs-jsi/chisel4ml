@@ -52,7 +52,9 @@ class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with Be
 
   behavior.of("KernelRFLoader module")
   it should "load the single kernel correctly" in {
-    test(new KernelSubsystem(kernel = testParameters, thresh = threshParams, genThresh = UInt(5.W))) { dut =>
+    test(
+      new KernelSubsystem(lbir.Conv2DConfig(kernel = testParameters, thresh = threshParams), genThresh = UInt(5.W))
+    ) { dut =>
       dut.clock.step(4)
     }
   }

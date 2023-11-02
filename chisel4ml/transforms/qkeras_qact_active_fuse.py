@@ -10,9 +10,8 @@
 # limitations under the License.
 import qkeras
 
-import chisel4ml.lbir.lbir_pb2 as lbir
-from chisel4ml.lbir.qtensor_pb2 import QTensor
 from chisel4ml.lbir.datatype_pb2 import Datatype
+from chisel4ml.lbir.qtensor_pb2 import QTensor
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from chisel4ml.transforms.qkeras_util import _qact_to_bitwidth
@@ -36,24 +35,22 @@ class QKerasQActActiveFuse(QKerasTransform):
 
     def _call_impl(self, layers):
         shape = layers[0].get_output_shape_at(0)[1:]
-        if isinstance(layers[1], qkeras.QConv2D):
+        if isinstance(layers[1], (qkeras.QConv2D, qkeras.QDepthwiseConv2D)):
             shape = [shape[2]] + [*shape[0:2]]
         input_tensor = QTensor(
             dtype=Datatype(
                 quantization=_qact_to_qtype(layers[0].activation),
                 signed=_qact_to_sign(layers[0].activation),
                 bitwidth=_qact_to_bitwidth(layers[0].activation),
-                shift=_qact_to_shift(
-                    layers[0].activation, [1]
-                ),
+                shift=_qact_to_shift(layers[0].activation, [1]),
                 offset=[0],
             ),
             shape=shape,
         )
         lbir_layer = _qkeras_base_transform_no_inp(layers[1])
-        if lbir_layer.HasField('dense'):
+        if lbir_layer.HasField("dense"):
             lbir_layer.dense.input.CopyFrom(input_tensor)
-        elif lbir_layer.HasField('conv2d'):
+        elif lbir_layer.HasField("conv2d"):
             lbir_layer.conv2d.input.CopyFrom(input_tensor)
         else:
             raise Exception("lbir_layer should have either dense or conv2d field set.")
@@ -61,5 +58,5 @@ class QKerasQActActiveFuse(QKerasTransform):
 
     def is_applicable(self, layers) -> bool:
         return isinstance(layers[0], qkeras.QActivation) and isinstance(
-            layers[1], (qkeras.QDense, qkeras.QConv2D)
+            layers[1], (qkeras.QDense, qkeras.QConv2D, qkeras.QDepthwiseConv2D)
         )

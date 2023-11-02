@@ -28,22 +28,37 @@ class QKerasLbirQDenseFuse(QKerasTransform):
     order = 6
 
     def _call_impl(self, layers):
-        l0_attr = layers[0].WhichOneof('sealed_value_optional')
-        if isinstance(layers[1], (qkeras.QDense, qkeras.QConv2D)):
+        l0_attr = layers[0].WhichOneof("sealed_value_optional")
+        if isinstance(
+            layers[1], (qkeras.QDense, qkeras.QConv2D, qkeras.QDepthwiseConv2D)
+        ):
             lbir_layer = _qkeras_base_transform_no_inp(layers[1])
         else:
             tf_shape = layers[1].get_output_shape_at(0)[1:]
-            lbir_layer = lbir.LayerWrap(maxpool2d=lbir.MaxPool2DConfig(
-                output=QTensor(
-                    dtype=getattr(layers[0], l0_attr).output.dtype,
-                    shape=(tf_shape[2],) + tf_shape[0:2],  # tensorflows HWC -> to LBIR CHW
-                ),
-            ))
-        l1_attr = lbir_layer.WhichOneof('sealed_value_optional')
+            lbir_layer = lbir.LayerWrap(
+                maxpool2d=lbir.MaxPool2DConfig(
+                    output=QTensor(
+                        dtype=getattr(layers[0], l0_attr).output.dtype,
+                        shape=(tf_shape[2],)
+                        + tf_shape[0:2],  # tensorflows HWC -> to LBIR CHW
+                    ),
+                )
+            )
+        l1_attr = lbir_layer.WhichOneof("sealed_value_optional")
         getattr(lbir_layer, l1_attr).input.CopyFrom(getattr(layers[0], l0_attr).output)
         return [layers[0], lbir_layer]
 
     def is_applicable(self, layers) -> bool:
-        return hasattr(layers[0], "__module__") and layers[0].__module__ == "lbir_pb2" and isinstance(
-            layers[1], (qkeras.QDense, qkeras.QConv2D, tf.keras.layers.MaxPooling2D)
+        return (
+            hasattr(layers[0], "__module__")
+            and layers[0].__module__ == "lbir_pb2"
+            and isinstance(
+                layers[1],
+                (
+                    qkeras.QDense,
+                    qkeras.QConv2D,
+                    tf.keras.layers.MaxPooling2D,
+                    qkeras.QDepthwiseConv2D,
+                ),
+            )
         )

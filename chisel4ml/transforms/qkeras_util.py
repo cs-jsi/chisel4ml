@@ -15,13 +15,15 @@ from typing import List
 import numpy as np
 import qkeras
 import tensorflow as tf
+from qkeras import QConv2D
+from qkeras import QDense
+from qkeras import QDepthwiseConv2D
 from tensorflow.keras.layers import Layer as KerasLayer
 from tensorflow.keras.layers import MaxPooling2D
-from qkeras import QDense, QConv2D
 
 import chisel4ml.lbir.lbir_pb2 as lbir
-from chisel4ml.lbir.qtensor_pb2 import QTensor
 from chisel4ml.lbir.datatype_pb2 import Datatype as LBIRDatatype
+from chisel4ml.lbir.qtensor_pb2 import QTensor
 
 log = logging.getLogger(__name__)
 
@@ -31,25 +33,43 @@ def _qkeras_base_transform_no_inp(keras_layer: KerasLayer):
     to all layers.
     """
     if isinstance(keras_layer, QDense):
-        return lbir.LayerWrap(dense=lbir.DenseConfig(
-            thresh=_layer_to_thresh_tensor(keras_layer),
-            weights=_layer_to_weight_tensor(keras_layer),
-            output=_layer_to_output_tensor(keras_layer),
-            activation=_qact_to_act(keras_layer.activation),
-        ))
+        return lbir.LayerWrap(
+            dense=lbir.DenseConfig(
+                thresh=_layer_to_thresh_tensor(keras_layer),
+                weights=_layer_to_weight_tensor(keras_layer),
+                output=_layer_to_output_tensor(keras_layer),
+                activation=_qact_to_act(keras_layer.activation),
+            )
+        )
     elif isinstance(keras_layer, QConv2D):
-        return lbir.LayerWrap(conv2d=lbir.Conv2DConfig(
-            thresh=_layer_to_thresh_tensor(keras_layer),
-            kernel=_layer_to_weight_tensor(keras_layer),
-            output=_layer_to_output_tensor(keras_layer),
-            activation=_qact_to_act(keras_layer.activation),
-        ))
+        return lbir.LayerWrap(
+            conv2d=lbir.Conv2DConfig(
+                thresh=_layer_to_thresh_tensor(keras_layer),
+                kernel=_layer_to_weight_tensor(keras_layer),
+                output=_layer_to_output_tensor(keras_layer),
+                activation=_qact_to_act(keras_layer.activation),
+            )
+        )
+    elif isinstance(keras_layer, QDepthwiseConv2D):
+        return lbir.LayerWrap(
+            conv2d=lbir.Conv2DConfig(
+                thresh=_layer_to_thresh_tensor(keras_layer),
+                kernel=_depthwise_layer_to_weight_tensor(keras_layer),
+                output=_layer_to_output_tensor(keras_layer),
+                activation=_qact_to_act(keras_layer.activation),
+                depthwise=True,
+            )
+        )
     elif isinstance(keras_layer, MaxPooling2D):
-        return lbir.LayerWrap(maxpool2d=lbir.MaxPool2DConfig(
-            output=_layer_to_output_tensor(keras_layer),
-        ))
+        return lbir.LayerWrap(
+            maxpool2d=lbir.MaxPool2DConfig(
+                output=_layer_to_output_tensor(keras_layer),
+            )
+        )
     else:
-        raise NotImplemented(f"Layers of type {type(keras_layer)} are not currently supported by chisel4ml.") 
+        raise NotImplementedError(
+            f"Layer of type {type(keras_layer)} is not yet supported by chisel4ml."
+        )
 
 
 def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> QTensor:
@@ -67,11 +87,11 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> QTensor:
                 "The bias must be quantized with a scale factor of 1. This can be done"
                 " by setting the factor alpha to constant 1."
             )
-    
+
     if isinstance(keras_layer, QDense):
         num_biases = keras_layer.output_shape[1]
         num_shifts = 1
-    elif isinstance(keras_layer, QConv2D):
+    elif isinstance(keras_layer, (QConv2D, QDepthwiseConv2D)):
         num_biases = keras_layer.output.shape[-1]
         num_shifts = keras_layer.output.shape[-1]
     else:
@@ -92,6 +112,28 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> QTensor:
         ),
         shape=[keras_layer.output_shape[1]],
         values=thresh_values,
+    )
+
+
+def _depthwise_layer_to_weight_tensor(keras_layer: KerasLayer) -> QTensor:
+    _ = keras_layer.depthwise_quantizer_internal(keras_layer.depthwise_kernel)
+    kernel_vals = np.empty(shape=keras_layer.depthwise_kernel.shape)
+    kernel_vals = np.moveaxis(keras_layer.depthwise_kernel, [0, 1, 2, 3], [2, 3, 0, 1])
+    return QTensor(
+        dtype=LBIRDatatype(
+            quantization=_quantizer_to_qtype(keras_layer.depthwise_quantizer_internal),
+            signed=True,  # can this be unsigned in some case?
+            bitwidth=_quantizer_to_bitwidth(keras_layer.depthwise_quantizer_internal),
+            shift=_quantizer_to_shift(
+                keras_layer.depthwise_quantizer_internal, keras_layer.depthwise_kernel
+            ),
+            offset=[0],
+        ),
+        shape=_layer_to_shape(keras_layer),
+        values=get_integer_values(kernel_vals, keras_layer.depthwise_quantizer_internal)
+        .numpy()
+        .flatten()
+        .tolist(),
     )
 
 
@@ -129,10 +171,14 @@ def _layer_to_shape(keras_layer: KerasLayer):
         return keras_layer.kernel.shape.as_list()[::-1]
     elif isinstance(keras_layer, qkeras.QConv2D):
         return list(np.moveaxis(keras_layer.kernel, [0, 1, 2, 3], [3, 2, 1, 0]).shape)
+    elif isinstance(keras_layer, qkeras.QDepthwiseConv2D):
+        return list(
+            np.moveaxis(keras_layer.depthwise_kernel, [0, 1, 2, 3], [3, 2, 1, 0]).shape
+        )
     else:
         raise ValueError(
-            f"Invalid layer of type: {keras_layer.__class}. Only the QDense and QConv2D"
-            " active layers may be used with chisel4ml."
+            f"Invalid layer of type: {keras_layer.__class__}. Only the QDense and"
+            " QConv2D active layers may be used with chisel4ml."
         )
 
 
@@ -147,9 +193,7 @@ def _layer_to_output_tensor(keras_layer: KerasLayer) -> QTensor:
             quantization=_qact_to_qtype(keras_layer.activation),
             signed=_qact_to_sign(keras_layer.activation),
             bitwidth=_qact_to_bitwidth(keras_layer.activation),
-            shift=_qact_to_shift(
-                keras_layer.activation, [1]
-            ),
+            shift=_qact_to_shift(keras_layer.activation, [1]),
             offset=[0],
         ),
         shape=lbir_shape,

@@ -18,33 +18,37 @@ package chisel4ml.conv2d
 import chisel3._
 import chisel3.util._
 import chisel4ml.implicits._
+import lbir.Conv2DConfig
 
 /* ShiftRegisterConvolver
  *
  * Shifts the inputs in standard LBIR order (one by one), and generates the active output window.
  *
  */
-class ShiftRegisterConvolver(input: lbir.QTensor, kernel: lbir.QTensor, output: lbir.QTensor) extends Module {
-  require(kernel.numChannels == 1, "Module only works with single channel input Conv2D or DepthWise Conv2D.")
+class ShiftRegisterConvolver(l: Conv2DConfig) extends Module {
+  require(
+    (l.kernel.numChannels == 1 && l.depthwise == false) || l.depthwise == true,
+    s"""Module only works with single channel input Conv2D or DepthWise Conv2D.
+       | Instead the kernel has shape ${l.kernel.shape}.""".stripMargin.replaceAll("\n", "")
+  )
   private def transformIndex(ind: Int): Int = {
-    require(ind >= 0 && ind < kernel.numKernelParams)
-    val revInd = (kernel.numKernelParams - 1) - ind // The first element is in the last position
-    input.width * (revInd / kernel.width) + (revInd % kernel.width)
+    require(ind >= 0 && ind < l.kernel.numActiveParams(l.depthwise))
+    val revInd = (l.kernel.numActiveParams(l.depthwise) - 1) - ind // The first element is in the last position
+    l.input.width * (revInd / l.kernel.width) + (revInd % l.kernel.width)
   }
 
   val io = IO(new Bundle {
-    val nextElement = Flipped(Decoupled(UInt(input.dtype.bitwidth.W)))
-    val inputActivationsWindow = Decoupled(Vec(kernel.numKernelParams, UInt(input.dtype.bitwidth.W)))
+    val nextElement = Flipped(Decoupled(UInt(l.input.dtype.bitwidth.W)))
+    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), UInt(l.input.dtype.bitwidth.W)))
     val channelDone = Output(Bool())
   })
 
-  val numRegs = input.width * kernel.height - (input.width - kernel.width)
+  val numRegs = l.input.width * l.kernel.height - (l.input.width - l.kernel.width)
   val regs = ShiftRegisters(io.nextElement.bits, numRegs, io.nextElement.fire)
-  val (regsFilledCntValue, _) =
-    Counter(0 until (input.numChannelParams + kernel.height - 1), io.nextElement.fire, io.channelDone)
-  val (lineCntValue, _) =
-    Counter(0 until input.width, regsFilledCntValue >= numRegs.U && io.nextElement.fire, io.channelDone)
-  val (_, outputCntWrap) = Counter(0 until output.numChannelParams, io.inputActivationsWindow.fire)
+  val fireCntMax = (l.input.numActiveParams(true) + l.kernel.height - 1)
+  val (fireCntVal, _) = Counter(0 until fireCntMax, io.nextElement.fire, io.channelDone)
+  val (lineCntValue, _) = Counter(0 until l.input.width, fireCntVal >= numRegs.U && io.nextElement.fire, io.channelDone)
+  val (_, outputCntWrap) = Counter(0 until l.output.numActiveParams(true), io.inputActivationsWindow.fire)
 
   io.channelDone := outputCntWrap
   io.inputActivationsWindow.bits.zipWithIndex.foreach {
@@ -53,7 +57,7 @@ class ShiftRegisterConvolver(input: lbir.QTensor, kernel: lbir.QTensor, output: 
 
   io.nextElement.ready := io.inputActivationsWindow.ready && !io.channelDone
   // First condition: waiting for shift registers to initially fill up. Second: filter goes over the width of image. Third: backpressure from input data mover.
-  io.inputActivationsWindow.valid := (regsFilledCntValue >= numRegs.U) && (lineCntValue <= (input.width - kernel.width).U) && RegNext(
+  io.inputActivationsWindow.valid := (fireCntVal >= numRegs.U) && (lineCntValue <= (l.input.width - l.kernel.width).U) && RegNext(
     io.nextElement.fire
   )
 }

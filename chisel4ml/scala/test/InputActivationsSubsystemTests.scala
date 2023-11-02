@@ -28,6 +28,7 @@ import org.scalatest.{BeforeAndAfterEachTestData, TestData}
 import services.LayerOptions
 
 import java.nio.file.Paths
+import lbir.Conv2DConfig
 
 class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTester with BeforeAndAfterEachTestData {
   val logger = LoggerFactory.getLogger(classOf[SlidingWindowUnitTests])
@@ -54,9 +55,16 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
     shape = Seq(1, 1, 2, 2)
   )
   val options = LayerOptions(32, 32)
+
+  val conv2dLayer = Conv2DConfig(
+    input = inputParams,
+    kernel = kernelParams,
+    output = outParams,
+    depthwise = true
+  )
   behavior.of("InputActivationSubsystem module")
   it should "Send a simple input tensor through the input interface and read out the result" in {
-    test(new InputActivationsSubsystem(inputParams, kernelParams, outParams, options)) { dut =>
+    test(new InputActivationsSubsystem(conv2dLayer, options)) { dut =>
       val goldenResVec = Seq(
         Vec.Lit(1.U(4.W), 2.U(4.W), 4.U(4.W), 5.U(4.W)),
         Vec.Lit(2.U(4.W), 3.U(4.W), 5.U(4.W), 6.U(4.W)),
@@ -78,16 +86,16 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
   val rand = new scala.util.Random(seed = 42)
   for (testId <- 0 until 20) {
     val p = RandShiftRegConvTestParams(rand, numChannels = rand.between(1, 8))
-    val (goldenVec, input, kernel, output) = RandShiftRegConvTestParams.genShiftRegisterConvolverTestCase(p)
+    val (goldenVec, convLayer) = RandShiftRegConvTestParams.genShiftRegisterConvolverTestCase(p)
     it should f"Test $testId window a random input tensor with bw:${p.bitwidth} kernelHeight:${p.kernelHeight} " +
       f"kernelWidth:${p.kernelWidth}, inChannels:${p.inChannels}, inHeight:${p.inHeight}, inWidth:${p.inWidth}" in {
-      test(new InputActivationsSubsystem(input, kernel, output, options)) { dut =>
+      test(new InputActivationsSubsystem(convLayer, options)) { dut =>
         dut.io.inputActivationsWindow.initSink()
         dut.io.inputActivationsWindow.setSinkClock(dut.clock)
 
         dut.clock.step()
         fork {
-          dut.io.inStream.enqueueQTensor(input, dut.clock)
+          dut.io.inStream.enqueueQTensor(convLayer.input, dut.clock)
         }.fork {
           dut.io.inputActivationsWindow.expectDequeueSeq(goldenVec)
         }.join()

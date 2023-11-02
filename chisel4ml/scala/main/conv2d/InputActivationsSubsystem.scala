@@ -7,22 +7,22 @@ import services.LayerOptions
 import memories.MemoryGenerator
 import chisel4ml.MemWordSize
 import chisel4ml.implicits._
+import lbir.Conv2DConfig
 
 /* InputActivationSubsystem
  * Handles the input data stream, and stores it in to a input buffer. It also "rolls" through the input activation
  * as a convolution opperation would; and does so continously until the next signal is asserted. This allows looping
  * through the input to convolve it with more than one kernel.
  */
-class InputActivationsSubsystem(input: lbir.QTensor, kernel: lbir.QTensor, output: lbir.QTensor, options: LayerOptions)
-    extends Module {
+class InputActivationsSubsystem(l: Conv2DConfig, options: LayerOptions) extends Module {
   val io = IO(new Bundle {
     val inStream = Flipped(AXIStream(UInt(options.busWidthIn.W)))
-    val inputActivationsWindow = Decoupled(Vec(kernel.numKernelParams, UInt(input.dtype.bitwidth.W)))
-    val channelDone = Output(Bool())
+    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), UInt(l.input.dtype.bitwidth.W)))
+    val activeDone = Output(Bool())
   })
-  val actMem = Module(MemoryGenerator.SRAM(depth = input.memDepth, width = MemWordSize.bits))
-  val dataMover = Module(new InputDataMover(input))
-  val shiftRegConvolver = Module(new ShiftRegisterConvolver(input, kernel, output))
+  val actMem = Module(MemoryGenerator.SRAM(depth = l.input.memDepth, width = MemWordSize.bits))
+  val dataMover = Module(new InputDataMover(l.input))
+  val shiftRegConvolver = Module(new ShiftRegisterConvolver(l))
 
   object InSubState extends ChiselEnum {
     val sEMPTY = Value(0.U)
@@ -33,7 +33,7 @@ class InputActivationsSubsystem(input: lbir.QTensor, kernel: lbir.QTensor, outpu
 
   /* INPUT STREAM LOGIC*/
   val inputTensorFinnished = state === InSubState.sEMPTY && RegNext(state === InSubState.sFULL)
-  val (actMemCntValue, _) = Counter(0 to input.memDepth, io.inStream.fire, inputTensorFinnished)
+  val (actMemCntValue, _) = Counter(0 to l.input.memDepth, io.inStream.fire, inputTensorFinnished)
   io.inStream.ready := state =/= InSubState.sFULL
   actMem.io.write.address := actMemCntValue
   actMem.io.write.data := io.inStream.bits
@@ -47,11 +47,11 @@ class InputActivationsSubsystem(input: lbir.QTensor, kernel: lbir.QTensor, outpu
 
   shiftRegConvolver.io.nextElement <> dataMover.io.nextElement
   io.inputActivationsWindow <> shiftRegConvolver.io.inputActivationsWindow
-  io.channelDone := shiftRegConvolver.io.channelDone
+  io.activeDone := shiftRegConvolver.io.channelDone
 
   when(state === InSubState.sEMPTY && io.inStream.fire) {
     state := InSubState.sRECEVING_DATA
-  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCntValue === (input.memDepth - 1).U) {
+  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCntValue === (l.input.memDepth - 1).U) {
     state := InSubState.sFULL
   }.otherwise {
     when(dataMover.io.done) {

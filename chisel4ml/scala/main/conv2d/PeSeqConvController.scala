@@ -22,22 +22,16 @@ import lbir.Conv2DConfig
 
 /** PeSeqConvController
   */
-class PeSeqConvController(layer: Conv2DConfig) extends Module {
+class PeSeqConvController(l: Conv2DConfig) extends Module {
   val io = IO(new Bundle {
-    val loadKernel = Output(Valid(UInt(log2Up(layer.kernel.numKernels).W)))
-    val channelDone = Input(Bool())
+    val kernelCtrl = Flipped(new KernelRFLoaderControlIO(l))
+    val activeDone = Input(Bool())
   })
-  val (chCntVal, _) = Counter(0 until layer.kernel.numChannels, io.channelDone)
-  object CtrlState extends ChiselEnum {
-    val sLOADKERNEL = Value(0.U)
-    val sCOMP = Value(1.U)
-  }
-  val state = RegInit(CtrlState.sLOADKERNEL)
-  when(state === CtrlState.sLOADKERNEL) {
-    state := CtrlState.sCOMP
-  }.elsewhen(state === CtrlState.sCOMP && io.channelDone) {
-    state := CtrlState.sLOADKERNEL
-  }
-  io.loadKernel.valid := state === CtrlState.sLOADKERNEL
-  io.loadKernel.bits := chCntVal
+  val numVirtualChannels = if (l.depthwise) l.kernel.numChannels else 1
+  val (_, virtualCntWrap) = Counter(0 until numVirtualChannels, io.activeDone)
+  val (kernelCntVal, _) = Counter(0 until l.kernel.numKernels, io.kernelCtrl.kernelDone)
+
+  io.kernelCtrl.nextActive.foreach(_ := RegNext(io.activeDone))
+  io.kernelCtrl.loadKernel.bits := kernelCntVal
+  io.kernelCtrl.loadKernel.valid := virtualCntWrap || RegNext(reset.asBool)
 }

@@ -21,7 +21,7 @@ import chisel4ml.util.{saturate, shiftAndRoundDynamic}
 import chisel4ml.implicits._
 
 class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <: Bits, A <: Bits, O <: Bits](
-  kernel:     lbir.QTensor,
+  l:          lbir.Conv2DConfig,
   genIn:      I,
   genWeights: W,
   genAccu:    S,
@@ -32,13 +32,13 @@ class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <
   actFn:      (S, A) => O)
     extends Module {
   val io = IO(new Bundle {
-    val in = Flipped(Decoupled(Vec(kernel.numKernelParams, UInt())))
-    val weights = Flipped(Valid(new KernelSubsystemIO(kernel, genThresh)))
+    val in = Flipped(Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), UInt())))
+    val weights = Flipped(Valid(new KernelSubsystemIO(l.kernel, genThresh)))
     val out = Decoupled(genOut)
   })
 
-  val inVec = io.in.asTypeOf(Vec(kernel.numKernelParams, genIn))
-  val inWeights = io.weights.bits.activeKernel.asTypeOf(Vec(kernel.numKernelParams, genWeights))
+  val inVec = io.in.asTypeOf(Vec(l.kernel.numActiveParams(l.depthwise), genIn))
+  val inWeights = io.weights.bits.activeKernel.asTypeOf(Vec(l.kernel.numActiveParams(l.depthwise), genWeights))
 
   val muls = VecInit((inVec.zip(inWeights)).map { case (a, b) => mul(a, b) })
   val pAct = add(muls)

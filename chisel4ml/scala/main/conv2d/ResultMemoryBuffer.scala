@@ -31,7 +31,7 @@ class ResultMemoryBuffer[O <: Bits](output: lbir.QTensor, options: LayerOptions,
   val (_, totalCntWrap) = Counter(0 until output.numParams, io.result.fire)
 
   when(io.result.fire) {
-    regs(regsCntVal) := io.result.bits
+    regs(regsCntVal) := io.result.bits.asUInt
   }
 
   io.outStream.bits := regs.asUInt

@@ -20,13 +20,6 @@ import chisel4ml.implicits._
 import memories.MemoryGenerator
 import chisel4ml.MemWordSize
 
-class KernelRegisterFileInput(kernel: lbir.QTensor) extends Bundle {
-  val channelAddress = UInt(log2Up(kernel.numChannels).W)
-  val rowAddress = UInt(log2Up(kernel.width).W)
-  val columnAddress = UInt(log2Up(kernel.height).W)
-  val data = UInt(kernel.dtype.bitwidth.W)
-}
-
 class ThreshAndShiftIO[A <: Bits](genThresh: A) extends Bundle {
   val thresh = genThresh.cloneType
   val shift = UInt(8.W)
@@ -38,51 +31,47 @@ class KernelSubsystemIO[A <: Bits](kernel: lbir.QTensor, genThresh: A) extends B
   val threshShift = new ThreshAndShiftIO(genThresh)
 }
 
-class KernelRegisterFile(kernel: lbir.QTensor) extends Module {
+class KernelRegisterFile(kernel: lbir.QTensor, depthwise: Boolean) extends Module {
   val io = IO(new Bundle {
-    val write = Flipped(Valid(new KernelRegisterFileInput(kernel)))
-    val activeKernel = UInt((kernel.numKernelParams * kernel.dtype.bitwidth).W)
+    val write = Flipped(Valid(UInt(kernel.dtype.bitwidth.W)))
+    val activeKernel = Valid(UInt((kernel.numActiveParams(depthwise) * kernel.dtype.bitwidth).W))
   })
-  val regs = RegInit(VecInit.fill(kernel.numChannels, kernel.width, kernel.height)(0.U(kernel.dtype.bitwidth.W)))
+  val valid = RegInit(false.B)
+  val numVirtualChannels = if (depthwise) 1 else kernel.numChannels
+  val regs = RegInit(VecInit.fill(numVirtualChannels * kernel.width * kernel.height)(0.U(kernel.dtype.bitwidth.W)))
+  val (regCnt, regCntWrap) = Counter(0 until (numVirtualChannels * kernel.width * kernel.height), io.write.valid)
+  when(regCntWrap) {
+    valid := true.B
+  }.elsewhen(valid && io.write.fire) {
+    valid := false.B
+  }
 
   when(io.write.valid) {
-    regs(io.write.bits.channelAddress)(io.write.bits.rowAddress)(io.write.bits.columnAddress) := io.write.bits.data
+    regs(regCnt) := io.write.bits
   }
 
-  io.activeKernel := regs.asUInt
+  io.activeKernel.bits := regs.asUInt
+  io.activeKernel.valid := valid
 }
 
-class KernelSubsystem[I <: Bits, A <: Bits](kernel: lbir.QTensor, thresh: lbir.QTensor, genThresh: A) extends Module {
+class KernelSubsystem[I <: Bits, A <: Bits](l: lbir.Conv2DConfig, genThresh: A) extends Module {
   val io = IO(new Bundle {
-    val weights = Valid(new KernelSubsystemIO(kernel, genThresh))
-    val loadKernel = Flipped(Valid(UInt(log2Up(kernel.numKernels).W)))
+    val weights = Valid(new KernelSubsystemIO(l.kernel, genThresh))
+    val ctrl = new KernelRFLoaderControlIO(l)
   })
-  object KernelSubState extends ChiselEnum {
-    val sWAIT = Value(0.U)
-    val sLOADING = Value(1.U)
-    val sREADY = Value(2.U)
-  }
-  val state = RegInit(KernelSubState.sWAIT)
+  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = l.kernel.toHexStr, width = MemWordSize.bits))
+  val kRFLoader = Module(new KernelRFLoader(l))
+  val krf = Module(new KernelRegisterFile(l.kernel, l.depthwise))
+  val tasu = Module(new ThreshAndShiftUnit[A](genThresh, l.thresh, l.kernel))
 
-  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = kernel.toHexStr, width = MemWordSize.bits))
-  val kRFLoader = Module(new KernelRFLoader(kernel))
-  val krf = Module(new KernelRegisterFile(kernel))
-  val tasu = Module(new ThreshAndShiftUnit[A](genThresh, thresh, kernel))
-
-  kernelMem.io.write <> MemoryGenerator.getTieOffBundle(depth = kernel.memDepth, width = MemWordSize.bits)
+  kernelMem.io.write <> MemoryGenerator.getTieOffBundle(depth = l.kernel.memDepth, width = MemWordSize.bits)
   kRFLoader.io.rom <> kernelMem.io.read
   krf.io.write <> kRFLoader.io.krf
 
-  io.weights.bits.activeKernel := krf.io.activeKernel
+  io.weights.bits.activeKernel := krf.io.activeKernel.bits
   io.weights.bits.threshShift <> tasu.io.tas
-  io.weights.valid := state === KernelSubState.sREADY
+  io.weights.valid := krf.io.activeKernel.valid
 
-  kRFLoader.io.loadKernel <> io.loadKernel
-  tasu.io.loadKernel <> io.loadKernel
-
-  when(state =/= KernelSubState.sLOADING && io.loadKernel.valid) {
-    state := KernelSubState.sLOADING
-  }.elsewhen(state === KernelSubState.sLOADING && kRFLoader.io.kernelLoaded) {
-    state := KernelSubState.sREADY
-  }
+  kRFLoader.io.ctrl <> io.ctrl
+  tasu.io.loadKernel <> io.ctrl.loadKernel
 }

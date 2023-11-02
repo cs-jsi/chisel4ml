@@ -52,7 +52,7 @@ object RandShiftRegConvTestParams {
 
   def genShiftRegisterConvolverTestCase(
     p: RandShiftRegConvTestParams
-  ): (Seq[Vec[UInt]], lbir.QTensor, lbir.QTensor, lbir.QTensor) = {
+  ): (Seq[Vec[UInt]], lbir.Conv2DConfig) = {
     def tensorValue(c: Int, h: Int, w: Int): Int =
       ((h * p.inWidth + w + c * (p.inHeight * p.inWidth)) % Math.pow(2, p.bitwidth)).toInt
 
@@ -87,8 +87,13 @@ object RandShiftRegConvTestParams {
     }
 
     val immutableExpectedValues = Seq.empty ++ expectedValues
-
-    (immutableExpectedValues, inputTensor, kernelTensor, outputTensor)
+    val conv2dLayer = lbir.Conv2DConfig(
+      kernel = kernelTensor,
+      input = inputTensor,
+      output = outputTensor,
+      depthwise = true
+    )
+    (immutableExpectedValues, conv2dLayer)
   }
 }
 
@@ -115,9 +120,16 @@ class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester
     Vec.Lit(5.U(5.W), 6.U(5.W), 8.U(5.W), 9.U(5.W))
   )
 
+  val conv2dLayer = lbir.Conv2DConfig(
+    kernel = kernelParams,
+    input = inputParams,
+    output = outputParams,
+    depthwise = true
+  )
+
   behavior.of("ShiftRegisterConvolver module")
   it should "show appropirate window as it cycles through the input image" in {
-    test(new ShiftRegisterConvolver(input = inputParams, kernel = kernelParams, output = outputParams)) { dut =>
+    test(new ShiftRegisterConvolver(conv2dLayer)) { dut =>
       dut.io.nextElement.initSource()
       dut.io.nextElement.setSourceClock(dut.clock)
       dut.io.inputActivationsWindow.initSink()
@@ -137,11 +149,11 @@ class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester
   val rand = new scala.util.Random(seed = 42)
   for (testId <- 0 until 20) {
     val p = RandShiftRegConvTestParams(rand)
-    val (goldenVector, inputTensor, kernelTensor, outputTensor) =
+    val (goldenVector, convLayer) =
       RandShiftRegConvTestParams.genShiftRegisterConvolverTestCase(p)
     it should f"Compute random test $testId correctly. Parameters inHeight:${p.inHeight}, " +
       f"inWidth:${p.inWidth}, kernelHeight:${p.kernelHeight}, kernelWidth:${p.kernelWidth}" in {
-      test(new ShiftRegisterConvolver(input = inputTensor, kernel = kernelTensor, output = outputTensor)) { dut =>
+      test(new ShiftRegisterConvolver(convLayer)) { dut =>
         dut.io.nextElement.initSource()
         dut.io.nextElement.setSourceClock(dut.clock)
         dut.io.inputActivationsWindow.initSink()
@@ -151,7 +163,7 @@ class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester
         dut.clock.step()
         dut.reset.poke(false.B)
         fork {
-          dut.io.nextElement.enqueueSeq(inputTensor.values.map(_.toInt.U))
+          dut.io.nextElement.enqueueSeq(convLayer.input.values.map(_.toInt.U))
         }.fork {
           dut.io.inputActivationsWindow.expectDequeueSeq(goldenVector)
         }.join()

@@ -23,7 +23,7 @@ import services.GenerateCircuitParams.Options
 import interfaces.amba.axis._
 
 class ProcessingPipeline(model: Model, options: Options) extends Module with LBIRStream {
-  val inStream = IO(Flipped(AXIStream(UInt(options.layers(0).busWidthIn.W))))
+  val inStream = IO(Flipped(AXIStream(UInt(options.layers.head.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.layers.last.busWidthOut.W)))
 
   // List of processing elements - one PE per layer
@@ -35,7 +35,7 @@ class ProcessingPipeline(model: Model, options: Options) extends Module with LBI
   }
 
   // Connect the inputs and outputs of the layers
-  peList(0).inStream <> inStream
+  peList.head.inStream <> inStream
   for (i <- 1 until model.layers.length) {
     peList(i).inStream <> peList(i - 1).outStream
   }

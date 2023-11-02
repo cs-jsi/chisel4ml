@@ -69,15 +69,17 @@ class ProcessingElementSequentialConv[
   val genThresh = genType[A](layer.thresh.dtype.bitwidth)
   val genOut = genType[O](layer.output.dtype.bitwidth)
 
-  logger.info(s"""Generated new ProcessingElementSequentialConv with input shape:${layer.input.shape}, input dtype:
-          | ${layer.input.dtype}. Number of kernel parameters is ${layer.kernel.numKernelParams}.""")
+  logger.info(
+    s"""Generated new depthwise: ${layer.depthwise}: ProcessingElementSequentialConv with input shape:${layer.input.shape}, input dtype:
+          | ${layer.input.dtype}. Number of kernel parameters is ${layer.kernel.numKernelParams}."""
+  )
 
   val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 
   val dynamicNeuron = Module(
     new DynamicNeuron(
-      kernel = layer.kernel,
+      l = layer,
       genIn = genIn,
       genWeights = genWeights,
       genAccu = genAccu,
@@ -89,8 +91,8 @@ class ProcessingElementSequentialConv[
     )
   )
   val ctrl = Module(new PeSeqConvController(layer))
-  val kernelSubsystem = Module(new KernelSubsystem(layer.kernel, layer.thresh, genThresh))
-  val inputSubsytem = Module(new InputActivationsSubsystem(layer.input, layer.kernel, layer.output, options))
+  val kernelSubsystem = Module(new KernelSubsystem(layer, genThresh))
+  val inputSubsytem = Module(new InputActivationsSubsystem(layer, options))
   val rmb = Module(new ResultMemoryBuffer(layer.output, options, genOut))
 
   inputSubsytem.io.inStream <> inStream
@@ -99,8 +101,8 @@ class ProcessingElementSequentialConv[
   rmb.io.result <> dynamicNeuron.io.out
   outStream <> rmb.io.outStream
 
-  ctrl.io.channelDone := inputSubsytem.io.channelDone
-  kernelSubsystem.io.loadKernel := ctrl.io.loadKernel
+  ctrl.io.activeDone := inputSubsytem.io.activeDone
+  kernelSubsystem.io.ctrl <> ctrl.io.kernelCtrl
 }
 
 object ProcessingElementSequentialConv {

@@ -33,7 +33,9 @@ class QKerasActiveQActFuse(QKerasTransform):
 
     def is_applicable(self, layers) -> bool:
         return (
-            isinstance(layers[0], (qkeras.QDense, qkeras.QConv2D))
+            isinstance(
+                layers[0], (qkeras.QDense, qkeras.QConv2D, qkeras.QDepthwiseConv2D)
+            )
             and (layers[0].activation is None or layers[0].activation is linear)
             and isinstance(layers[1], (qkeras.QActivation, Activation))
         )

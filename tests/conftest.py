@@ -419,19 +419,17 @@ def sint_conv_layer_2_kernels() -> tf.keras.Model:
     # The filters are: [1 2  and [-4, -3
     #                   3 4]      -2, -1]
     w1 = np.array([1, 2, 3, 4, -4, -3, -2, -1]).reshape(2, 2, 2, 1)
-    w1 = np.moveaxis(w1, [1, 2, 3, 0], [0, 1, 2, 3])
+    w1 = np.moveaxis(w1, [1, 2, 3, 0], [0, 1, 3, 2])
     b1 = np.array([0, 0])
 
-    x = x_in = tf.keras.layers.Input(shape=(3, 3, 1))  # 3x3 monochrome images
+    x = x_in = tf.keras.layers.Input(shape=(3, 3, 2))
     x = qkeras.QActivation(
         qkeras.quantized_bits(bits=4, integer=3, keep_negative=True)
     )(x)
     x = qkeras.QDepthwiseConv2D(
-        filters=2,
         kernel_size=[2, 2],
-        strides=[1, 1],
-        kernel_quantizer=qkeras.quantized_bits(
-            bits=4, integer=3, keep_negative=True, alpha=np.array([1, 1])
+        depthwise_quantizer=qkeras.quantized_bits(
+            bits=4, integer=3, keep_negative=True, alpha=1.0
         ),
     )(x)
     model = tf.keras.Model(inputs=[x_in], outputs=[x])
