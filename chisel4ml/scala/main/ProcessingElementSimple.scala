@@ -93,7 +93,7 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: B
   mul:        (I, W) => M,
   add:        Vec[M] => A,
   actFn:      (A, A) => O,
-  saturateFn: (O, Int) => O)
+  saturateFn: (O, Int, Boolean) => O)
     extends Module
     with LBIRStreamSimple {
   val logger = LoggerFactory.getLogger("ProcessingElementSimple")
@@ -111,7 +111,8 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: B
   for (i <- 0 until layer.output.shape(0)) {
     out_int(i) := saturateFn(
       StaticNeuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn, shift(i)),
-      layer.output.dtype.bitwidth
+      layer.output.dtype.bitwidth,
+      layer.output.dtype.signed
     )
   }
 

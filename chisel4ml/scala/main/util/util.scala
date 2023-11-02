@@ -38,19 +38,27 @@ package object util {
       x
   }
 
-  def signFn(act:   UInt, thresh:   UInt): Bool = act >= thresh
-  def signFn(act:   SInt, thresh:   SInt): Bool = act >= thresh
-  def reluFn(act:   SInt, thresh:   SInt): UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
+  def signFn(act:   UInt, thresh:   UInt):       Bool = act >= thresh
+  def signFn(act:   SInt, thresh:   SInt):       Bool = act >= thresh
+  def reluFn(act:   SInt, thresh:   SInt):       UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
   def linFn(act:    SInt, thresh:   SInt): SInt = act - thresh
-  def noSaturate(x: Bool, bitwidth: Int): Bool = x
-  def noSaturate(x: SInt, bitwidth: Int): SInt = Mux(
+  def noSaturate(x: Bool, bitwidth: Int, signed: Boolean): Bool = x
+  def noSaturate(x: SInt, bitwidth: Int, signed: Boolean): SInt = Mux(
     x > (pow(2, bitwidth - 1) - 1).toInt.S,
     (pow(2, bitwidth - 1) - 1).toInt.S,
     Mux(x < -pow(2, bitwidth - 1).toInt.S, -pow(2, bitwidth - 1).toInt.S, x)
   )
 
-  def saturate(x: UInt, bitwidth: Int): UInt =
-    Mux(x > (pow(2, bitwidth) - 1).toInt.U, (pow(2, bitwidth) - 1).toInt.U, x) // TODO
+  def saturate(x: UInt, bitwidth: Int, signed: Boolean): UInt = {
+    val maxUInt = (pow(2, bitwidth) - 1).toInt
+    val maxSInt = (pow(2, bitwidth - 1) - 1).toInt
+    val minSInt = -pow(2, bitwidth - 1).toInt
+    if (signed) {
+      Mux(x.asSInt > maxSInt.S, maxSInt.U, Mux(x.asSInt < minSInt.S, minSInt.S.asUInt, x))
+    } else {
+      Mux(x > maxUInt.U, maxUInt.U, x)
+    }
+  }
 
   def mul(i: Bool, w: Bool): Bool = ~(i ^ w)
   def mul(i: UInt, w: Bool): SInt = Mux(w, i.zext, -(i.zext))

@@ -44,7 +44,11 @@ class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <
   val pAct = add(muls)
   val sAct =
     shiftAndRoundDynamic(pAct, io.weights.bits.threshShift.shift, io.weights.bits.threshShift.shiftLeft, genAccu)
-  io.out.bits := saturate(actFn(sAct, io.weights.bits.threshShift.thresh).asUInt, genOut.getWidth).asTypeOf(io.out.bits)
+  io.out.bits := saturate(
+    actFn(sAct, io.weights.bits.threshShift.thresh).asUInt,
+    genOut.getWidth,
+    l.output.dtype.signed
+  ).asTypeOf(io.out.bits)
 
   io.out.valid := io.in.valid && io.weights.valid
   io.in.ready := io.out.ready

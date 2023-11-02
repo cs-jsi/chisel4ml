@@ -78,6 +78,7 @@ package object implicits {
           _.reverse.reduce(_ + _)
         )
         .toList
+      logger.info(transactions(0))
       transactions.map(s"b${"0" * emptyBits}".concat(_).U(busWidth.W))
     }
 

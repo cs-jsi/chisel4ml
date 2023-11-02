@@ -50,11 +50,11 @@ class KernelRFLoader(l: lbir.Conv2DConfig) extends Module {
   val romDataAsVec = Wire(Vec(l.kernel.paramsPerWord, UInt(l.kernel.dtype.bitwidth.W)))
   val romBaseAddr = RegInit(0.U(log2Up(l.kernel.memDepth).W))
 
-  val numVirtualChannels = if (l.depthwise) 1 else l.kernel.numChannels
   val (wordElemCnt, wordElemWrap) = Counter(0 until l.kernel.paramsPerWord, io.krf.valid, io.ctrl.loadKernel.valid)
   val (_, activeElemWrap) = Counter(0 until l.kernel.numActiveParams(l.depthwise), io.krf.valid)
   val (_, kernelElemWrap) = Counter(0 until l.kernel.numKernelParams, io.krf.valid, io.ctrl.loadKernel.valid)
-  val (romAddrCntValue, _) = Counter(0 to l.kernel.memDepth, wordElemCnt === (l.kernel.paramsPerWord - 1).U)
+  val (romAddrCntValue, _) =
+    Counter(0 to l.kernel.memDepth, wordElemCnt === (l.kernel.paramsPerWord - 1).U || state === krlState.sEND)
 
   ///////////////////////
   // NEXT STATE LOGIC  //
@@ -88,7 +88,7 @@ class KernelRFLoader(l: lbir.Conv2DConfig) extends Module {
   io.ctrl.kernelDone := state === krlState.sEND
 
   // kernel ROM interface
-  io.rom.enable := state === krlState.sFILLRF
+  io.rom.enable := true.B // TODO
   io.rom.address := romAddrCntValue + romBaseAddr
 
   // kernel RF interface
