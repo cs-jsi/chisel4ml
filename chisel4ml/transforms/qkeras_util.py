@@ -17,13 +17,13 @@ import qkeras
 import tensorflow as tf
 from qkeras import QConv2D
 from qkeras import QDense
-from qkeras import QDepthwiseConv2D
 from tensorflow.keras.layers import Layer as KerasLayer
 from tensorflow.keras.layers import MaxPooling2D
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.datatype_pb2 import Datatype as LBIRDatatype
 from chisel4ml.lbir.qtensor_pb2 import QTensor
+from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def _qkeras_base_transform_no_inp(keras_layer: KerasLayer):
                 activation=_qact_to_act(keras_layer.activation),
             )
         )
-    elif isinstance(keras_layer, QDepthwiseConv2D):
+    elif isinstance(keras_layer, QDepthwiseConv2DPermuted):
         return lbir.LayerWrap(
             conv2d=lbir.Conv2DConfig(
                 thresh=_layer_to_thresh_tensor(keras_layer),
@@ -91,7 +91,7 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> QTensor:
     if isinstance(keras_layer, QDense):
         num_biases = keras_layer.output_shape[1]
         num_shifts = 1
-    elif isinstance(keras_layer, (QConv2D, QDepthwiseConv2D)):
+    elif isinstance(keras_layer, (QConv2D, QDepthwiseConv2DPermuted)):
         num_biases = keras_layer.output.shape[-1]
         num_shifts = keras_layer.output.shape[-1]
     else:
@@ -117,8 +117,8 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> QTensor:
 
 def _depthwise_layer_to_weight_tensor(keras_layer: KerasLayer) -> QTensor:
     _ = keras_layer.depthwise_quantizer_internal(keras_layer.depthwise_kernel)
-    kernel_vals = np.empty(shape=keras_layer.depthwise_kernel.shape)
-    kernel_vals = np.moveaxis(keras_layer.depthwise_kernel, [0, 1, 2, 3], [2, 3, 0, 1])
+    kernel_vals = np.transpose(keras_layer.depthwise_kernel)
+    kernel_vals = np.moveaxis(kernel_vals, 2, 3)
     return QTensor(
         dtype=LBIRDatatype(
             quantization=_quantizer_to_qtype(keras_layer.depthwise_quantizer_internal),
@@ -167,11 +167,11 @@ def _layer_to_weight_tensor(keras_layer: KerasLayer) -> QTensor:
 
 
 def _layer_to_shape(keras_layer: KerasLayer):
-    if isinstance(keras_layer, qkeras.QDense):
+    if isinstance(keras_layer, QDense):
         return keras_layer.kernel.shape.as_list()[::-1]
-    elif isinstance(keras_layer, qkeras.QConv2D):
+    elif isinstance(keras_layer, QConv2D):
         return list(np.moveaxis(keras_layer.kernel, [0, 1, 2, 3], [3, 2, 1, 0]).shape)
-    elif isinstance(keras_layer, qkeras.QDepthwiseConv2D):
+    elif isinstance(keras_layer, QDepthwiseConv2DPermuted):
         return list(
             np.moveaxis(keras_layer.depthwise_kernel, [0, 1, 2, 3], [3, 2, 1, 0]).shape
         )
@@ -185,6 +185,8 @@ def _layer_to_shape(keras_layer: KerasLayer):
 def _layer_to_output_tensor(keras_layer: KerasLayer) -> QTensor:
     tf_shape = keras_layer.get_output_shape_at(0)[1:]
     if isinstance(keras_layer, qkeras.QDense):
+        lbir_shape = tf_shape
+    elif keras_layer.data_format == "channels_first":
         lbir_shape = tf_shape
     else:
         lbir_shape = (tf_shape[2],) + tf_shape[0:2]

@@ -78,7 +78,6 @@ package object implicits {
           _.reverse.reduce(_ + _)
         )
         .toList
-      logger.info(transactions(0))
       transactions.map(s"b${"0" * emptyBits}".concat(_).U(busWidth.W))
     }
 
@@ -149,18 +148,14 @@ package object implicits {
     // KCHW layout
     def width:  Int = qt.shape.reverse(0)
     def height: Int = qt.shape.reverse(1)
-    def numChannels: Int = {
-      qt.shape.length match {
-        case 4 => qt.shape(1)
-        case 3 => qt.shape(0)
-        case _ => throw new RuntimeException("Tensor shape not appropriate.")
-      }
+    def numChannels: Int = qt.shape.length match {
+      case 4 => qt.shape(1)
+      case 3 => qt.shape(0)
+      case _ => throw new RuntimeException("Tensor shape not appropriate.")
     }
-    def numKernels: Int = {
-      qt.shape.length match {
-        case 4 => qt.shape(0)
-        case _ => throw new RuntimeException("Shape to small.")
-      }
+    def numKernels: Int = qt.shape.length match {
+      case 4 => qt.shape(0)
+      case _ => throw new RuntimeException("Shape to small.")
     }
     def numParams:       Int = qt.shape.reduce(_ * _)
     def numKernelParams: Int = numParams / numKernels

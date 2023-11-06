@@ -69,7 +69,7 @@ class Circuit[+T <: Module with LBIRStream](
     logger.info(s"Generated circuit in directory: ${directory}.")
     dut.inStream.initSource()
     dut.outStream.initSink()
-    dut.clock.setTimeout(0)
+    dut.clock.setTimeout(10000) // TODO
     breakable {
       while (true) {
         // inQueue.take() blocks execution until data is available

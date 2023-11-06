@@ -13,6 +13,7 @@ import tensorflow as tf
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.qtensor_pb2 import QTensor
+from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from chisel4ml.transforms.qkeras_util import _qkeras_base_transform_no_inp
@@ -30,7 +31,7 @@ class QKerasLbirQDenseFuse(QKerasTransform):
     def _call_impl(self, layers):
         l0_attr = layers[0].WhichOneof("sealed_value_optional")
         if isinstance(
-            layers[1], (qkeras.QDense, qkeras.QConv2D, qkeras.QDepthwiseConv2D)
+            layers[1], (qkeras.QDense, qkeras.QConv2D, QDepthwiseConv2DPermuted)
         ):
             lbir_layer = _qkeras_base_transform_no_inp(layers[1])
         else:
@@ -58,7 +59,7 @@ class QKerasLbirQDenseFuse(QKerasTransform):
                     qkeras.QDense,
                     qkeras.QConv2D,
                     tf.keras.layers.MaxPooling2D,
-                    qkeras.QDepthwiseConv2D,
+                    QDepthwiseConv2DPermuted,
                 ),
             )
         )

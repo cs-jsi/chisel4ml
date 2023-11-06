@@ -12,6 +12,7 @@ import qkeras
 
 from chisel4ml.lbir.datatype_pb2 import Datatype
 from chisel4ml.lbir.qtensor_pb2 import QTensor
+from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from chisel4ml.transforms.qkeras_util import _qact_to_bitwidth
@@ -35,8 +36,9 @@ class QKerasQActActiveFuse(QKerasTransform):
 
     def _call_impl(self, layers):
         shape = layers[0].get_output_shape_at(0)[1:]
-        if isinstance(layers[1], (qkeras.QConv2D, qkeras.QDepthwiseConv2D)):
-            shape = [shape[2]] + [*shape[0:2]]
+        if isinstance(layers[1], (qkeras.QConv2D, QDepthwiseConv2DPermuted)):
+            if layers[1].data_format == "channels_last":
+                shape = [shape[2]] + [*shape[0:2]]
         input_tensor = QTensor(
             dtype=Datatype(
                 quantization=_qact_to_qtype(layers[0].activation),
@@ -58,5 +60,5 @@ class QKerasQActActiveFuse(QKerasTransform):
 
     def is_applicable(self, layers) -> bool:
         return isinstance(layers[0], qkeras.QActivation) and isinstance(
-            layers[1], (qkeras.QDense, qkeras.QConv2D, qkeras.QDepthwiseConv2D)
+            layers[1], (qkeras.QDense, qkeras.QConv2D, QDepthwiseConv2DPermuted)
         )

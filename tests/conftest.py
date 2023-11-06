@@ -14,6 +14,7 @@ from chisel4ml import chisel4ml_server
 from chisel4ml import optimize
 from chisel4ml.preprocess.fft_layer import FFTLayer
 from chisel4ml.preprocess.lmfe_layer import LMFELayer
+from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -414,19 +415,19 @@ def sint_conv_layer() -> tf.keras.Model:
 
 
 @pytest.fixture(scope="session")
-def sint_conv_layer_2_kernels() -> tf.keras.Model:
+def sint_conv_layer_2_channels() -> tf.keras.Model:
     # conv2d kernel shape: [height, width, input_channels // groups, filters]
-    # The filters are: [1 2  and [-4, -3
-    #                   3 4]      -2, -1]
+    # The filter channels are: [1 2  and [-4, -3
+    #                           3 4]      -2, -1]
     w1 = np.array([1, 2, 3, 4, -4, -3, -2, -1]).reshape(2, 2, 2, 1)
     w1 = np.moveaxis(w1, [1, 2, 3, 0], [0, 1, 3, 2])
     b1 = np.array([0, 0])
 
-    x = x_in = tf.keras.layers.Input(shape=(3, 3, 2))
+    x = x_in = tf.keras.layers.Input(shape=(2, 3, 3))
     x = qkeras.QActivation(
         qkeras.quantized_bits(bits=4, integer=3, keep_negative=True)
     )(x)
-    x = qkeras.QDepthwiseConv2D(
+    x = QDepthwiseConv2DPermuted(
         kernel_size=[2, 2],
         depthwise_quantizer=qkeras.quantized_bits(
             bits=4, integer=3, keep_negative=True, alpha=1.0
@@ -434,7 +435,38 @@ def sint_conv_layer_2_kernels() -> tf.keras.Model:
     )(x)
     model = tf.keras.Model(inputs=[x_in], outputs=[x])
     model.compile()
-    model.layers[2].set_weights([w1, b1])
+    model.layers[2].dwconv.set_weights([w1, b1])
+    return model
+
+
+@pytest.fixture(scope="session")
+def sint_conv_layer_2_kernels_2_channels() -> tf.keras.Model:
+    # conv2d kernel shape: [height, width, input_channels // groups, filters]
+    # The filters are: [1 2  and [-4, -3 for filter 0
+    #                   3 4]      -2, -1]
+    # and [2 2    [3 3
+    #      2 2]    3 3]  for filter 1
+    w1a = np.array([1, 2, 3, 4, -4, -3, -2, -1]).reshape(2, 2, 2, 1)
+    w1a = np.moveaxis(w1a, [1, 2, 3, 0], [0, 1, 3, 2])
+    w1b = np.array([2, 2, 2, 2, 3, 3, 3, 3]).reshape(2, 2, 2, 1)
+    w1b = np.moveaxis(w1b, [1, 2, 3, 0], [0, 1, 3, 2])
+    w1 = np.concatenate([w1a, w1b], axis=3)
+    b1 = np.array([0, 0, 0, 0])
+
+    x = x_in = tf.keras.layers.Input(shape=(2, 3, 3))
+    x = qkeras.QActivation(
+        qkeras.quantized_bits(bits=4, integer=3, keep_negative=True)
+    )(x)
+    x = QDepthwiseConv2DPermuted(
+        kernel_size=[2, 2],
+        depth_multiplier=2,
+        depthwise_quantizer=qkeras.quantized_bits(
+            bits=4, integer=3, keep_negative=True, alpha=1.0
+        ),
+    )(x)
+    model = tf.keras.Model(inputs=[x_in], outputs=[x])
+    model.compile()
+    model.layers[2].dwconv.set_weights([w1, b1])
     return model
 
 

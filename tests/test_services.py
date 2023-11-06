@@ -251,7 +251,7 @@ def test_run_service_conv_9(sint_conv_layer):
         ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
 
 
-def test_run_service_conv_10(sint_conv_layer_2_kernels):
+def test_run_service_conv_10(sint_conv_layer_2_channels):
     x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(1, 3, 3)
     x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(1, 3, 3)
     x2 = np.zeros(9).reshape(1, 3, 3)
@@ -259,23 +259,41 @@ def test_run_service_conv_10(sint_conv_layer_2_kernels):
     x10 = np.concatenate((x1, x0))
     x21 = np.concatenate((x2, x1))
     x12 = np.concatenate((x1, x2))
-    opt_model = optimize.qkeras_model(sint_conv_layer_2_kernels)
+    opt_model = optimize.qkeras_model(sint_conv_layer_2_channels)
     circuit = generate.circuit(
         opt_model, is_simple=False, use_verilator=True, gen_waveform=True
     )
     assert circuit is not None
     for x in [x01, x10, x21, x12]:
-        sw_inp = np.moveaxis(x, 0, 2)
-        sw_inp = np.expand_dims(sw_inp, axis=0)
-        sw_res = opt_model.predict(sw_inp)
-        sw_res = np.moveaxis(sw_res, 3, 0)  # move channels dimension
+        sw_res = opt_model.predict(np.expand_dims(x, axis=0))
         hw_res = circuit(x)
         assert np.array_equal(
             hw_res, sw_res.reshape(2, 2, 2)
         ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
 
 
-def test_run_service_conv_11(sint_simple_conv_model):
+def test_run_service_conv_11(sint_conv_layer_2_kernels_2_channels):
+    x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(1, 3, 3)
+    x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(1, 3, 3)
+    x2 = np.zeros(9).reshape(1, 3, 3)
+    x01 = np.concatenate((x0, x1))
+    x10 = np.concatenate((x1, x0))
+    x21 = np.concatenate((x2, x1))
+    x12 = np.concatenate((x1, x2))
+    opt_model = optimize.qkeras_model(sint_conv_layer_2_kernels_2_channels)
+    circuit = generate.circuit(
+        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
+    )
+    assert circuit is not None
+    for x in [x01, x10, x21, x12]:
+        sw_res = opt_model.predict(np.expand_dims(x, axis=0))
+        hw_res = circuit(x)
+        assert np.array_equal(
+            hw_res, sw_res.reshape(4, 2, 2)
+        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+
+
+def test_run_service_conv_12(sint_simple_conv_model):
     x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(
         1, 3, 3, 1
     )

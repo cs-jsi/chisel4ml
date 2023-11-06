@@ -31,7 +31,7 @@ import java.nio.file.Paths
 import lbir.Conv2DConfig
 
 class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTester with BeforeAndAfterEachTestData {
-  val logger = LoggerFactory.getLogger(classOf[SlidingWindowUnitTests])
+  val logger = LoggerFactory.getLogger(classOf[InputActivationsSubsystemTests])
 
   // We override the memory generation location before each test, so that the MemoryGenerator
   // uses the correct directory to generate hex file into.

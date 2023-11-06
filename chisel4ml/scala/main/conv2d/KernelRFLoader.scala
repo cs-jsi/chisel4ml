@@ -46,15 +46,23 @@ class KernelRFLoader(l: lbir.Conv2DConfig) extends Module {
   }
   val state = RegInit(krlState.sWAIT)
 
-  val dataBuf = RegInit(0.U(MemWordSize.bits.W))
+  val stall = Wire(Bool())
   val romDataAsVec = Wire(Vec(l.kernel.paramsPerWord, UInt(l.kernel.dtype.bitwidth.W)))
-  val romBaseAddr = RegInit(0.U(log2Up(l.kernel.memDepth).W))
+  val romBaseAddr = RegInit(0.U(log2Up(l.kernel.numKernels).W))
 
   val (wordElemCnt, wordElemWrap) = Counter(0 until l.kernel.paramsPerWord, io.krf.valid, io.ctrl.loadKernel.valid)
   val (_, activeElemWrap) = Counter(0 until l.kernel.numActiveParams(l.depthwise), io.krf.valid)
   val (_, kernelElemWrap) = Counter(0 until l.kernel.numKernelParams, io.krf.valid, io.ctrl.loadKernel.valid)
   val (romAddrCntValue, _) =
-    Counter(0 to l.kernel.memDepth, wordElemCnt === (l.kernel.paramsPerWord - 1).U || state === krlState.sEND)
+    Counter(
+      0 to l.kernel.memDepth,
+      wordElemCnt === (l.kernel.paramsPerWord - 1).U || state === krlState.sEND,
+      io.ctrl.loadKernel.valid
+    )
+
+  when(io.ctrl.loadKernel.valid) {
+    romBaseAddr := io.ctrl.loadKernel.bits
+  }
 
   ///////////////////////
   // NEXT STATE LOGIC  //
@@ -77,10 +85,7 @@ class KernelRFLoader(l: lbir.Conv2DConfig) extends Module {
     state := krlState.sWAIT
   }
 
-  when(wordElemWrap || (state === krlState.sWAIT && io.ctrl.loadKernel.valid)) {
-    dataBuf := io.rom.data
-  }
-  romDataAsVec := dataBuf.asTypeOf(romDataAsVec)
+  romDataAsVec := io.rom.data.asTypeOf(romDataAsVec)
 
   ///////////////////////
   // MODULE INTERFACES //
@@ -90,8 +95,9 @@ class KernelRFLoader(l: lbir.Conv2DConfig) extends Module {
   // kernel ROM interface
   io.rom.enable := true.B // TODO
   io.rom.address := romAddrCntValue + romBaseAddr
+  stall := RegNext(wordElemCnt === (l.kernel.paramsPerWord - 1).U || io.ctrl.loadKernel.valid)
 
   // kernel RF interface
   io.krf.bits := romDataAsVec(wordElemCnt).asUInt
-  io.krf.valid := state === krlState.sFILLRF
+  io.krf.valid := state === krlState.sFILLRF && !stall
 }

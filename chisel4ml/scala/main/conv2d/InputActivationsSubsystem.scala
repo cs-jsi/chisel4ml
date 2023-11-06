@@ -24,6 +24,8 @@ class InputActivationsSubsystem(l: Conv2DConfig, options: LayerOptions) extends 
   val dataMover = Module(new InputDataMover(l.input))
   val shiftRegConvolver = Module(new ShiftRegisterConvolver(l))
 
+  val (_, chCntWrap) = Counter(0 until l.kernel.numKernels, dataMover.io.done)
+
   object InSubState extends ChiselEnum {
     val sEMPTY = Value(0.U)
     val sRECEVING_DATA = Value(1.U)
@@ -32,8 +34,7 @@ class InputActivationsSubsystem(l: Conv2DConfig, options: LayerOptions) extends 
   val state = RegInit(InSubState.sEMPTY)
 
   /* INPUT STREAM LOGIC*/
-  val inputTensorFinnished = state === InSubState.sEMPTY && RegNext(state === InSubState.sFULL)
-  val (actMemCntValue, _) = Counter(0 to l.input.memDepth, io.inStream.fire, inputTensorFinnished)
+  val (actMemCntValue, _) = Counter(0 to l.input.memDepth, io.inStream.fire, chCntWrap)
   io.inStream.ready := state =/= InSubState.sFULL
   actMem.io.write.address := actMemCntValue
   actMem.io.write.data := io.inStream.bits
@@ -42,8 +43,9 @@ class InputActivationsSubsystem(l: Conv2DConfig, options: LayerOptions) extends 
   dataMover.io.actMem <> actMem.io.read
   dataMover.io.actMemWrittenTo := actMemCntValue
 
+  // Start one cycle after start of transmission of the input packet or if already loaded in next cycle
   val startOfTransmission = state === InSubState.sRECEVING_DATA && RegNext(state === InSubState.sEMPTY)
-  dataMover.io.start := RegNext(startOfTransmission) // Start one cycle after start of transmission of the input packet
+  dataMover.io.start := RegNext(startOfTransmission) || RegNext(dataMover.io.done && !chCntWrap)
 
   shiftRegConvolver.io.nextElement <> dataMover.io.nextElement
   io.inputActivationsWindow <> shiftRegConvolver.io.inputActivationsWindow
@@ -55,7 +57,7 @@ class InputActivationsSubsystem(l: Conv2DConfig, options: LayerOptions) extends 
     state := InSubState.sFULL
   }.otherwise {
     when(dataMover.io.done) {
-      state := InSubState.sEMPTY
+      when(chCntWrap) { state := InSubState.sEMPTY }.otherwise { state := InSubState.sFULL }
     }
   }
 }

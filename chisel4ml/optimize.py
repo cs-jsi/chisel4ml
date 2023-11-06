@@ -16,6 +16,7 @@ from tensorflow_model_optimization.python.core.sparsity.keras import prune
 from chisel4ml.optimizations import qkeras_opt_list
 from chisel4ml.preprocess.fft_layer import FFTLayer
 from chisel4ml.preprocess.lmfe_layer import LMFELayer
+from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 
 log = logging.getLogger(__name__)
 
@@ -24,7 +25,12 @@ def qkeras_model(model, skip_list=[]):
     "Applys optimizations to the model."
     new_model = prune.strip_pruning(model)
     new_model = qkeras.utils.clone_model(
-        new_model, custom_objects={"FFTLayer": FFTLayer, "LMFELayer": LMFELayer}
+        new_model,
+        custom_objects={
+            "FFTLayer": FFTLayer,
+            "LMFELayer": LMFELayer,
+            "QDepthwiseConv2DPermuted": QDepthwiseConv2DPermuted,
+        },
     )
     new_model = qkeras.unfold_model(new_model)
 

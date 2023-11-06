@@ -24,7 +24,7 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
-  val logger = LoggerFactory.getLogger(classOf[SlidingWindowUnitTests])
+  val logger = LoggerFactory.getLogger(classOf[MaxPool2DTests])
 
   val dtype = new lbir.Datatype(quantization = UNIFORM, bitwidth = 5, signed = false, shift = Seq(0), offset = Seq(0))
   val testParameters = lbir.QTensor(

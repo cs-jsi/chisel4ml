@@ -33,5 +33,5 @@ class PeSeqConvController(l: Conv2DConfig) extends Module {
 
   io.kernelCtrl.nextActive.foreach(_ := RegNext(io.activeDone))
   io.kernelCtrl.loadKernel.bits := kernelCntVal
-  io.kernelCtrl.loadKernel.valid := virtualCntWrap || RegNext(reset.asBool)
+  io.kernelCtrl.loadKernel.valid := RegNext(virtualCntWrap || reset.asBool)
 }

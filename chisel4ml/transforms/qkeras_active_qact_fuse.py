@@ -12,6 +12,7 @@ import qkeras
 from tensorflow.keras.activations import linear
 from tensorflow.keras.layers import Activation
 
+from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 
@@ -34,7 +35,7 @@ class QKerasActiveQActFuse(QKerasTransform):
     def is_applicable(self, layers) -> bool:
         return (
             isinstance(
-                layers[0], (qkeras.QDense, qkeras.QConv2D, qkeras.QDepthwiseConv2D)
+                layers[0], (qkeras.QDense, qkeras.QConv2D, QDepthwiseConv2DPermuted)
             )
             and (layers[0].activation is None or layers[0].activation is linear)
             and isinstance(layers[1], (qkeras.QActivation, Activation))
