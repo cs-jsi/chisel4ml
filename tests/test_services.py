@@ -295,12 +295,12 @@ def test_run_service_conv_11(sint_conv_layer_2_kernels_2_channels):
 
 def test_run_service_conv_12(sint_simple_conv_model):
     x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(
-        1, 3, 3, 1
+        1, 1, 3, 3
     )
     x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(
-        1, 3, 3, 1
+        1, 1, 3, 3
     )
-    x2 = np.zeros(9).reshape(1, 3, 3, 1)
+    x2 = np.zeros(9).reshape(1, 1, 3, 3)
 
     opt_model = optimize.qkeras_model(sint_simple_conv_model)
     circuit = generate.circuit(

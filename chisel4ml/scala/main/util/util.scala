@@ -99,7 +99,9 @@ package object util {
     when(shiftLeft) {
       sout := (pAct << shift).asUInt.asTypeOf(sout)
     }.otherwise {
-      sout := ((pAct >> shift).asSInt + pAct(shift - 1.U).asSInt).asUInt.asTypeOf(sout)
+      val shifted = (pAct >> shift).asSInt
+      val carry = pAct(shift - 1.U).asUInt.zext
+      sout := (shifted + carry).asUInt.asTypeOf(sout)
     }
     sout
   }

@@ -42,6 +42,8 @@ class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <
 
   val muls = VecInit((inVec.zip(inWeights)).map { case (a, b) => mul(a, b) })
   val pAct = add(muls)
+  dontTouch(io.weights.bits.threshShift.shift)
+  dontTouch(io.weights.bits.threshShift.shiftLeft)
   val sAct =
     shiftAndRoundDynamic(pAct, io.weights.bits.threshShift.shift, io.weights.bits.threshShift.shiftLeft, genAccu)
   io.out.bits := saturate(
