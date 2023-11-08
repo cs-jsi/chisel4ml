@@ -8,28 +8,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import qkeras
 import tensorflow as tf
 
 import chisel4ml.lbir.lbir_pb2 as lbir
-from chisel4ml.preprocess.fft_layer import FFTLayer
-from chisel4ml.preprocess.lmfe_layer import LMFELayer
-from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 from chisel4ml.transforms import qkeras_trans_list
+from chisel4ml.utils import clone_model_from_config
 
 
 def qkeras_to_lbir(
     model: tf.keras.Model, name="chisel4ml_model", custom_trans_list=[], debug=False
 ) -> lbir.Model:
     "Applys transformation to a Keras model, and returns a LBIR model."
-    model_copy = qkeras.utils.clone_model(
-        model,
-        custom_objects={
-            "FFTLayer": FFTLayer,
-            "LMFELayer": LMFELayer,
-            "QDepthwiseConv2DPermuted": QDepthwiseConv2DPermuted,
-        },
-    )
+    model_copy = clone_model_from_config(model)
     lbir_model = lbir.Model()
     lbir_model.name = name
     xlayers = model_copy.layers

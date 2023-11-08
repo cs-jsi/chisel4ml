@@ -19,6 +19,7 @@ from tf2kerassurgeon.operations import delete_layer
 
 from chisel4ml.optimizations import register_qkeras_optimization
 from chisel4ml.optimizations.qkeras_optimization import QKerasOptimization
+from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 
 
 @register_qkeras_optimization
@@ -37,9 +38,16 @@ class QKerasBNQDenseFuse(QKerasOptimization):
         gamma = layers[1].gamma
         epsilon = layers[1].epsilon
         b = layers[0].bias if layers[0].use_bias else 0
-        w = layers[0].kernel
         inv = gamma * rsqrt(mv + epsilon)
-        layers[0].kernel.assign(w * inv)
+        if isinstance(layers[0], QDepthwiseConv2DPermuted):
+            w = layers[0].depthwise_kernel
+            w_shape = [w.shape[2], w.shape[3]]
+            inv_mod = inv.numpy().reshape(w_shape)
+            layers[0].depthwise_kernel.assign(inv_mod * w)
+        else:
+            w = layers[0].kernel
+            layers[0].kernel.assign(w * inv)
+
         if not layers[0].use_bias:
             layers[0].use_bias = True
             if isinstance(layers[0], qkeras.QDense):
@@ -57,6 +65,6 @@ class QKerasBNQDenseFuse(QKerasOptimization):
         return delete_layer(model, layers[1], copy=False)
 
     def is_applicable(self, layers: Sequence[KerasLayer]) -> bool:
-        return isinstance(layers[0], (qkeras.QConv2D, qkeras.QDense)) and isinstance(
-            layers[1], BatchNormalization
-        )
+        return isinstance(
+            layers[0], (qkeras.QConv2D, qkeras.QDense, QDepthwiseConv2DPermuted)
+        ) and isinstance(layers[1], BatchNormalization)

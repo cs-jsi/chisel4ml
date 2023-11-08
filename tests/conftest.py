@@ -429,6 +429,7 @@ def sint_conv_layer_2_channels() -> tf.keras.Model:
     )(x)
     x = QDepthwiseConv2DPermuted(
         kernel_size=[2, 2],
+        data_format="channels_first",
         depthwise_quantizer=qkeras.quantized_bits(
             bits=4, integer=3, keep_negative=True, alpha=1.0
         ),
@@ -460,6 +461,7 @@ def sint_conv_layer_2_kernels_2_channels() -> tf.keras.Model:
     x = QDepthwiseConv2DPermuted(
         kernel_size=[2, 2],
         depth_multiplier=2,
+        data_format="channels_first",
         depthwise_quantizer=qkeras.quantized_bits(
             bits=4, integer=3, keep_negative=True, alpha=1.0
         ),
@@ -624,7 +626,7 @@ def audio_data_preproc():
         npads = (32 * 512) - x.shape[0]
         frames = np.pad(x, (0, npads)).reshape([32, 512])
         frames = np.round(((frames / 2**15)) * 2047 * 0.8)
-        return preproc(frames.reshape(1, 32, 512))
+        return preproc(frames.reshape(32, 512))
 
     def train_gen():
         return map(
@@ -648,7 +650,7 @@ def audio_data_preproc():
         train_gen,
         output_signature=tuple(
             [
-                tf.TensorSpec(shape=(None, 32, 20, 1), dtype=tf.float32),
+                tf.TensorSpec(shape=(32, 20, 1), dtype=tf.float32),
                 tf.TensorSpec(shape=(1), dtype=tf.float32),
             ]
         ),
@@ -658,7 +660,7 @@ def audio_data_preproc():
         val_gen,
         output_signature=tuple(
             [
-                tf.TensorSpec(shape=(None, 32, 20, 1), dtype=tf.float32),
+                tf.TensorSpec(shape=(32, 20, 1), dtype=tf.float32),
                 tf.TensorSpec(shape=(1), dtype=tf.float32),
             ]
         ),
@@ -667,7 +669,7 @@ def audio_data_preproc():
         test_gen,
         output_signature=tuple(
             [
-                tf.TensorSpec(shape=(None, 32, 20, 1), dtype=tf.float32),
+                tf.TensorSpec(shape=(32, 20, 1), dtype=tf.float32),
                 tf.TensorSpec(shape=(1), dtype=tf.float32),
             ]
         ),
@@ -691,8 +693,7 @@ def qnn_audio_class_no_preproc(audio_data_preproc):
     label_names = audio_data_preproc[3]
     TRAIN_SET_LENGTH = audio_data_preproc[4]  # noqa: F841
     VAL_SET_LENGTH = audio_data_preproc[5]  # noqa: F841
-
-    EPOCHS = 10  # noqa: F841
+    EPOCHS = 1  # noqa: F841
     BATCH_SIZE = 128  # noqa: F841
 
     input_shape = (32, 20, 1)
@@ -707,27 +708,28 @@ def qnn_audio_class_no_preproc(audio_data_preproc):
     }
 
     model = tf.keras.models.Sequential()
-    model.add(tf.keras.layers.Input(shape=input_shape))
     model.add(
-        qkeras.QActivation(qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1))
+        qkeras.QActivation(
+            activation=qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1),
+            input_shape=input_shape,
+        ),
     )
     model.add(
-        qkeras.QConv2D(
-            2,
-            3,
-            kernel_quantizer=qkeras.quantized_bits(
+        QDepthwiseConv2DPermuted(
+            kernel_size=[3, 3],
+            depth_multiplier=2,
+            depthwise_quantizer=qkeras.quantized_bits(
                 bits=8, integer=7, keep_negative=True, alpha="auto_po2"
             ),
         )
     )
     model.add(tf.keras.layers.BatchNormalization())
     model.add(qkeras.QActivation(qkeras.quantized_relu(bits=5, integer=5)))
-    # model.add(tf.keras.layers.Dropout(0.10))
     model.add(
-        qkeras.QConv2D(
-            4,
-            3,
-            kernel_quantizer=qkeras.quantized_bits(
+        QDepthwiseConv2DPermuted(
+            kernel_size=[3, 3],
+            depth_multiplier=4,
+            depthwise_quantizer=qkeras.quantized_bits(
                 bits=4, integer=3, keep_negative=True, alpha="auto_po2"
             ),
         )
@@ -735,7 +737,6 @@ def qnn_audio_class_no_preproc(audio_data_preproc):
     model.add(tf.keras.layers.BatchNormalization())
     model.add(qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3)))
     model.add(tf.keras.layers.MaxPooling2D())
-    # model.add(tf.keras.layers.Dropout(0.10))
     model.add(tf.keras.layers.Flatten())
     model.add(
         prune.prune_low_magnitude(
@@ -751,7 +752,6 @@ def qnn_audio_class_no_preproc(audio_data_preproc):
     )
     model.add(tf.keras.layers.BatchNormalization())
     model.add(qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3)))
-    model.add(tf.keras.layers.Dropout(0.10))
     model.add(
         prune.prune_low_magnitude(
             qkeras.QDense(
@@ -774,15 +774,15 @@ def qnn_audio_class_no_preproc(audio_data_preproc):
     )
 
     # model.fit_generator(
-    #     train_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
-    #     steps_per_epoch=int(TRAIN_SET_LENGTH / BATCH_SIZE),
-    #     validation_data=val_set.batch(BATCH_SIZE, drop_remainder=True).repeat(
-    #         EPOCHS
-    #     ),  # noqa: E501
-    #     validation_steps=int(VAL_SET_LENGTH / BATCH_SIZE),
-    #     epochs=EPOCHS,
-    #     verbose=True,
-    #     callbacks=[pruning_callbacks.UpdatePruningStep()],
+    #    train_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
+    #    steps_per_epoch=int(TRAIN_SET_LENGTH / BATCH_SIZE),
+    #    validation_data=val_set.batch(BATCH_SIZE, drop_remainder=True).repeat(
+    #        EPOCHS
+    #    ),  # noqa: E501
+    #    validation_steps=int(VAL_SET_LENGTH / BATCH_SIZE),
+    #    epochs=EPOCHS,
+    #    verbose=True,
+    #    callbacks=[pruning_callbacks.UpdatePruningStep()],
     # )
     # model.evaluate(x=test_set.batch(BATCH_SIZE), verbose=True)
     opt_model = optimize.qkeras_model(model)
@@ -792,21 +792,23 @@ def qnn_audio_class_no_preproc(audio_data_preproc):
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         metrics=["accuracy"],
     )
-    # opt_model.fit_generator(
-    #     train_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
-    #     steps_per_epoch=int(TRAIN_SET_LENGTH / BATCH_SIZE),
-    #     validation_data=val_set.batch(BATCH_SIZE, drop_remainder=True).repeat(
-    #         EPOCHS
-    #     ),  # noqa: E501
-    #     validation_steps=int(VAL_SET_LENGTH / BATCH_SIZE),
-    #     epochs=EPOCHS,
-    #     verbose=True,
-    #     callbacks=[pruning_callbacks.UpdatePruningStep()],
-    # )
-    # opt_model.save_weights(os.path.join(SCRIPT_DIR, 'qnn_audio_class_opt_no_preproc.h5'))  # noqa: E501
-    opt_model.load_weights(
-        os.path.join(SCRIPT_DIR, "qnn_audio_class_opt_no_preproc.h5")
+    opt_model.fit_generator(
+        train_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
+        steps_per_epoch=int(TRAIN_SET_LENGTH / BATCH_SIZE),
+        validation_data=val_set.batch(BATCH_SIZE, drop_remainder=True).repeat(
+            EPOCHS
+        ),  # noqa: E501
+        validation_steps=int(VAL_SET_LENGTH / BATCH_SIZE),
+        epochs=EPOCHS,
+        verbose=True,
+        callbacks=[pruning_callbacks.UpdatePruningStep()],
     )
+    opt_model.save_weights(
+        os.path.join(SCRIPT_DIR, "qnn_audio_class_opt_no_preproc.h5")
+    )  # noqa: E501
+    # opt_model.load_weights(
+    #    os.path.join(SCRIPT_DIR, "qnn_audio_class_opt_no_preproc.h5")
+    # )
     return opt_model
 
 
@@ -822,7 +824,7 @@ def qnn_audio_class(audio_data):
     EPOCHS = 10  # noqa: F841
     BATCH_SIZE = 128  # noqa: F841
 
-    input_shape = (32, 512)
+    input_shape = (32, 512, 1)
     print("Input shape:", input_shape)
     print("label names:", label_names)
     num_labels = len(label_names)

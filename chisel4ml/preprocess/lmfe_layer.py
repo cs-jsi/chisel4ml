@@ -35,13 +35,9 @@ class LMFELayer(tf.keras.layers.Layer):
             norm=None,
         )
 
-    @tf.function(
-        input_signature=[tf.TensorSpec(shape=(None, 32, 512, 1), dtype=tf.float32)]
-    )
+    @tf.function()
     def call(self, inputs):
-        tensor = tf.numpy_function(self.np_call, [inputs], tf.float32, stateful=False)
-        tensor.set_shape(tf.TensorShape([None, 32, 20, 1]))
-        return tensor
+        return tf.numpy_function(self.np_call, [inputs], tf.float32, stateful=False)
 
     def np_call(self, inputs):
         if inputs.ndim == 4:
@@ -50,13 +46,11 @@ class LMFELayer(tf.keras.layers.Layer):
             fft_res = inputs[:, 0:257, 0]
         else:
             raise Exception(f"Invalid dimensions of fft_res:{fft_res.shape}")
-        mag_frames = fft_res ** 2
+        mag_frames = fft_res**2
         mels = np.tensordot(mag_frames, self.filter_banks.T, axes=1)
         mels = np.where(mels == 0, (1 / (2**40)), mels)  # Numerical stability
         log_mels = np.log2(mels, dtype=np.float32)
-        return np.expand_dims(
-            np.round(log_mels), axis=-1
-        )
+        return np.expand_dims(np.round(log_mels), axis=-1)
 
     def get_config(self):
         base_config = super().get_config()

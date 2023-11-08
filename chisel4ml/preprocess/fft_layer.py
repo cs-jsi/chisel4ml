@@ -10,7 +10,6 @@
 # limitations under the License.
 import logging
 
-import librosa
 import numpy as np
 import tensorflow as tf
 
@@ -20,24 +19,25 @@ log = logging.getLogger(__name__)
 class FFTLayer(tf.keras.layers.Layer):
     """TODO"""
 
-    def __init__(self, win_fn='hamming'):
+    def __init__(self, win_fn="hamming"):
         super(FFTLayer, self).__init__()
         self.frame_length = 512
         self.num_frames = 32
         self.sr = self.num_frames * self.frame_length  # approx 16000
         self.win_fn = win_fn
-        self.window_fn = np.hamming(self.frame_length) if win_fn =='hamming' else np.ones(self.frame_length)
+        self.window_fn = (
+            np.hamming(self.frame_length)
+            if win_fn == "hamming"
+            else np.ones(self.frame_length)
+        )
 
-    @tf.function(
-        input_signature=[tf.TensorSpec(shape=(None, 32, 512), dtype=tf.float32)]
-    )
+    @tf.function()
     def call(self, inputs):
         tensor = tf.numpy_function(self.np_call, [inputs], tf.float32, stateful=False)
-        tensor.set_shape(tf.TensorShape([None, 32, 512, 1]))
         return tensor
 
     def np_call(self, inputs):
-        res = np.fft.fft(inputs * self.window_fn, norm='backward', axis=-1).real
+        res = np.fft.fft(inputs * self.window_fn, norm="backward", axis=-1).real
         return np.expand_dims(res, axis=-1).astype(np.float32)
 
     def get_config(self):
@@ -47,4 +47,4 @@ class FFTLayer(tf.keras.layers.Layer):
 
     @classmethod
     def from_config(cls, config):
-        return cls(win_fn=config['win_fn'])
+        return cls(win_fn=config["win_fn"])

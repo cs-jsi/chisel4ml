@@ -17,6 +17,7 @@ class QDepthwiseConv2DPermuted(tf.keras.layers.Layer):
         use_bias=True,
         depthwise_quantizer=None,
         bias_quantizer=None,
+        data_format="channels_last",
     ):
         super(QDepthwiseConv2DPermuted, self).__init__()
         self.dwconv = qkeras.QDepthwiseConv2D(
@@ -25,18 +26,19 @@ class QDepthwiseConv2DPermuted(tf.keras.layers.Layer):
             use_bias=use_bias,
             depthwise_quantizer=depthwise_quantizer,
             bias_quantizer=bias_quantizer,
-            data_format="channels_first",
+            data_format=data_format,
         )
         self.kernel_size = kernel_size
         self.depth = depth_multiplier
         self.use_bias = use_bias
         self.depthwise_quantizer = depthwise_quantizer
         self.bias_quantizer = bias_quantizer
-        self.data_format = "channels_first"
+        self.data_format = data_format
+        self.ch_axis = 1 if self.data_format == "channels_first" else -1
 
     def build(self, input_shape):
         self.dwconv.build(input_shape)
-        inp_ch = input_shape[1]  # batch  channels height width (channel first)
+        inp_ch = input_shape[self.ch_axis]
         self.channel_order = (
             np.arange(inp_ch * self.depth)
             .reshape(inp_ch, self.depth)
@@ -46,8 +48,7 @@ class QDepthwiseConv2DPermuted(tf.keras.layers.Layer):
         self.depthwise_quantizer_internal = self.dwconv.depthwise_quantizer_internal
         self.activation = self.dwconv.activation
         self.bias_quantizer_internal = self.dwconv.bias_quantizer_internal
-        if self.use_bias:
-            self.bias = self.dwconv.bias
+        self.bias = self.dwconv.bias
 
     @property
     def depthwise_kernel(self):
@@ -55,7 +56,7 @@ class QDepthwiseConv2DPermuted(tf.keras.layers.Layer):
 
     def call(self, inputs):
         dwout = self.dwconv(inputs)
-        return tf.gather(dwout, self.channel_order, axis=1)
+        return tf.gather(dwout, self.channel_order, axis=self.ch_axis)
 
     def get_config(self):
         base_config = super().get_config()
@@ -65,6 +66,7 @@ class QDepthwiseConv2DPermuted(tf.keras.layers.Layer):
             "use_bias": self.use_bias,
             "depthwise_quantizer": self.depthwise_quantizer,
             "bias_quantizer": self.bias_quantizer,
+            "data_format": self.data_format,
         }
         return {**base_config, **config}
 
@@ -76,4 +78,5 @@ class QDepthwiseConv2DPermuted(tf.keras.layers.Layer):
             use_bias=config["use_bias"],
             depthwise_quantizer=config["depthwise_quantizer"],
             bias_quantizer=config["bias_quantizer"],
+            data_format=config["data_format"],
         )
