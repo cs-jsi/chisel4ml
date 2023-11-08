@@ -693,7 +693,7 @@ def qnn_audio_class_no_preproc(audio_data_preproc):
     label_names = audio_data_preproc[3]
     TRAIN_SET_LENGTH = audio_data_preproc[4]  # noqa: F841
     VAL_SET_LENGTH = audio_data_preproc[5]  # noqa: F841
-    EPOCHS = 1  # noqa: F841
+    EPOCHS = 3  # noqa: F841
     BATCH_SIZE = 128  # noqa: F841
 
     input_shape = (32, 20, 1)
@@ -792,23 +792,23 @@ def qnn_audio_class_no_preproc(audio_data_preproc):
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         metrics=["accuracy"],
     )
-    opt_model.fit_generator(
-        train_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
-        steps_per_epoch=int(TRAIN_SET_LENGTH / BATCH_SIZE),
-        validation_data=val_set.batch(BATCH_SIZE, drop_remainder=True).repeat(
-            EPOCHS
-        ),  # noqa: E501
-        validation_steps=int(VAL_SET_LENGTH / BATCH_SIZE),
-        epochs=EPOCHS,
-        verbose=True,
-        callbacks=[pruning_callbacks.UpdatePruningStep()],
-    )
-    opt_model.save_weights(
-        os.path.join(SCRIPT_DIR, "qnn_audio_class_opt_no_preproc.h5")
-    )  # noqa: E501
-    # opt_model.load_weights(
-    #    os.path.join(SCRIPT_DIR, "qnn_audio_class_opt_no_preproc.h5")
+    # opt_model.fit_generator(
+    #     train_set.batch(BATCH_SIZE, drop_remainder=True).repeat(EPOCHS),  # noqa: E501
+    #     steps_per_epoch=int(TRAIN_SET_LENGTH / BATCH_SIZE),
+    #     validation_data=val_set.batch(BATCH_SIZE, drop_remainder=True).repeat(
+    #         EPOCHS
+    #     ),  # noqa: E501
+    #     validation_steps=int(VAL_SET_LENGTH / BATCH_SIZE),
+    #     epochs=EPOCHS,
+    #     verbose=True,
+    #     callbacks=[pruning_callbacks.UpdatePruningStep()],
     # )
+    # opt_model.save_weights(
+    #     os.path.join(SCRIPT_DIR, "qnn_audio_class_opt_no_preproc.h5")
+    # )  # noqa: E501
+    opt_model.load_weights(
+        os.path.join(SCRIPT_DIR, "qnn_audio_class_opt_no_preproc.h5")
+    )
     return opt_model
 
 
