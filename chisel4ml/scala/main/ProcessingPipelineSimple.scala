@@ -23,11 +23,6 @@ import scala.collection.mutable._
 import services.GenerateCircuitParams.Options
 import lbir.QTensor
 
-class LBIRStreamSimpleIO(input: QTensor, output: QTensor) extends Bundle {
-  val in:  Vec[Bits] = Input(Vec(input.width, input.getType))
-  val out: Vec[Bits] = Output(Vec(output.width, output.getType))
-}
-
 class ProcessingPipelineSimple(model: Model, options: Options) extends Module with LBIRStreamSimple {
   def layerGeneratorSimple(layer: LayerWrap): Module with LBIRStreamSimple = {
     layer match {

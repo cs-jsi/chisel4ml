@@ -266,8 +266,10 @@ def _qact_to_act(activation) -> lbir.Activation:
 def _qact_to_sign(activation) -> bool:
     if isinstance(activation, qkeras.quantized_relu):
         return False
-    elif isinstance(activation, (qkeras.binary, qkeras.quantized_bits)):
+    elif isinstance(activation, qkeras.binary):
         return True
+    elif isinstance(activation, qkeras.quantized_bits):
+        return activation.keep_negative
     elif isinstance(activation, str):
         if activation == "linear" or activation == "softmax":
             return True

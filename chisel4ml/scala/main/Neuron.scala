@@ -17,20 +17,21 @@ package chisel4ml.combinational
 
 import chisel3._
 import chisel4ml.util.shiftAndRound
+import chisel4ml.QuantizationCompute
+import org.slf4j.LoggerFactory
 
-object StaticNeuron {
+object Neuron {
+  val logger = LoggerFactory.getLogger("Neuron")
   def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
     in:      Seq[I],
     weights: Seq[W],
     thresh:  A,
-    mul:     (I, W) => M,
-    add:     Vec[M] => A,
-    actFn:   (A, A) => O,
     shift:   Int
+  )(qc:      QuantizationCompute[I, W, M, A, O]
   ): O = {
-    val muls = VecInit((in.zip(weights)).map { case (a, b) => mul(a, b) })
-    val pAct = add(muls)
+    val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
+    val pAct = qc.add(muls)
     val sAct = shiftAndRound(pAct, shift)
-    actFn(sAct, thresh)
+    qc.actFn(sAct, thresh)
   }
 }
