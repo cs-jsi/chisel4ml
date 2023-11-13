@@ -132,23 +132,15 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: B
     extends Module
     with LBIRStreamSimple {
   val logger = LoggerFactory.getLogger("ProcessingElementSimple")
-  val in = IO(Input(Vec(layer.p.input.width, UInt(layer.p.input.dtype.bitwidth.W))))
-  val out = IO(Output(Vec(layer.p.output.width, UInt(layer.p.output.dtype.bitwidth.W))))
+  val in = IO(Input(Vec(layer.p.input.width, layer.genI)))
+  val out = IO(Output(Vec(layer.p.output.width, layer.genO)))
   val weights: Seq[Seq[W]] = layer.p.getWeights[W]
   val thresh:  Seq[A] = layer.p.getThresh[A]
   val shift:   Seq[Int] = layer.p.weights.dtype.shift
 
-  val in_int = Wire(Vec(layer.p.input.width, layer.genI))
-  val out_int = Wire(Vec(layer.p.output.width, layer.genO))
-
-  in_int := in.asTypeOf(in_int)
   for (i <- 0 until layer.p.output.shape(0)) {
-    out_int(i) := Neuron[I, W, M, A, O](in_int, weights(i), thresh(i), shift(i))(qc)
+    out(i) := Neuron[I, W, M, A, O](in.map(_.asInstanceOf[I]), weights(i), thresh(i), shift(i))(qc)
   }
-
-  // The CAT operator reverses the order of bits, so we reverse them
-  // to evenout the reversing (its not pretty but it works).
-  out := out_int.asTypeOf(out)
 
   logger.info(
     s"""Created new ProcessingElementSimpleDense processing element. It has an input shape:

@@ -62,7 +62,12 @@ package object implicits {
      *  xx_00010_00011_00100_00011_00010_00001
      *  xx_xxxxx_xxxxx_xxxxx_xxxxx_xxxxx_00001
      */
-
+    def getType: Bits = (qt.dtype.quantization, qt.dtype.signed) match {
+      case (BINARY, _)      => Bool()
+      case (UNIFORM, true)  => SInt(qt.dtype.bitwidth.W)
+      case (UNIFORM, false) => UInt(qt.dtype.bitwidth.W)
+      case _                => throw new Exception("Datatype not supported.")
+    }
     def toLBIRTransactions(busWidth: Int): Seq[UInt] = {
       val binaryStr = qt.toBinaryString
       val paramWidth = qt.dtype.bitwidth

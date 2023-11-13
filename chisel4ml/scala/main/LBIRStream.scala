@@ -23,6 +23,6 @@ trait LBIRStream {
 }
 
 trait LBIRStreamSimple {
-  val in:  Vec[UInt]
-  val out: Vec[UInt]
+  val in:  Vec[Bits]
+  val out: Vec[Bits]
 }
