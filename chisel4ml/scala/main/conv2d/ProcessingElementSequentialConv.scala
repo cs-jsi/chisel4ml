@@ -24,8 +24,8 @@ import org.slf4j.LoggerFactory
 import services.LayerOptions
 import chisel3._
 import interfaces.amba.axis._
-import chisel4ml.QuantizationCompute
-import chisel4ml.UniformQuantizationComputeSSSNoAct
+import chisel4ml.QuantizationContext
+import chisel4ml.UniformQuantizationContextSSSNoAct
 
 /** A sequential processing element for convolutions.
   *
@@ -40,7 +40,7 @@ import chisel4ml.UniformQuantizationComputeSSSNoAct
 class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
   layer:   Conv2DConfig,
   options: LayerOptions
-)(qc:      QuantizationCompute[I, W, M, A, O])
+)(qc:      QuantizationContext[I, W, M, A, O])
     extends Module
     with LBIRStream {
   val logger = LoggerFactory.getLogger("ProcessingElementSequentialConv")
@@ -78,15 +78,15 @@ object ProcessingElementSequentialConv {
   ) match {
     case (UNIFORM, true, UNIFORM, RELU) =>
       new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, UInt](layer, options)(
-        UniformQuantizationComputeSSUReLU
+        UniformQuantizationContextSSUReLU
       )
     case (UNIFORM, false, UNIFORM, RELU) =>
       new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, UInt](layer, options)(
-        UniformQuantizationComputeUSUReLU
+        UniformQuantizationContextUSUReLU
       )
     case (UNIFORM, true, UNIFORM, NO_ACTIVATION) =>
       new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt](layer, options)(
-        UniformQuantizationComputeSSSNoAct
+        UniformQuantizationContextSSSNoAct
       )
     case _ => throw new RuntimeException()
   }

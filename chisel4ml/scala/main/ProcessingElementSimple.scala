@@ -31,26 +31,26 @@ object ProcessingElementSimple {
     layer.output.dtype.signed
   ) match {
     case (UNIFORM, true, UNIFORM, false) =>
-      new ProcessingElementSimple[SInt, SInt, SInt, SInt, UInt](layer)(UniformQuantizationComputeSSUReLU)
+      new ProcessingElementSimple[SInt, SInt, SInt, SInt, UInt](layer)(UniformQuantizationContextSSUReLU)
     case (UNIFORM, false, UNIFORM, false) =>
-      new ProcessingElementSimple[UInt, SInt, SInt, SInt, UInt](layer)(UniformQuantizationComputeUSUReLU)
+      new ProcessingElementSimple[UInt, SInt, SInt, SInt, UInt](layer)(UniformQuantizationContextUSUReLU)
     case (UNIFORM, true, UNIFORM, true) =>
-      new ProcessingElementSimple[SInt, SInt, SInt, SInt, SInt](layer)(UniformQuantizationComputeSSSNoAct)
+      new ProcessingElementSimple[SInt, SInt, SInt, SInt, SInt](layer)(UniformQuantizationContextSSSNoAct)
     case (UNIFORM, false, UNIFORM, true) =>
-      new ProcessingElementSimple[UInt, SInt, SInt, SInt, SInt](layer)(UniformQuantizationComputeUSSNoAct)
+      new ProcessingElementSimple[UInt, SInt, SInt, SInt, SInt](layer)(UniformQuantizationContextUSSNoAct)
     case (UNIFORM, false, BINARY, true) =>
-      new ProcessingElementSimple[UInt, Bool, SInt, SInt, Bool](layer)(BinaryQuantizationCompute)
+      new ProcessingElementSimple[UInt, Bool, SInt, SInt, Bool](layer)(BinaryQuantizationContext)
     case (UNIFORM, true, BINARY, true) =>
       new ProcessingElementSimple[SInt, Bool, SInt, SInt, Bool](layer)(BinaryQuantizationComputeS)
     case (BINARY, _, BINARY, true) =>
-      new ProcessingElementSimple[Bool, Bool, Bool, UInt, Bool](layer)(BinarizedQuantizationCompute)
+      new ProcessingElementSimple[Bool, Bool, Bool, UInt, Bool](layer)(BinarizedQuantizationContext)
     case _ => throw new RuntimeException()
   }
 }
 
 class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
   layer: DenseConfig
-)(qc:    QuantizationCompute[I, W, M, A, O])
+)(qc:    QuantizationContext[I, W, M, A, O])
     extends Module
     with LBIRStreamSimple {
   val logger = LoggerFactory.getLogger("ProcessingElementSimple")
