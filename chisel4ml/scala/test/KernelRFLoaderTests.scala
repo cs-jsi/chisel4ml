@@ -18,7 +18,6 @@ package chisel4ml.tests
 import _root_.chisel4ml.conv2d.KernelSubsystem
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
-import chisel3._
 import chiseltest._
 import memories.MemoryGenerator
 import org.scalatest.flatspec.AnyFlatSpec

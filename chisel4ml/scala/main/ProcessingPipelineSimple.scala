@@ -21,7 +21,6 @@ import chisel4ml.implicits._
 import lbir.{DenseConfig, LayerWrap, Model}
 import scala.collection.mutable._
 import services.GenerateCircuitParams.Options
-import lbir.QTensor
 
 class ProcessingPipelineSimple(model: Model, options: Options) extends Module with LBIRStreamSimple {
   def layerGeneratorSimple(layer: LayerWrap): Module with LBIRStreamSimple = {

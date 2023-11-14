@@ -17,15 +17,11 @@ package chisel4ml
 
 import chisel4ml.Neuron
 import chisel4ml.implicits._
-import chisel4ml.util._
 import chisel4ml._
-import lbir.Activation.{BINARY_SIGN, NO_ACTIVATION, RELU}
 import lbir.Datatype.QuantizationType._
 import lbir.DenseConfig
 import org.slf4j.LoggerFactory
 import chisel3._
-import chisel3.util._
-import dsptools.DspException
 
 object ProcessingElementSimple {
   def apply(layer: DenseConfig) = (
@@ -58,8 +54,8 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: B
     extends Module
     with LBIRStreamSimple {
   val logger = LoggerFactory.getLogger("ProcessingElementSimple")
-  val in = IO(Input(Vec(layer.input.width, layer.input.getType)))
-  val out = IO(Output(Vec(layer.output.width, layer.output.getType)))
+  val in = IO(Input(Vec(layer.input.width, layer.input.getType[I])))
+  val out = IO(Output(Vec(layer.output.width, layer.output.getType[O])))
   logger.info(f"inner type ${layer.output.getType}")
 
   val weights: Seq[Seq[W]] = layer.getWeights[W]

@@ -17,7 +17,7 @@ import lbir.Conv2DConfig
 class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOptions) extends Module {
   val io = IO(new Bundle {
     val inStream = Flipped(AXIStream(UInt(options.busWidthIn.W)))
-    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType.asInstanceOf[I]))
+    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[I]))
     val activeDone = Output(Bool())
   })
   val actMem = Module(MemoryGenerator.SRAM(depth = l.input.memDepth, width = MemWordSize.bits))

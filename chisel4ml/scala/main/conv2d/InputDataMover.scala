@@ -51,8 +51,8 @@ class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
 
   val actMemAsVec = io.actMem
     .data(input.paramsPerWord * input.dtype.bitwidth - 1, 0)
-    .asTypeOf(Vec(input.paramsPerWord, UInt(input.dtype.bitwidth.W)))
-  io.nextElement.bits := actMemAsVec(memLineCntValue).asTypeOf(io.nextElement.bits)
+    .asTypeOf(Vec(input.paramsPerWord, input.getType[I]))
+  io.nextElement.bits := actMemAsVec(memLineCntValue)
   io.nextElement.valid := (addrCntValue === RegNext(
     addrCntValue
   ) && addrCntValue <= io.actMemWrittenTo) && state === IDMState.sMOVEDATA

@@ -17,7 +17,6 @@ package chisel4ml.conv2d
 
 import chisel4ml._
 import chisel4ml.implicits._
-import chisel4ml.util.{linFn, reluFnNoSat}
 import lbir.Activation._
 import lbir.Conv2DConfig
 import lbir.Datatype.QuantizationType._

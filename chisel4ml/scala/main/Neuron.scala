@@ -51,7 +51,7 @@ class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
   })
   val inWeights = io.weights.bits.activeKernel.asTypeOf(Vec(l.kernel.numActiveParams(l.depthwise), l.kernel.getType[W]))
 
-  val muls = VecInit((io.in.bits.zip(inWeights)).map { case (i: I, w: W) => qc.mul(i, w) })
+  val muls = VecInit((io.in.bits.zip(inWeights)).map { case (i, w) => qc.mul(i, w) })
   val pAct = qc.add(muls)
   val sAct =
     shiftAndRoundDynamic(

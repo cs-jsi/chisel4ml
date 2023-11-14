@@ -38,8 +38,8 @@ class ShiftRegisterConvolver[I <: Bits](l: Conv2DConfig) extends Module {
   }
 
   val io = IO(new Bundle {
-    val nextElement = Flipped(Decoupled(l.input.getType.asInstanceOf[I]))
-    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType.asInstanceOf[I]))
+    val nextElement = Flipped(Decoupled(l.input.getType[I]))
+    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[I]))
     val channelDone = Output(Bool())
   })
 
