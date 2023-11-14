@@ -15,7 +15,7 @@
  */
 package chisel4ml
 
-import chisel4ml.combinational.Neuron
+import chisel4ml.Neuron
 import chisel4ml.implicits._
 import chisel4ml.util._
 import chisel4ml._

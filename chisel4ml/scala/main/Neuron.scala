@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.combinational
+package chisel4ml
 
 import chisel3._
-import chisel4ml.util.shiftAndRound
+import chisel3.util._
 import chisel4ml.QuantizationCompute
+import chisel4ml.util._
+import chisel4ml.implicits._
+import chisel4ml.conv2d._
 import org.slf4j.LoggerFactory
 
 object Neuron {
@@ -35,4 +38,30 @@ object Neuron {
     val sAct = shiftAndRound(pAct, shift)
     qc.actFn(sAct, thresh, outputBitwidth)
   }
+}
+
+class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
+  l:  lbir.Conv2DConfig,
+  qc: QuantizationCompute[I, W, M, A, O])
+    extends Module {
+  val io = IO(new Bundle {
+    val in = Flipped(Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType)))
+    val weights = Flipped(Valid(new KernelSubsystemIO(l.kernel, l.thresh, l.depthwise)))
+    val out = Decoupled(l.output.getType)
+  })
+  val inWeights = io.weights.bits.activeKernel.asTypeOf(Vec(l.kernel.numActiveParams(l.depthwise), l.kernel.getType))
+
+  val muls = VecInit((io.in.bits.zip(inWeights)).map { case (i: I, w: W) => qc.mul(i, w) })
+  val pAct = qc.add(muls)
+  val sAct =
+    shiftAndRoundDynamic(
+      pAct,
+      io.weights.bits.threshShift.shift,
+      io.weights.bits.threshShift.shiftLeft,
+      l.thresh.getType.asInstanceOf[A]
+    )
+  io.out.bits := qc.actFn(sAct, io.weights.bits.threshShift.thresh.asInstanceOf[A], l.output.dtype.bitwidth)
+
+  io.out.valid := io.in.valid && io.weights.valid
+  io.in.ready := io.out.ready
 }

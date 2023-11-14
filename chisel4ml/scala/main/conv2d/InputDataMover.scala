@@ -28,7 +28,7 @@ class InputDataMover(input: lbir.QTensor) extends Module {
   }
 
   val io = IO(new Bundle {
-    val nextElement = Decoupled(UInt(input.dtype.bitwidth.W))
+    val nextElement = Decoupled(input.getType)
     val actMem = Flipped(new SRAMRead(input.memDepth, MemWordSize.bits))
     val actMemWrittenTo = Input(UInt(input.memDepth.W))
     val start = Input(Bool())
@@ -52,7 +52,7 @@ class InputDataMover(input: lbir.QTensor) extends Module {
   val actMemAsVec = io.actMem
     .data(input.paramsPerWord * input.dtype.bitwidth - 1, 0)
     .asTypeOf(Vec(input.paramsPerWord, UInt(input.dtype.bitwidth.W)))
-  io.nextElement.bits := actMemAsVec(memLineCntValue)
+  io.nextElement.bits := actMemAsVec(memLineCntValue).asTypeOf(io.nextElement.bits)
   io.nextElement.valid := (addrCntValue === RegNext(
     addrCntValue
   ) && addrCntValue <= io.actMemWrittenTo) && state === IDMState.sMOVEDATA

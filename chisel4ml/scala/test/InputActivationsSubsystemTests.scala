@@ -64,7 +64,7 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
   )
   behavior.of("InputActivationSubsystem module")
   it should "Send a simple input tensor through the input interface and read out the result" in {
-    test(new InputActivationsSubsystem(conv2dLayer, options)) { dut =>
+    test(new InputActivationsSubsystem[UInt](conv2dLayer, options)) { dut =>
       val goldenResVec = Seq(
         Vec.Lit(1.U(4.W), 2.U(4.W), 4.U(4.W), 5.U(4.W)),
         Vec.Lit(2.U(4.W), 3.U(4.W), 5.U(4.W), 6.U(4.W)),
@@ -89,7 +89,7 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
     val (goldenVec, convLayer) = RandShiftRegConvTestParams.genShiftRegisterConvolverTestCase(p)
     it should f"Test $testId window a random input tensor with bw:${p.bitwidth} kernelHeight:${p.kernelHeight} " +
       f"kernelWidth:${p.kernelWidth}, inChannels:${p.inChannels}, inHeight:${p.inHeight}, inWidth:${p.inWidth}" in {
-      test(new InputActivationsSubsystem(convLayer, options)) { dut =>
+      test(new InputActivationsSubsystem[UInt](convLayer, options)) { dut =>
         dut.io.inputActivationsWindow.initSink()
         dut.io.inputActivationsWindow.setSinkClock(dut.clock)
 
