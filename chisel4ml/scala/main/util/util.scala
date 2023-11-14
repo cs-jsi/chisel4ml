@@ -38,47 +38,22 @@ package object util {
       x
   }
 
-  def signFn(act:   UInt, thresh:   UInt):       Bool = act >= thresh
-  def signFn(act:   SInt, thresh:   SInt):       Bool = act >= thresh
-  def reluFn(act:   SInt, thresh:   SInt):       UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
-  def linFn(act:    SInt, thresh:   SInt): SInt = act - thresh
-  def noSaturate(x: Bool, bitwidth: Int, signed: Boolean): Bool = x
-  def noSaturate(x: SInt, bitwidth: Int, signed: Boolean): SInt = Mux(
-    x > (pow(2, bitwidth - 1) - 1).toInt.S,
-    (pow(2, bitwidth - 1) - 1).toInt.S,
-    Mux(x < -pow(2, bitwidth - 1).toInt.S, -pow(2, bitwidth - 1).toInt.S, x)
-  )
+  def signFnU(act:     UInt, thresh: UInt, bw: Int = 1): Bool = act >= thresh
+  def signFnS(act:     SInt, thresh: SInt, bw: Int = 1): Bool = act >= thresh
+  def reluFnNoSat(act: SInt, thresh: SInt): UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
+  def reluFn(act:      SInt, thresh: SInt, bw: Int): UInt = saturateFnU(reluFnNoSat(act, thresh), bw)
+  def linFn(act:       SInt, thresh: SInt): SInt = act - thresh
 
-  def saturate(x: UInt, bitwidth: Int, signed: Boolean): UInt = {
-    val maxUInt = (pow(2, bitwidth) - 1).toInt
-    val maxSInt = (pow(2, bitwidth - 1) - 1).toInt
-    val minSInt = -pow(2, bitwidth - 1).toInt
-    if (signed) {
-      Mux(x.asSInt > maxSInt.S, maxSInt.U, Mux(x.asSInt < minSInt.S, minSInt.S.asUInt, x))
-    } else {
-      Mux(x > maxUInt.U, maxUInt.U, x)
-    }
+  def saturateFnU(x: UInt, bitwidth: Int): UInt = {
+    val max = (pow(2, bitwidth) - 1).toInt.U
+    Mux(x > max, max, x)
+  }
+  def saturateFnS(x: SInt, bitwidth: Int): SInt = {
+    val max = (pow(2, bitwidth - 1) - 1).toInt.S
+    val min = -pow(2, bitwidth - 1).toInt.S
+    Mux(x > max, max, Mux(x < min, min, x))
   }
 
-  def mul(i: Bool, w: Bool): Bool = ~(i ^ w)
-  def mul(i: UInt, w: Bool): SInt = Mux(w, i.zext, -(i.zext))
-  def mul(i: UInt, w: SInt): SInt =
-    if (w.litValue == 1.S.litValue) {
-      i.zext
-    } else if (w.litValue == -1.S.litValue) {
-      -(i.zext)
-    } else if (w.litValue == 0.S.litValue) {
-      0.S
-    } else {
-      i * w
-    }
-  def mul(i: SInt, w: SInt): SInt = {
-    if (w.litValue == 0.S.litValue) {
-      0.S
-    } else {
-      i * w
-    }
-  }
   def shiftAndRound[A <: Bits](pAct: A, shift: Int): A = shift.compare(0) match {
     case 0 => pAct
     case -1 => {

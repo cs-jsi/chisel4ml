@@ -102,7 +102,9 @@ def test_run_service_4(sint_simple_noscale_model):
     )
 
     opt_model = optimize.qkeras_model(sint_simple_noscale_model)
-    circuit = generate.circuit(opt_model, is_simple=False)
+    circuit = generate.circuit(
+        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
+    )
     assert circuit is not None
     for i in range(0, 10):
         sw_res = opt_model.predict(x_test[i].reshape(1, 3))

@@ -29,11 +29,11 @@ class KernelRFLoaderControlIO(l: lbir.Conv2DConfig) extends Bundle {
 
 /** KernelRFLoader
   */
-class KernelRFLoader(l: lbir.Conv2DConfig) extends Module {
+class KernelRFLoader[W <: Bits](l: lbir.Conv2DConfig) extends Module {
   val kernelMemValidBits: Int = l.kernel.paramsPerWord * l.kernel.dtype.bitwidth
 
   val io = IO(new Bundle {
-    val krf = Valid(UInt(l.kernel.dtype.bitwidth.W))
+    val krf = Valid(l.kernel.getType[W])
     val rom = Flipped(new SRAMRead(depth = l.kernel.memDepth, width = MemWordSize.bits))
     val ctrl = new KernelRFLoaderControlIO(l)
   })
@@ -98,6 +98,6 @@ class KernelRFLoader(l: lbir.Conv2DConfig) extends Module {
   stall := RegNext(wordElemCnt === (l.kernel.paramsPerWord - 1).U || io.ctrl.loadKernel.valid)
 
   // kernel RF interface
-  io.krf.bits := romDataAsVec(wordElemCnt).asUInt
+  io.krf.bits := romDataAsVec(wordElemCnt).asTypeOf(io.krf.bits)
   io.krf.valid := state === krlState.sFILLRF && !stall
 }

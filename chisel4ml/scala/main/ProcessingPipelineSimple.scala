@@ -21,12 +21,6 @@ import chisel4ml.implicits._
 import lbir.{DenseConfig, LayerWrap, Model}
 import scala.collection.mutable._
 import services.GenerateCircuitParams.Options
-import lbir.QTensor
-
-class LBIRStreamSimpleIO(input: QTensor, output: QTensor) extends Bundle {
-  val in = Input(Vec(input.width, UInt(input.dtype.bitwidth.W)))
-  val out = Output(Vec(output.width, UInt(output.dtype.bitwidth.W)))
-}
 
 class ProcessingPipelineSimple(model: Model, options: Options) extends Module with LBIRStreamSimple {
   def layerGeneratorSimple(layer: LayerWrap): Module with LBIRStreamSimple = {
@@ -44,8 +38,8 @@ class ProcessingPipelineSimple(model: Model, options: Options) extends Module wi
     peList += layerGeneratorSimple(layer.get)
   }
 
-  val in = IO(Input(Vec(model.layers.head.get.input.width, UInt(model.layers.head.get.input.dtype.bitwidth.W))))
-  val out = IO(Output(Vec(model.layers.last.get.output.width, UInt(model.layers.last.get.output.dtype.bitwidth.W))))
+  val in = IO(Input(Vec(model.layers.head.get.input.width, model.layers.head.get.input.getType)))
+  val out = IO(Output(Vec(model.layers.last.get.output.width, model.layers.last.get.output.getType)))
 
   // Connect the inputs and outputs of the layers
   peList.head.in := in

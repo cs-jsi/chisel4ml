@@ -18,7 +18,6 @@ package chisel4ml.tests
 import _root_.chisel4ml.conv2d.KernelSubsystem
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
-import chisel3._
 import chiseltest._
 import memories.MemoryGenerator
 import org.scalatest.flatspec.AnyFlatSpec
@@ -53,7 +52,7 @@ class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with Be
   behavior.of("KernelRFLoader module")
   it should "load the single kernel correctly" in {
     test(
-      new KernelSubsystem(lbir.Conv2DConfig(kernel = testParameters, thresh = threshParams), genThresh = UInt(5.W))
+      new KernelSubsystem(lbir.Conv2DConfig(kernel = testParameters, thresh = threshParams))
     ) { dut =>
       dut.clock.step(4)
     }

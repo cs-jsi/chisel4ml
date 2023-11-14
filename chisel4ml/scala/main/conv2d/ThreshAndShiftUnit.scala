@@ -21,9 +21,9 @@ import chisel4ml.implicits._
 
 /** ThreshAndShiftUnit
   */
-class ThreshAndShiftUnit[A <: Bits](genThresh: A, thresh: lbir.QTensor, kernel: lbir.QTensor) extends Module {
+class ThreshAndShiftUnit[A <: Bits](thresh: lbir.QTensor, kernel: lbir.QTensor) extends Module {
   val io = IO(new Bundle {
-    val tas = new ThreshAndShiftIO(genThresh)
+    val tas = new ThreshAndShiftIO[A](thresh)
     val loadKernel = Flipped(Valid(UInt(log2Up(kernel.numKernels).W)))
   })
   val kernelNum = RegInit(0.U(log2Up(kernel.numKernels).W))
@@ -35,8 +35,8 @@ class ThreshAndShiftUnit[A <: Bits](genThresh: A, thresh: lbir.QTensor, kernel: 
   val shiftWithIndex = kernel.dtype.shift.zipWithIndex
   io.tas.thresh := MuxLookup(
     kernelNum,
-    0.S.asTypeOf(genThresh),
-    threshWithIndex.map(x => (x._2.toInt.U -> x._1.toInt.S.asTypeOf(genThresh)))
+    0.S.asTypeOf(thresh.getType[A]),
+    threshWithIndex.map(x => (x._2.toInt.U -> x._1.toInt.S.asTypeOf(thresh.getType[A])))
   )
   io.tas.shift := MuxLookup(kernelNum, 0.U, shiftWithIndex.map(x => (x._2.toInt.U -> x._1.abs.U)))
   io.tas.shiftLeft := MuxLookup(kernelNum, true.B, shiftWithIndex.map(x => (x._2.toInt.U -> (x._1 == x._1.abs).B)))

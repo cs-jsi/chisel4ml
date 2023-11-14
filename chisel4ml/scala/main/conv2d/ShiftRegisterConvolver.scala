@@ -25,7 +25,7 @@ import lbir.Conv2DConfig
  * Shifts the inputs in standard LBIR order (one by one), and generates the active output window.
  *
  */
-class ShiftRegisterConvolver(l: Conv2DConfig) extends Module {
+class ShiftRegisterConvolver[I <: Bits](l: Conv2DConfig) extends Module {
   require(
     (l.kernel.numChannels == 1 && l.depthwise == false) || l.depthwise == true,
     s"""Module only works with single channel input Conv2D or DepthWise Conv2D.
@@ -38,8 +38,8 @@ class ShiftRegisterConvolver(l: Conv2DConfig) extends Module {
   }
 
   val io = IO(new Bundle {
-    val nextElement = Flipped(Decoupled(UInt(l.input.dtype.bitwidth.W)))
-    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), UInt(l.input.dtype.bitwidth.W)))
+    val nextElement = Flipped(Decoupled(l.input.getType[I]))
+    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[I]))
     val channelDone = Output(Bool())
   })
 
@@ -52,7 +52,7 @@ class ShiftRegisterConvolver(l: Conv2DConfig) extends Module {
 
   io.channelDone := outputCntWrap
   io.inputActivationsWindow.bits.zipWithIndex.foreach {
-    case (elem: UInt, ind: Int) => elem := regs(transformIndex(ind))
+    case (elem, ind) => elem := regs(transformIndex(ind))
   }
 
   io.nextElement.ready := io.inputActivationsWindow.ready && !io.channelDone

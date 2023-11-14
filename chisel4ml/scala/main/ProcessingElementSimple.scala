@@ -15,110 +15,62 @@
  */
 package chisel4ml
 
-import chisel4ml.combinational.StaticNeuron
+import chisel4ml.Neuron
 import chisel4ml.implicits._
-import chisel4ml.util._
-import lbir.Activation.{BINARY_SIGN, NO_ACTIVATION, RELU}
+import chisel4ml._
 import lbir.Datatype.QuantizationType._
 import lbir.DenseConfig
 import org.slf4j.LoggerFactory
 import chisel3._
-import chisel3.util._
 
 object ProcessingElementSimple {
   def apply(layer: DenseConfig) = (
     layer.input.dtype.quantization,
     layer.input.dtype.signed,
     layer.weights.dtype.quantization,
-    layer.activation
+    layer.output.dtype.signed
   ) match {
-    case (UNIFORM, true, UNIFORM, RELU) =>
-      new ProcessingElementSimple[SInt, SInt, SInt, SInt, UInt](
-        layer,
-        SInt(layer.input.dtype.bitwidth.W),
-        UInt(layer.output.dtype.bitwidth.W),
-        mul,
-        (x: Vec[SInt]) => x.reduceTree(_ +& _),
-        reluFn,
-        saturate
-      )
-    case (UNIFORM, false, UNIFORM, RELU) =>
-      new ProcessingElementSimple[UInt, SInt, SInt, SInt, UInt](
-        layer,
-        UInt(layer.input.dtype.bitwidth.W),
-        UInt(layer.output.dtype.bitwidth.W),
-        mul,
-        (x: Vec[SInt]) => x.reduceTree(_ +& _),
-        reluFn,
-        saturate
-      )
-    case (UNIFORM, false, UNIFORM, NO_ACTIVATION) =>
-      new ProcessingElementSimple[UInt, SInt, SInt, SInt, SInt](
-        layer,
-        UInt(layer.input.dtype.bitwidth.W),
-        SInt(layer.output.dtype.bitwidth.W),
-        mul,
-        (x: Vec[SInt]) => x.reduceTree(_ +& _),
-        linFn,
-        noSaturate
-      )
-    case (UNIFORM, _, BINARY, BINARY_SIGN) =>
-      new ProcessingElementSimple[UInt, Bool, SInt, SInt, Bool](
-        layer,
-        UInt(layer.input.dtype.bitwidth.W),
-        Bool(),
-        mul,
-        (x: Vec[SInt]) => x.reduceTree(_ +& _),
-        signFn,
-        noSaturate
-      )
-    case (BINARY, _, BINARY, BINARY_SIGN) =>
-      new ProcessingElementSimple[Bool, Bool, Bool, UInt, Bool](
-        layer,
-        Bool(),
-        Bool(),
-        mul,
-        (x: Vec[Bool]) => PopCount(x),
-        signFn,
-        noSaturate
-      )
+    case (UNIFORM, true, UNIFORM, false) =>
+      new ProcessingElementSimple[SInt, SInt, SInt, SInt, UInt](layer)(UniformQuantizationContextSSUReLU)
+    case (UNIFORM, false, UNIFORM, false) =>
+      new ProcessingElementSimple[UInt, SInt, SInt, SInt, UInt](layer)(UniformQuantizationContextUSUReLU)
+    case (UNIFORM, true, UNIFORM, true) =>
+      new ProcessingElementSimple[SInt, SInt, SInt, SInt, SInt](layer)(UniformQuantizationContextSSSNoAct)
+    case (UNIFORM, false, UNIFORM, true) =>
+      new ProcessingElementSimple[UInt, SInt, SInt, SInt, SInt](layer)(UniformQuantizationContextUSSNoAct)
+    case (UNIFORM, false, BINARY, true) =>
+      new ProcessingElementSimple[UInt, Bool, SInt, SInt, Bool](layer)(BinaryQuantizationContext)
+    case (UNIFORM, true, BINARY, true) =>
+      new ProcessingElementSimple[SInt, Bool, SInt, SInt, Bool](layer)(BinaryQuantizationComputeS)
+    case (BINARY, _, BINARY, true) =>
+      new ProcessingElementSimple[Bool, Bool, Bool, UInt, Bool](layer)(BinarizedQuantizationContext)
     case _ => throw new RuntimeException()
   }
 }
 
 class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
-  layer:      DenseConfig,
-  genI:       I,
-  genO:       O,
-  mul:        (I, W) => M,
-  add:        Vec[M] => A,
-  actFn:      (A, A) => O,
-  saturateFn: (O, Int, Boolean) => O)
+  layer: DenseConfig
+)(qc:    QuantizationContext[I, W, M, A, O])
     extends Module
     with LBIRStreamSimple {
   val logger = LoggerFactory.getLogger("ProcessingElementSimple")
+  val in = IO(Input(Vec(layer.input.width, layer.input.getType[I])))
+  val out = IO(Output(Vec(layer.output.width, layer.output.getType[O])))
+  logger.info(f"inner type ${layer.output.getType}")
 
-  val in = IO(Input(Vec(layer.input.width, UInt(layer.input.dtype.bitwidth.W))))
-  val out = IO(Output(Vec(layer.output.width, UInt(layer.output.dtype.bitwidth.W))))
   val weights: Seq[Seq[W]] = layer.getWeights[W]
-  val thresh:  Seq[A] = layer.getThresh[A]
   val shift:   Seq[Int] = layer.weights.dtype.shift
+  val thresh:  Seq[A] = layer.getThresh[A]
 
-  val in_int = Wire(Vec(layer.input.width, genI))
-  val out_int = Wire(Vec(layer.output.width, genO))
-
-  in_int := in.asTypeOf(in_int)
   for (i <- 0 until layer.output.shape(0)) {
-    out_int(i) := saturateFn(
-      StaticNeuron[I, W, M, A, O](in_int, weights(i), thresh(i), mul, add, actFn, shift(i)),
-      layer.output.dtype.bitwidth,
-      layer.output.dtype.signed
-    )
+    out(i) := Neuron[I, W, M, A, O](
+      in.map(_.asInstanceOf[I]),
+      weights(i),
+      thresh(i),
+      shift(i),
+      layer.output.dtype.bitwidth
+    )(qc)
   }
-
-  // The CAT operator reverses the order of bits, so we reverse them
-  // to evenout the reversing (its not pretty but it works).
-  out := out_int.asTypeOf(out)
 
   logger.info(
     s"""Created new ProcessingElementSimpleDense processing element. It has an input shape:
@@ -127,7 +79,7 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: B
        | ${layer.output.dtype.bitwidth}. Thus the total size of the input vector is
        | ${layer.input.totalBitwidth} bits, and the total size of the output vector
        | is ${layer.output.totalBitwidth} bits.
-       | The input quantization is ${genI}, output quantization is ${genO}.""".stripMargin
+       | The input quantization is ${layer.input.getType}, output quantization is ${layer.output.getType}.""".stripMargin
       .replaceAll("\n", "")
   )
 }

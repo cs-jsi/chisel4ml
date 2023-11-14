@@ -14,10 +14,10 @@ import lbir.Conv2DConfig
  * as a convolution opperation would; and does so continously until the next signal is asserted. This allows looping
  * through the input to convolve it with more than one kernel.
  */
-class InputActivationsSubsystem(l: Conv2DConfig, options: LayerOptions) extends Module {
+class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOptions) extends Module {
   val io = IO(new Bundle {
     val inStream = Flipped(AXIStream(UInt(options.busWidthIn.W)))
-    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), UInt(l.input.dtype.bitwidth.W)))
+    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[I]))
     val activeDone = Output(Bool())
   })
   val actMem = Module(MemoryGenerator.SRAM(depth = l.input.memDepth, width = MemWordSize.bits))
