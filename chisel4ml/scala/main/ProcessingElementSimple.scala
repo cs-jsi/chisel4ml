@@ -31,17 +31,22 @@ object ProcessingElementSimple {
   def apply(layer: DenseConfig) = (
     layer.input.dtype.quantization,
     layer.input.dtype.signed,
-    layer.weights.dtype.quantization
+    layer.weights.dtype.quantization,
+    layer.output.dtype.signed
   ) match {
-    case (UNIFORM, true, UNIFORM) =>
+    case (UNIFORM, true, UNIFORM, false) =>
       new ProcessingElementSimple[SInt, SInt, SInt, SInt, UInt](layer)(UniformQuantizationComputeSSUReLU)
-    case (UNIFORM, false, UNIFORM) =>
+    case (UNIFORM, false, UNIFORM, false) =>
       new ProcessingElementSimple[UInt, SInt, SInt, SInt, UInt](layer)(UniformQuantizationComputeUSUReLU)
-    case (UNIFORM, false, BINARY) =>
+    case (UNIFORM, true, UNIFORM, true) =>
+      new ProcessingElementSimple[SInt, SInt, SInt, SInt, SInt](layer)(UniformQuantizationComputeSSSNoAct)
+    case (UNIFORM, false, UNIFORM, true) =>
+      new ProcessingElementSimple[UInt, SInt, SInt, SInt, SInt](layer)(UniformQuantizationComputeUSSNoAct)
+    case (UNIFORM, false, BINARY, true) =>
       new ProcessingElementSimple[UInt, Bool, SInt, SInt, Bool](layer)(BinaryQuantizationCompute)
-    case (UNIFORM, true, BINARY) =>
+    case (UNIFORM, true, BINARY, true) =>
       new ProcessingElementSimple[SInt, Bool, SInt, SInt, Bool](layer)(BinaryQuantizationComputeS)
-    case (BINARY, _, BINARY) =>
+    case (BINARY, _, BINARY, true) =>
       new ProcessingElementSimple[Bool, Bool, Bool, UInt, Bool](layer)(BinarizedQuantizationCompute)
     case _ => throw new RuntimeException()
   }
@@ -55,12 +60,20 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: B
   val logger = LoggerFactory.getLogger("ProcessingElementSimple")
   val in = IO(Input(Vec(layer.input.width, layer.input.getType)))
   val out = IO(Output(Vec(layer.output.width, layer.output.getType)))
+  logger.info(f"inner type ${layer.output.getType}")
+
   val weights: Seq[Seq[W]] = layer.getWeights[W]
-  val thresh:  Seq[A] = layer.getThresh[A]
   val shift:   Seq[Int] = layer.weights.dtype.shift
+  val thresh:  Seq[A] = layer.getThresh[A]
 
   for (i <- 0 until layer.output.shape(0)) {
-    out(i) := Neuron[I, W, M, A, O](in.map(_.asInstanceOf[I]), weights(i), thresh(i), shift(i))(qc)
+    out(i) := Neuron[I, W, M, A, O](
+      in.map(_.asInstanceOf[I]),
+      weights(i),
+      thresh(i),
+      shift(i),
+      layer.output.dtype.bitwidth
+    )(qc)
   }
 
   logger.info(

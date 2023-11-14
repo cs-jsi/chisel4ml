@@ -17,7 +17,7 @@ package chisel4ml.conv2d
 
 import chisel4ml.LBIRStream
 import chisel4ml.implicits._
-import chisel4ml.util.{linFn, reluFn}
+import chisel4ml.util.{linFn, reluFnNoSat}
 import lbir.Activation._
 import lbir.Conv2DConfig
 import lbir.Datatype.QuantizationType._
@@ -118,7 +118,7 @@ object ProcessingElementSequentialConv {
         options,
         mul = (x: SInt, y: SInt) => x * y,
         add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
-        actFn = reluFn
+        actFn = reluFnNoSat
       )
     case (UNIFORM, false, UNIFORM, RELU) =>
       new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt, UInt](
@@ -126,7 +126,7 @@ object ProcessingElementSequentialConv {
         options,
         mul = (x: UInt, y: SInt) => x * y,
         add = (x: Vec[SInt]) => x.reduceTree(_ +& _),
-        actFn = reluFn
+        actFn = reluFnNoSat
       )
     case (UNIFORM, true, UNIFORM, NO_ACTIVATION) =>
       new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt, SInt](

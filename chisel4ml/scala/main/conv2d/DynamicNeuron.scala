@@ -17,7 +17,7 @@ package chisel4ml.conv2d
 
 import chisel3._
 import chisel3.util._
-import chisel4ml.util.{saturate, shiftAndRoundDynamic}
+import chisel4ml.util.{shiftAndRoundDynamic}
 import chisel4ml.implicits._
 
 class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <: Bits, A <: Bits, O <: Bits](
@@ -46,11 +46,12 @@ class DynamicNeuron[I <: Bits with Num[I], W <: Bits with Num[W], M <: Bits, S <
   dontTouch(io.weights.bits.threshShift.shiftLeft)
   val sAct =
     shiftAndRoundDynamic(pAct, io.weights.bits.threshShift.shift, io.weights.bits.threshShift.shiftLeft, genAccu)
-  io.out.bits := saturate(
+  /*io.out.bits := saturate(
     actFn(sAct, io.weights.bits.threshShift.thresh).asUInt,
     genOut.getWidth,
     l.output.dtype.signed
-  ).asTypeOf(io.out.bits)
+  ).asTypeOf(io.out.bits)*/ // SATURATION changed
+  io.out.bits := 0.U.asTypeOf(io.out.bits)
 
   io.out.valid := io.in.valid && io.weights.valid
   io.in.ready := io.out.ready

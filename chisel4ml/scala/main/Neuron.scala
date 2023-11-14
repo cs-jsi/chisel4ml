@@ -23,15 +23,16 @@ import org.slf4j.LoggerFactory
 object Neuron {
   val logger = LoggerFactory.getLogger("Neuron")
   def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
-    in:      Seq[I],
-    weights: Seq[W],
-    thresh:  A,
-    shift:   Int
-  )(qc:      QuantizationCompute[I, W, M, A, O]
+    in:             Seq[I],
+    weights:        Seq[W],
+    thresh:         A,
+    shift:          Int,
+    outputBitwidth: Int
+  )(qc:             QuantizationCompute[I, W, M, A, O]
   ): O = {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
     val pAct = qc.add(muls)
     val sAct = shiftAndRound(pAct, shift)
-    qc.actFn(sAct, thresh)
+    qc.actFn(sAct, thresh, outputBitwidth)
   }
 }
