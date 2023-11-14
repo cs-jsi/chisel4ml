@@ -45,11 +45,11 @@ class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
   qc: QuantizationCompute[I, W, M, A, O])
     extends Module {
   val io = IO(new Bundle {
-    val in = Flipped(Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType)))
-    val weights = Flipped(Valid(new KernelSubsystemIO(l.kernel, l.thresh, l.depthwise)))
-    val out = Decoupled(l.output.getType)
+    val in = Flipped(Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[I])))
+    val weights = Flipped(Valid(new KernelSubsystemIO[W, A](l.kernel, l.thresh, l.depthwise)))
+    val out = Decoupled(l.output.getType[O])
   })
-  val inWeights = io.weights.bits.activeKernel.asTypeOf(Vec(l.kernel.numActiveParams(l.depthwise), l.kernel.getType))
+  val inWeights = io.weights.bits.activeKernel.asTypeOf(Vec(l.kernel.numActiveParams(l.depthwise), l.kernel.getType[W]))
 
   val muls = VecInit((io.in.bits.zip(inWeights)).map { case (i: I, w: W) => qc.mul(i, w) })
   val pAct = qc.add(muls)
@@ -58,9 +58,9 @@ class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
       pAct,
       io.weights.bits.threshShift.shift,
       io.weights.bits.threshShift.shiftLeft,
-      l.thresh.getType.asInstanceOf[A]
+      l.thresh.getType[A]
     )
-  io.out.bits := qc.actFn(sAct, io.weights.bits.threshShift.thresh.asInstanceOf[A], l.output.dtype.bitwidth)
+  io.out.bits := qc.actFn(sAct, io.weights.bits.threshShift.thresh, l.output.dtype.bitwidth)
 
   io.out.valid := io.in.valid && io.weights.valid
   io.in.ready := io.out.ready

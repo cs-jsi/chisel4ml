@@ -21,14 +21,14 @@ import memories.SRAMRead
 import chisel4ml.implicits._
 import chisel4ml.MemWordSize
 
-class InputDataMover(input: lbir.QTensor) extends Module {
+class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
   object IDMState extends ChiselEnum {
     val sWAIT = Value(0.U)
     val sMOVEDATA = Value(1.U)
   }
 
   val io = IO(new Bundle {
-    val nextElement = Decoupled(input.getType)
+    val nextElement = Decoupled(input.getType[I])
     val actMem = Flipped(new SRAMRead(input.memDepth, MemWordSize.bits))
     val actMemWrittenTo = Input(UInt(input.memDepth.W))
     val start = Input(Bool())
