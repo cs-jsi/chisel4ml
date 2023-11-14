@@ -53,25 +53,7 @@ package object util {
     val min = -pow(2, bitwidth - 1).toInt.S
     Mux(x > max, max, Mux(x < min, min, x))
   }
-  def mul(i: Bool, w: Bool): Bool = ~(i ^ w)
-  def mul(i: UInt, w: Bool): SInt = Mux(w, i.zext, -(i.zext))
-  def mul(i: UInt, w: SInt): SInt =
-    if (w.litValue == 1.S.litValue) {
-      i.zext
-    } else if (w.litValue == -1.S.litValue) {
-      -(i.zext)
-    } else if (w.litValue == 0.S.litValue) {
-      0.S
-    } else {
-      i * w
-    }
-  def mul(i: SInt, w: SInt): SInt = {
-    if (w.litValue == 0.S.litValue) {
-      0.S
-    } else {
-      i * w
-    }
-  }
+
   def shiftAndRound[A <: Bits](pAct: A, shift: Int): A = shift.compare(0) match {
     case 0 => pAct
     case -1 => {
