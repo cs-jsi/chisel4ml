@@ -20,18 +20,19 @@ import _root_.chisel4ml.sequential._
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
 import _root_.services._
+import chisel4ml.sequential.MaxPool2D
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
   val logger = LoggerFactory.getLogger(classOf[MaxPool2DTests])
 
-  val dtype = new lbir.Datatype(quantization = UNIFORM, bitwidth = 5, signed = false, shift = Seq(0), offset = Seq(0))
+  val dtype = new lbir.Datatype(quantization = UNIFORM, bitwidth = 4, signed = false, shift = Seq(0), offset = Seq(0))
   val testParameters = lbir.QTensor(
     dtype = dtype,
     shape = Seq(1, 2, 4, 4),
-    values = Seq(1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 15, 16, 17, 18, 18, 16, 17,
-      18, 18)
+    values =
+      Seq(1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 15, 14, 13, 12, 11, 10, 9, 8, 7)
   )
   val stencil = lbir.QTensor(
     dtype = dtype,
@@ -40,7 +41,7 @@ class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
   val expectedOutput = lbir.QTensor(
     dtype = dtype,
     shape = Seq(1, 2, 2, 2),
-    values = Seq(5, 6, 8, 9, 14, 15, 17, 18)
+    values = Seq(5, 6, 8, 9, 14, 15, 14, 12)
   )
   val layer = lbir.MaxPool2DConfig(
     input = testParameters,

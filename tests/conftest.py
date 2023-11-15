@@ -938,3 +938,15 @@ def qnn_audio_class(audio_data):
     opt_model.load_weights(os.path.join(SCRIPT_DIR, "qnn_audio_class_opt.h5"))
     opt_model.evaluate(x=test_set.batch(BATCH_SIZE), verbose=True)
     return opt_model
+
+
+@pytest.fixture(scope="session")
+def sint_simple_maxpool_model():
+    x = x_in = tf.keras.layers.Input(shape=(4, 4, 2))
+    x = qkeras.QActivation(
+        qkeras.quantized_bits(bits=4, integer=3, keep_negative=True)
+    )(x)
+    x = tf.keras.layers.MaxPooling2D()(x)
+    model = tf.keras.Model(inputs=[x_in], outputs=[x])
+    model.compile()
+    return model

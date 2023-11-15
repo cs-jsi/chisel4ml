@@ -80,4 +80,6 @@ package object util {
     }
     sout
   }
+
+  def risingEdge(x: Bool) = x && !RegNext(x)
 }

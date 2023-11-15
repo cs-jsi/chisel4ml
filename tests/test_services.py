@@ -315,3 +315,39 @@ def test_run_service_conv_12(sint_simple_conv_model):
         assert np.array_equal(
             hw_res, sw_res.reshape(1)
         ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+
+
+def test_run_service_maxpool_13(sint_simple_maxpool_model):
+    x0 = np.array(
+        [
+            [0.0, 1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0, 7.0],
+            [1.0, 2.0, 3.0, 4.0],
+            [0.0, 5.0, 6.0, 7.0],
+        ]
+    ).reshape(1, 4, 4)
+    x1 = np.array(
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    ).reshape(1, 4, 4)
+    x2 = np.zeros(16).reshape(1, 4, 4)
+    x01 = np.concatenate((x0, x1), axis=0)
+    x10 = np.concatenate((x1, x0), axis=0)
+    x21 = np.concatenate((x2, x1), axis=0)
+    x12 = np.concatenate((x1, x2), axis=0)
+
+    opt_model = optimize.qkeras_model(sint_simple_maxpool_model)
+    circuit = generate.circuit(
+        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
+    )
+    assert circuit is not None
+    for x in [x01, x10, x21, x12]:
+        sw_res = opt_model.predict(np.expand_dims(np.moveaxis(x, 0, -1), axis=0))
+        hw_res = circuit(x)
+        assert np.array_equal(
+            hw_res, np.moveaxis(sw_res, -1, 1).reshape(2, 2, 2)
+        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
