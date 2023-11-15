@@ -39,7 +39,7 @@ class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOpt
 
   val maxPoolSize: Int = layer.input.width / layer.output.width
   require(layer.output.width * maxPoolSize == layer.input.width)
-  require(layer.input.height / layer.output.height == maxPoolSize, f"${layer.input} / ${layer.output} == $maxPoolSize")
+  require(layer.output.height * maxPoolSize == layer.input.height, f"${layer.input} / ${layer.output} == $maxPoolSize")
 
   val paramsPerTransaction: Int = options.busWidthIn / layer.input.dtype.bitwidth
   val shiftRegsSize:        Int = layer.input.width * maxPoolSize - (layer.input.width - maxPoolSize)
@@ -57,8 +57,8 @@ class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOpt
                  | ${layer.output.height}.""".stripMargin.replaceAll("\n", ""))
 
   val inputs = Wire(Vec(paramsPerTransaction, layer.input.getType[T]))
-  require(paramsPerTransaction * layer.input.dtype.bitwidth == options.busWidthIn) // TODO
-  inputs := inStream.bits.asTypeOf(inputs)
+  val validBits = paramsPerTransaction * layer.input.dtype.bitwidth
+  inputs := inStream.bits(validBits - 1, 0).asTypeOf(inputs)
   val inputsBuffer = RegEnable(inputs, inStream.fire)
   val outputsBuffer = Reg(Vec(paramsPerTransaction, layer.input.getType[T]))
 

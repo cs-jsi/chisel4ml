@@ -16,7 +16,6 @@
 package chisel4ml.tests
 
 import _root_.chisel4ml.implicits._
-import _root_.chisel4ml.sequential._
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
 import _root_.services._
