@@ -88,6 +88,10 @@ object ProcessingElementSequentialConv {
       new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt](layer, options)(
         UniformQuantizationContextSSSNoAct
       )
+    case (UNIFORM, false, UNIFORM, NO_ACTIVATION) =>
+      new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt](layer, options)(
+        UniformQuantizationContextUSSNoAct
+      )
     case _ => throw new RuntimeException()
   }
 }

@@ -512,6 +512,51 @@ def sint_simple_conv_model() -> tf.keras.Model:
 
 
 @pytest.fixture(scope="session")
+def sint_simple_maxpool_model():
+    x = x_in = tf.keras.layers.Input(shape=(4, 4, 2))
+    x = qkeras.QActivation(
+        qkeras.quantized_bits(bits=4, integer=3, keep_negative=True)
+    )(x)
+    x = tf.keras.layers.MaxPooling2D()(x)
+    model = tf.keras.Model(inputs=[x_in], outputs=[x])
+    model.compile()
+    return model
+
+
+@pytest.fixture(scope="session")
+def sint_simple_conv_maxpool_model():
+    # conv2d kernel shape: [height, width, input_channels // groups, filters]
+    # The filters are: [1 2  and [-4, -3 for filter 0
+    #                   3 4]      -2, -1]
+    # and [2 2    [3 3
+    #      2 2]    3 3]  for filter 1
+    w1a = np.array([1, 2, 3, 4, -4, -3, -2, -1]).reshape(2, 2, 2, 1)
+    w1a = np.moveaxis(w1a, [1, 2, 3, 0], [0, 1, 3, 2])
+    w1b = np.array([2, 2, 2, 2, 3, 3, 3, 3]).reshape(2, 2, 2, 1)
+    w1b = np.moveaxis(w1b, [1, 2, 3, 0], [0, 1, 3, 2])
+    w1 = np.concatenate([w1a, w1b], axis=3)
+    b1 = np.array([0, 0, 0, 0])
+
+    x = x_in = tf.keras.layers.Input(shape=(5, 5, 2))
+    x = qkeras.QActivation(
+        qkeras.quantized_bits(bits=4, integer=4, keep_negative=False)
+    )(x)
+    x = QDepthwiseConv2DPermuted(
+        kernel_size=[2, 2],
+        depth_multiplier=2,
+        depthwise_quantizer=qkeras.quantized_bits(
+            bits=4, integer=3, keep_negative=True, alpha=1.0
+        ),
+    )(x)
+    x = qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=4))(x)
+    x = tf.keras.layers.MaxPooling2D()(x)
+    model = tf.keras.Model(inputs=[x_in], outputs=[x])
+    model.compile()
+    model.layers[2].dwconv.set_weights([w1, b1])
+    return model
+
+
+@pytest.fixture(scope="session")
 def audio_data():
     train_ds, info = tfds.load(
         "speech_commands",
@@ -938,15 +983,3 @@ def qnn_audio_class(audio_data):
     opt_model.load_weights(os.path.join(SCRIPT_DIR, "qnn_audio_class_opt.h5"))
     opt_model.evaluate(x=test_set.batch(BATCH_SIZE), verbose=True)
     return opt_model
-
-
-@pytest.fixture(scope="session")
-def sint_simple_maxpool_model():
-    x = x_in = tf.keras.layers.Input(shape=(4, 4, 2))
-    x = qkeras.QActivation(
-        qkeras.quantized_bits(bits=4, integer=3, keep_negative=True)
-    )(x)
-    x = tf.keras.layers.MaxPooling2D()(x)
-    model = tf.keras.Model(inputs=[x_in], outputs=[x])
-    model.compile()
-    return model

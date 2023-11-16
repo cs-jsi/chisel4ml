@@ -87,11 +87,7 @@ class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOpt
     (widthCounter % maxPoolSize.U === 0.U) &&
     istate === InputBufferState.sREAD_WORD)
 
-  class InputAndValid extends Bundle {
-    val input = layer.input.getType[T]
-    val valid = Bool()
-  }
-  val inputAndValid = Wire(new InputAndValid())
+  val inputAndValid = Wire(new Bundle { val input = layer.input.getType[T]; val valid = Bool() })
   inputAndValid.input := inputsBuffer(inputBufferCntValue)
   inputAndValid.valid := startOfMaxPoolWindow
   val shiftRegs = ShiftRegisters(inputAndValid, shiftRegsSize, istate =/= InputBufferState.sEMPTY && outStream.ready)

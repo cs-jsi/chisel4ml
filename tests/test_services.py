@@ -351,3 +351,33 @@ def test_run_service_maxpool_13(sint_simple_maxpool_model):
         assert np.array_equal(
             hw_res, np.moveaxis(sw_res, -1, 1).reshape(2, 2, 2)
         ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+
+
+def test_run_service_conv_maxpool_14(sint_simple_conv_maxpool_model):
+    x0 = np.array(
+        [
+            [0, 1, 2, 3, 4],
+            [5, 6, 7, 8, 9],
+            [10, 11, 12, 13, 14],
+            [15, 0, 1, 2, 3],
+            [4, 5, 6, 7, 8],
+        ]
+    ).reshape(5, 5, 1)
+
+    x1 = np.array(
+        [
+            [9, 10, 11, 12, 13],
+            [14, 15, 0, 1, 2],
+            [3, 4, 5, 6, 7],
+            [8, 9, 10, 11, 12],
+            [13, 14, 15, 0, 1],
+        ]
+    ).reshape(5, 5, 1)
+    x = np.concatenate((x0, x1), axis=-1)
+    opt_model = optimize.qkeras_model(sint_simple_conv_maxpool_model)
+    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
+    for x in [x]:
+        sw_res = opt_model.predict(np.expand_dims(x, axis=0))
+        sw_res = np.moveaxis(np.reshape(sw_res, (2, 2, 4)), -1, 0)
+        hw_res = circuit(np.moveaxis(x, -1, 0))
+        assert np.array_equal(hw_res, sw_res)

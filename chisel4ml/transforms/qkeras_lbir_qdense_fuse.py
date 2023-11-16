@@ -36,12 +36,12 @@ class QKerasLbirQDenseFuse(QKerasTransform):
             lbir_layer = _qkeras_base_transform_no_inp(layers[1])
         else:
             tf_shape = layers[1].get_output_shape_at(0)[1:]
+            if layers[1].data_format == "channels_last":
+                tf_shape = (tf_shape[2],) + tf_shape[0:2]
             lbir_layer = lbir.LayerWrap(
                 maxpool2d=lbir.MaxPool2DConfig(
                     output=QTensor(
-                        dtype=getattr(layers[0], l0_attr).output.dtype,
-                        shape=(tf_shape[2],)
-                        + tf_shape[0:2],  # tensorflows HWC -> to LBIR CHW
+                        dtype=getattr(layers[0], l0_attr).output.dtype, shape=tf_shape
                     ),
                 )
             )
