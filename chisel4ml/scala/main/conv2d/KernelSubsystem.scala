@@ -35,7 +35,7 @@ class KernelSubsystemIO[W <: Bits, A <: Bits](kernel: lbir.QTensor, threshold: l
 class KernelRegisterFile[W <: Bits](kernel: lbir.QTensor, depthwise: Boolean) extends Module {
   val io = IO(new Bundle {
     val write = Flipped(Valid(kernel.getType[W]))
-    val activeKernel = Valid(Vec(kernel.numActiveParams(depthwise), kernel.getType))
+    val activeKernel = Valid(Vec(kernel.numActiveParams(depthwise), kernel.getType[W]))
   })
   val valid = RegInit(false.B)
   val regs = RegInit(VecInit(Seq.fill(kernel.numActiveParams(depthwise))(0.U.asTypeOf(kernel.getType[W]))))

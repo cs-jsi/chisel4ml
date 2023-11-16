@@ -57,7 +57,7 @@ class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits
   val ctrl = Module(new PeSeqConvController(layer))
   val kernelSubsystem = Module(new KernelSubsystem(layer))
   val inputSubsytem = Module(new InputActivationsSubsystem[I](layer, options))
-  val rmb = Module(new ResultMemoryBuffer(layer.output, options, layer.output.getType))
+  val rmb = Module(new ResultMemoryBuffer(layer.output, options, layer.output.getType[O]))
 
   inputSubsytem.io.inStream <> inStream
   dynamicNeuron.io.in <> inputSubsytem.io.inputActivationsWindow
