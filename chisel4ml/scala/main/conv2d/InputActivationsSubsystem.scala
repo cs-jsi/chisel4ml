@@ -24,7 +24,8 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
   val dataMover = Module(new InputDataMover(l.input))
   val shiftRegConvolver = Module(new ShiftRegisterConvolver(l))
 
-  val (_, channelCounterWrap) = Counter(0 until l.kernel.numKernels, dataMover.io.done)
+  val (_, kernelCounterWrap) = Counter(0 until l.kernel.numKernels, dataMover.io.done)
+  val (actMemCounter, _) = Counter(0 to l.input.memDepth, io.inStream.fire, kernelCounterWrap)
 
   object InSubState extends ChiselEnum {
     val sEMPTY = Value(0.U)
@@ -34,7 +35,6 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
   val state = RegInit(InSubState.sEMPTY)
 
   /* INPUT STREAM LOGIC*/
-  val (actMemCounter, _) = Counter(0 to l.input.memDepth, io.inStream.fire, channelCounterWrap)
   io.inStream.ready := state =/= InSubState.sFULL
   actMem.io.write.address := actMemCounter
   actMem.io.write.data := io.inStream.bits
@@ -45,7 +45,7 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
 
   // Start one cycle after start of transmission of the input packet or if already loaded in next cycle
   val startOfTransmission = state === InSubState.sRECEVING_DATA && RegNext(state === InSubState.sEMPTY)
-  dataMover.io.start := RegNext(startOfTransmission) || RegNext(dataMover.io.done && !channelCounterWrap)
+  dataMover.io.start := RegNext(startOfTransmission) || RegNext(dataMover.io.done && !kernelCounterWrap)
 
   shiftRegConvolver.io.nextElement <> dataMover.io.nextElement
   io.inputActivationsWindow <> shiftRegConvolver.io.inputActivationsWindow
@@ -57,8 +57,8 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
     assert(io.inStream.last)
     state := InSubState.sFULL
   }.otherwise {
-    when(dataMover.io.done) {
-      when(channelCounterWrap) { state := InSubState.sEMPTY }.otherwise { state := InSubState.sFULL }
+    when(dataMover.io.done && kernelCounterWrap) {
+      state := InSubState.sEMPTY
     }
   }
 }

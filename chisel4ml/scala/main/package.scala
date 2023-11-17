@@ -173,8 +173,8 @@ package object implicits {
         case 4 => math.ceil(numKernelParams.toFloat / paramsPerWord.toFloat).toInt * numKernels
         case _ => math.ceil(numParams.toFloat / paramsPerWord.toFloat).toInt
       }
-
     }
+    def memDepthOneKernel: Int = memDepth / numKernels
     def numTransactions(busWidth: Int): Int = {
       require(busWidth > qt.dtype.bitwidth)
       val paramsPerTrans = math.floor(busWidth.toFloat / qt.dtype.bitwidth.toFloat).toInt
