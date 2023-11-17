@@ -53,11 +53,11 @@ class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits
   val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
 
-  val dynamicNeuron = Module(new DynamicNeuron(layer, qc))
+  val dynamicNeuron = Module(new DynamicNeuron[I, W, M, A, O](layer, qc))
   val ctrl = Module(new PeSeqConvController(layer))
-  val kernelSubsystem = Module(new KernelSubsystem(layer))
+  val kernelSubsystem = Module(new KernelSubsystem[W, A](layer))
   val inputSubsytem = Module(new InputActivationsSubsystem[I](layer, options))
-  val rmb = Module(new ResultMemoryBuffer(layer.output, options, layer.output.getType[O]))
+  val rmb = Module(new ResultMemoryBuffer[O](layer.output, options))
 
   inputSubsytem.io.inStream <> inStream
   dynamicNeuron.io.in <> inputSubsytem.io.inputActivationsWindow

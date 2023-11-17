@@ -56,7 +56,6 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: B
   val logger = LoggerFactory.getLogger("ProcessingElementSimple")
   val in = IO(Input(Vec(layer.input.width, layer.input.getType[I])))
   val out = IO(Output(Vec(layer.output.width, layer.output.getType[O])))
-  logger.info(f"inner type ${layer.output.getType}")
 
   val weights: Seq[Seq[W]] = layer.getWeights[W]
   val shift:   Seq[Int] = layer.weights.dtype.shift

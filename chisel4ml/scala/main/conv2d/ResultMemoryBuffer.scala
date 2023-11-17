@@ -20,10 +20,10 @@ import services.LayerOptions
 import interfaces.amba.axis.AXIStream
 import chisel3.util._
 
-class ResultMemoryBuffer[O <: Bits](output: lbir.QTensor, options: LayerOptions, genOut: O) extends Module {
+class ResultMemoryBuffer[O <: Bits](output: lbir.QTensor, options: LayerOptions) extends Module {
   val io = IO(new Bundle {
     val outStream = AXIStream(UInt(options.busWidthOut.W))
-    val result = Flipped(Decoupled(genOut.cloneType))
+    val result = Flipped(Decoupled(output.getType[O]))
   })
   val numRegs = if (output.numParams >= output.paramsPerWord) output.paramsPerWord else output.numParams
   val regs = Reg(Vec(numRegs, UInt(output.dtype.bitwidth.W)))
