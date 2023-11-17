@@ -53,10 +53,10 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
 
   when(state === InSubState.sEMPTY && io.inStream.fire) {
     state := InSubState.sRECEVING_DATA
-  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (l.input.memDepth - 1).U) {
+  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (l.input.memDepth - 1).U && io.inStream.fire) {
     assert(io.inStream.last)
     state := InSubState.sFULL
-  }.otherwise {
+  }.elsewhen(state === InSubState.sFULL) {
     when(dataMover.io.done && kernelCounterWrap) {
       state := InSubState.sEMPTY
     }

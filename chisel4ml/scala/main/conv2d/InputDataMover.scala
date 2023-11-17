@@ -35,27 +35,27 @@ class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
     val done = Output(Bool())
   })
 
-  val (elemCntValue, elemCntWrap) = Counter(0 until input.numParams, io.nextElement.fire)
-  val (memLineCntValue, memlineCntWrap) = Counter(0 until input.paramsPerWord, io.nextElement.fire, io.done)
-  val (addrCntValue, addrCntWrap) = Counter(0 until input.memDepth, memlineCntWrap || io.done)
+  val (elementCounter, elementCounterWrap) = Counter(0 until input.numParams, io.nextElement.fire)
+  val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until input.paramsPerWord, io.nextElement.fire, io.done)
+  val (addressCounter, _) = Counter(0 until input.memDepth, wordSelectCounterWrap || io.done)
 
   val state = RegInit(IDMState.sWAIT)
   when(io.start) {
     state := IDMState.sMOVEDATA
-  }.elsewhen(elemCntWrap) {
+  }.elsewhen(elementCounterWrap) {
     state := IDMState.sWAIT
   }
 
-  io.actMem.address := addrCntValue
+  io.actMem.address := addressCounter
   io.actMem.enable := state === IDMState.sMOVEDATA || io.start
 
   val actMemAsVec = io.actMem
     .data(input.paramsPerWord * input.dtype.bitwidth - 1, 0)
     .asTypeOf(Vec(input.paramsPerWord, input.getType[I]))
-  io.nextElement.bits := actMemAsVec(memLineCntValue)
-  io.nextElement.valid := (addrCntValue === RegNext(
-    addrCntValue
-  ) && addrCntValue <= io.actMemWrittenTo) && state === IDMState.sMOVEDATA
+  io.nextElement.bits := actMemAsVec(wordSelectCounter)
+  io.nextElement.valid := (addressCounter === RegNext(
+    addressCounter
+  ) && addressCounter <= io.actMemWrittenTo) && state === IDMState.sMOVEDATA
 
   io.done := state === IDMState.sWAIT && RegNext(state === IDMState.sMOVEDATA)
 }
