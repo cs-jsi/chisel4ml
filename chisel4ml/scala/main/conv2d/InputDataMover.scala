@@ -37,7 +37,7 @@ class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
 
   val (elementCounter, elementCounterWrap) = Counter(0 until input.numParams, io.nextElement.fire)
   val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until input.paramsPerWord, io.nextElement.fire, io.done)
-  val (addressCounter, _) = Counter(0 until input.memDepth, wordSelectCounterWrap || io.done)
+  val (addressCounter, _) = Counter(0 until input.memDepth, wordSelectCounterWrap, io.done)
 
   val state = RegInit(IDMState.sWAIT)
   when(io.start) {
