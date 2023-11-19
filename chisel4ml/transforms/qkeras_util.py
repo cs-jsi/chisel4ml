@@ -250,6 +250,8 @@ def _qact_to_act(activation) -> lbir.Activation:
         return lbir.Activation.RELU
     elif isinstance(activation, qkeras.binary):
         return lbir.Activation.BINARY_SIGN
+    elif isinstance(activation, qkeras.quantized_bits):
+        return lbir.Activation.NO_ACTIVATION
     elif isinstance(activation, str):
         if activation == "linear" or activation == "softmax":
             return lbir.Activation.NO_ACTIVATION

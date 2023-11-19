@@ -24,7 +24,6 @@ import chisel4ml.conv2d._
 import org.slf4j.LoggerFactory
 
 object Neuron {
-  val logger = LoggerFactory.getLogger("Neuron")
   def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
     in:             Seq[I],
     weights:        Seq[W],

@@ -28,7 +28,8 @@ class ResultMemoryBuffer[O <: Bits](output: lbir.QTensor, options: LayerOptions)
   val numRegs = if (output.numParams >= output.paramsPerWord) output.paramsPerWord else output.numParams
   val regs = Reg(Vec(numRegs, UInt(output.dtype.bitwidth.W)))
   val (regsCntVal, regsCntWrap) = Counter(0 until numRegs, io.result.fire)
-  val (_, totalCntWrap) = Counter(0 until output.numParams, io.result.fire)
+  val (totalCounter, totalCounterWrap) = Counter(0 until output.numParams, io.result.fire)
+  dontTouch(totalCounter)
 
   when(io.result.fire) {
     regs(regsCntVal) := io.result.bits.asUInt
@@ -36,7 +37,7 @@ class ResultMemoryBuffer[O <: Bits](output: lbir.QTensor, options: LayerOptions)
 
   io.outStream.bits := regs.asUInt
   io.outStream.valid := RegNext(regsCntWrap)
-  io.outStream.last := RegNext(totalCntWrap)
+  io.outStream.last := RegNext(totalCounterWrap)
 
   io.result.ready := io.outStream.ready
 }
