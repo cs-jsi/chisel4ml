@@ -23,7 +23,7 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
   val actMem = Module(MemoryGenerator.SRAM(depth = l.input.memDepth, width = MemWordSize.bits))
   val dataMover = Module(new InputDataMover(l.input))
   val shiftRegConvolver = Module(new ShiftRegisterConvolver(l))
-  val lastKernel = RegInit(false.B)
+  val lastKernel = RegInit(if (l.input.numChannels == 1) true.B else false.B)
 
   val (_, kernelCounterWrap) = Counter(0 until l.kernel.numKernels, dataMover.io.done)
   val (actMemCounter, _) = Counter(0 to l.input.memDepth, io.inStream.fire, lastKernel && io.activeDone)
@@ -52,10 +52,12 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
   io.inputActivationsWindow <> shiftRegConvolver.io.inputActivationsWindow
   io.activeDone := shiftRegConvolver.io.channelDone
 
-  when(state === InSubState.sFULL && dataMover.io.done && kernelCounterWrap) {
-    lastKernel := true.B
-  }.elsewhen(state === InSubState.sEMPTY) {
-    lastKernel := false.B
+  if (l.input.numChannels > 1) {
+    when(state === InSubState.sFULL && dataMover.io.done && kernelCounterWrap) {
+      lastKernel := true.B
+    }.elsewhen(state === InSubState.sEMPTY) {
+      lastKernel := false.B
+    }
   }
 
   when(state === InSubState.sEMPTY && io.inStream.fire) {

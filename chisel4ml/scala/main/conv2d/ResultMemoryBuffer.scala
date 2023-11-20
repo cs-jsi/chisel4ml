@@ -29,10 +29,7 @@ class ResultMemoryBuffer[O <: Bits](output: lbir.QTensor, options: LayerOptions)
   val regs = Reg(Vec(numRegs, UInt(output.dtype.bitwidth.W)))
   val (regsCntVal, regsCntWrap) = Counter(0 until numRegs, io.result.fire)
   val (totalCounter, totalCounterWrap) = Counter(0 until output.numParams, io.result.fire)
-  logger.info(s"RMB output.numParams: ${output.numParams}")
   dontTouch(totalCounter)
-  dontTouch(totalCounterWrap)
-  dontTouch(io.outStream.last)
 
   when(io.result.fire) {
     regs(regsCntVal) := io.result.bits.asUInt

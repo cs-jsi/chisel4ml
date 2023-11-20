@@ -71,7 +71,9 @@ class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOpt
   val (inputBufferCntValue, inputBufferCntWrap) = Counter(istate === InputBufferState.sREAD_WORD, paramsPerTransaction)
   val (totalInputElements, totalInputElementsWrap) =
     Counter(istate === InputBufferState.sREAD_WORD, layer.input.numParams)
+  val (_, transactionsCounterWrap) = Counter(0 until layer.input.numTransactions(options.busWidthIn), inStream.fire)
   dontTouch(totalInputElements)
+  assert(inStream.last === transactionsCounterWrap)
 
   when(istate === InputBufferState.sEMPTY && inStream.fire) {
     istate := InputBufferState.sREAD_WORD
