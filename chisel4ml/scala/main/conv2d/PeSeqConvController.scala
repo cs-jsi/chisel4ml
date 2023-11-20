@@ -27,11 +27,32 @@ class PeSeqConvController(l: Conv2DConfig) extends Module {
     val kernelCtrl = Flipped(new KernelRFLoaderControlIO(l))
     val activeDone = Input(Bool())
   })
+
+  object PeSeqConvState extends ChiselEnum {
+    val sLOAD_KERNEL = Value(0.U)
+    val sCOMPUTING = Value(1.U)
+    val sLAST_ACTIVE = Value(2.U)
+  }
+  val state = RegInit(PeSeqConvState.sLOAD_KERNEL)
+
   val numVirtualChannels = if (l.depthwise) l.kernel.numChannels else 1
-  val (_, virtualCntWrap) = Counter(0 until numVirtualChannels, io.activeDone)
-  val (kernelCntVal, _) = Counter(0 until l.kernel.numKernels, io.kernelCtrl.kernelDone)
+  val (virtualChannelsCounter, virtualChannelsCounterWrap) =
+    Counter(0 until numVirtualChannels, io.activeDone, state === PeSeqConvState.sLOAD_KERNEL)
+  val (kernelCounter, _) = Counter(0 until l.kernel.numKernels, io.kernelCtrl.lastActiveLoaded)
+
+  ///////////////////////
+  // NEXT STATE LOGIC  //
+  ///////////////////////
+  when(state === PeSeqConvState.sLOAD_KERNEL) {
+    assert(virtualChannelsCounter === 0.U)
+    state := PeSeqConvState.sCOMPUTING
+  }.elsewhen(state === PeSeqConvState.sCOMPUTING && io.kernelCtrl.lastActiveLoaded) {
+    state := PeSeqConvState.sLAST_ACTIVE
+  }.elsewhen((state === PeSeqConvState.sLAST_ACTIVE) && io.activeDone) {
+    state := PeSeqConvState.sLOAD_KERNEL
+  }
 
   io.kernelCtrl.nextActive.foreach(_ := RegNext(io.activeDone))
-  io.kernelCtrl.loadKernel.bits := kernelCntVal
-  io.kernelCtrl.loadKernel.valid := RegNext(virtualCntWrap || reset.asBool)
+  io.kernelCtrl.loadKernel.bits := kernelCounter
+  io.kernelCtrl.loadKernel.valid := state === PeSeqConvState.sLOAD_KERNEL
 }

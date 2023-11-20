@@ -23,9 +23,10 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
   val actMem = Module(MemoryGenerator.SRAM(depth = l.input.memDepth, width = MemWordSize.bits))
   val dataMover = Module(new InputDataMover(l.input))
   val shiftRegConvolver = Module(new ShiftRegisterConvolver(l))
+  val lastKernel = RegInit(false.B)
 
   val (_, kernelCounterWrap) = Counter(0 until l.kernel.numKernels, dataMover.io.done)
-  val (actMemCounter, _) = Counter(0 to l.input.memDepth, io.inStream.fire, kernelCounterWrap)
+  val (actMemCounter, _) = Counter(0 to l.input.memDepth, io.inStream.fire, lastKernel && io.activeDone)
 
   object InSubState extends ChiselEnum {
     val sEMPTY = Value(0.U)
@@ -45,20 +46,24 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
 
   // Start one cycle after start of transmission of the input packet or if already loaded in next cycle
   val startOfTransmission = state === InSubState.sRECEVING_DATA && RegNext(state === InSubState.sEMPTY)
-  dataMover.io.start := RegNext(startOfTransmission) || RegNext(dataMover.io.done && !kernelCounterWrap)
+  dataMover.io.start := RegNext(startOfTransmission) || RegNext(dataMover.io.done)
 
   shiftRegConvolver.io.nextElement <> dataMover.io.nextElement
   io.inputActivationsWindow <> shiftRegConvolver.io.inputActivationsWindow
   io.activeDone := shiftRegConvolver.io.channelDone
+
+  when(state === InSubState.sFULL && dataMover.io.done && kernelCounterWrap) {
+    lastKernel := true.B
+  }.elsewhen(state === InSubState.sEMPTY) {
+    lastKernel := false.B
+  }
 
   when(state === InSubState.sEMPTY && io.inStream.fire) {
     state := InSubState.sRECEVING_DATA
   }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (l.input.memDepth - 1).U && io.inStream.fire) {
     assert(io.inStream.last)
     state := InSubState.sFULL
-  }.elsewhen(state === InSubState.sFULL) {
-    when(dataMover.io.done && kernelCounterWrap) {
-      state := InSubState.sEMPTY
-    }
+  }.elsewhen(state === InSubState.sFULL && lastKernel && io.activeDone) {
+    state := InSubState.sEMPTY
   }
 }

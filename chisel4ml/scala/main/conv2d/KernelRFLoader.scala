@@ -22,7 +22,7 @@ import chisel4ml.implicits._
 import memories.SRAMRead
 
 class KernelRFLoaderControlIO(l: lbir.Conv2DConfig) extends Bundle {
-  val kernelDone = Output(Bool())
+  val lastActiveLoaded = Output(Bool())
   val nextActive = if (l.depthwise) Some(Input(Bool())) else None
   val loadKernel = Flipped(Valid(UInt(log2Up(l.kernel.numKernels).W)))
 }
@@ -94,7 +94,7 @@ class KernelRFLoader[W <: Bits](l: lbir.Conv2DConfig) extends Module {
   ///////////////////////
   // MODULE INTERFACES //
   ///////////////////////
-  io.ctrl.kernelDone := state === krlState.sEND
+  io.ctrl.lastActiveLoaded := state === krlState.sEND
 
   // kernel ROM interface
   io.rom.enable := true.B // TODO
