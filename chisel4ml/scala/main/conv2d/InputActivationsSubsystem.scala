@@ -23,10 +23,12 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
   val actMem = Module(MemoryGenerator.SRAM(depth = l.input.memDepth, width = MemWordSize.bits))
   val dataMover = Module(new InputDataMover(l.input))
   val shiftRegConvolver = Module(new ShiftRegisterConvolver(l))
-  val lastKernel = RegInit(if (l.input.numChannels == 1) true.B else false.B)
+  val lastActiveWindow = RegInit(if (l.kernel.numKernels * l.input.numChannels == 1) true.B else false.B)
 
-  val (_, kernelCounterWrap) = Counter(0 until l.kernel.numKernels, dataMover.io.done)
-  val (actMemCounter, _) = Counter(0 to l.input.memDepth, io.inStream.fire, lastKernel && io.activeDone)
+  val (channelCounter, channelCounterWrap) = Counter(0 until l.kernel.numChannels, io.activeDone)
+  val (kernelCounter, _) = Counter(0 until l.kernel.numKernels, channelCounterWrap)
+  val (actMemCounter, _) = Counter(0 to l.input.memDepth, io.inStream.fire, lastActiveWindow && io.activeDone)
+  dontTouch(kernelCounter)
 
   object InSubState extends ChiselEnum {
     val sEMPTY = Value(0.U)
@@ -46,26 +48,27 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
 
   // Start one cycle after start of transmission of the input packet or if already loaded in next cycle
   val startOfTransmission = state === InSubState.sRECEVING_DATA && RegNext(state === InSubState.sEMPTY)
-  dataMover.io.start := RegNext(startOfTransmission) || RegNext(dataMover.io.done)
+  dataMover.io.start := RegNext(startOfTransmission) || RegNext(dataMover.io.done && !lastActiveWindow)
 
   shiftRegConvolver.io.nextElement <> dataMover.io.nextElement
   io.inputActivationsWindow <> shiftRegConvolver.io.inputActivationsWindow
   io.activeDone := shiftRegConvolver.io.channelDone
 
-  if (l.input.numChannels > 1) {
-    when(state === InSubState.sFULL && dataMover.io.done && kernelCounterWrap) {
-      lastKernel := true.B
+  if (l.kernel.numKernels * l.kernel.numChannels > 1) {
+    when(
+      kernelCounter === (l.kernel.numKernels - 1).U && channelCounter === (l.kernel.numChannels - 1).U && dataMover.io.done
+    ) {
+      lastActiveWindow := true.B
     }.elsewhen(state === InSubState.sEMPTY) {
-      lastKernel := false.B
+      lastActiveWindow := false.B
     }
   }
-
   when(state === InSubState.sEMPTY && io.inStream.fire) {
     state := InSubState.sRECEVING_DATA
   }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (l.input.memDepth - 1).U && io.inStream.fire) {
     assert(io.inStream.last)
     state := InSubState.sFULL
-  }.elsewhen(state === InSubState.sFULL && lastKernel && io.activeDone) {
+  }.elsewhen(state === InSubState.sFULL && lastActiveWindow && io.activeDone) {
     state := InSubState.sEMPTY
   }
 }
