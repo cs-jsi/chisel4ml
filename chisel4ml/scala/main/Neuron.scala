@@ -62,5 +62,5 @@ class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
   io.out.bits := qc.actFn(sAct, io.weights.bits.threshShift.thresh, l.output.dtype.bitwidth)
 
   io.out.valid := io.in.valid && io.weights.valid
-  io.in.ready := io.out.ready
+  io.in.ready := io.out.ready && io.weights.valid
 }

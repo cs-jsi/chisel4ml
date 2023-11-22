@@ -31,6 +31,7 @@ def circuit(
     gen_waveform=False,
     gen_timeout_sec=600,
     axi_stream_width=None,
+    num_layers=None,
 ):
     assert gen_timeout_sec > 5, "Please provide at least a 5 second generation timeout."
     # TODO - add checking that the opt_model is correct
@@ -38,6 +39,10 @@ def circuit(
     lbir_model = transform.qkeras_to_lbir(opt_model)
     if lbir_model is None:
         return None
+    if num_layers is not None:
+        assert num_layers <= len(lbir_model.layers)
+        for _ in range(len(lbir_model.layers) - num_layers):
+            lbir_model.layers.pop()
 
     server = chisel4ml_server.start_server_once()
     gen_circt_ret = server.send_grpc_msg(
@@ -71,6 +76,7 @@ def circuit(
         # TODO: this is temporary
         get_input_quantization(opt_model),
         input_qt,
+        lbir_model,
     )
     return circuit
 

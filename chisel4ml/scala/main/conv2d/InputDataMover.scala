@@ -20,6 +20,7 @@ import chisel3.util._
 import memories.SRAMRead
 import chisel4ml.implicits._
 import chisel4ml.MemWordSize
+import chisel4ml.util.isStable
 
 class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
   object IDMState extends ChiselEnum {
@@ -32,12 +33,12 @@ class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
     val actMem = Flipped(new SRAMRead(input.memDepth, MemWordSize.bits))
     val actMemWrittenTo = Input(UInt(log2Up(input.memDepth + 1).W))
     val start = Input(Bool())
-    val done = Output(Bool())
   })
 
   val (elementCounter, elementCounterWrap) = Counter(0 until input.numParams, io.nextElement.fire)
-  val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until input.paramsPerWord, io.nextElement.fire, io.done)
-  val (addressCounter, _) = Counter(0 until input.memDepth, wordSelectCounterWrap, io.done)
+  val (_, channelCounterWrap) = Counter(0 until input.numActiveParams(depthwise = true), io.nextElement.fire)
+  val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until input.paramsPerWord, io.nextElement.fire, io.start)
+  val (addressCounter, _) = Counter(0 until input.memDepth, wordSelectCounterWrap, io.start)
 
   val state = RegInit(IDMState.sWAIT)
   when(io.start) {
@@ -49,13 +50,14 @@ class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
   io.actMem.address := addressCounter
   io.actMem.enable := state === IDMState.sMOVEDATA || io.start
 
-  val actMemAsVec = io.actMem
-    .data(input.paramsPerWord * input.dtype.bitwidth - 1, 0)
-    .asTypeOf(Vec(input.paramsPerWord, input.getType[I]))
+  val validBits = input.paramsPerWord * input.dtype.bitwidth
+  val actMemAsVec = io.actMem.data(validBits - 1, 0).asTypeOf(Vec(input.paramsPerWord, input.getType[I]))
   io.nextElement.bits := actMemAsVec(wordSelectCounter)
-  io.nextElement.valid := (addressCounter === RegNext(
+  io.nextElement.valid := isStable(
     addressCounter
-  ) && addressCounter < io.actMemWrittenTo) && state === IDMState.sMOVEDATA
+  ) && addressCounter < io.actMemWrittenTo && state === IDMState.sMOVEDATA
 
-  io.done := state === IDMState.sWAIT && RegNext(state === IDMState.sMOVEDATA)
+  when(state === IDMState.sMOVEDATA) {
+    assert(io.start === false.B)
+  }
 }

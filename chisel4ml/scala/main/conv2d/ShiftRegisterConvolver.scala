@@ -39,25 +39,27 @@ class ShiftRegisterConvolver[I <: Bits](l: Conv2DConfig) extends Module {
 
   val io = IO(new Bundle {
     val nextElement = Flipped(Decoupled(l.input.getType[I]))
-    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[I]))
+    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(true), l.input.getType[I]))
     val channelDone = Output(Bool())
   })
 
-  val numRegs = l.input.width * l.kernel.height - (l.input.width - l.kernel.width)
+  val numRegs: Int = l.input.width * l.kernel.height - (l.input.width - l.kernel.width)
   val regs = ShiftRegisters(io.nextElement.bits, numRegs, io.nextElement.fire)
-  val fireCntMax = (l.input.numActiveParams(true) + l.kernel.height - 1)
-  val (fireCntVal, _) = Counter(0 until fireCntMax, io.nextElement.fire, io.channelDone)
-  val (lineCntValue, _) = Counter(0 until l.input.width, fireCntVal >= numRegs.U && io.nextElement.fire, io.channelDone)
-  val (_, outputCntWrap) = Counter(0 until l.output.numActiveParams(true), io.inputActivationsWindow.fire)
 
-  io.channelDone := outputCntWrap
+  val (elementCounter, _) = Counter(0 to l.input.numActiveParams(true), io.nextElement.fire, io.channelDone)
+  val shiftRegistersFull = (elementCounter >= numRegs.U)
+
+  val (widthCounter, _) = Counter(0 until l.input.width, io.nextElement.fire && shiftRegistersFull, io.channelDone)
+  val (_, outputCounterWrap) = Counter(0 until l.output.numActiveParams(true), io.inputActivationsWindow.fire)
+
+  io.channelDone := outputCounterWrap
   io.inputActivationsWindow.bits.zipWithIndex.foreach {
     case (elem, ind) => elem := regs(transformIndex(ind))
   }
 
   io.nextElement.ready := io.inputActivationsWindow.ready && !io.channelDone
   // First condition: waiting for shift registers to initially fill up. Second: filter goes over the width of image. Third: backpressure from input data mover.
-  io.inputActivationsWindow.valid := (fireCntVal >= numRegs.U) && (lineCntValue <= (l.input.width - l.kernel.width).U) && RegNext(
-    io.nextElement.fire
-  )
+  io.inputActivationsWindow.valid := (elementCounter >= numRegs.U) &&
+    (widthCounter <= (l.input.width - l.kernel.width).U) &&
+    RegNext(io.nextElement.fire)
 }

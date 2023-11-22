@@ -441,3 +441,71 @@ def test_run_service_conv_conv_16(sint_conv_conv_model):
         sw_res = np.moveaxis(np.reshape(sw_res, (3, 3, 4)), -1, 0)
         hw_res = circuit(np.moveaxis(x, -1, 0))
         assert np.array_equal(hw_res, sw_res)
+
+
+def test_run_service_conv_width_noteq_height_17(sint_conv_model_width_noteq_height):
+    x0 = np.array(
+        [
+            [0, 1, 2, 3, 4, 5],
+            [6, 7, -1, -2, -3, -4],
+            [-1, -2, -3, -4, -5, -6],
+        ]
+    ).reshape(1, 3, 6)
+    x1 = np.array(
+        [
+            [1, 1, 1, 1, 1, 1],
+            [2, 2, 2, 2, 2, 2],
+            [3, 3, 3, 3, 3, 3],
+        ]
+    ).reshape(1, 3, 6)
+
+    x = np.concatenate((x0, x1), axis=0)
+    opt_model = optimize.qkeras_model(sint_conv_model_width_noteq_height)
+    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
+    for x in [x]:
+        sw_res = opt_model.predict(np.expand_dims(x, axis=0))
+        sw_res = np.reshape(sw_res, (4, 2, 5))
+        hw_res = circuit(x)
+        assert np.array_equal(hw_res, sw_res)
+
+
+def test_run_service_conv_width_noteq_height_18(sint_conv_model_width_noteq_height_2):
+    x0 = np.array(
+        [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, -1],
+            [-2, -3, -4],
+            [-1, -2, -3],
+            [-4, -5, -6],
+        ]
+    ).reshape(1, 6, 3)
+    x1 = np.array(
+        [
+            [1, 1, 1],
+            [1, 1, 1],
+            [2, 2, 2],
+            [2, 2, 2],
+            [3, 3, 3],
+            [3, 3, 3],
+        ]
+    ).reshape(1, 6, 3)
+
+    x = np.concatenate((x0, x1), axis=0)
+    opt_model = optimize.qkeras_model(sint_conv_model_width_noteq_height_2)
+    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
+    for x in [x]:
+        sw_res = opt_model.predict(np.expand_dims(x, axis=0))
+        sw_res = np.reshape(sw_res, (4, 5, 2))
+        hw_res = circuit(x)
+        assert np.array_equal(hw_res, sw_res)
+
+
+def test_run_service_digits_model(sint_digit_model_ds):
+    opt_model, digits_ds = sint_digit_model_ds
+    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
+    for i in range(5):
+        image = digits_ds.images[i]
+        sw_res = opt_model.predict(image.reshape(1, 8, 8, 1))
+        hw_res = circuit.predict(image.reshape(1, 8, 8))
+        assert np.array_equal(sw_res.reshape(10), hw_res)

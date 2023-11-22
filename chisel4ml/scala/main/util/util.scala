@@ -82,4 +82,6 @@ package object util {
   }
 
   def risingEdge(x: Bool) = x && !RegNext(x)
+
+  def isStable[T <: Data](x: T): Bool = x === RegNext(x)
 }

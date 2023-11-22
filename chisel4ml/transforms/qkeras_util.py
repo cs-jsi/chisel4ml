@@ -117,8 +117,11 @@ def _layer_to_thresh_tensor(keras_layer: KerasLayer) -> QTensor:
 
 def _depthwise_layer_to_weight_tensor(keras_layer: KerasLayer) -> QTensor:
     _ = keras_layer.depthwise_quantizer_internal(keras_layer.depthwise_kernel)
-    kernel_vals = np.transpose(keras_layer.depthwise_kernel)
-    kernel_vals = np.moveaxis(kernel_vals, 2, 3)
+    kernel_vals = get_integer_values(
+        keras_layer.depthwise_kernel, keras_layer.depthwise_quantizer_internal
+    ).numpy()
+    kernel_vals = np.moveaxis(kernel_vals, -1, 0)  # move the kernel dimension
+    kernel_vals = np.moveaxis(kernel_vals, -1, 1)  # move the channel dimension
     return QTensor(
         dtype=LBIRDatatype(
             quantization=_quantizer_to_qtype(keras_layer.depthwise_quantizer_internal),
@@ -130,24 +133,20 @@ def _depthwise_layer_to_weight_tensor(keras_layer: KerasLayer) -> QTensor:
             offset=[0],
         ),
         shape=_layer_to_shape(keras_layer),
-        values=get_integer_values(kernel_vals, keras_layer.depthwise_quantizer_internal)
-        .numpy()
-        .flatten()
-        .tolist(),
+        values=kernel_vals.flatten().tolist(),
     )
 
 
 def _layer_to_weight_tensor(keras_layer: KerasLayer) -> QTensor:
     # We run this so that scale wont be a place holder tensor
     _ = keras_layer.kernel_quantizer_internal(keras_layer.kernel)
-
-    kernel_vals = np.empty(shape=keras_layer.kernel.shape)
+    kernel_vals = get_integer_values(
+        keras_layer.kernel, keras_layer.kernel_quantizer_internal
+    ).numpy()
     if isinstance(keras_layer, qkeras.QConv2D):
-        # NCHW
-        kernel_vals = np.moveaxis(keras_layer.kernel, [0, 1, 2, 3], [2, 3, 0, 1])
-    else:
-        kernel_vals = keras_layer.kernel
-
+        # LBIR Layout is NCHW!
+        kernel_vals = np.moveaxis(kernel_vals, -1, 0)
+        kernel_vals = np.moveaxis(kernel_vals, -1, 1)
     return QTensor(
         dtype=LBIRDatatype(
             quantization=_quantizer_to_qtype(keras_layer.kernel_quantizer_internal),
@@ -159,10 +158,7 @@ def _layer_to_weight_tensor(keras_layer: KerasLayer) -> QTensor:
             offset=[0],
         ),
         shape=_layer_to_shape(keras_layer),
-        values=get_integer_values(kernel_vals, keras_layer.kernel_quantizer_internal)
-        .numpy()
-        .flatten()
-        .tolist(),
+        values=kernel_vals.flatten().tolist(),
     )
 
 

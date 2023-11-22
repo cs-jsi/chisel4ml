@@ -106,6 +106,27 @@ def test_preproc_speech_commands(audio_data):
         assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=5, rtol=0)
 
 
+def test_audio_classifier_no_preproc_1st_layer(
+    qnn_audio_class_no_preproc, audio_data_preproc
+):
+    _, _, test_set, _, _, _, _ = audio_data_preproc
+    opt_model = qnn_audio_class_no_preproc
+    circuit = generate.circuit(
+        opt_model, use_verilator=True, gen_waveform=True, num_layers=1
+    )
+    assert circuit is not None
+    ts_iter = test_set.as_numpy_iterator()
+    for _ in range(100):
+        sample, label = next(ts_iter)
+        sw_res = opt_model.layers[3](opt_model.layers[2](sample.reshape(1, 32, 20, 1)))
+        sw_ret = (
+            sw_res / opt_model.layers[2].depthwise_quantizer_internal.scale[0, 0, 0, 0]
+        )
+        sw_ret = np.moveaxis(sw_ret.numpy().reshape(30, 18, 2), -1, 0)
+        hw_ret = circuit.predict(sample.reshape(1, 32, 20))
+        assert np.array_equal(hw_ret, sw_ret)
+
+
 def test_audio_classifier_no_preproc(qnn_audio_class_no_preproc, audio_data_preproc):
     _, _, test_set, _, _, _, _ = audio_data_preproc
     opt_model = qnn_audio_class_no_preproc
