@@ -19,7 +19,6 @@ import _root_.lbir._
 import _root_.org.slf4j.LoggerFactory
 import _root_.scala.math.{log, pow}
 import chisel3._
-import chisel3.util.Cat
 
 package object util {
   val logger = LoggerFactory.getLogger("chisel4ml.util.")
@@ -58,23 +57,25 @@ package object util {
     case 0 => pAct
     case -1 => {
       // Handles the case when the scale factor (shift) basically sets the output to zero always.
-      if (-shift >= pAct.getWidth) {
+      if (shift.abs >= pAct.getWidth) {
         0.U.asTypeOf(pAct)
       } else {
         // We add the "cutt-off" bit to round the same way a convential rounding is done (1 >= 0.5, 0 < 0.5)
-        ((pAct >> shift.abs).asSInt + Cat(0.S((pAct.getWidth - 1).W), pAct(shift.abs - 1)).asSInt)
-          .asTypeOf(pAct)
+        val shifted = (pAct >> shift.abs).asSInt
+        val carry = pAct(shift.abs - 1).asUInt.zext
+        (shifted + carry).asUInt.asTypeOf(pAct)
       }
     }
     case 1 => (pAct << shift.abs).asTypeOf(pAct)
   }
 
-  def shiftAndRoundDynamic[S <: Bits](pAct: S, shift: UInt, shiftLeft: Bool, genAccu: S): S = {
+  def shiftAndRoundDynamic[A <: Bits](pAct: A, shift: UInt, shiftLeft: Bool, genAccu: A): A = {
     val sout = Wire(genAccu)
     when(shiftLeft) {
       sout := (pAct << shift).asUInt.asTypeOf(sout)
     }.otherwise {
       val shifted = (pAct >> shift).asSInt
+      // This carry operation assumes a twos complement representation of pAct (i.e. A = SInt)
       val carry = pAct(shift - 1.U).asUInt.zext
       sout := (shifted + carry).asUInt.asTypeOf(sout)
     }

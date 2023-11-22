@@ -21,7 +21,6 @@ import chisel4ml.QuantizationContext
 import chisel4ml.util._
 import chisel4ml.implicits._
 import chisel4ml.conv2d._
-import org.slf4j.LoggerFactory
 
 object Neuron {
   def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](

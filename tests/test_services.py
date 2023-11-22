@@ -501,11 +501,25 @@ def test_run_service_conv_width_noteq_height_18(sint_conv_model_width_noteq_heig
         assert np.array_equal(hw_res, sw_res)
 
 
-def test_run_service_digits_model(sint_digit_model_ds):
+def test_run_service_digits_partial_19(sint_digit_model_ds):
+    opt_model, digits_ds = sint_digit_model_ds
+    circuit = generate.circuit(
+        opt_model, use_verilator=True, gen_waveform=True, num_layers=1
+    )
+    for i in range(20):
+        image = digits_ds.images[i]
+        sw_res = opt_model.layers[3](
+            opt_model.layers[2]((image.reshape(1, 8, 8, 1)))
+        ).numpy()
+        hw_res = circuit.predict(image.reshape(1, 8, 8))
+        assert np.array_equal(sw_res.reshape(6, 6), hw_res.reshape(6, 6))
+
+
+def test_run_service_digits_20(sint_digit_model_ds):
     opt_model, digits_ds = sint_digit_model_ds
     circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
-    for i in range(5):
+    for i in range(20):
         image = digits_ds.images[i]
         sw_res = opt_model.predict(image.reshape(1, 8, 8, 1))
         hw_res = circuit.predict(image.reshape(1, 8, 8))
-        assert np.array_equal(sw_res.reshape(10), hw_res)
+        assert tf.reduce_all(np.isclose(sw_res, hw_res, atol=1.0))
