@@ -61,9 +61,9 @@ package object util {
       val shifted = (pAct >> shift).asSInt
       val sign = pAct(pAct.getWidth - 1)
       val nsign = !sign
-      val fDec = pAct(shift.abs - 1.U) // first (most significnat) decimal number
-      //val rest = VecInit(pAct(shift.abs - 2.U, 0.U).asBools).reduceTree(_ || _)
-      val rest = VecInit((pAct << (pAct.getWidth.U - shift - 1.U)).asBools).reduceTree(_ || _)
+      val fDec = pAct(shift.abs - 1.U) // first (most significant) decimal number
+      val lDec = (pAct << (pAct.getWidth.U - (shift - 1.U)))(pAct.getWidth - 1, 0)
+      val rest = VecInit(lDec.asBools).reduceTree(_ || _)
       val carry = (nsign && fDec) || (sign && fDec && rest)
       sout := (shifted + carry.asUInt.zext).asUInt.asTypeOf(sout)
     }
@@ -96,15 +96,17 @@ package object util {
     sout
   }
 
-  def shiftAndRoundUIntStatic(pAct: UInt, shift: Int): UInt = {
-    assert(shift < 0)
-    val shifted = (pAct >> shift.abs).asUInt
-    val sign = pAct(pAct.getWidth - 1)
-    val nsign = !sign
-    val fDec = pAct(shift.abs - 1) // first (most significnat) decimal number
-    val rest = VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _)
-    val carry = (nsign && fDec) || (sign && fDec && rest)
-    shifted + carry.asUInt
+  def shiftAndRoundUIntStatic(pAct: UInt, shift: Int): UInt = shift.compare(0) match {
+    case 0 => pAct
+    case 1 =>
+      pAct << shift
+      val shifted = (pAct >> shift.abs).asUInt
+      val sign = pAct(pAct.getWidth - 1)
+      val nsign = !sign
+      val fDec = pAct(shift.abs - 1) // first (most significnat) decimal number
+      val rest = VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _)
+      val carry = (nsign && fDec) || (sign && fDec && rest)
+      shifted + carry.asUInt
   }
 
   def risingEdge(x: Bool) = x && !RegNext(x)
