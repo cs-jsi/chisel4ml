@@ -59,7 +59,7 @@ class ShiftRegisterConvolver[I <: Bits](l: Conv2DConfig) extends Module {
 
   io.nextElement.ready := io.inputActivationsWindow.ready && !io.channelDone
   // First condition: waiting for shift registers to initially fill up. Second: filter goes over the width of image. Third: backpressure from input data mover.
-  io.inputActivationsWindow.valid := (elementCounter >= numRegs.U) &&
+  io.inputActivationsWindow.valid := shiftRegistersFull &&
     (widthCounter <= (l.input.width - l.kernel.width).U) &&
     RegNext(io.nextElement.fire)
 }
