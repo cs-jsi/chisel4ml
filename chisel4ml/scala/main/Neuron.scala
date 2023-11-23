@@ -18,7 +18,6 @@ package chisel4ml
 import chisel3._
 import chisel3.util._
 import chisel4ml.QuantizationContext
-import chisel4ml.util._
 import chisel4ml.implicits._
 import chisel4ml.conv2d._
 
@@ -33,7 +32,7 @@ object Neuron {
   ): O = {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
     val pAct = qc.add(muls)
-    val sAct = shiftAndRound(pAct, shift)
+    val sAct = qc.shiftAndRound(pAct, shift)
     qc.actFn(sAct, thresh, outputBitwidth)
   }
 }
@@ -51,13 +50,11 @@ class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
 
   val muls = VecInit((io.in.bits.zip(inWeights)).map { case (i, w) => qc.mul(i, w) })
   val pAct = qc.add(muls)
-  val sAct =
-    shiftAndRoundDynamic(
-      pAct,
-      io.weights.bits.threshShift.shift,
-      io.weights.bits.threshShift.shiftLeft,
-      l.thresh.getType[A]
-    )
+  val sAct = qc.shiftAndRound(
+    pAct,
+    io.weights.bits.threshShift.shift,
+    io.weights.bits.threshShift.shiftLeft
+  )
   io.out.bits := qc.actFn(sAct, io.weights.bits.threshShift.thresh, l.output.dtype.bitwidth)
 
   io.out.valid := io.in.valid && io.weights.valid

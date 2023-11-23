@@ -53,33 +53,58 @@ package object util {
     Mux(x > max, max, Mux(x < min, min, x))
   }
 
-  def shiftAndRound[A <: Bits](pAct: A, shift: Int): A = shift.compare(0) match {
-    case 0 => pAct
-    case -1 => {
-      // Handles the case when the scale factor (shift) basically sets the output to zero always.
-      if (shift.abs >= pAct.getWidth) {
-        0.U.asTypeOf(pAct)
-      } else {
-        // We add the "cutt-off" bit to round the same way a convential rounding is done (1 >= 0.5, 0 < 0.5)
-        val shifted = (pAct >> shift.abs).asSInt
-        val carry = pAct(shift.abs - 1).asUInt.zext
-        (shifted + carry).asUInt.asTypeOf(pAct)
-      }
-    }
-    case 1 => (pAct << shift.abs).asTypeOf(pAct)
-  }
-
-  def shiftAndRoundDynamic[A <: Bits](pAct: A, shift: UInt, shiftLeft: Bool, genAccu: A): A = {
-    val sout = Wire(genAccu)
+  def shiftAndRoundSInt(pAct: SInt, shift: UInt, shiftLeft: Bool): SInt = {
+    val sout = Wire(SInt(pAct.getWidth.W))
     when(shiftLeft) {
-      sout := (pAct << shift).asUInt.asTypeOf(sout)
+      sout := (pAct << shift)
     }.otherwise {
       val shifted = (pAct >> shift).asSInt
-      // This carry operation assumes a twos complement representation of pAct (i.e. A = SInt)
-      val carry = pAct(shift - 1.U).asUInt.zext
-      sout := (shifted + carry).asUInt.asTypeOf(sout)
+      val sign = pAct(pAct.getWidth - 1)
+      val nsign = !sign
+      val fDec = pAct(shift.abs - 1.U) // first (most significnat) decimal number
+      //val rest = VecInit(pAct(shift.abs - 2.U, 0.U).asBools).reduceTree(_ || _)
+      val rest = VecInit((pAct << (pAct.getWidth.U - shift - 1.U)).asBools).reduceTree(_ || _)
+      val carry = (nsign && fDec) || (sign && fDec && rest)
+      sout := (shifted + carry.asUInt.zext).asUInt.asTypeOf(sout)
     }
     sout
+  }
+
+  def shiftAndRoundSIntStatic(pAct: SInt, shift: Int): SInt = shift.compare(0) match {
+    case 0 => pAct
+    case 1 => pAct << shift
+    case -1 => {
+      val shifted = (pAct >> shift.abs).asSInt
+      val sign = pAct(pAct.getWidth - 1)
+      val nsign = !sign
+      val fDec = pAct(shift.abs - 1) // first (most significnat) decimal number
+      val rest = VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _)
+      val carry = (nsign && fDec) || (sign && fDec && rest)
+      shifted + carry.asUInt.zext
+    }
+  }
+
+  def shiftAndRoundUInt(pAct: UInt, shift: UInt, shiftLeft: Bool): UInt = {
+    val sout = Wire(UInt(pAct.getWidth.W))
+    when(shiftLeft) {
+      sout := (pAct << shift)
+    }.otherwise {
+      val shifted = (pAct >> shift)
+      val carry = pAct(shift - 1.U).asUInt
+      sout := shifted + carry
+    }
+    sout
+  }
+
+  def shiftAndRoundUIntStatic(pAct: UInt, shift: Int): UInt = {
+    assert(shift < 0)
+    val shifted = (pAct >> shift.abs).asUInt
+    val sign = pAct(pAct.getWidth - 1)
+    val nsign = !sign
+    val fDec = pAct(shift.abs - 1) // first (most significnat) decimal number
+    val rest = VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _)
+    val carry = (nsign && fDec) || (sign && fDec && rest)
+    shifted + carry.asUInt
   }
 
   def risingEdge(x: Bool) = x && !RegNext(x)
