@@ -48,22 +48,29 @@ class UtilityFunctionsTests extends AnyFlatSpec with ChiselScalatestTester {
       }
     }
   }
+  it should s"Test STATIC shift with acc -5 and shift == 2" in {
+    test(new RoundTestBedStatic(8, -2)) { dut =>
+      dut.in.poke((-5).S(8.W))
+      dut.clock.step()
+      dut.out.expect(roundModel(-5, 2))
+    }
+  }
 
   val r = new scala.util.Random
   r.setSeed(42L)
-  val numRandomTests = 50
+  val numRandomTests = 10
   val maxAccumulatorValue = 8191
   for (idx <- 0 until numRandomTests) {
     val isNegative = r.nextBoolean()
     val value = if (isNegative) -r.nextInt(maxAccumulatorValue) else r.nextInt(maxAccumulatorValue)
-    val shift = 4
-    it should s"Random STATIC test $idx rounding value: $value, shift: 4" in {
+    val shift = r.nextInt(5)
+    it should s"Random STATIC test $idx rounding value: $value, shift: $shift" in {
       test(new RoundTestBedStatic(14, -shift)) { dut =>
         dut.in.poke(value.S(14.W))
         dut.out.expect(roundModel(value, shift).S)
       }
     }
-    it should s"Random DYNAMIC test $idx rounding value: $value, shift: 4" in {
+    it should s"Random DYNAMIC test $idx rounding value: $value, shift: $shift" in {
       test(new RoundTestBedDynamic(14, -shift)) { dut =>
         dut.in.poke(value.S(14.W))
         dut.out.expect(roundModel(value, shift).S)

@@ -58,6 +58,8 @@ package object util {
     when(shiftLeft) {
       sout := (pAct << shift)
     }.otherwise {
+      assert(pAct.getWidth.U > shift)
+      assert(shift > 1.U)
       val shifted = (pAct >> shift).asSInt
       val sign = pAct(pAct.getWidth - 1)
       val nsign = !sign
@@ -73,15 +75,18 @@ package object util {
   def shiftAndRoundSIntStatic(pAct: SInt, shift: Int): SInt = shift.compare(0) match {
     case 0 => pAct
     case 1 => pAct << shift
-    case -1 => {
-      val shifted = (pAct >> shift.abs).asSInt
-      val sign = pAct(pAct.getWidth - 1)
-      val nsign = !sign
-      val fDec = pAct(shift.abs - 1) // first (most significnat) decimal number
-      val rest = VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _)
-      val carry = (nsign && fDec) || (sign && fDec && rest)
-      shifted + carry.asUInt.zext
-    }
+    case -1 =>
+      if (pAct.getWidth > shift.abs) {
+        val shifted = (pAct >> shift.abs).asSInt
+        val sign = pAct(pAct.getWidth - 1)
+        val nsign = !sign
+        val fDec = pAct(shift.abs - 1) // first (most significnat) decimal number
+        val rest = if (shift.abs > 1) VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _) else true.B
+        val carry = (nsign && fDec) || (sign && fDec && rest)
+        shifted + carry.asUInt.zext
+      } else {
+        0.S
+      }
   }
 
   def shiftAndRoundUInt(pAct: UInt, shift: UInt, shiftLeft: Bool): UInt = {
@@ -98,15 +103,19 @@ package object util {
 
   def shiftAndRoundUIntStatic(pAct: UInt, shift: Int): UInt = shift.compare(0) match {
     case 0 => pAct
-    case 1 =>
-      pAct << shift
-      val shifted = (pAct >> shift.abs).asUInt
-      val sign = pAct(pAct.getWidth - 1)
-      val nsign = !sign
-      val fDec = pAct(shift.abs - 1) // first (most significnat) decimal number
-      val rest = VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _)
-      val carry = (nsign && fDec) || (sign && fDec && rest)
-      shifted + carry.asUInt
+    case 1 => pAct << shift
+    case -1 =>
+      if (pAct.getWidth > shift) {
+        val shifted = (pAct >> shift.abs).asUInt
+        val sign = pAct(pAct.getWidth - 1)
+        val nsign = !sign
+        val fDec = pAct(shift.abs - 1) // first (most significnat) decimal number
+        val rest = if (shift > 1) VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _) else true.B
+        val carry = (nsign && fDec) || (sign && fDec && rest)
+        shifted + carry.asUInt
+      } else {
+        0.U
+      }
   }
 
   def risingEdge(x: Bool) = x && !RegNext(x)
