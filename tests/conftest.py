@@ -380,6 +380,7 @@ def sint_simple_model() -> tf.keras.Model:
             bits=4, integer=3, keep_negative=True, alpha=np.array([0.125])
         ),
     )(x)
+    x = qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3))(x)
     model = tf.keras.Model(inputs=[x_in], outputs=[x])
     model.compile()
     model.layers[2].set_weights([w1, b1])

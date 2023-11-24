@@ -136,12 +136,14 @@ def test_run_service_5(sint_simple_model):
     )
 
     opt_model = optimize.qkeras_model(sint_simple_model)
-    circuit = generate.circuit(opt_model, is_simple=False)
+    circuit = generate.circuit(
+        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
+    )
     assert circuit is not None
     for i in range(0, 10):
         sw_res = opt_model.predict(x_test[i].reshape(1, 3))
         hw_res = circuit(x_test[i])
-        assert tf.reduce_all(np.isclose(sw_res, hw_res, atol=1.0)), (
+        assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), (
             f"The software model predicted the result {sw_res}, where as the hardware"
             f" model predicted {hw_res}. Something is wrong here. The stated results"
             f" are for the inputs {x_test[i]}. "
@@ -522,4 +524,4 @@ def test_run_service_digits_20(sint_digit_model_ds):
         image = digits_ds.images[i]
         sw_res = opt_model.predict(image.reshape(1, 8, 8, 1))
         hw_res = circuit.predict(image.reshape(1, 8, 8))
-        assert tf.reduce_all(np.isclose(sw_res, hw_res, atol=1.0))
+        assert np.allclose(sw_res.reshape(10), hw_res, atol=1.0, rtol=0.0)
