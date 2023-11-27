@@ -409,7 +409,7 @@ def _qact_to_rounding_mode(activation):
         if activation.alpha == "alpha_po2":
             return lbir.RoundingMode.ROUND_UP
         elif activation.alpha is None:
-            return lbir.Activation.NO_ACTIVATION
+            return lbir.RoundingMode.ROUND_HALF_TO_EVEN
         else:
             raise NotImplementedError
     elif isinstance(activation, str):

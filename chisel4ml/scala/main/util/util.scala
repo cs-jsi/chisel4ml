@@ -19,7 +19,9 @@ import _root_.lbir._
 import _root_.org.slf4j.LoggerFactory
 import _root_.scala.math.{log, pow}
 import chisel3._
-import firrtl.getWidth
+import lbir.RoundingMode.ROUND_UP
+import lbir.RoundingMode.ROUND_HALF_TO_EVEN
+import lbir.RoundingMode.ROUND_NONE
 
 package object util {
   val logger = LoggerFactory.getLogger("chisel4ml.util.")
@@ -73,12 +75,18 @@ package object util {
     sout
   }
 
-  def shiftAndRoundSIntStatic(pAct: SInt, shift: Int): SInt = shift.compare(0) match {
+  def shiftAndRoundSIntStatic(roundingMode: lbir.RoundingMode): (SInt, Int) => SInt = roundingMode match {
+    case ROUND_UP           => shiftAndRoundSIntStaticUp
+    case ROUND_HALF_TO_EVEN => shiftAndRoundSIntStaticHalfToEven
+    case ROUND_NONE         => (x: SInt, s: Int) => x
+    case _                  => throw new NotImplementedError
+  }
+
+  def shiftAndRoundSIntStaticUp(pAct: SInt, shift: Int): SInt = shift.compare(0) match {
     case 0 => pAct
     case 1 => pAct << shift
     case -1 =>
       if (pAct.getWidth > shift.abs) {
-        print("RoundUP")
         val shifted = (pAct >> shift.abs).asSInt
         val sign = pAct(pAct.getWidth - 1)
         val nsign = !sign
@@ -112,7 +120,6 @@ package object util {
     case 1 => pAct << shift
     case -1 =>
       if (pAct.getWidth > shift.abs) {
-        print("HalfToEvenFunctioN!")
         val shifted = (pAct >> shift.abs).asSInt
         val sign = pAct(pAct.getWidth - 1)
         val nsign = !sign

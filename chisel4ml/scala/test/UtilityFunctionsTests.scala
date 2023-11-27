@@ -4,7 +4,7 @@ import _root_.chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import chisel4ml.util.shiftAndRoundSInt
-import chisel4ml.util.shiftAndRoundSIntStatic
+import chisel4ml.util.shiftAndRoundSIntStaticUp
 import chisel4ml.util.shiftAndRoundSIntStaticHalfToEven
 import java.math.BigDecimal
 import java.math.{RoundingMode => JavaRoundingMode}
@@ -20,7 +20,7 @@ class RoundTestBedStatic(inputWidth: Int, shift: Int) extends Module {
   val in = IO(Input(SInt(inputWidth.W)))
   val out = IO(Output(SInt()))
 
-  out := shiftAndRoundSIntStatic(in, shift)
+  out := shiftAndRoundSIntStaticUp(in, shift)
 }
 
 class RoundTestBedDynamic(inputWidth: Int, shift: Int) extends Module {
