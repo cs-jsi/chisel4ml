@@ -19,6 +19,7 @@ import _root_.lbir._
 import _root_.org.slf4j.LoggerFactory
 import _root_.scala.math.{log, pow}
 import chisel3._
+import firrtl.getWidth
 
 package object util {
   val logger = LoggerFactory.getLogger("chisel4ml.util.")
@@ -77,12 +78,48 @@ package object util {
     case 1 => pAct << shift
     case -1 =>
       if (pAct.getWidth > shift.abs) {
+        print("RoundUP")
         val shifted = (pAct >> shift.abs).asSInt
         val sign = pAct(pAct.getWidth - 1)
         val nsign = !sign
         val fDec = pAct(shift.abs - 1) // first (most significnat) decimal number
         val rest = if (shift.abs > 1) VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _) else true.B
         val carry = (nsign && fDec) || (sign && fDec && rest)
+        shifted + carry.asUInt.zext
+      } else {
+        0.S
+      }
+  }
+
+  def shiftAndRoundSIntStaticHalfToEven(pAct: SInt, shift: Int): SInt = shift.compare(0) match {
+    /*   +5.5 = 0101,1000 = 0110 = +6  | c=+1
+     *   -5.5 = 1010,1000 = 1010 = -6  | c=0
+     *
+     *  +2.75 = 0010,1100 = 0011 = +3  | c=1
+     *  -2.75 = 1101,0100 = 1101 = -3  | c=0
+     *
+     *   +2.5 = 0010,1000 = 0010 = +2  | c=0
+     *   -2.5 = 1101,1000 = 1110 = -2  | c=+1
+     *
+     *  +1.25 = 0001,0100 = 0001 =  +1 | c=0
+     *  -1.25 = 1110,1100 = 1111 =  -1 | c=1
+     *
+     *  +1.75 = 0001,1100 = 0010 = +2 | c=+1
+     *  -1.75 = 1110,0100 = 1110 = -2 | c=0
+     *
+     */
+    case 0 => pAct
+    case 1 => pAct << shift
+    case -1 =>
+      if (pAct.getWidth > shift.abs) {
+        print("HalfToEvenFunctioN!")
+        val shifted = (pAct >> shift.abs).asSInt
+        val sign = pAct(pAct.getWidth - 1)
+        val nsign = !sign
+        val fDec = pAct(shift.abs - 1)
+        val fInt = pAct(shift.abs)
+        val rest = if (shift.abs > 1) VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _) else true.B
+        val carry = (nsign && fInt && fDec) || (fDec && rest) || (sign && fInt && fDec)
         shifted + carry.asUInt.zext
       } else {
         0.S

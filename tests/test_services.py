@@ -524,4 +524,4 @@ def test_run_service_digits_20(sint_digit_model_ds):
         image = digits_ds.images[i]
         sw_res = opt_model.predict(image.reshape(1, 8, 8, 1))
         hw_res = circuit.predict(image.reshape(1, 8, 8))
-        assert np.allclose(sw_res.reshape(10), hw_res, atol=1.0, rtol=0.0)
+        assert np.allclose(sw_res.reshape(10), hw_res, atol=0.0, rtol=0.0)

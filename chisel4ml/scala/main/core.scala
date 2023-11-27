@@ -38,7 +38,7 @@ object BinarizedQuantizationContext extends QuantizationContext[Bool, Bool, Bool
 object BinaryQuantizationContext extends QuantizationContext[UInt, Bool, SInt, SInt, Bool] {
   def mul = (i: UInt, w: Bool) => Mux(w, i.zext, -(i.zext))
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic
+  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStaticHalfToEven
   def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
   def actFn = signFnS
 }
@@ -46,7 +46,7 @@ object BinaryQuantizationContext extends QuantizationContext[UInt, Bool, SInt, S
 object BinaryQuantizationComputeS extends QuantizationContext[SInt, Bool, SInt, SInt, Bool] {
   def mul = (i: SInt, w: Bool) => Mux(w, i, -i)
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic
+  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStaticHalfToEven
   def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
   def actFn = signFnS
 }
@@ -56,7 +56,7 @@ class UniformQuantizationContextSSU(act: (SInt, SInt, Int) => UInt)
     extends QuantizationContext[SInt, SInt, SInt, SInt, UInt] {
   def mul = (i: SInt, w: SInt) => i * w
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic
+  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStaticHalfToEven
   def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
   def actFn = act
 }
@@ -67,7 +67,7 @@ class UniformQuantizationComputeUSU(act: (SInt, SInt, Int) => UInt)
     extends QuantizationContext[UInt, SInt, SInt, SInt, UInt] {
   def mul = (i: UInt, w: SInt) => i * w
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic
+  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStaticHalfToEven
   def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
   def actFn = act
 }
@@ -78,7 +78,7 @@ class UniformQuantizationContextSSS(act: (SInt, SInt, Int) => SInt)
     extends QuantizationContext[SInt, SInt, SInt, SInt, SInt] {
   def mul = (i: SInt, w: SInt) => i * w
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic
+  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStaticHalfToEven
   def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
   def actFn = act
 }
@@ -90,7 +90,7 @@ class UniformQuantizationContextUSS(act: (SInt, SInt, Int) => SInt)
     extends QuantizationContext[UInt, SInt, SInt, SInt, SInt] {
   def mul = (i: UInt, w: SInt) => i * w
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic
+  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStaticHalfToEven
   def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
   def actFn = act
 }
