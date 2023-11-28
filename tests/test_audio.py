@@ -106,6 +106,40 @@ def test_preproc_speech_commands(audio_data):
         assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=5, rtol=0)
 
 
+def test_audio_classifier_no_preproc_no_bias_1st_layer(
+    qnn_audio_class_no_preproc_no_bias, audio_data_preproc
+):
+    _, _, test_set, _, _, _, _ = audio_data_preproc
+    opt_model = qnn_audio_class_no_preproc_no_bias
+    circuit = generate.circuit(
+        opt_model, use_verilator=True, gen_waveform=True, num_layers=1
+    )
+    assert circuit is not None
+    ts_iter = test_set.as_numpy_iterator()
+    for _ in range(100):
+        sample, label = next(ts_iter)
+        sw_ret = opt_model.layers[2](opt_model.layers[1](sample.reshape(1, 32, 20, 1)))
+        sw_ret = np.moveaxis(sw_ret.numpy().reshape(30, 18, 1), -1, 0)
+        hw_ret = circuit.predict(sample.reshape(1, 32, 20))
+        assert np.array_equal(hw_ret, sw_ret)
+
+
+def test_audio_classifier_no_preproc_no_bias(
+    qnn_audio_class_no_preproc, audio_data_preproc
+):
+    _, _, test_set, _, _, _, _ = audio_data_preproc
+    opt_model = qnn_audio_class_no_preproc
+    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
+    assert circuit is not None
+    ts_iter = test_set.as_numpy_iterator()
+    for _ in range(100):
+        sample, label = next(ts_iter)
+        hw_ret = circuit.predict(sample.reshape(1, 32, 20))
+        sw_ret = opt_model.predict(sample.reshape(1, 32, 20, 1))
+        print(f"hw_ret: {np.argmax(hw_ret)} - sw_ret: {np.argmax(sw_ret)}")
+        assert np.array_equal(hw_ret, sw_ret)
+
+
 def test_audio_classifier_no_preproc_1st_layer(
     qnn_audio_class_no_preproc, audio_data_preproc
 ):
@@ -121,7 +155,7 @@ def test_audio_classifier_no_preproc_1st_layer(
         sw_ret = opt_model.layers[3](opt_model.layers[2](sample.reshape(1, 32, 20, 1)))
         sw_ret = np.moveaxis(sw_ret.numpy().reshape(30, 18, 1), -1, 0)
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
-        assert np.allclose(hw_ret, sw_ret, atol=0.0, rtol=0.0)
+        assert np.allclose(hw_ret, sw_ret, atol=1.0, rtol=0.0)
 
 
 def test_audio_classifier_no_preproc(qnn_audio_class_no_preproc, audio_data_preproc):

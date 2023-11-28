@@ -57,9 +57,10 @@ package object util {
   }
 
   def shiftAndRoundSIntDynamic(roundingMode: lbir.RoundingMode): (SInt, UInt, Bool) => SInt = roundingMode match {
-    case ROUND_UP   => shiftAndRoundSIntUp
-    case ROUND_NONE => (x: SInt, s: UInt, b: Bool) => x
-    case _          => throw new NotImplementedError
+    case ROUND_UP           => shiftAndRoundSIntUp
+    case ROUND_HALF_TO_EVEN => shiftAndRoundSIntDynamicHalfToEven
+    case ROUND_NONE         => (x: SInt, s: UInt, b: Bool) => x
+    case _                  => throw new NotImplementedError
   }
 
   def shiftAndRoundSIntUp(pAct: SInt, shift: UInt, shiftLeft: Bool): SInt = {
@@ -77,6 +78,25 @@ package object util {
       val rest = VecInit(lDec.asBools).reduceTree(_ || _)
       val carry = (nsign && fDec) || (sign && fDec && rest)
       sout := (shifted + carry.asUInt.zext).asUInt.asTypeOf(sout)
+    }
+    sout
+  }
+  def shiftAndRoundSIntDynamicHalfToEven(pAct: SInt, shift: UInt, shiftLeft: Bool): SInt = {
+    val sout = Wire(SInt(pAct.getWidth.W))
+    when(shiftLeft) {
+      sout := (pAct << shift)
+    }.otherwise {
+      assert(pAct.getWidth.U > shift)
+      assert(shift > 1.U)
+      val shifted = (pAct >> shift).asSInt
+      val sign = pAct(pAct.getWidth - 1)
+      val nsign = !sign
+      val fInt = pAct(shift)
+      val fDec = pAct(shift - 1.U)
+      val lDec = (pAct << (pAct.getWidth.U - (shift - 1.U)))(pAct.getWidth - 1, 0)
+      val rest = VecInit(lDec.asBools).reduceTree(_ || _)
+      val carry = (nsign && fInt && fDec) || (fDec && rest) || (sign && fInt && fDec)
+      sout := shifted + carry.asUInt.zext
     }
     sout
   }

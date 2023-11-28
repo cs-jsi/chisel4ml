@@ -402,7 +402,7 @@ def _flatten(items):
 
 def _qact_to_rounding_mode(activation):
     if isinstance(activation, qkeras.quantized_relu):
-        return lbir.RoundingMode.ROUND_UP
+        return lbir.RoundingMode.ROUND_HALF_TO_EVEN
     elif isinstance(activation, qkeras.binary):
         return lbir.RoundingMode.ROUND_NONE
     elif isinstance(activation, qkeras.quantized_bits):
