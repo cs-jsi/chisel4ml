@@ -31,17 +31,29 @@ object ProcessingElementSimple {
     layer.output.dtype.signed
   ) match {
     case (UNIFORM, true, UNIFORM, false) =>
-      new ProcessingElementSimple[SInt, SInt, SInt, SInt, UInt](layer)(UniformQuantizationContextSSUReLU)
+      new ProcessingElementSimple[SInt, SInt, SInt, SInt, UInt](layer)(
+        new UniformQuantizationContextSSUReLU(layer.roundingMode)
+      )
     case (UNIFORM, false, UNIFORM, false) =>
-      new ProcessingElementSimple[UInt, SInt, SInt, SInt, UInt](layer)(UniformQuantizationContextUSUReLU)
+      new ProcessingElementSimple[UInt, SInt, SInt, SInt, UInt](layer)(
+        new UniformQuantizationContextUSUReLU(layer.roundingMode)
+      )
     case (UNIFORM, true, UNIFORM, true) =>
-      new ProcessingElementSimple[SInt, SInt, SInt, SInt, SInt](layer)(UniformQuantizationContextSSSNoAct)
+      new ProcessingElementSimple[SInt, SInt, SInt, SInt, SInt](layer)(
+        new UniformQuantizationContextSSSNoAct(layer.roundingMode)
+      )
     case (UNIFORM, false, UNIFORM, true) =>
-      new ProcessingElementSimple[UInt, SInt, SInt, SInt, SInt](layer)(UniformQuantizationContextUSSNoAct)
+      new ProcessingElementSimple[UInt, SInt, SInt, SInt, SInt](layer)(
+        new UniformQuantizationContextUSSNoAct(layer.roundingMode)
+      )
     case (UNIFORM, false, BINARY, true) =>
-      new ProcessingElementSimple[UInt, Bool, SInt, SInt, Bool](layer)(BinaryQuantizationContext)
+      new ProcessingElementSimple[UInt, Bool, SInt, SInt, Bool](layer)(
+        new BinaryQuantizationContext(layer.roundingMode)
+      )
     case (UNIFORM, true, BINARY, true) =>
-      new ProcessingElementSimple[SInt, Bool, SInt, SInt, Bool](layer)(BinaryQuantizationComputeS)
+      new ProcessingElementSimple[SInt, Bool, SInt, SInt, Bool](layer)(
+        new BinaryQuantizationContextSInt(layer.roundingMode)
+      )
     case (BINARY, _, BINARY, true) =>
       new ProcessingElementSimple[Bool, Bool, Bool, UInt, Bool](layer)(BinarizedQuantizationContext)
     case _ => throw new RuntimeException()

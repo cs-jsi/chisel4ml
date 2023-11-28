@@ -19,6 +19,9 @@ import _root_.lbir._
 import _root_.org.slf4j.LoggerFactory
 import _root_.scala.math.{log, pow}
 import chisel3._
+import lbir.RoundingMode.ROUND_UP
+import lbir.RoundingMode.ROUND_HALF_TO_EVEN
+import lbir.RoundingMode.ROUND_NONE
 
 package object util {
   val logger = LoggerFactory.getLogger("chisel4ml.util.")
@@ -53,7 +56,14 @@ package object util {
     Mux(x > max, max, Mux(x < min, min, x))
   }
 
-  def shiftAndRoundSInt(pAct: SInt, shift: UInt, shiftLeft: Bool): SInt = {
+  def shiftAndRoundSIntDynamic(roundingMode: lbir.RoundingMode): (SInt, UInt, Bool) => SInt = roundingMode match {
+    case ROUND_UP           => shiftAndRoundSIntUp
+    case ROUND_HALF_TO_EVEN => shiftAndRoundSIntDynamicHalfToEven
+    case ROUND_NONE         => (x: SInt, s: UInt, b: Bool) => x
+    case _                  => throw new NotImplementedError
+  }
+
+  def shiftAndRoundSIntUp(pAct: SInt, shift: UInt, shiftLeft: Bool): SInt = {
     val sout = Wire(SInt(pAct.getWidth.W))
     when(shiftLeft) {
       sout := (pAct << shift)
@@ -71,8 +81,34 @@ package object util {
     }
     sout
   }
+  def shiftAndRoundSIntDynamicHalfToEven(pAct: SInt, shift: UInt, shiftLeft: Bool): SInt = {
+    val sout = Wire(SInt(pAct.getWidth.W))
+    when(shiftLeft) {
+      sout := (pAct << shift)
+    }.otherwise {
+      assert(pAct.getWidth.U > shift)
+      assert(shift > 1.U)
+      val shifted = (pAct >> shift).asSInt
+      val sign = pAct(pAct.getWidth - 1)
+      val nsign = !sign
+      val fInt = pAct(shift)
+      val fDec = pAct(shift - 1.U)
+      val lDec = (pAct << (pAct.getWidth.U - (shift - 1.U)))(pAct.getWidth - 1, 0)
+      val rest = VecInit(lDec.asBools).reduceTree(_ || _)
+      val carry = (nsign && fInt && fDec) || (fDec && rest) || (sign && fInt && fDec)
+      sout := shifted + carry.asUInt.zext
+    }
+    sout
+  }
 
-  def shiftAndRoundSIntStatic(pAct: SInt, shift: Int): SInt = shift.compare(0) match {
+  def shiftAndRoundSIntStatic(roundingMode: lbir.RoundingMode): (SInt, Int) => SInt = roundingMode match {
+    case ROUND_UP           => shiftAndRoundSIntStaticUp
+    case ROUND_HALF_TO_EVEN => shiftAndRoundSIntStaticHalfToEven
+    case ROUND_NONE         => (x: SInt, s: Int) => x
+    case _                  => throw new NotImplementedError
+  }
+
+  def shiftAndRoundSIntStaticUp(pAct: SInt, shift: Int): SInt = shift.compare(0) match {
     case 0 => pAct
     case 1 => pAct << shift
     case -1 =>
@@ -83,6 +119,40 @@ package object util {
         val fDec = pAct(shift.abs - 1) // first (most significnat) decimal number
         val rest = if (shift.abs > 1) VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _) else true.B
         val carry = (nsign && fDec) || (sign && fDec && rest)
+        shifted + carry.asUInt.zext
+      } else {
+        0.S
+      }
+  }
+
+  def shiftAndRoundSIntStaticHalfToEven(pAct: SInt, shift: Int): SInt = shift.compare(0) match {
+    /*   +5.5 = 0101,1000 = 0110 = +6  | c=+1
+     *   -5.5 = 1010,1000 = 1010 = -6  | c=0
+     *
+     *  +2.75 = 0010,1100 = 0011 = +3  | c=1
+     *  -2.75 = 1101,0100 = 1101 = -3  | c=0
+     *
+     *   +2.5 = 0010,1000 = 0010 = +2  | c=0
+     *   -2.5 = 1101,1000 = 1110 = -2  | c=+1
+     *
+     *  +1.25 = 0001,0100 = 0001 =  +1 | c=0
+     *  -1.25 = 1110,1100 = 1111 =  -1 | c=1
+     *
+     *  +1.75 = 0001,1100 = 0010 = +2 | c=+1
+     *  -1.75 = 1110,0100 = 1110 = -2 | c=0
+     *
+     */
+    case 0 => pAct
+    case 1 => pAct << shift
+    case -1 =>
+      if (pAct.getWidth > shift.abs) {
+        val shifted = (pAct >> shift.abs).asSInt
+        val sign = pAct(pAct.getWidth - 1)
+        val nsign = !sign
+        val fDec = pAct(shift.abs - 1)
+        val fInt = pAct(shift.abs)
+        val rest = if (shift.abs > 1) VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _) else true.B
+        val carry = (nsign && fInt && fDec) || (fDec && rest) || (sign && fInt && fDec)
         shifted + carry.asUInt.zext
       } else {
         0.S

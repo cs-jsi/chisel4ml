@@ -39,6 +39,7 @@ def _qkeras_base_transform_no_inp(keras_layer: KerasLayer):
                 weights=_layer_to_weight_tensor(keras_layer),
                 output=_layer_to_output_tensor(keras_layer),
                 activation=_qact_to_act(keras_layer.activation),
+                rounding_mode=_qact_to_rounding_mode(keras_layer.activation),
             )
         )
     elif isinstance(keras_layer, QConv2D):
@@ -48,6 +49,7 @@ def _qkeras_base_transform_no_inp(keras_layer: KerasLayer):
                 kernel=_layer_to_weight_tensor(keras_layer),
                 output=_layer_to_output_tensor(keras_layer),
                 activation=_qact_to_act(keras_layer.activation),
+                rounding_mode=_qact_to_rounding_mode(keras_layer.activation),
             )
         )
     elif isinstance(keras_layer, QDepthwiseConv2DPermuted):
@@ -58,6 +60,7 @@ def _qkeras_base_transform_no_inp(keras_layer: KerasLayer):
                 output=_layer_to_output_tensor(keras_layer),
                 activation=_qact_to_act(keras_layer.activation),
                 depthwise=True,
+                rounding_mode=_qact_to_rounding_mode(keras_layer.activation),
             )
         )
     elif isinstance(keras_layer, MaxPooling2D):
@@ -395,3 +398,28 @@ def _flatten(items):
                 yield sub_x
         else:
             yield x
+
+
+def _qact_to_rounding_mode(activation):
+    if isinstance(activation, qkeras.quantized_relu):
+        return lbir.RoundingMode.ROUND_HALF_TO_EVEN
+    elif isinstance(activation, qkeras.binary):
+        return lbir.RoundingMode.ROUND_NONE
+    elif isinstance(activation, qkeras.quantized_bits):
+        if activation.alpha == "alpha_po2":
+            return lbir.RoundingMode.ROUND_UP
+        elif activation.alpha is None:
+            return lbir.RoundingMode.ROUND_HALF_TO_EVEN
+        else:
+            raise NotImplementedError
+    elif isinstance(activation, str):
+        if activation == "linear" or activation == "softmax":
+            return lbir.RoundingMode.ROUND_NONE
+    elif callable(activation):
+        if activation.__name__ == "linear" or activation.__name__ == "softmax":
+            return lbir.RoundingMode.ROUND_NONE
+    else:
+        raise ValueError(
+            f"Unsupported activation function: {activation}. Only quantized_relu,"
+            " binary, linear and softmax are supported currently."
+        )

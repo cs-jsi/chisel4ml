@@ -25,7 +25,6 @@ import services.LayerOptions
 import chisel3._
 import interfaces.amba.axis._
 import chisel4ml.QuantizationContext
-import chisel4ml.UniformQuantizationContextSSSNoAct
 
 /** A sequential processing element for convolutions.
   *
@@ -78,19 +77,19 @@ object ProcessingElementSequentialConv {
   ) match {
     case (UNIFORM, true, UNIFORM, RELU) =>
       new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, UInt](layer, options)(
-        UniformQuantizationContextSSUReLU
+        new UniformQuantizationContextSSUReLU(layer.roundingMode)
       )
     case (UNIFORM, false, UNIFORM, RELU) =>
       new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, UInt](layer, options)(
-        UniformQuantizationContextUSUReLU
+        new UniformQuantizationContextUSUReLU(layer.roundingMode)
       )
     case (UNIFORM, true, UNIFORM, NO_ACTIVATION) =>
       new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt](layer, options)(
-        UniformQuantizationContextSSSNoAct
+        new UniformQuantizationContextSSSNoAct(layer.roundingMode)
       )
     case (UNIFORM, false, UNIFORM, NO_ACTIVATION) =>
       new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt](layer, options)(
-        UniformQuantizationContextUSSNoAct
+        new UniformQuantizationContextUSSNoAct(layer.roundingMode)
       )
     case _ => throw new RuntimeException()
   }

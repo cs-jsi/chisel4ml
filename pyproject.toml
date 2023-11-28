@@ -41,6 +41,7 @@ dev = [
 	"sphinx",
 	"versioneer",
 	"grpcio-tools",
+    "mypy-protobuf",
 	"setuptools>=61",
     "build",
     "versioneer",

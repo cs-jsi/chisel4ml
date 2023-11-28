@@ -37,7 +37,7 @@ option (scalapb.options) = {
 
 message Model {
     string name = 1;
-    repeated LayerWrap layers = 3;
+    repeated LayerWrap layers = 2;
 }
 
 
@@ -47,6 +47,19 @@ enum Activation {
     NO_ACTIVATION = 2;
 }
 
+enum RoundingMode {
+    ROUND_NONE = 0;
+    ROUND_UP = 1;
+    ROUND_DOWN = 2;
+    ROUND_TOWARDS_ZERO = 3;
+    ROUND_TOWARD_INFINITY = 4;
+    ROUND_HALF_TO_EVEN = 5;
+    ROUND_HALF_TO_ODD = 6;
+    ROUND_HALF_UP = 7;
+    ROUND_HALF_DOWN = 8;
+    ROUND_HALF_TOWARDS_ZERO = 9;
+    ROUND_HALF_TOWARDS_INFINITY = 10;
+}
 
 message LayerWrap {
     option (scalapb.message).sealed_oneof_extends = "HasInputOutputQTensor";
@@ -60,25 +73,27 @@ message LayerWrap {
 }
 
 message DenseConfig {
-    QTensor thresh  = 3;
-    QTensor weights = 4;
-    QTensor input = 5;  // no values, just shape / dtype
-    QTensor output = 6;
-    Activation activation = 7;
+    QTensor thresh  = 1;
+    QTensor weights = 2;
+    QTensor input = 3;
+    QTensor output = 4;
+    Activation activation = 5;
+    RoundingMode rounding_mode = 6;
 }
 
 message Conv2DConfig {
-    QTensor thresh  = 3;
-    QTensor kernel = 4;
-    QTensor input = 5;  // no values, just shape / dtype
-    QTensor output = 6;
-    Activation activation = 7;
-    bool depthwise = 8;
+    QTensor thresh  = 1;
+    QTensor kernel = 2;
+    QTensor input = 3;
+    QTensor output = 4;
+    Activation activation = 5;
+    RoundingMode rounding_mode = 6;
+    bool depthwise = 7;
 }
 
 message MaxPool2DConfig {
-    QTensor input = 5;  // no values, just shape / dtype
-    QTensor output = 6;
+    QTensor input = 1;
+    QTensor output = 2;
 }
 
 
@@ -86,7 +101,7 @@ message FFTConfig {
     uint32 fft_size = 1;
     uint32 num_frames = 2;
     repeated float win_fn = 3;
-    QTensor input = 4;  // no values, just shape / dtype
+    QTensor input = 4;
     QTensor output = 5;
 }
 
@@ -94,6 +109,6 @@ message LMFEConfig {
     uint32 fft_size = 1;
     uint32 num_mels = 2;
     uint32 num_frames = 3;
-    QTensor input = 4;  // no values, just shape / dtype
+    QTensor input = 4;
     QTensor output = 5;
 }
