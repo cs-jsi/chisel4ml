@@ -56,7 +56,13 @@ package object util {
     Mux(x > max, max, Mux(x < min, min, x))
   }
 
-  def shiftAndRoundSInt(pAct: SInt, shift: UInt, shiftLeft: Bool): SInt = {
+  def shiftAndRoundSIntDynamic(roundingMode: lbir.RoundingMode): (SInt, UInt, Bool) => SInt = roundingMode match {
+    case ROUND_UP   => shiftAndRoundSIntUp
+    case ROUND_NONE => (x: SInt, s: UInt, b: Bool) => x
+    case _          => throw new NotImplementedError
+  }
+
+  def shiftAndRoundSIntUp(pAct: SInt, shift: UInt, shiftLeft: Bool): SInt = {
     val sout = Wire(SInt(pAct.getWidth.W))
     when(shiftLeft) {
       sout := (pAct << shift)

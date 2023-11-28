@@ -52,15 +52,17 @@ class QKerasBNQDenseFuse(QKerasOptimization):
             layers[0].use_bias = True
             if isinstance(layers[0], qkeras.QDense):
                 bias_shape = layers[0].units
+            elif isinstance(layers[0], QDepthwiseConv2DPermuted):
+                bias_shape = layers[0].depth
             else:
                 bias_shape = layers[0].filters
+
             layers[0].bias = layers[0].add_weight(
                 "bias",
                 shape=(bias_shape,),
                 dtype=layers[0].dtype,
                 trainable=True,
             )
-            layers[0].build(input_shape=layers[0].input_shape[1:])
         layers[0].bias.assign(((b - mm) * inv) + beta)
         return delete_layer(model, layers[1], copy=False)
 

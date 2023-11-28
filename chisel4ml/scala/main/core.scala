@@ -40,7 +40,7 @@ class BinaryQuantizationContext(roundingMode: lbir.RoundingMode)
   def mul = (i: UInt, w: Bool) => Mux(w, i.zext, -(i.zext))
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
   def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
+  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
   def actFn = signFnS
 }
 
@@ -49,7 +49,7 @@ class BinaryQuantizationContextSInt(roundingMode: lbir.RoundingMode)
   def mul = (i: SInt, w: Bool) => Mux(w, i, -i)
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
   def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
+  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
   def actFn = signFnS
 }
 
@@ -59,7 +59,7 @@ class UniformQuantizationContextSSU(act: (SInt, SInt, Int) => UInt, roundingMode
   def mul = (i: SInt, w: SInt) => i * w
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
   def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
+  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
   def actFn = act
 }
 
@@ -71,7 +71,7 @@ class UniformQuantizationComputeUSU(act: (SInt, SInt, Int) => UInt, roundingMode
   def mul = (i: UInt, w: SInt) => i * w
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
   def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
+  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
   def actFn = act
 }
 
@@ -83,7 +83,7 @@ class UniformQuantizationContextSSS(act: (SInt, SInt, Int) => SInt, roundingMode
   def mul = (i: SInt, w: SInt) => i * w
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
   def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
+  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
   def actFn = act
 }
 
@@ -95,7 +95,7 @@ class UniformQuantizationContextUSS(act: (SInt, SInt, Int) => SInt, roundingMode
   def mul = (i: UInt, w: SInt) => i * w
   def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
   def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSInt
+  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
   def actFn = act
 }
 
