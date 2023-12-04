@@ -68,7 +68,7 @@ class ShiftRegisterConvolver[I <: Bits](l: Conv2DConfig) extends Module {
   io.inputActivationsWindow.valid := state === SRCState.sFULL && (inputWidthCounter > (l.kernel.width - 1).U || RegNext(
     inputWidthCounterWrap
   ))
-  io.nextElement.ready := state =/= SRCState.sSTALL || (io.inputActivationsWindow.ready && !io.channelDone)
+  io.nextElement.ready := (state === SRCState.sNOT_FULL || (state =/= SRCState.sNOT_FULL && io.inputActivationsWindow.ready)) && !io.channelDone
 
   when(io.channelDone) {
     assert(state === SRCState.sFULL)

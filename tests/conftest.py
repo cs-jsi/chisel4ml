@@ -505,6 +505,9 @@ def sint_simple_conv_model() -> tf.keras.Model:
             bits=4, integer=3, keep_negative=True, alpha=0.5
         ),
     )(x)
+    x = qkeras.QActivation(
+        qkeras.quantized_bits(bits=8, integer=7, keep_negative=True)
+    )(x)
     model = tf.keras.Model(inputs=[x_in], outputs=[x])
     model.compile()
     model.layers[2].set_weights([w1, b1])
