@@ -125,10 +125,10 @@ def test_audio_classifier_no_preproc_no_bias_1st_layer(
 
 
 def test_audio_classifier_no_preproc_no_bias(
-    qnn_audio_class_no_preproc, audio_data_preproc
+    qnn_audio_class_no_preproc_no_bias, audio_data_preproc
 ):
     _, _, test_set, _, _, _, _ = audio_data_preproc
-    opt_model = qnn_audio_class_no_preproc
+    opt_model = qnn_audio_class_no_preproc_no_bias
     circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
     assert circuit is not None
     ts_iter = test_set.as_numpy_iterator()
