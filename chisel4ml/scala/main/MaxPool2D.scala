@@ -109,7 +109,8 @@ class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOpt
 
   val shiftRegWrite = risingEdge(shiftRegs.last.valid)
   val (_, totalOutputCounterWrap) = Counter(shiftRegWrite, layer.output.numParams)
-  val (outputBufferCounter, outputBufferCounterWrap) = Counter(shiftRegWrite, paramsPerTransaction)
+  val (outputBufferCounter, outputBufferCounterWrap) =
+    Counter(0 until paramsPerTransaction, shiftRegWrite, totalOutputCounterWrap)
   when(shiftRegWrite) {
     outputsBuffer(outputBufferCounter) := partialMaximums.reduceTree((in0: T, in1: T) =>
       MaxSelect(in0, in1, layer.input.getType[T])
