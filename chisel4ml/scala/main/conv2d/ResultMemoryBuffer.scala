@@ -38,6 +38,7 @@ class ResultMemoryBuffer[O <: Bits](output: lbir.QTensor, options: LayerOptions)
   io.outStream.bits := regs.asUInt
   io.outStream.valid := RegNext(registerCounterWrap) || RegNext(totalCounterWrap)
   io.outStream.last := RegNext(totalCounterWrap)
+  dontTouch(io.outStream.last)
 
   io.result.ready := io.outStream.ready
 }

@@ -86,7 +86,7 @@ class UtilityFunctionsTests extends AnyFlatSpec with ChiselScalatestTester {
 
   val r = new scala.util.Random
   r.setSeed(42L)
-  val numRandomTests = 10
+  val numRandomTests = 20
   val maxAccumulatorValue = 8191
   for (idx <- 0 until numRandomTests) {
     val isNegative = r.nextBoolean()
@@ -95,6 +95,7 @@ class UtilityFunctionsTests extends AnyFlatSpec with ChiselScalatestTester {
     it should s"Random STATIC test $idx rounding value: $value, shift: $shift" in {
       test(new RoundTestBedStatic(14, -shift)) { dut =>
         dut.in.poke(value.S(14.W))
+        dut.clock.step()
         dut.out.expect(roundModel(value, shift).S)
       }
     }

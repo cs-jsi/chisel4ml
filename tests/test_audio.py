@@ -124,6 +124,45 @@ def test_audio_classifier_no_preproc_no_bias_1st_layer(
         assert np.array_equal(hw_ret, sw_ret)
 
 
+def test_audio_classifier_no_preproc_no_bias_1st_2nd_layer(
+    qnn_audio_class_no_preproc_no_bias, audio_data_preproc
+):
+    _, _, test_set, _, _, _, _ = audio_data_preproc
+    opt_model = qnn_audio_class_no_preproc_no_bias
+    circuit = generate.circuit(
+        opt_model, use_verilator=True, gen_waveform=True, num_layers=2
+    )
+    assert circuit is not None
+    ts_iter = test_set.as_numpy_iterator()
+    for _ in range(500):
+        sample, label = next(ts_iter)
+        sw_ret = opt_model.layers[2](opt_model.layers[1](sample.reshape(1, 32, 20, 1)))
+        sw_ret = opt_model.layers[4](opt_model.layers[3](sw_ret))
+        sw_ret = np.moveaxis(sw_ret.numpy().reshape(28, 16, 2), -1, 0)
+        hw_ret = circuit.predict(sample.reshape(1, 32, 20))
+        assert np.array_equal(hw_ret, sw_ret)
+
+
+def test_audio_classifier_no_preproc_no_bias_1st_2nd_3rd_layer(
+    qnn_audio_class_no_preproc_no_bias, audio_data_preproc
+):
+    _, _, test_set, _, _, _, _ = audio_data_preproc
+    opt_model = qnn_audio_class_no_preproc_no_bias
+    circuit = generate.circuit(
+        opt_model, use_verilator=True, gen_waveform=True, num_layers=3
+    )
+    assert circuit is not None
+    ts_iter = test_set.as_numpy_iterator()
+    for _ in range(100):
+        sample, label = next(ts_iter)
+        sw_ret = opt_model.layers[2](opt_model.layers[1](sample.reshape(1, 32, 20, 1)))
+        sw_ret = opt_model.layers[4](opt_model.layers[3](sw_ret))
+        sw_ret = opt_model.layers[5](sw_ret)
+        sw_ret = np.moveaxis(sw_ret.numpy().reshape(14, 8, 2), -1, 0)
+        hw_ret = circuit.predict(sample.reshape(1, 32, 20))
+        assert np.array_equal(hw_ret, sw_ret)
+
+
 def test_audio_classifier_no_preproc_no_bias(
     qnn_audio_class_no_preproc_no_bias, audio_data_preproc
 ):

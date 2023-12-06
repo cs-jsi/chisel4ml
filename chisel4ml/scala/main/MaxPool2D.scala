@@ -49,7 +49,7 @@ class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOpt
     val sREAD_WORD = Value(1.U)
     val sSTALL = Value(2.U)
   }
-  val istate = RegInit(InputBufferState.sEMPTY)
+  val state = RegInit(InputBufferState.sEMPTY)
 
   logger.info(s""" MaxPool2D parameters are: maxPoolSize -> $maxPoolSize, paramsPerTransaction -> $paramsPerTransaction
                  | shiftRegsSize -> $shiftRegsSize, input width -> ${layer.input.width}, input height ->
@@ -63,43 +63,46 @@ class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOpt
   val outputsBuffer = Reg(Vec(paramsPerTransaction, layer.input.getType[T]))
 
   val (_, channelElementsCounterWrap) =
-    Counter(istate === InputBufferState.sREAD_WORD, layer.input.numActiveParams(depthwise = true))
+    Counter(state === InputBufferState.sREAD_WORD, layer.input.numActiveParams(depthwise = true))
   val (widthCounter, widthCounterWrap) =
-    Counter(0 until layer.input.width, istate === InputBufferState.sREAD_WORD, channelElementsCounterWrap)
+    Counter(0 until layer.input.width, state === InputBufferState.sREAD_WORD, channelElementsCounterWrap)
   val (heightCounter, heightCounterWrap) =
     Counter(0 until layer.input.height, widthCounterWrap, channelElementsCounterWrap)
-  val (inputBufferCntValue, inputBufferCntWrap) = Counter(istate === InputBufferState.sREAD_WORD, paramsPerTransaction)
   val (totalInputElements, totalInputElementsWrap) =
-    Counter(istate === InputBufferState.sREAD_WORD, layer.input.numParams)
-  val (_, transactionsCounterWrap) = Counter(0 until layer.input.numTransactions(options.busWidthIn), inStream.fire)
+    Counter(state === InputBufferState.sREAD_WORD, layer.input.numParams)
+  val (transactionsCounter, transactionsCounterWrap) =
+    Counter(0 until layer.input.numTransactions(options.busWidthIn), inStream.fire)
+  val (inputBufferCounter, inputBufferCounterWrap) =
+    Counter(0 until paramsPerTransaction, state === InputBufferState.sREAD_WORD, totalInputElementsWrap)
   dontTouch(totalInputElements)
+  dontTouch(transactionsCounter)
 
-  when(istate === InputBufferState.sEMPTY && inStream.fire) {
-    istate := InputBufferState.sREAD_WORD
-  }.elsewhen(istate === InputBufferState.sREAD_WORD && inputBufferCntWrap) {
+  when(state === InputBufferState.sEMPTY && inStream.fire) {
+    state := InputBufferState.sREAD_WORD
+  }.elsewhen(state === InputBufferState.sREAD_WORD && (inputBufferCounterWrap || totalInputElementsWrap)) {
     when(!outStream.ready) {
-      istate := InputBufferState.sSTALL
+      state := InputBufferState.sSTALL
     }.otherwise {
-      istate := InputBufferState.sEMPTY
+      state := InputBufferState.sEMPTY
     }
-  }.elsewhen(istate === InputBufferState.sSTALL && outStream.ready) {
-    istate := InputBufferState.sEMPTY
+  }.elsewhen(state === InputBufferState.sSTALL && outStream.ready) {
+    state := InputBufferState.sEMPTY
   }
 
-  inStream.ready := istate === InputBufferState.sEMPTY
+  inStream.ready := state === InputBufferState.sEMPTY
   val startOfMaxPoolWindow = ((heightCounter % maxPoolSize.U === 0.U) &&
     (widthCounter % maxPoolSize.U === 0.U) &&
-    istate === InputBufferState.sREAD_WORD)
+    state === InputBufferState.sREAD_WORD)
 
-  val inputAndValid = Wire(new Bundle { val input = layer.input.getType[T]; val valid = Bool() })
-  inputAndValid.input := inputsBuffer(inputBufferCntValue)
+  val inputAndValid = Wire(Valid(layer.input.getType[T]))
+  inputAndValid.bits := inputsBuffer(inputBufferCounter)
   inputAndValid.valid := startOfMaxPoolWindow
-  val shiftRegs = ShiftRegisters(inputAndValid, shiftRegsSize, istate =/= InputBufferState.sEMPTY && outStream.ready)
+  val shiftRegs = ShiftRegisters(inputAndValid, shiftRegsSize, state =/= InputBufferState.sEMPTY && outStream.ready)
 
   val partialMaximums = VecInit((0 until maxPoolSize).map((i: Int) => {
     MaxSelect(
-      shiftRegs.map(_.input).reverse(0 + (i * layer.input.width)),
-      shiftRegs.map(_.input).reverse(1 + (i * layer.input.width)),
+      shiftRegs.map(_.bits).reverse(0 + (i * layer.input.width)),
+      shiftRegs.map(_.bits).reverse(1 + (i * layer.input.width)),
       layer.input.getType[T]
     )
   }))
@@ -115,6 +118,14 @@ class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOpt
   outStream.bits := outputsBuffer.asTypeOf(outStream.bits)
   outStream.valid := RegNext(outputBufferCounterWrap || totalOutputCounterWrap)
   outStream.last := RegNext(totalOutputCounterWrap)
+
+  // VERIFICATION
+  when(inStream.fire && !totalInputElementsWrap) {
+    assert(inputBufferCounter === 0.U)
+  }
+  when(transactionsCounterWrap) {
+    assert(inStream.last)
+  }
 }
 
 class MaxSelect[T <: Bits with Num[T]](genT: T) extends Module {

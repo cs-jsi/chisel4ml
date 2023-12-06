@@ -22,6 +22,10 @@ import chisel4ml.implicits._
 import chisel4ml.MemWordSize
 import chisel4ml.util.isStable
 
+/*
+  Moves the entire tensor after obtainint the signal io.start.
+  (this includes several channels)
+ */
 class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
   object IDMState extends ChiselEnum {
     val sWAIT = Value(0.U)
@@ -34,11 +38,10 @@ class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
     val actMemWrittenTo = Input(UInt(log2Up(input.memDepth + 1).W))
     val start = Input(Bool())
   })
-
   val (elementCounter, elementCounterWrap) = Counter(0 until input.numParams, io.nextElement.fire)
   val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until input.paramsPerWord, io.nextElement.fire, io.start)
   val (addressCounter, _) = Counter(0 until input.memDepth, wordSelectCounterWrap, io.start)
-
+  dontTouch(elementCounterWrap)
   val state = RegInit(IDMState.sWAIT)
   when(io.start) {
     state := IDMState.sMOVEDATA

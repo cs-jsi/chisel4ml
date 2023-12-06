@@ -54,6 +54,8 @@ class KernelRFLoader[W <: Bits](l: lbir.Conv2DConfig) extends Module {
   val (wordElemCnt, wordElemWrap) = Counter(0 until l.kernel.paramsPerWord, io.krf.valid, io.ctrl.loadKernel.valid)
   val (_, activeElemWrap) = Counter(0 until l.kernel.numActiveParams(l.depthwise), io.krf.valid)
   val (_, kernelElemWrap) = Counter(0 until l.kernel.numKernelParams, io.krf.valid, io.ctrl.loadKernel.valid)
+  val (channelCounter, _) =
+    Counter(0 until l.kernel.numChannels, io.ctrl.nextActive.getOrElse(false.B), io.ctrl.loadKernel.valid)
   val (romAddrCntValue, _) =
     Counter(
       0 to l.kernel.memDepth,
@@ -80,13 +82,13 @@ class KernelRFLoader[W <: Bits](l: lbir.Conv2DConfig) extends Module {
     } else {
       state := KrlState.sEND
     }
-  }.elsewhen(state === KrlState.sACTIVEFULL && io.ctrl.nextActive.getOrElse(false.B)) {
+  }.elsewhen(state === KrlState.sACTIVEFULL && io.ctrl.nextActive.getOrElse(true.B)) {
     state := KrlState.sFILLRF
   }.elsewhen(state === KrlState.sEND) {
     state := KrlState.sWAIT
   }
 
-  io.ctrl.lastActiveLoaded := state === KrlState.sEND
+  io.ctrl.lastActiveLoaded := channelCounter === (l.kernel.numChannels - 1).U
 
   // kernel ROM interface
   io.rom.enable := true.B // TODO

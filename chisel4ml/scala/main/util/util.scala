@@ -117,7 +117,7 @@ package object util {
         val sign = pAct(pAct.getWidth - 1)
         val nsign = !sign
         val fDec = pAct(shift.abs - 1) // first (most significnat) decimal number
-        val rest = if (shift.abs > 1) VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _) else true.B
+        val rest = if (shift.abs > 1) VecInit(pAct(shift.abs - 2, 0).asBools).reduceTree(_ || _) else false.B
         val carry = (nsign && fDec) || (sign && fDec && rest)
         shifted + carry.asUInt.zext
       } else {

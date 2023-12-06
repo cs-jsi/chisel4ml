@@ -46,7 +46,6 @@ class ShiftRegisterConvolver[I <: Bits](l: Conv2DConfig) extends Module {
   object SRCState extends ChiselEnum {
     val sNOT_FULL = Value(0.U)
     val sFULL = Value(1.U)
-    val sSTALL = Value(2.U)
   }
   val state = RegInit(SRCState.sNOT_FULL)
 
@@ -54,31 +53,30 @@ class ShiftRegisterConvolver[I <: Bits](l: Conv2DConfig) extends Module {
   val regs = ShiftRegisters(io.nextElement.bits, numRegs, io.nextElement.fire)
 
   val (elementCounter, _) = Counter(0 to l.input.numActiveParams(true), io.nextElement.fire, io.channelDone)
-  val (inputWidthCounter, inputWidthCounterWrap) = Counter(0 until l.input.width, io.nextElement.fire, io.channelDone)
+  val (inputWidthCounter, _) = Counter(0 until l.input.width, io.nextElement.fire, io.channelDone)
   val (outputCounter, outputCounterWrap) =
     Counter(0 until l.output.numActiveParams(true), io.inputActivationsWindow.fire)
   dontTouch(outputCounter)
   dontTouch(elementCounter)
 
-  io.channelDone := outputCounterWrap
   io.inputActivationsWindow.bits.zipWithIndex.foreach {
     case (elem, ind) => elem := regs(transformIndex(ind))
   }
 
-  io.inputActivationsWindow.valid := state === SRCState.sFULL && (inputWidthCounter > (l.kernel.width - 1).U || RegNext(
-    inputWidthCounterWrap
-  ))
-  io.nextElement.ready := (state === SRCState.sNOT_FULL || (state =/= SRCState.sNOT_FULL && io.inputActivationsWindow.ready)) && !io.channelDone
+  io.channelDone := outputCounterWrap
+  io.inputActivationsWindow.valid := ((state === SRCState.sFULL && (inputWidthCounter > (l.kernel.width - 1).U)) ||
+    (state === SRCState.sFULL && inputWidthCounter === 0.U))
+  io.nextElement.ready := (state === SRCState.sNOT_FULL ||
+    (state === SRCState.sFULL && io.inputActivationsWindow.ready)) && !io.channelDone
 
   when(io.channelDone) {
     assert(state === SRCState.sFULL)
+    assert(outputCounterWrap)
+    assert(elementCounter === l.input.numActiveParams(true).U)
     state := SRCState.sNOT_FULL
   }.elsewhen(state === SRCState.sNOT_FULL && elementCounter > (numRegs - 2).U && io.nextElement.fire) {
     state := SRCState.sFULL
   }.elsewhen(state === SRCState.sFULL && !io.nextElement.fire && io.inputActivationsWindow.fire) {
-    state := SRCState.sSTALL
-  }.elsewhen(state === SRCState.sSTALL && io.nextElement.fire) {
-    assert(io.inputActivationsWindow.valid === false.B)
-    state := SRCState.sFULL
+    state := SRCState.sNOT_FULL
   }
 }

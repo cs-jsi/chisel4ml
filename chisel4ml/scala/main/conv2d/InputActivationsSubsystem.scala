@@ -31,15 +31,15 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
   }
   val state = RegInit(InSubState.sEMPTY)
 
-  val (channelCounterShift, channelCounterShiftWrap) = Counter(0 until l.kernel.numChannels, io.activeDone)
-  val (kernelCounterShift, _) = Counter(0 until l.kernel.numKernels, channelCounterShiftWrap)
-  val isLastActiveWindowShift =
+  val (channelCounterShift, channelCounterWrap) = Counter(0 until l.kernel.numChannels, io.activeDone)
+  val (kernelCounterShift, _) = Counter(0 until l.kernel.numKernels, channelCounterWrap)
+  val isLastActiveWindow =
     kernelCounterShift === (l.kernel.numKernels - 1).U && channelCounterShift === (l.kernel.numChannels - 1).U
 
   val (actMemCounter, _) = Counter(
     0 to l.input.memDepth,
     io.inStream.fire,
-    state === InSubState.sFULL && isLastActiveWindowShift && io.activeDone
+    state === InSubState.sFULL && isLastActiveWindow && io.activeDone
   )
 
   /* INPUT STREAM LOGIC*/
@@ -53,9 +53,8 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
 
   // Start one cycle after start of transmission of the input packet or if already loaded in next cycle
   val startOfTransmission = state === InSubState.sRECEVING_DATA && RegNext(state === InSubState.sEMPTY)
-  dataMover.io.start := RegNext(startOfTransmission) || (RegNext(
-    io.activeDone && !isLastActiveWindowShift
-  ) && channelCounterShift === 0.U)
+  dataMover.io.start := RegNext(startOfTransmission) ||
+    (RegNext(io.activeDone && !isLastActiveWindow && channelCounterWrap))
 
   shiftRegConvolver.io.nextElement <> dataMover.io.nextElement
   io.inputActivationsWindow <> shiftRegConvolver.io.inputActivationsWindow
@@ -66,7 +65,7 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
   }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (l.input.memDepth - 1).U && io.inStream.fire) {
     assert(io.inStream.last)
     state := InSubState.sFULL
-  }.elsewhen(state === InSubState.sFULL && isLastActiveWindowShift && io.activeDone) {
+  }.elsewhen(state === InSubState.sFULL && isLastActiveWindow && io.activeDone) {
     state := InSubState.sEMPTY
   }
 }

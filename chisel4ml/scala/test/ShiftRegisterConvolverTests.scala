@@ -68,7 +68,7 @@ object RandShiftRegConvTestParams {
     )
     val kernelTensor = lbir.QTensor(
       //          kernels, channels, height, width
-      shape = Seq(p.inChannels, 1, p.kernelHeight, p.kernelWidth)
+      shape = Seq(p.inKernels, p.inChannels, p.kernelHeight, p.kernelWidth)
     )
     val outputTensor = lbir.QTensor(
       shape = Seq(p.inChannels, 1, p.inHeight - p.kernelHeight + 1, p.inWidth - p.kernelWidth + 1)
