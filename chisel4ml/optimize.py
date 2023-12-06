@@ -10,7 +10,6 @@
 # limitations under the License.
 import logging
 
-import qkeras
 from tensorflow_model_optimization.python.core.sparsity.keras import prune
 
 from chisel4ml.optimizations import qkeras_opt_list
@@ -23,7 +22,6 @@ def qkeras_model(model, skip_list=[]):
     "Applys optimizations to the model."
     new_model = prune.strip_pruning(model)
     new_model = clone_model_from_config(new_model)
-    new_model = qkeras.unfold_model(new_model)
 
     for opt in qkeras_opt_list:
         if opt.__class__.__name__ in skip_list:

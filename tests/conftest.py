@@ -14,6 +14,7 @@ from chisel4ml import chisel4ml_server
 from chisel4ml import optimize
 from chisel4ml.preprocess.fft_layer import FFTLayer
 from chisel4ml.preprocess.lmfe_layer import LMFELayer
+from chisel4ml.qkeras_extensions import FlattenChannelwise
 from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -969,7 +970,7 @@ def qnn_audio_class_no_preproc_no_bias(audio_data_preproc):
     )
     model.add(qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3)))
     model.add(tf.keras.layers.MaxPooling2D())
-    model.add(tf.keras.layers.Flatten())
+    model.add(FlattenChannelwise())
     model.add(
         prune.prune_low_magnitude(
             qkeras.QDense(
@@ -994,6 +995,9 @@ def qnn_audio_class_no_preproc_no_bias(audio_data_preproc):
             ),
             **pruning_params,
         )
+    )
+    model.add(
+        qkeras.QActivation(qkeras.quantized_bits(bits=8, integer=7, keep_negative=True))
     )
 
     model.summary()

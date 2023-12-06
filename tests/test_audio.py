@@ -88,6 +88,10 @@ def test_preproc_speech_commands(audio_data):
     )
     model.add(FFTLayer(win_fn="hamming"))
     model.add(LMFELayer())
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+    )
     opt_model = optimize.qkeras_model(model)
 
     audio_preproc = generate.circuit(
@@ -163,6 +167,48 @@ def test_audio_classifier_no_preproc_no_bias_1st_2nd_3rd_layer(
         assert np.array_equal(hw_ret, sw_ret)
 
 
+def test_audio_classifier_no_preproc_no_bias_1st_2nd_3rd_flatten_layer(
+    qnn_audio_class_no_preproc_no_bias, audio_data_preproc
+):
+    _, _, test_set, _, _, _, _ = audio_data_preproc
+    opt_model = qnn_audio_class_no_preproc_no_bias
+    circuit = generate.circuit(
+        opt_model, use_verilator=True, gen_waveform=True, num_layers=3
+    )
+    assert circuit is not None
+    ts_iter = test_set.as_numpy_iterator()
+    for _ in range(100):
+        sample, label = next(ts_iter)
+        sw_ret = opt_model.layers[2](opt_model.layers[1](sample.reshape(1, 32, 20, 1)))
+        sw_ret = opt_model.layers[4](opt_model.layers[3](sw_ret))
+        sw_ret = opt_model.layers[5](sw_ret)
+        sw_ret = opt_model.layers[6](sw_ret)
+        sw_ret = sw_ret.numpy()
+        hw_ret = circuit.predict(sample.reshape(1, 32, 20))
+        assert np.array_equal(hw_ret.flatten(), sw_ret.flatten())
+
+
+def test_audio_classifier_no_preproc_no_bias_1st_2nd_3rd_4th_layer(
+    qnn_audio_class_no_preproc_no_bias, audio_data_preproc
+):
+    _, _, test_set, _, _, _, _ = audio_data_preproc
+    opt_model = qnn_audio_class_no_preproc_no_bias
+    circuit = generate.circuit(
+        opt_model, use_verilator=True, gen_waveform=True, num_layers=4
+    )
+    assert circuit is not None
+    ts_iter = test_set.as_numpy_iterator()
+    for _ in range(100):
+        sample, label = next(ts_iter)
+        sw_ret = opt_model.layers[2](opt_model.layers[1](sample.reshape(1, 32, 20, 1)))
+        sw_ret = opt_model.layers[4](opt_model.layers[3](sw_ret))
+        sw_ret = opt_model.layers[5](sw_ret)
+        sw_ret = opt_model.layers[8](opt_model.layers[7](opt_model.layers[6](sw_ret)))
+        sw_ret = sw_ret.numpy().reshape(8)
+        hw_ret = circuit.predict(sample.reshape(1, 32, 20))
+        assert np.array_equal(hw_ret, sw_ret)
+
+
 def test_audio_classifier_no_preproc_no_bias(
     qnn_audio_class_no_preproc_no_bias, audio_data_preproc
 ):
@@ -176,7 +222,7 @@ def test_audio_classifier_no_preproc_no_bias(
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
         sw_ret = opt_model.predict(sample.reshape(1, 32, 20, 1))
         print(f"hw_ret: {np.argmax(hw_ret)} - sw_ret: {np.argmax(sw_ret)}")
-        assert np.array_equal(hw_ret, sw_ret)
+        assert np.array_equal(hw_ret, sw_ret.flatten())
 
 
 def test_audio_classifier_no_preproc_1st_layer(

@@ -29,13 +29,16 @@ class ProcessingElementWrapSimpleToSequential(layer: DenseConfig, options: Layer
     with LBIRStream {
   val logger = LoggerFactory.getLogger(this.getClass())
 
+  val inputValidBits = layer.input.paramsPerWord * layer.input.dtype.bitwidth
+  val outputValidBits = layer.output.paramsPerWord * layer.output.dtype.bitwidth
+
   val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
   val inputBuffer = RegInit(
-    VecInit(Seq.fill(layer.input.numTransactions(options.busWidthIn))(0.U(options.busWidthIn.W)))
+    VecInit(Seq.fill(layer.input.numTransactions(options.busWidthIn))(0.U(inputValidBits.W)))
   )
   val outputBuffer = RegInit(
-    VecInit(Seq.fill(layer.output.numTransactions(options.busWidthOut))(0.U(options.busWidthOut.W)))
+    VecInit(Seq.fill(layer.output.numTransactions(options.busWidthOut))(0.U(outputValidBits.W)))
   )
 
   logger.info(s"""Created new ProcessingElementWrapSimpleToSequential module. Number of input transactions:
@@ -54,7 +57,7 @@ class ProcessingElementWrapSimpleToSequential(layer: DenseConfig, options: Layer
     */
   inStream.ready := !outputBufferFull
   when(inStream.fire) {
-    inputBuffer(inputCntValue) := inStream.bits
+    inputBuffer(inputCntValue) := inStream.bits(inputValidBits - 1, 0)
   }
 
   /** *** CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE ****

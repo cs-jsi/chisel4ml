@@ -10,6 +10,7 @@
 # limitations under the License.
 import tensorflow as tf
 
+from chisel4ml.qkeras_extensions import FlattenChannelwise
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 
@@ -32,5 +33,6 @@ class QKerasRemoveDeadLayers(QKerasTransform):
                 tf.keras.layers.Dropout,
                 tf.keras.layers.InputLayer,
                 tf.keras.layers.Flatten,
+                FlattenChannelwise,
             ),
         )
