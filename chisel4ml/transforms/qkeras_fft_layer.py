@@ -9,7 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import qkeras
-import numpy as np
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.datatype_pb2 import Datatype
@@ -31,10 +30,10 @@ class QKerasAudioPreprocess(QKerasTransform):
     order = 2
 
     def _call_impl(self, layers):
-        shape = layers[0].get_output_shape_at(0)[1:]
+        # shape = layers[0].get_output_shape_at(0)[1:]
         bitwidth = _qact_to_bitwidth(layers[0].activation)
         signed = _qact_to_sign(layers[0].activation)
-        #assert shape == (512), "Only 32 by 512 frames supported currently"
+        # assert shape == (512), "Only 32 by 512 frames supported currently"
         assert bitwidth == 12
         assert signed
         fft_config = lbir.FFTConfig(
@@ -48,9 +47,9 @@ class QKerasAudioPreprocess(QKerasTransform):
                     bitwidth=12,
                     shift=[0],
                     offset=[0],
-                    ),
-                shape=[32, 512],  # KERNEL, CH, WIDTH, HEIGHT
                 ),
+                shape=[32, 512],  # KERNEL, CH, WIDTH, HEIGHT
+            ),
             output=QTensor(
                 dtype=Datatype(
                     quantization=Datatype.QuantizationType.UNIFORM,
@@ -60,8 +59,8 @@ class QKerasAudioPreprocess(QKerasTransform):
                     offset=[0],
                 ),
                 shape=[32, 512],  # KERNEL, CH, WIDTH, HEIGHT
-                ),
-            )
+            ),
+        )
         return [lbir.LayerWrap(fft=fft_config)]
 
     def is_applicable(self, layers) -> bool:

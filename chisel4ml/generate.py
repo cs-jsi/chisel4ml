@@ -87,10 +87,6 @@ def generate_layer_options(lbir_model, axi_stream_width):
     for layer in lbir_model.layers:
         if layer.HasField("fft"):
             options.append(LayerOptions(bus_width_in=12, bus_width_out=33))
-        elif layer.HasField("lmfe"):
-            options.append(
-                LayerOptions(bus_width_in=options[-1].bus_width_out, bus_width_out=8)
-            )
         else:
             if len(options) > 0:
                 options.append(
