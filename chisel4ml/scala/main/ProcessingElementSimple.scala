@@ -15,13 +15,16 @@
  */
 package chisel4ml
 
-import chisel4ml.Neuron
+import chisel4ml.{NeuronWithBias, NeuronWithoutBias}
 import chisel4ml.implicits._
 import chisel4ml._
 import lbir.Datatype.QuantizationType._
 import lbir.DenseConfig
 import org.slf4j.LoggerFactory
 import chisel3._
+import spire.algebra.Ring
+import spire.implicits._
+import dsptools.numbers._
 
 object ProcessingElementSimple {
   def apply(layer: DenseConfig) = (
@@ -60,7 +63,7 @@ object ProcessingElementSimple {
   }
 }
 
-class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
+class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
   layer: DenseConfig
 )(qc:    QuantizationContext[I, W, M, A, O])
     extends Module
@@ -74,13 +77,23 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: B
   val thresh:  Seq[A] = layer.getThresh[A]
 
   for (i <- 0 until layer.output.shape(0)) {
-    out(i) := Neuron[I, W, M, A, O](
-      in.map(_.asInstanceOf[I]),
-      weights(i),
-      thresh(i),
-      shift(i),
-      layer.output.dtype.bitwidth
-    )(qc)
+    if (layer.weights.dtype.quantization == BINARY && layer.input.dtype.quantization == BINARY) {
+      out(i) := NeuronWithoutBias[I, W, M, A, O](
+        in.map(_.asInstanceOf[I]),
+        weights(i),
+        thresh(i),
+        shift(i),
+        layer.output.dtype.bitwidth
+      )(qc)
+    } else {
+      out(i) := NeuronWithBias[I, W, M, A, O](
+        in.map(_.asInstanceOf[I]),
+        weights(i),
+        thresh(i),
+        shift(i),
+        layer.output.dtype.bitwidth
+      )(qc)
+    }
   }
 
   logger.info(

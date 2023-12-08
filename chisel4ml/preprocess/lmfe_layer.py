@@ -35,9 +35,12 @@ class LMFELayer(tf.keras.layers.Layer):
             norm=None,
         )
 
-    @tf.function()
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=[None, 32, 512, 1], dtype=tf.float32)]
+    )
     def call(self, inputs):
-        return tf.numpy_function(self.np_call, [inputs], tf.float32, stateful=False)
+        tensor = tf.numpy_function(self.np_call, [inputs], tf.float32, stateful=False)
+        return tf.reshape(tensor, (len(inputs), 32, 20, 1))
 
     def np_call(self, inputs):
         if inputs.ndim == 4:

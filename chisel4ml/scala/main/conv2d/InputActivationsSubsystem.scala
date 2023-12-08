@@ -37,7 +37,7 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
     kernelCounterShift === (l.kernel.numKernels - 1).U && channelCounterShift === (l.kernel.numChannels - 1).U
 
   val (actMemCounter, _) = Counter(
-    0 to l.input.memDepth,
+    0 to l.input.numTransactions(options.busWidthIn),
     io.inStream.fire,
     state === InSubState.sFULL && isLastActiveWindow && io.activeDone
   )
