@@ -25,6 +25,9 @@ import services.LayerOptions
 import chisel3._
 import interfaces.amba.axis._
 import chisel4ml.QuantizationContext
+import spire.algebra.Ring
+import spire.implicits._
+import dsptools.numbers._
 
 /** A sequential processing element for convolutions.
   *
@@ -36,7 +39,7 @@ import chisel4ml.QuantizationContext
   * thanks to the low bitwidths of parameters this should be an acceptable trade-off.
   */
 
-class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
+class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
   layer:   Conv2DConfig,
   options: LayerOptions
 )(qc:      QuantizationContext[I, W, M, A, O])

@@ -31,14 +31,21 @@ class FFTLayer(tf.keras.layers.Layer):
             else np.ones(self.frame_length)
         )
 
-    @tf.function()
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=[None, 32, 512], dtype=tf.float32)]
+    )
     def call(self, inputs):
         tensor = tf.numpy_function(self.np_call, [inputs], tf.float32, stateful=False)
-        return tensor
+        return tf.reshape(tensor, (len(inputs), 32, 512, 1))
 
     def np_call(self, inputs):
-        res = np.fft.fft(inputs * self.window_fn, norm="backward", axis=-1).real
-        return np.expand_dims(res, axis=-1).astype(np.float32)
+        results = []
+        for x in inputs:
+            res = np.fft.fft(x * self.window_fn, norm="backward", axis=-1).real
+            results.append(np.expand_dims(res, axis=-1).astype(np.float32))
+        return tf.convert_to_tensor(
+            np.reshape(np.array(results), [len(inputs), 32, 512, 1])
+        )
 
     def get_config(self):
         base_config = super().get_config()

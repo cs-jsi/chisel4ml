@@ -62,8 +62,8 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
 
   // Fix discrepancy between last signal semantics of LBIRDriver and FFT.
   // FFT has per frame last signals, LBIRDriver per tensor last signal.
-  val (fftCounter, fftCounterWrap) = Counter(inStream.fire, fftParams.numPoints)
-  val (_, outCounterWrap) = Counter(sdffft.io.lastOut, layer.numFrames)
+  val (fftCounter, fftCounterWrap) = Counter(0 until fftParams.numPoints, inStream.fire)
+  val (_, outCounterWrap) = Counter(0 until layer.numFrames, sdffft.io.lastOut)
 
   object fftState extends ChiselEnum {
     val sWAIT = Value(0.U)
@@ -91,4 +91,8 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
   outStream.valid := sdffft.io.out.valid
   outStream.bits := sdffft.io.out.bits.real.asTypeOf(outStream.bits)
   outStream.last := outCounterWrap
+
+  when(outCounterWrap) {
+    assert(outStream.last)
+  }
 }
