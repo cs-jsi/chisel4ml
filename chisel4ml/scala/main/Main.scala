@@ -82,6 +82,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
   private def start(): Unit = {
     server = ServerBuilder
       .forPort(Chisel4mlServer.port)
+      .maxInboundMessageSize(Math.pow(2, 26).toInt)
       .addService(Chisel4mlServiceGrpc.bindService(Chisel4mlServiceImpl, executionContext))
       .build
       .start

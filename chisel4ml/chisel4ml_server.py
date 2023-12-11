@@ -77,7 +77,7 @@ class Chisel4mlServer:
         self._stub = services_grpc.Chisel4mlServiceStub(self._channel)
         log.info("Created grpc channel.")
 
-    def send_grpc_msg(self, msg, timeout=60):
+    def send_grpc_msg(self, msg, timeout=480):
         concurrent.futures.wait([self._future])
         if isinstance(msg, services.GenerateCircuitParams):
             ret = self._stub.GenerateCircuit(msg, wait_for_ready=True, timeout=timeout)
@@ -96,7 +96,8 @@ class Chisel4mlServer:
 
     def stop(self):
         log.info(f"Stoping task with pid: {self.task.pid}.")
-        self._channel.close()
+        if self._channel is not None:
+            self._channel.close()
         self._log_file.close()
         self.task.terminate()
 
@@ -120,7 +121,8 @@ def start_server_once():
         os.chdir(temp_dir)
         try:
             server = Chisel4mlServer(
-                command=["java", "-jar", str(jar_file)], temp_dir=str(temp_dir)
+                command=["java", "-jar", "-Xmx14g", str(jar_file)],
+                temp_dir=str(temp_dir),
             )
         finally:
             os.chdir(backup)

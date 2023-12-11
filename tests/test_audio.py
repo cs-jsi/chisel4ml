@@ -356,3 +356,23 @@ def test_audio_classifier_full(qnn_audio_class, audio_data):
             print("MISPREDICTION!")
         assert mistake < 5
         print(f"Number of mispredictions is {mistake}.")
+
+
+@pytest.mark.skip(reason="takes to long")
+def test_audio_classifier_big_full(qnn_audio_class_big, audio_data):
+    _, _, test_set, _, _, _, _ = audio_data
+    opt_model = qnn_audio_class_big
+    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=False)
+    assert circuit is not None
+    ts_iter = test_set.as_numpy_iterator()
+    mistake = 0
+    for _ in range(100):
+        sample, label = next(ts_iter)
+        hw_ret = circuit.predict(sample)
+        sw_ret = opt_model.predict(sample.reshape(1, 32, 512))
+        print(f"hw_ret: {np.argmax(hw_ret)} - sw_ret: {np.argmax(sw_ret)}")
+        if np.argmax(softmax(hw_ret)) != np.argmax(softmax(sw_ret)):
+            mistake = mistake + 1
+            print("MISPREDICTION!")
+        assert mistake < 5
+        print(f"Number of mispredictions is {mistake}.")
