@@ -58,14 +58,14 @@ val commonSettings = Seq(
 lazy val interfaces = (project in file("interfaces")).settings(commonSettings, name := "interfaces")
 lazy val memories = (project in file("memories")).settings(commonSettings, name := "memories")
 
-lazy val fft = (project in file("audio_features_extract/sdf-fft"))
+lazy val fft = (project in file("sdf-fft"))
   .settings(commonSettings, name := "sdf-fft")
-lazy val afe = (project in file("audio_features_extract"))
+lazy val melengine = (project in file("mel-engine"))
   .dependsOn(fft, interfaces, memories)
-  .settings(commonSettings, name := "afe")
+  .settings(commonSettings, name := "melengine")
 
 lazy val root = (project in file("."))
-  .dependsOn(afe, interfaces, memories)
+  .dependsOn(melengine, fft, interfaces, memories)
   .settings(
     commonSettings,
     assembly / mainClass := Some("chisel4ml.Chisel4mlServer"),

@@ -21,7 +21,7 @@ import chisel4ml.LBIRStream
 import lbir.LMFEConfig
 import org.slf4j.LoggerFactory
 import services.LayerOptions
-import afe._
+import melengine._
 import dsptools._
 import fft._
 import interfaces.amba.axis._
