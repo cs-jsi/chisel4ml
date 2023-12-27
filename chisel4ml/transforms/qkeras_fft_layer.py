@@ -30,17 +30,13 @@ class QKerasAudioPreprocess(QKerasTransform):
     order = 2
 
     def _call_impl(self, layers):
-        # shape = layers[0].get_output_shape_at(0)[1:]
         bitwidth = _qact_to_bitwidth(layers[0].activation)
         signed = _qact_to_sign(layers[0].activation)
-        # assert shape == (512), "Only 32 by 512 frames supported currently"
         assert bitwidth == 12
         assert signed
-        fft_config = lbir.FFTConfig(
-            fft_size=512,
-            num_frames=32,
-            win_fn=layers[1].window_fn.tolist(),
-            input=QTensor(
+        fft_config = layers[1].cfg
+        fft_config.input.CopyFrom(
+            QTensor(
                 dtype=Datatype(
                     quantization=Datatype.QuantizationType.UNIFORM,
                     signed=True,
@@ -48,9 +44,14 @@ class QKerasAudioPreprocess(QKerasTransform):
                     shift=[0],
                     offset=[0],
                 ),
-                shape=[32, 512],  # KERNEL, CH, WIDTH, HEIGHT
-            ),
-            output=QTensor(
+                shape=[
+                    layers[1].cfg.num_frames,
+                    layers[1].cfg.fft_size,
+                ],  # KERNEL, CH, WIDTH, HEIGHT
+            )
+        )
+        fft_config.output.CopyFrom(
+            QTensor(
                 dtype=Datatype(
                     quantization=Datatype.QuantizationType.UNIFORM,
                     signed=True,
@@ -58,8 +59,11 @@ class QKerasAudioPreprocess(QKerasTransform):
                     shift=[0],
                     offset=[0],
                 ),
-                shape=[32, 512],  # KERNEL, CH, WIDTH, HEIGHT
-            ),
+                shape=[
+                    layers[1].cfg.num_frames,
+                    layers[1].cfg.fft_size,
+                ],  # KERNEL, CH, WIDTH, HEIGHT
+            )
         )
         return [lbir.LayerWrap(fft=fft_config)]
 

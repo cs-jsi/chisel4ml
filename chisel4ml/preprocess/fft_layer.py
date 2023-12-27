@@ -13,30 +13,26 @@ import logging
 import numpy as np
 import tensorflow as tf
 
+from chisel4ml.lbir.lbir_pb2 import FFTConfig
+
 log = logging.getLogger(__name__)
 
 
 class FFTLayer(tf.keras.layers.Layer):
     """TODO"""
 
-    def __init__(self, win_fn="hamming"):
+    def __init__(self, cfg: FFTConfig):
         super(FFTLayer, self).__init__()
-        self.frame_length = 512
-        self.num_frames = 32
-        self.sr = self.num_frames * self.frame_length  # approx 16000
-        self.win_fn = win_fn
-        self.window_fn = (
-            np.hamming(self.frame_length)
-            if win_fn == "hamming"
-            else np.ones(self.frame_length)
-        )
+        self.cfg = cfg
+        self.sr = cfg.num_frames * cfg.fft_size  # approx 16000
+        self.window_fn = np.array(cfg.win_fn)
 
-    @tf.function(
-        input_signature=[tf.TensorSpec(shape=[None, 32, 512], dtype=tf.float32)]
-    )
+    @tf.function(input_signature=[tf.TensorSpec(shape=None, dtype=tf.float32)])
     def call(self, inputs):
         tensor = tf.numpy_function(self.np_call, [inputs], tf.float32, stateful=False)
-        return tf.reshape(tensor, (len(inputs), 32, 512, 1))
+        return tf.reshape(
+            tensor, (len(inputs), self.cfg.num_frames, self.cfg.fft_size, 1)
+        )
 
     def np_call(self, inputs):
         results = []
@@ -44,14 +40,17 @@ class FFTLayer(tf.keras.layers.Layer):
             res = np.fft.fft(x * self.window_fn, norm="backward", axis=-1).real
             results.append(np.expand_dims(res, axis=-1).astype(np.float32))
         return tf.convert_to_tensor(
-            np.reshape(np.array(results), [len(inputs), 32, 512, 1])
+            np.reshape(
+                np.array(results),
+                [len(inputs), self.cfg.num_frames, self.cfg.fft_size, 1],
+            )
         )
 
     def get_config(self):
         base_config = super().get_config()
-        config = {"win_fn": self.win_fn}
+        config = {"cfg": self.cfg}
         return {**base_config, **config}
 
     @classmethod
     def from_config(cls, config):
-        return cls(win_fn=config["win_fn"])
+        return cls(cfg=config["cfg"])

@@ -8,6 +8,7 @@ from tensorflow.nn import softmax
 
 from chisel4ml import generate
 from chisel4ml import optimize
+from chisel4ml.lbir.lbir_pb2 import FFTConfig
 from chisel4ml.preprocess.fft_layer import FFTLayer
 from chisel4ml.preprocess.lmfe_layer import LMFELayer
 
@@ -38,7 +39,13 @@ def test_fft():
                             qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1)
                         )
                     )
-                    model.add(FFTLayer(win_fn=win))
+                    model.add(
+                        FFTLayer(
+                            FFTConfig(
+                                fft_size=512, num_frames=32, win_fn=np.hamming(512)
+                            )
+                        )
+                    )
                     opt_model = optimize.qkeras_model(model)
                     audio_preproc = generate.circuit(
                         opt_model=opt_model, use_verilator=True, gen_waveform=True
