@@ -26,11 +26,9 @@ class QKerasAudioPreprocess(QKerasTransform):
     order = 3
 
     def _call_impl(self, layers):
-        lmfe_config = lbir.LMFEConfig(
-            fft_size=512,
-            num_mels=20,
-            num_frames=32,
-            input=QTensor(
+        lmfe_config = layers[0].cfg
+        lmfe_config.input.CopyFrom(
+            QTensor(
                 dtype=Datatype(
                     quantization=Datatype.QuantizationType.UNIFORM,
                     signed=True,
@@ -38,9 +36,11 @@ class QKerasAudioPreprocess(QKerasTransform):
                     shift=[0],
                     offset=[0],
                 ),
-                shape=[32, 512],
-            ),
-            output=QTensor(
+                shape=[layers[0].cfg.num_frames, layers[0].cfg.fft_size],
+            )
+        )
+        lmfe_config.output.CopyFrom(
+            QTensor(
                 dtype=Datatype(
                     quantization=Datatype.QuantizationType.UNIFORM,
                     signed=True,
@@ -48,8 +48,8 @@ class QKerasAudioPreprocess(QKerasTransform):
                     shift=[0],
                     offset=[0],
                 ),
-                shape=[32, 20],
-            ),
+                shape=[layers[0].cfg.num_frames, layers[0].cfg.num_mels],
+            )
         )
         return [lbir.LayerWrap(lmfe=lmfe_config)]
 

@@ -12,6 +12,8 @@ from tensorflow_model_optimization.python.core.sparsity.keras import pruning_sch
 
 from chisel4ml import chisel4ml_server
 from chisel4ml import optimize
+from chisel4ml.lbir.lbir_pb2 import FFTConfig
+from chisel4ml.lbir.lbir_pb2 import LMFEConfig
 from chisel4ml.preprocess.fft_layer import FFTLayer
 from chisel4ml.preprocess.lmfe_layer import LMFELayer
 from chisel4ml.qkeras_extensions import FlattenChannelwise
@@ -849,8 +851,8 @@ def audio_data_preproc():
         print(name, info.features["label"].str2int(name))
         label_names = label_names[:] + [name]
 
-    fft_layer = FFTLayer("hamming")
-    lmfe_layer = LMFELayer()
+    fft_layer = FFTLayer(FFTConfig(fft_size=512, num_frames=32, win_fn=np.hamming(512)))
+    lmfe_layer = LMFELayer(LMFEConfig(fft_size=512, num_frames=32, num_mels=20))
 
     def preproc(sample):
         return lmfe_layer(fft_layer(np.expand_dims(sample, axis=0)))
@@ -1211,8 +1213,8 @@ def qnn_audio_class(audio_data):
             input_shape=input_shape,
         )
     )
-    model.add(FFTLayer(win_fn="hamming"))
-    model.add(LMFELayer())
+    model.add(FFTLayer(FFTConfig(fft_size=512, num_frames=32, win_fn=np.hamming(512))))
+    model.add(LMFELayer(LMFEConfig(fft_size=512, num_frames=32, num_mels=20)))
     model.add(
         qkeras.QActivation(
             activation=qkeras.quantized_bits(8, 7, keep_negative=True, alpha=1),
@@ -1363,8 +1365,8 @@ def qnn_audio_class_big(audio_data):
             input_shape=input_shape,
         )
     )
-    model.add(FFTLayer(win_fn="hamming"))
-    model.add(LMFELayer())
+    model.add(FFTLayer(FFTConfig(fft_size=512, num_frames=32, win_fn=np.hamming(512))))
+    model.add(LMFELayer(LMFEConfig(fft_size=512, num_frames=32, num_mels=20)))
     model.add(
         qkeras.QActivation(
             activation=qkeras.quantized_bits(8, 7, keep_negative=True, alpha=1),

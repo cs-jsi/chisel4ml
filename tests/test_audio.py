@@ -9,6 +9,7 @@ from tensorflow.nn import softmax
 from chisel4ml import generate
 from chisel4ml import optimize
 from chisel4ml.lbir.lbir_pb2 import FFTConfig
+from chisel4ml.lbir.lbir_pb2 import LMFEConfig
 from chisel4ml.preprocess.fft_layer import FFTLayer
 from chisel4ml.preprocess.lmfe_layer import LMFELayer
 
@@ -68,7 +69,7 @@ def test_fft_speech_commands(audio_data):
     model.add(
         qkeras.QActivation(qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1))
     )
-    model.add(FFTLayer(win_fn="hamming"))
+    model.add(FFTLayer(FFTConfig(fft_size=512, num_frames=32, win_fn=np.hamming(512))))
     opt_model = optimize.qkeras_model(model)
 
     audio_preproc = generate.circuit(
@@ -94,8 +95,8 @@ def test_preproc_speech_commands(audio_data):
     model.add(
         qkeras.QActivation(qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1))
     )
-    model.add(FFTLayer(win_fn="hamming"))
-    model.add(LMFELayer())
+    model.add(FFTLayer(FFTConfig(fft_size=512, num_frames=32, win_fn=np.hamming(512))))
+    model.add(LMFELayer(LMFEConfig(fft_size=512, num_frames=32, num_mels=20)))
     model.compile(
         optimizer=tf.keras.optimizers.Adam(),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),

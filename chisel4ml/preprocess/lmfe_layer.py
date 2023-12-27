@@ -14,39 +14,40 @@ import librosa
 import numpy as np
 import tensorflow as tf
 
+from chisel4ml.lbir.lbir_pb2 import LMFEConfig
+
 log = logging.getLogger(__name__)
 
 
 class LMFELayer(tf.keras.layers.Layer):
     """TODO"""
 
-    def __init__(self):
+    def __init__(self, cfg: LMFEConfig):
         super(LMFELayer, self).__init__()
-        self.frame_length = 512
-        self.num_frames = 32
-        self.sr = self.num_frames * self.frame_length  # approx 16000
-        self.n_mels = 20
+        self.cfg = cfg
+        self.sr = self.cfg.num_frames * self.cfg.fft_size  # approx 16000
         self.filter_banks = librosa.filters.mel(
-            n_fft=self.frame_length,
+            n_fft=self.cfg.fft_size,
             sr=self.sr,
-            n_mels=self.n_mels,
+            n_mels=self.cfg.num_mels,
             fmin=0,
             fmax=((self.sr / 2) + 1),
             norm=None,
         )
 
-    @tf.function(
-        input_signature=[tf.TensorSpec(shape=[None, 32, 512, 1], dtype=tf.float32)]
-    )
+    @tf.function(input_signature=[tf.TensorSpec(shape=None, dtype=tf.float32)])
     def call(self, inputs):
         tensor = tf.numpy_function(self.np_call, [inputs], tf.float32, stateful=False)
-        return tf.reshape(tensor, (len(inputs), 32, 20, 1))
+        return tf.reshape(
+            tensor, (len(inputs), self.cfg.num_frames, self.cfg.num_mels, 1)
+        )
 
     def np_call(self, inputs):
+        half = (self.cfg.fft_size // 2) + 1  # 512 -> 257
         if inputs.ndim == 4:
-            fft_res = inputs[:, :, 0:257, 0]
+            fft_res = inputs[:, :, 0:half, 0]
         elif inputs.ndim == 3:
-            fft_res = inputs[:, 0:257, 0]
+            fft_res = inputs[:, 0:half, 0]
         else:
             raise Exception(f"Invalid dimensions of fft_res:{fft_res.shape}")
         mag_frames = (fft_res + 1) ** 2  # 1 is added for numerical stability
@@ -58,9 +59,9 @@ class LMFELayer(tf.keras.layers.Layer):
 
     def get_config(self):
         base_config = super().get_config()
-        config = {}
+        config = {"cfg": self.cfg}
         return {**base_config, **config}
 
     @classmethod
     def from_config(cls, config):
-        return cls()
+        return cls(cfg=config["cfg"])
