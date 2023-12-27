@@ -49,7 +49,7 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
 
   val window = VecInit(layer.winFn.map(_.F(16.BP)))
 
-  require(layer.fftSize == 512) // TODO: remove this restriction
+  //require(layer.fftSize == 512) // TODO: remove this restriction
   require(
     options.busWidthOut == layer.output.dtype.bitwidth,
     s"This module requires buswidhts to equal the input/output datatypes. " +
@@ -79,7 +79,7 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
 
   inStream.ready := state === fftState.sREADY
   sdffft.io.in.valid := inStream.valid && state === fftState.sREADY
-  val currWindow = window(fftCounter).asUInt
+  val currWindow = window(fftCounter).asUInt.zext
   dontTouch(currWindow)
   // U(12, 0) x S(0, 16) => S(12, 16) >> 4 => S(12,12)
   val windowedSignal = inStream.bits.asSInt * currWindow

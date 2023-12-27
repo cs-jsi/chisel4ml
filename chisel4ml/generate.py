@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import math
 
 import tensorflow as tf
 
@@ -86,7 +87,8 @@ def generate_layer_options(lbir_model, axi_stream_width):
     options = []
     for layer in lbir_model.layers:
         if layer.HasField("fft"):
-            options.append(LayerOptions(bus_width_in=12, bus_width_out=33))
+            bus_width_out = int(24 + math.log2(layer.fft.fft_size))
+            options.append(LayerOptions(bus_width_in=12, bus_width_out=bus_width_out))
         else:
             if len(options) > 0:
                 options.append(

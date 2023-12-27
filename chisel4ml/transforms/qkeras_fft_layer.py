@@ -8,6 +8,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import math
+
 import qkeras
 
 import chisel4ml.lbir.lbir_pb2 as lbir
@@ -55,7 +57,7 @@ class QKerasAudioPreprocess(QKerasTransform):
                 dtype=Datatype(
                     quantization=Datatype.QuantizationType.UNIFORM,
                     signed=True,
-                    bitwidth=33,
+                    bitwidth=int(24 + math.log2(layers[1].cfg.fft_size)),
                     shift=[0],
                     offset=[0],
                 ),
