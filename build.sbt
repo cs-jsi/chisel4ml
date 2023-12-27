@@ -5,6 +5,7 @@ Compile / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "main"
 Test / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "test"
 Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "scala" / "lbir"
 Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "scala" / "services"
+Compile / unmanagedResourceDirectories += baseDirectory.value / "mel-engine" / "src" / "main" / "resources"
 
 crossTarget := baseDirectory.value / "chisel4ml" / "bin"
 assembly / assemblyJarName := "chisel4ml.jar"
