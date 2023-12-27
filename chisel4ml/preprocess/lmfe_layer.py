@@ -49,14 +49,9 @@ class LMFELayer(tf.keras.layers.Layer):
             fft_res = inputs[:, 0:257, 0]
         else:
             raise Exception(f"Invalid dimensions of fft_res:{fft_res.shape}")
-        mag_frames = (fft_res + 0) ** 2  # 1 is added for numerical stability
-        # mels = np.tensordot(mag_frames, self.filter_banks.T, axes=1)
-        # log_mels = np.log2(mels, dtype=np.float32)
-
+        mag_frames = (fft_res + 1) ** 2  # 1 is added for numerical stability
         mels = np.tensordot(mag_frames, self.filter_banks.T, axes=1)
-        mels = np.where(mels == 0, (1 / (2**40)), mels)  # numerical stability
         log_mels = np.log2(mels, dtype=np.float32)
-
         # we floor because our approximation just gets the leading bit right
         # https://stackoverflow.com/questions/54661131/log2-approximation-in-fixed-point
         return np.expand_dims(np.floor(log_mels), axis=-1)
