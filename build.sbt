@@ -7,6 +7,9 @@ Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "sca
 Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "scala" / "services"
 Compile / unmanagedResourceDirectories += baseDirectory.value / "mel-engine" / "src" / "main" / "resources"
 
+// This removes the (anoying) import warnings when running a console
+Compile / console / scalacOptions -= "-Ywarn-unused"
+
 crossTarget := baseDirectory.value / "chisel4ml" / "bin"
 assembly / assemblyJarName := "chisel4ml.jar"
 ThisBuild / assemblyMergeStrategy := {

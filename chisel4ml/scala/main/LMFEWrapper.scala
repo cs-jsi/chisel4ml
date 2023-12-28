@@ -22,35 +22,14 @@ import lbir.LMFEConfig
 import org.slf4j.LoggerFactory
 import services.LayerOptions
 import melengine._
-import dsptools._
-import fft._
 import interfaces.amba.axis._
 
 class LMFEWrapper(layer: LMFEConfig, options: LayerOptions) extends Module with LBIRStream {
   val logger = LoggerFactory.getLogger("LMFEWrapper")
-  // TODO: remove this
-  val fftParams = FFTParams.fixed(
-    dataWidth = 24,
-    binPoint = 12,
-    trimEnable = false,
-    numPoints = layer.fftSize,
-    decimType = DITDecimType,
-    trimType = RoundHalfToEven,
-    twiddleWidth = 16,
-    useBitReverse = true,
-    windowFunc = WindowFunctionTypes.None(), // We do windowing in this module, because of issues with this
-    overflowReg = true,
-    numAddPipes = 1,
-    numMulPipes = 1,
-    sdfRadix = "2",
-    runTime = false,
-    expandLogic = Array.fill(log2Up(layer.fftSize))(1),
-    keepMSBorLSB = Array.fill(log2Up(layer.fftSize))(true)
-  )
 
   val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
-  val melEngine = Module(new MelEngine(fftParams, 20, 32))
+  val melEngine = Module(new MelEngine(layer.fftSize, layer.numMels, layer.numFrames))
   require(options.busWidthOut % 8 == 0) // TODO: hardcoded that melEngine gives 8 bit output
   val numBeats = options.busWidthOut / 8
   val (beatCounter, beatCounterWrap) = Counter(0 to numBeats, melEngine.io.outStream.fire, outStream.fire)

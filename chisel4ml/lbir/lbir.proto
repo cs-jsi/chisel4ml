@@ -111,4 +111,5 @@ message LMFEConfig {
     uint32 num_frames = 3;
     QTensor input = 4;
     QTensor output = 5;
+    repeated float mel_filters = 6;
 }
