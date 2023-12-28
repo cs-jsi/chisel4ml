@@ -1,3 +1,4 @@
+import itertools
 import os
 
 import numpy as np
@@ -17,72 +18,63 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 def test_fft():
-    windows = ["hamming"]
-    tone_freqs = [60]
-    amplitudes = [0.8]
-    functions = [np.cos]
-    frame_lengths = [64, 128, 256, 512, 1024]
-    num_frames_opts = [8, 16, 32, 64]
-    for win in windows:
-        for tone_freq in tone_freqs:
-            for amplitude in amplitudes:
-                for function in functions:
-                    for frame_length in frame_lengths:
-                        for num_frames in num_frames_opts:
-                            print(
-                                f"Testing FFT with tone_freq:{tone_freq}, amplitude:"
-                                f"{amplitude}, function:{function}, frame_length:"
-                                f"{frame_length}, num_frames:{num_frames}."
-                            )
-                            time = np.linspace(0, 1, num_frames * frame_length)
-                            # Generate test wave function
-                            wave = function(2 * np.pi * tone_freq * time).reshape(
-                                num_frames, frame_length
-                            )
-                            frames = np.round((wave + 0) * 2047 * amplitude)
+    test_opts_dict = {
+        "window": ("hamming",),
+        "tone_freq": (60,),
+        "amplitude": (0.8,),
+        "function": (np.cos,),
+        "frame_length": (64, 128, 256, 512, 1024),
+        "num_frames": (8, 16, 32, 64),
+    }
 
-                            model = tf.keras.Sequential()
-                            model.add(
-                                tf.keras.layers.Input(shape=(num_frames, frame_length))
-                            )
-                            model.add(
-                                qkeras.QActivation(
-                                    qkeras.quantized_bits(
-                                        12, 11, keep_negative=True, alpha=1
-                                    )
-                                )
-                            )
-                            model.add(
-                                FFTLayer(
-                                    FFTConfig(
-                                        fft_size=frame_length,
-                                        num_frames=num_frames,
-                                        win_fn=np.hamming(frame_length),
-                                    )
-                                )
-                            )
-                            opt_model = optimize.qkeras_model(model)
-                            audio_preproc = generate.circuit(
-                                opt_model=opt_model,
-                                use_verilator=True,
-                                gen_waveform=True,
-                            )
-                            hw_res = audio_preproc(frames, sim_timeout_sec=400) / (
-                                2**12
-                            )
-                            sw_res = opt_model(
-                                frames.reshape(1, num_frames, frame_length)
-                            )
-                            # import matplotlib.pyplot as plt
-                            # plt.plot(hw_res.flatten(), color='r')
-                            # plt.plot(sw_res.numpy().flatten(), color='g', linestyle='dashed')  # noqa: E501
-                            # plt.show()
-                            assert np.allclose(
-                                sw_res.numpy().reshape(num_frames, frame_length),
-                                hw_res,
-                                atol=10,
-                                rtol=0.05,
-                            )
+    for test_case in itertools.product(*test_opts_dict.values()):
+        tcdict = dict(zip(test_opts_dict.keys(), test_case))
+        print(f"Testing FFT with options:{tcdict}")
+        tone_freq = tcdict["tone_freq"]
+        amplitude = tcdict["amplitude"]
+        function = tcdict["function"]
+        frame_length = tcdict["frame_length"]
+        num_frames = tcdict["num_frames"]
+
+        time = np.linspace(0, 1, num_frames * frame_length)
+        # Generate test wave function
+        wave = function(2 * np.pi * tone_freq * time).reshape(num_frames, frame_length)
+        frames = np.round((wave + 0) * 2047 * amplitude)
+
+        model = tf.keras.Sequential()
+        model.add(tf.keras.layers.Input(shape=(num_frames, frame_length)))
+        model.add(
+            qkeras.QActivation(
+                qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1)
+            )
+        )
+        model.add(
+            FFTLayer(
+                FFTConfig(
+                    fft_size=frame_length,
+                    num_frames=num_frames,
+                    win_fn=np.hamming(frame_length),
+                )
+            )
+        )
+        opt_model = optimize.qkeras_model(model)
+        audio_preproc = generate.circuit(
+            opt_model=opt_model,
+            use_verilator=True,
+            gen_waveform=True,
+        )
+        hw_res = audio_preproc(frames, sim_timeout_sec=400) / (2**12)
+        sw_res = opt_model(frames.reshape(1, num_frames, frame_length))
+        # import matplotlib.pyplot as plt
+        # plt.plot(hw_res.flatten(), color='r')
+        # plt.plot(sw_res.numpy().flatten(), color='g', linestyle='dashed')
+        # plt.show()
+        assert np.allclose(
+            sw_res.numpy().reshape(num_frames, frame_length),
+            hw_res,
+            atol=10,
+            rtol=0.05,
+        )
 
 
 def test_fft_speech_commands(audio_data):
