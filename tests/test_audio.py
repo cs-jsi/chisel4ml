@@ -103,6 +103,38 @@ def test_fft_speech_commands(audio_data):
         assert np.allclose(sw_res.numpy().reshape(32, 512), hw_res, atol=1, rtol=0.05)
 
 
+def test_lmfe_speech_commands(audio_data):
+    _, _, test_set, _, _, _, _ = audio_data
+    fft_layer = FFTLayer(FFTConfig(fft_size=512, num_frames=32, win_fn=np.hamming(512)))
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Input(shape=(32, 512, 1)))
+    model.add(
+        qkeras.QActivation(qkeras.quantized_bits(32, 31, keep_negative=True, alpha=1))
+    )
+    model.add(LMFELayer(LMFEConfig(fft_size=512, num_frames=32, num_mels=20)))
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+    )
+    opt_model = optimize.qkeras_model(model)
+
+    audio_preproc = generate.circuit(
+        opt_model=opt_model, use_verilator=True, gen_waveform=True
+    )
+    assert audio_preproc is not None
+    ts_iter = test_set.as_numpy_iterator()
+    for _ in range(20):
+        sample, _ = next(ts_iter)
+        fft_res = np.round(fft_layer(sample.reshape(1, 32, 512)))
+        hw_res = audio_preproc(fft_res.reshape(1, 32, 512))
+        sw_res = opt_model(fft_res.reshape(1, 32, 512))
+        # import matplotlib.pyplot as plt
+        # plt.plot(hw_res.flatten(), color='r')
+        # plt.plot(sw_res.numpy().flatten(), color='g', linestyle='dashed')
+        # plt.show()
+        assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=0, rtol=0)
+
+
 def test_preproc_speech_commands(audio_data):
     _, _, test_set, _, _, _, _ = audio_data
     model = tf.keras.Sequential()
@@ -131,7 +163,7 @@ def test_preproc_speech_commands(audio_data):
         # plt.plot(hw_res.flatten(), color='r')
         # plt.plot(sw_res.numpy().flatten(), color='g', linestyle='dashed')
         # plt.show()
-        assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=5, rtol=0)
+        assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=1, rtol=0)
 
 
 def test_audio_classifier_no_preproc_no_bias_1st_layer(

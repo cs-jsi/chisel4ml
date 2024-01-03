@@ -26,14 +26,26 @@ class LMFELayer(tf.keras.layers.Layer):
         super(LMFELayer, self).__init__()
         self.cfg = cfg
         self.sr = self.cfg.num_frames * self.cfg.fft_size  # approx 16000
-        self.filter_banks = librosa.filters.mel(
-            n_fft=self.cfg.fft_size,
-            sr=self.sr,
-            n_mels=self.cfg.num_mels,
-            fmin=0,
-            fmax=((self.sr / 2) + 1),
-            norm=None,
-        )
+        if len(cfg.mel_filters) == 0:
+            self.filter_banks = librosa.filters.mel(
+                n_fft=self.cfg.fft_size,
+                sr=self.sr,
+                n_mels=self.cfg.num_mels,
+                fmin=0,
+                fmax=((self.sr / 2) + 1),
+                norm=None,
+            )
+            cfg.mel_filters.extend(self.filter_banks.flatten().tolist())
+        elif len(cfg.mel_filters) == cfg.num_mels * ((cfg.fft_size // 2) + 1):
+            self.filter_banks = np.array(cfg.mel_filters).reshape(
+                cfg.num_mels, ((cfg.fft_size // 2) + 1)
+            )
+            assert self.filter_banks.max() < 1.0 and self.filter_banks.min() >= 0.0
+            for i in range(cfg.num_mels):
+                # Only two filters can be active at a time.
+                assert np.count_nonzero(self.filter_banks[:, i]) <= 2
+        else:
+            raise ValueError()
 
     @tf.function(input_signature=[tf.TensorSpec(shape=None, dtype=tf.float32)])
     def call(self, inputs):

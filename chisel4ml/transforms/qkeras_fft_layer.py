@@ -58,7 +58,7 @@ class QKerasAudioPreprocess(QKerasTransform):
                     quantization=Datatype.QuantizationType.UNIFORM,
                     signed=True,
                     bitwidth=int(24 + math.log2(layers[1].cfg.fft_size)),
-                    shift=[0],
+                    shift=[12],
                     offset=[0],
                 ),
                 shape=[

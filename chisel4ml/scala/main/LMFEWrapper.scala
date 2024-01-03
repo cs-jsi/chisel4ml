@@ -23,23 +23,33 @@ import org.slf4j.LoggerFactory
 import services.LayerOptions
 import melengine._
 import interfaces.amba.axis._
+import chisel4ml.implicits._
+import chisel3.experimental.FixedPoint
 
 class LMFEWrapper(layer: LMFEConfig, options: LayerOptions) extends Module with LBIRStream {
   val logger = LoggerFactory.getLogger("LMFEWrapper")
 
   val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
-  val melEngine = Module(new MelEngine(layer.fftSize, layer.numMels, layer.numFrames))
-  require(options.busWidthOut % 8 == 0) // TODO: hardcoded that melEngine gives 8 bit output
+  val melEngine = Module(
+    new MelEngine(
+      layer.fftSize,
+      layer.numMels,
+      layer.numFrames,
+      layer.melFilters,
+      FixedPoint(options.busWidthIn.W, layer.input.dtype.shift(0).BP)
+    )
+  )
   val numBeats = options.busWidthOut / 8
   val (beatCounter, beatCounterWrap) = Counter(0 to numBeats, melEngine.io.outStream.fire, outStream.fire)
+  val (transactionCounter, _) = Counter(0 to layer.input.numTransactions(options.busWidthIn))
+  dontTouch(transactionCounter)
   val outputBuffer = RegInit(VecInit(Seq.fill(numBeats)(0.U(8.W))))
 
-  inStream.ready := melEngine.io.fftIn.ready
-  melEngine.io.fftIn.valid := inStream.valid
-  melEngine.io.fftIn.bits.real := inStream.bits.asTypeOf(melEngine.io.fftIn.bits.real)
-  melEngine.io.fftIn.bits.imag := 0.U.asTypeOf(melEngine.io.fftIn.bits.imag)
-  melEngine.io.lastFft := inStream.last
+  inStream.ready := melEngine.io.inStream.ready
+  melEngine.io.inStream.valid := inStream.valid
+  melEngine.io.inStream.bits := inStream.bits.asTypeOf(melEngine.io.inStream.bits)
+  melEngine.io.inStream.last := inStream.last
 
   when(melEngine.io.outStream.fire) {
     outputBuffer(beatCounter) := melEngine.io.outStream.bits.asUInt

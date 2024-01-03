@@ -85,10 +85,15 @@ def circuit(
 # TODO
 def generate_layer_options(lbir_model, axi_stream_width):
     options = []
+    lmfe_only = True
     for layer in lbir_model.layers:
         if layer.HasField("fft"):
             bus_width_out = int(24 + math.log2(layer.fft.fft_size))
             options.append(LayerOptions(bus_width_in=12, bus_width_out=bus_width_out))
+            lmfe_only = False
+        elif layer.HasField("lmfe") and lmfe_only:
+            fft_width_out = int(24 + math.log2(layer.lmfe.fft_size))
+            options.append(LayerOptions(bus_width_in=fft_width_out, bus_width_out=32))
         else:
             if len(options) > 0:
                 options.append(

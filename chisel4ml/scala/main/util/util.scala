@@ -29,10 +29,14 @@ package object util {
   def log2(x: Int):   Int = (log(x.toFloat) / log(2.0)).toInt
   def log2(x: Float): Float = (log(x) / log(2.0)).toFloat
 
-  def toBinary(i: Int, digits: Int = 8): String =
-    String.format(s"%${digits}s", i.toBinaryString.takeRight(digits)).replace(' ', '0')
-  def toBinaryB(i: BigInt, digits: Int = 8): String = String.format("%" + digits + "s", i.toString(2)).replace(' ', '0')
-
+  def toBinary(i: Int, digits: Int = 8): String = {
+    val replacement = if (i >= 0) '0' else '1'
+    String.format(s"%${digits}s", i.toBinaryString.takeRight(digits)).replace(' ', replacement)
+  }
+  def toBinaryB(i: BigInt, digits: Int = 8): String = {
+    val replacement = if (i >= 0) '0' else '1'
+    String.format("%" + digits + "s", i.toString(2)).replace(' ', replacement)
+  }
   def signedCorrect(x: Float, dtype: Datatype): Float = {
     if (dtype.signed && x > (pow(2, dtype.bitwidth - 1) - 1))
       x - pow(2, dtype.bitwidth).toFloat
