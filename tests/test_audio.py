@@ -75,6 +75,7 @@ def test_fft():
             atol=10,
             rtol=0.05,
         )
+        audio_preproc.delete_from_server()
 
 
 def test_fft_speech_commands(audio_data):
@@ -101,6 +102,78 @@ def test_fft_speech_commands(audio_data):
         # plt.plot(sw_res.numpy().flatten(), color='g', linestyle='dashed')
         # plt.show()
         assert np.allclose(sw_res.numpy().reshape(32, 512), hw_res, atol=1, rtol=0.05)
+    audio_preproc.delete_from_server()
+
+
+def test_mel_engine(audio_data):
+    test_opts_dict = {
+        "window": ("hamming",),
+        "tone_freq": (60,),
+        "amplitude": (0.8,),
+        "function": (np.cos,),
+        "frame_length": (128, 256, 512),
+        "num_frames": (16, 32),
+        "num_mels": (10, 13, 15, 20, 25),
+    }
+    for test_case in itertools.product(*test_opts_dict.values()):
+        tcdict = dict(zip(test_opts_dict.keys(), test_case))
+        print(f"Testing FFT with options:{tcdict}")
+        tone_freq = tcdict["tone_freq"]
+        amplitude = tcdict["amplitude"]
+        function = tcdict["function"]
+        frame_length = tcdict["frame_length"]
+        num_frames = tcdict["num_frames"]
+        num_mels = tcdict["num_mels"]
+
+        time = np.linspace(0, 1, num_frames * frame_length)
+        # Generate test wave function
+        wave = function(2 * np.pi * tone_freq * time).reshape(num_frames, frame_length)
+        frames = np.round((wave + 0) * 2047 * amplitude)
+
+        model = tf.keras.Sequential()
+        model.add(tf.keras.layers.Input(shape=(num_frames, frame_length)))
+        model.add(
+            qkeras.QActivation(
+                qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1)
+            )
+        )
+        model.add(
+            FFTLayer(
+                FFTConfig(
+                    fft_size=frame_length,
+                    num_frames=num_frames,
+                    win_fn=np.hamming(frame_length),
+                )
+            )
+        )
+        model.add(
+            LMFELayer(
+                LMFEConfig(
+                    fft_size=frame_length,
+                    num_frames=num_frames,
+                    num_mels=num_mels,
+                )
+            )
+        )
+        opt_model = optimize.qkeras_model(model)
+        audio_preproc = generate.circuit(
+            opt_model=opt_model,
+            use_verilator=True,
+            gen_waveform=True,
+        )
+        hw_res = audio_preproc(frames, sim_timeout_sec=400)
+        sw_res = opt_model(frames.reshape(1, num_frames, frame_length))
+        # import matplotlib.pyplot as plt
+        # plt.plot(hw_res.flatten(), color='r')
+        # plt.plot(sw_res.numpy().flatten(), color='g', linestyle='dashed')
+        # plt.show()
+        assert np.allclose(
+            sw_res.numpy().flatten(),
+            hw_res.flatten(),
+            atol=10,
+            rtol=0.05,
+        )
+        audio_preproc.delete_from_server()
 
 
 def test_lmfe_speech_commands(audio_data):
@@ -133,6 +206,7 @@ def test_lmfe_speech_commands(audio_data):
         # plt.plot(sw_res.numpy().flatten(), color='g', linestyle='dashed')
         # plt.show()
         assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=0, rtol=0)
+    audio_preproc.delete_from_server()
 
 
 def test_preproc_speech_commands(audio_data):
@@ -164,6 +238,7 @@ def test_preproc_speech_commands(audio_data):
         # plt.plot(sw_res.numpy().flatten(), color='g', linestyle='dashed')
         # plt.show()
         assert np.allclose(sw_res.numpy().reshape(32, 20), hw_res, atol=1, rtol=0)
+    audio_preproc.delete_from_server()
 
 
 def test_audio_classifier_no_preproc_no_bias_1st_layer(
@@ -182,6 +257,7 @@ def test_audio_classifier_no_preproc_no_bias_1st_layer(
         sw_ret = np.moveaxis(sw_ret.numpy().reshape(30, 18, 1), -1, 0)
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
         assert np.array_equal(hw_ret, sw_ret)
+    circuit.delete_from_server()
 
 
 def test_audio_classifier_no_preproc_no_bias_1st_2nd_layer(
@@ -201,6 +277,7 @@ def test_audio_classifier_no_preproc_no_bias_1st_2nd_layer(
         sw_ret = np.moveaxis(sw_ret.numpy().reshape(28, 16, 2), -1, 0)
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
         assert np.array_equal(hw_ret, sw_ret)
+    circuit.delete_from_server()
 
 
 def test_audio_classifier_no_preproc_no_bias_1st_2nd_3rd_layer(
@@ -221,6 +298,7 @@ def test_audio_classifier_no_preproc_no_bias_1st_2nd_3rd_layer(
         sw_ret = np.moveaxis(sw_ret.numpy().reshape(14, 8, 2), -1, 0)
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
         assert np.array_equal(hw_ret, sw_ret)
+    circuit.delete_from_server()
 
 
 def test_audio_classifier_no_preproc_no_bias_1st_2nd_3rd_flatten_layer(
@@ -242,6 +320,7 @@ def test_audio_classifier_no_preproc_no_bias_1st_2nd_3rd_flatten_layer(
         sw_ret = sw_ret.numpy()
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
         assert np.array_equal(hw_ret.flatten(), sw_ret.flatten())
+    circuit.delete_from_server()
 
 
 def test_audio_classifier_no_preproc_no_bias_1st_2nd_3rd_4th_layer(
@@ -263,6 +342,7 @@ def test_audio_classifier_no_preproc_no_bias_1st_2nd_3rd_4th_layer(
         sw_ret = sw_ret.numpy().reshape(8)
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
         assert np.array_equal(hw_ret, sw_ret)
+    circuit.delete_from_server()
 
 
 def test_audio_classifier_no_preproc_no_bias(
@@ -279,6 +359,7 @@ def test_audio_classifier_no_preproc_no_bias(
         sw_ret = opt_model.predict(sample.reshape(1, 32, 20, 1))
         print(f"hw_ret: {np.argmax(hw_ret)} - sw_ret: {np.argmax(sw_ret)}")
         assert np.array_equal(hw_ret, sw_ret.flatten())
+    circuit.delete_from_server()
 
 
 def test_audio_classifier_no_preproc_1st_layer(
@@ -297,6 +378,7 @@ def test_audio_classifier_no_preproc_1st_layer(
         sw_ret = np.moveaxis(sw_ret.numpy().reshape(30, 18, 1), -1, 0)
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
         assert np.array_equal(hw_ret.flatten(), sw_ret.flatten())
+    circuit.delete_from_server()
 
 
 def test_audio_classifier_no_preproc_1st_2nd_layer(
@@ -316,6 +398,7 @@ def test_audio_classifier_no_preproc_1st_2nd_layer(
         sw_ret = np.moveaxis(sw_ret.numpy().reshape(28, 16, 2), -1, 0)
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
         assert np.array_equal(hw_ret, sw_ret)
+    circuit.delete_from_server()
 
 
 def test_audio_classifier_no_preproc_1st_2nd_3rd_layer(
@@ -336,6 +419,7 @@ def test_audio_classifier_no_preproc_1st_2nd_3rd_layer(
         sw_ret = np.moveaxis(sw_ret.numpy().reshape(14, 8, 2), -1, 0)
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
         assert np.array_equal(hw_ret, sw_ret)
+    circuit.delete_from_server()
 
 
 def test_audio_classifier_no_preproc_1st_2nd_3rd_flatten_layer(
@@ -356,6 +440,7 @@ def test_audio_classifier_no_preproc_1st_2nd_3rd_flatten_layer(
         sw_ret = opt_model.layers[7](sw_ret)
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
         assert np.array_equal(hw_ret.flatten(), sw_ret.numpy().flatten())
+    circuit.delete_from_server()
 
 
 def test_audio_classifier_no_preproc_1st_2nd_3rd_4th_layer(
@@ -377,6 +462,7 @@ def test_audio_classifier_no_preproc_1st_2nd_3rd_4th_layer(
         sw_ret = opt_model.layers[9](opt_model.layers[8](sw_ret))
         hw_ret = circuit.predict(sample.reshape(1, 32, 20))
         assert np.array_equal(hw_ret.flatten(), sw_ret.numpy().flatten())
+    circuit.delete_from_server()
 
 
 def test_audio_classifier_no_preproc(qnn_audio_class_no_preproc, audio_data_preproc):
@@ -391,6 +477,7 @@ def test_audio_classifier_no_preproc(qnn_audio_class_no_preproc, audio_data_prep
         sw_ret = opt_model.predict(sample.reshape(1, 32, 20, 1))[0]
         print(f"hw_ret: {np.argmax(hw_ret)} - sw_ret: {np.argmax(sw_ret)}")
         assert np.array_equal(hw_ret.flatten(), sw_ret.flatten())
+    circuit.delete_from_server()
 
 
 @pytest.mark.skip(reason="takes to long")
@@ -411,6 +498,7 @@ def test_audio_classifier_full(qnn_audio_class, audio_data):
             print("MISPREDICTION!")
         assert mistake < 5
         print(f"Number of mispredictions is {mistake}.")
+    circuit.delete_from_server()
 
 
 @pytest.mark.skip(reason="takes to long")
@@ -431,3 +519,4 @@ def test_audio_classifier_big_full(qnn_audio_class_big, audio_data):
             print("MISPREDICTION!")
         assert mistake < 5
         print(f"Number of mispredictions is {mistake}.")
+    circuit.delete_from_server()

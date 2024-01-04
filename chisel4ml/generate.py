@@ -30,7 +30,7 @@ def circuit(
     pipeline=False,
     use_verilator=False,
     gen_waveform=False,
-    gen_timeout_sec=600,
+    gen_timeout_sec=800,
     axi_stream_width=None,
     num_layers=None,
 ):

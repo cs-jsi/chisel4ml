@@ -76,7 +76,9 @@ object Chisel4mlServer {
   */
 class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { self =>
   private[this] var server: Server = null
-  private var circuits:     Seq[Circuit[Module with LBIRStream]] = Seq() // Holds the circuit and simulation object
+  private var circuits = Map[Int, Circuit[Module with LBIRStream]]() // Holds the circuit and simulation object
+  private var nextId: Int = 0
+
   val logger = LoggerFactory.getLogger(classOf[Chisel4mlServer])
 
   private def start(): Unit = {
@@ -93,7 +95,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
   private def stop(): Unit = {
     if (server != null) {
       // we stop all simulations properly to get vcd files
-      circuits.map(_.stopSimulation())
+      circuits.map(_._2.stopSimulation())
       logger.info("Shutting down chisel4ml server.")
       server.shutdown()
     } else { logger.error("Attempted to shut down server that was not created.") }
@@ -103,22 +105,23 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
 
   private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
     override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
-      val circuitId = circuits.length
-      circuits = circuits :+ new Circuit[ProcessingPipeline](
+      val circuit = new Circuit[ProcessingPipeline](
         dutGen = new ProcessingPipeline(params.model.get, params.options.get),
         outputStencil = params.model.get.layers.last.get.output,
-        directory = Paths.get(tempDir, s"circuit$circuitId"),
+        directory = Paths.get(tempDir, s"circuit$nextId"),
         useVerilator = params.useVerilator,
         genWaveform = params.genWaveform
       )
-      logger.info(s"""Started generating hardware for circuit id:$circuitId in temporary directory $tempDir
+      circuits = circuits + (nextId -> circuit)
+      logger.info(s"""Started generating hardware for circuit id:$nextId in temporary directory $tempDir
                      | with a timeout of ${params.generationTimeoutSec} seconds.""".stripMargin.replaceAll("\n", ""))
-      new Thread(circuits.last).start()
-      if (circuits.last.isGenerated.await(params.generationTimeoutSec, TimeUnit.SECONDS)) {
+      nextId = nextId + 1
+      new Thread(circuit).start()
+      if (circuit.isGenerated.await(params.generationTimeoutSec, TimeUnit.SECONDS)) {
         logger.info("Succesfully generated circuit.")
         Future.successful(
           GenerateCircuitReturn(
-            circuitId = circuits.length - 1,
+            circuitId = nextId - 1,
             err = Option(ErrorMsg(errId = ErrorMsg.ErrorId.SUCCESS, msg = "Successfully generated verilog."))
           )
         )
@@ -126,7 +129,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
         logger.error("Circuit generation timed-out, please try again with a longer timeout.")
         Future.successful(
           GenerateCircuitReturn(
-            circuitId = circuits.length - 1,
+            circuitId = nextId - 1,
             err = Option(ErrorMsg(errId = ErrorMsg.ErrorId.FAIL, msg = "Error generating circuit."))
           )
         )
@@ -137,6 +140,21 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
       logger.info(s"Simulating circuit id: ${params.circuitId} circuit on ${params.inputs.length} input/s.")
       Future.successful(
         RunSimulationReturn(values = circuits(params.circuitId).sim(params.inputs))
+      )
+    }
+
+    override def deleteCircuit(params: DeleteCircuitParams): Future[DeleteCircuitReturn] = {
+      logger.info(s"Deleting cirucit id: ${params.circuitId} from memory.")
+      val contained = circuits.contains(params.circuitId)
+      if (contained)
+        circuits = circuits - params.circuitId
+      Future.successful(
+        DeleteCircuitReturn(
+          success = contained,
+          msg =
+            if (contained) s"Succesfully deleted circuit id: ${params.circuitId}"
+            else s"Circuit id ${params.circuitId} not present."
+        )
       )
     }
   }

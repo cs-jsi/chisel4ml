@@ -25,6 +25,7 @@ option java_package = "services";
 service Chisel4mlService {
 	rpc GenerateCircuit (GenerateCircuitParams) returns (GenerateCircuitReturn) {}
 	rpc RunSimulation (RunSimulationParams) returns (RunSimulationReturn) {}
+    rpc DeleteCircuit (DeleteCircuitParams) returns (DeleteCircuitReturn) {}
 }
 
 message ShutdownServerParams {}
@@ -68,4 +69,13 @@ message RunSimulationReturn {
 message LayerOptions {
     uint32 bus_width_in = 6;
     uint32 bus_width_out = 7;
+}
+
+message DeleteCircuitParams {
+    uint32 circuit_id = 1;
+}
+
+message DeleteCircuitReturn {
+    bool success = 1;
+    string msg = 2;
 }

@@ -42,7 +42,7 @@ class Circuit:
         self._server = start_server_once()
         self.lbir_model = lbir_model
 
-    def __call__(self, np_arr, sim_timeout_sec=100):
+    def __call__(self, np_arr, sim_timeout_sec=200):
         "Simulate the circuit, timeout in seconds."
         qtensors = transforms.numpy_transforms.numpy_to_qtensor(
             np_arr, self.input_quantizer, self.input_qtensor
@@ -60,6 +60,14 @@ class Circuit:
 
     def predict(self, np_arr):
         return self.__call__(np_arr)
+
+    def delete_from_server(self):
+        delete_circuit_params = services.DeleteCircuitParams(circuit_id=self.circuit_id)
+        delete_circuit_return = self._server.send_grpc_msg(
+            delete_circuit_params, timeout=10
+        )
+        log.info(delete_circuit_return.msg)
+        return delete_circuit_return.success
 
     def package(self, directory=None, name="ProcessingPipeline"):
         if directory is None:

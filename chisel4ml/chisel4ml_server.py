@@ -83,6 +83,8 @@ class Chisel4mlServer:
             ret = self._stub.GenerateCircuit(msg, wait_for_ready=True, timeout=timeout)
         elif isinstance(msg, services.RunSimulationParams):
             ret = self._stub.RunSimulation(msg, wait_for_ready=True, timeout=timeout)
+        elif isinstance(msg, services.DeleteCircuitParams):
+            ret = self._stub.DeleteCircuit(msg, wait_for_ready=True, timeout=timeout)
         else:
             raise ValueError(f"Invalid msg to send via grpc. Message is of type {msg}.")
 
