@@ -16,6 +16,9 @@
 package chisel4ml.tests
 
 import _root_.chisel4ml.implicits._
+import org.chipsalliance.cde.config.Config
+import chisel4ml.sequential.MaxPool2DConfigField
+import lbir.MaxPool2DConfig
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
 import _root_.services._
@@ -53,7 +56,10 @@ class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
 
   behavior.of("MaxPool2D module")
   it should "compute max pooling for stride 2" in {
-    test(new MaxPool2D(layer, options)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+    val cfg = new Config((site, here, up) => {
+        case MaxPool2DConfigField => layer
+    })
+    test(new MaxPool2D(options)(cfg)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
       var res: lbir.QTensor = lbir.QTensor()
       fork {
         dut.inStream.enqueueQTensor(testParameters, dut.clock)

@@ -17,10 +17,11 @@ package chisel4ml
 
 import chisel4ml.LBIRStream
 import chisel4ml.conv2d.ProcessingElementSequentialConv
-import chisel4ml.sequential.MaxPool2D
+import chisel4ml.sequential.{MaxPool2D, MaxPool2DConfigField}
 import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
 import services.LayerOptions
 import chisel3._
+import org.chipsalliance.cde.config.Config
 
 object LayerGenerator {
   // TODO: Rewrite the generation procedure to something more sensisble
@@ -28,7 +29,9 @@ object LayerGenerator {
     layer_wrap match {
       case l: DenseConfig     => Module(new ProcessingElementWrapSimpleToSequential(l, options))
       case l: Conv2DConfig    => Module(ProcessingElementSequentialConv(l, options))
-      case l: MaxPool2DConfig => Module(new MaxPool2D(l, options))
+      case l: MaxPool2DConfig => Module(new MaxPool2D(options)(new Config((site, here, up) => {
+        case MaxPool2DConfigField => l
+      })))
       case l: FFTConfig       => Module(new FFTWrapper(l, options))
       case l: LMFEConfig      => Module(new LMFEWrapper(l, options))
       case _ => throw new RuntimeException(f"Unsupported layer type: $layer_wrap")

@@ -16,6 +16,17 @@
 package chisel4ml
 import chisel3._
 import interfaces.amba.axis._
+import org.chipsalliance.cde.config.{Field, Parameters}
+
+case object LBIRStreamWidth extends Field[Int]
+
+trait HasLBIRStreamParameters {
+  val p: Parameters
+  val inWidth = p(LBIRStreamWidth)
+  val outWidth = p(LBIRStreamWidth)
+  require(inWidth > 0)
+  require(outWidth > 0)
+}
 
 trait LBIRStream {
   val inStream:  AXIStreamIO[UInt]

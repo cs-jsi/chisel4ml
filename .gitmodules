@@ -10,3 +10,6 @@
 [submodule "mel-engine"]
 	path = mel-engine
 	url = https://github.com/jurevreca12/audio_features_extract.git
+[submodule "cde"]
+	path = cde
+	url = https://github.com/chipsalliance/cde
