@@ -29,8 +29,8 @@ class ProcessingElementWrapSimpleToSequential(layer: DenseConfig, options: Layer
     with LBIRStream {
   val logger = LoggerFactory.getLogger(this.getClass())
 
-  val inputValidBits = layer.input.paramsPerWord * layer.input.dtype.bitwidth
-  val outputValidBits = layer.output.paramsPerWord * layer.output.dtype.bitwidth
+  val inputValidBits = layer.input.paramsPerWord() * layer.input.dtype.bitwidth
+  val outputValidBits = layer.output.paramsPerWord() * layer.output.dtype.bitwidth
 
   val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
   val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))

@@ -34,13 +34,13 @@ class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
 
   val io = IO(new Bundle {
     val nextElement = Decoupled(input.getType[I])
-    val actMem = Flipped(new SRAMRead(input.memDepth, MemWordSize.bits))
-    val actMemWrittenTo = Input(UInt(log2Up(input.memDepth + 1).W))
+    val actMem = Flipped(new SRAMRead(input.memDepth(), MemWordSize.bits))
+    val actMemWrittenTo = Input(UInt(log2Up(input.memDepth() + 1).W))
     val start = Input(Bool())
   })
   val (elementCounter, elementCounterWrap) = Counter(0 until input.numParams, io.nextElement.fire)
-  val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until input.paramsPerWord, io.nextElement.fire, io.start)
-  val (addressCounter, _) = Counter(0 until input.memDepth, wordSelectCounterWrap, io.start)
+  val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until input.paramsPerWord(), io.nextElement.fire, io.start)
+  val (addressCounter, _) = Counter(0 until input.memDepth(), wordSelectCounterWrap, io.start)
   dontTouch(elementCounterWrap)
   val state = RegInit(IDMState.sWAIT)
   when(io.start) {
@@ -52,8 +52,8 @@ class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
   io.actMem.address := addressCounter
   io.actMem.enable := state === IDMState.sMOVEDATA || io.start
 
-  val validBits = input.paramsPerWord * input.dtype.bitwidth
-  val actMemAsVec = io.actMem.data(validBits - 1, 0).asTypeOf(Vec(input.paramsPerWord, input.getType[I]))
+  val validBits = input.paramsPerWord() * input.dtype.bitwidth
+  val actMemAsVec = io.actMem.data(validBits - 1, 0).asTypeOf(Vec(input.paramsPerWord(), input.getType[I]))
   io.nextElement.bits := actMemAsVec(wordSelectCounter)
   io.nextElement.valid := isStable(
     addressCounter

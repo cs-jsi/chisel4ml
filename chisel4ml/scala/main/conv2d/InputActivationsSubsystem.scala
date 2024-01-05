@@ -20,7 +20,7 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
     val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[I]))
     val activeDone = Output(Bool())
   })
-  val actMem = Module(MemoryGenerator.SRAM(depth = l.input.memDepth, width = MemWordSize.bits))
+  val actMem = Module(MemoryGenerator.SRAM(depth = l.input.memDepth(), width = MemWordSize.bits))
   val dataMover = Module(new InputDataMover(l.input))
   val shiftRegConvolver = Module(new ShiftRegisterConvolver(l))
 
@@ -62,7 +62,7 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
 
   when(state === InSubState.sEMPTY && io.inStream.fire) {
     state := InSubState.sRECEVING_DATA
-  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (l.input.memDepth - 1).U && io.inStream.fire) {
+  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (l.input.memDepth() - 1).U && io.inStream.fire) {
     assert(io.inStream.last)
     state := InSubState.sFULL
   }.elsewhen(state === InSubState.sFULL && isLastActiveWindow && io.activeDone) {

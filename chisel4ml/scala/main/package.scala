@@ -98,10 +98,9 @@ package object implicits {
       "b".concat(values.map(_.toInt).map(toBinary(_, qt.dtype.bitwidth)).mkString)
     }
 
-    def toHexStr: String = {
-      logger.debug("Convertin QTensor to a hex file string.")
+    def toHexString(memWordWidth: Int = 32): String = {
+      require(memWordWidth >= qt.dtype.bitwidth)
       val bitwidth:       Int = qt.dtype.bitwidth
-      val memWordWidth:   Int = 32
       val paramsPerWord:  Int = memWordWidth / bitwidth
       val memValidBits:   Int = paramsPerWord * bitwidth
       val memInvalidBits: Int = memWordWidth - memValidBits
@@ -165,22 +164,25 @@ package object implicits {
     def numParams:       Int = qt.shape.reduce(_ * _)
     def numKernelParams: Int = numParams / numKernels
     def numActiveParams(depthwise: Boolean): Int = if (depthwise) width * height else numKernelParams
-    def paramsPerWord: Int = MemWordSize.bits / qt.dtype.bitwidth
+    def paramsPerWord(wordSize: Int = 32): Int = {
+      require(wordSize >= qt.dtype.bitwidth)
+      wordSize / qt.dtype.bitwidth
+    }
     def totalBitwidth: Int = qt.dtype.bitwidth * numParams
-    def memDepth: Int = {
+    def memDepth(memWordSize: Int = 32): Int = {
       qt.shape.length match {
         // Each kernel goes to a new word!
-        case 4 => math.ceil(numKernelParams.toFloat / paramsPerWord.toFloat).toInt * numKernels
-        case _ => math.ceil(numParams.toFloat / paramsPerWord.toFloat).toInt
+        case 4 => math.ceil(numKernelParams.toFloat / paramsPerWord(memWordSize).toFloat).toInt * numKernels
+        case _ => math.ceil(numParams.toFloat / paramsPerWord(memWordSize).toFloat).toInt
       }
     }
-    def memDepthOneKernel: Int = memDepth / numKernels
+    def memDepthOneKernel(memWordSize: Int = 32): Int = memDepth(memWordSize) / numKernels
     def numTransactions(busWidth: Int): Int = {
       require(
         busWidth >= qt.dtype.bitwidth,
         s"Buswidth must be at least the size of input data bitwidth. $busWidth !>= ${qt.dtype.bitwidth}"
       )
-      val paramsPerTrans = math.floor(busWidth.toFloat / qt.dtype.bitwidth.toFloat).toInt
+      val paramsPerTrans = paramsPerWord(busWidth)
       math.ceil(numParams.toFloat / paramsPerTrans.toFloat).toInt
     }
   }
@@ -198,10 +200,9 @@ package object implicits {
            | to the bitwidth of a single qtensor element. Buswidth is $busWidth,
            | bitwidth:${stencil.dtype.bitwidth}.""".stripMargin.replaceAll("\n", "")
       )
-      val paramsPerTransaction: Int = busWidth / stencil.dtype.bitwidth
-      val bitsPerTransaction:   Int = paramsPerTransaction * stencil.dtype.bitwidth
+      val bitsPerTransaction:   Int = stencil.paramsPerWord(busWidth) * stencil.dtype.bitwidth
       logger.debug(
-        s"$stencil, busWidth:$busWidth, paramsPerTransactions:$paramsPerTransaction, bitsPerTranscation:$bitsPerTransaction"
+        s"$stencil, busWidth:$busWidth, bitsPerTranscation:$bitsPerTransaction"
       )
 
       val binaryVals = x
@@ -218,8 +219,8 @@ package object implicits {
       }
       logger.debug(
         s"""Converted Seq[BigInt] to QTensor. Values: $values, valuesMod: $valuesMod.
-           | Original Seq: $x, paramsPerTransaction: $paramsPerTransaction, bitsPerTransaction:
-           | $bitsPerTransaction, flatVals: $flatVals. binaryVals: $binaryVals""".stripMargin
+           | Original Seq: $x, bitsPerTransaction: $bitsPerTransaction, 
+           | flatVals: $flatVals. binaryVals: $binaryVals""".stripMargin
           .replaceAll("\n", "")
       )
       QTensor(dtype = stencil.dtype, shape = stencil.shape, values = valuesMod)

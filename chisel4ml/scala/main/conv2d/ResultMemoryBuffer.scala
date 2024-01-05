@@ -25,7 +25,7 @@ class ResultMemoryBuffer[O <: Bits](output: lbir.QTensor, options: LayerOptions)
     val outStream = AXIStream(UInt(options.busWidthOut.W))
     val result = Flipped(Decoupled(output.getType[O]))
   })
-  val numRegs = if (output.numParams >= output.paramsPerWord) output.paramsPerWord else output.numParams
+  val numRegs = if (output.numParams >= output.paramsPerWord()) output.paramsPerWord() else output.numParams
   val regs = Reg(Vec(numRegs, UInt(output.dtype.bitwidth.W)))
   val (totalCounter, totalCounterWrap) = Counter(0 until output.numParams, io.result.fire)
   val (registerCounter, registerCounterWrap) = Counter(0 until numRegs, io.result.fire, totalCounterWrap)

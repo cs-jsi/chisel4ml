@@ -17,10 +17,9 @@ package chisel4ml.sequential
 
 import lbir.MaxPool2DConfig
 import org.slf4j.LoggerFactory
-import services.LayerOptions
 import chisel3._
 import chisel3.util._
-import chisel4ml.LBIRStream
+import chisel4ml.{LBIRStream, HasLBIRStreamParameters}
 import chisel4ml.implicits._
 import interfaces.amba.axis._
 import chisel4ml.util.risingEdge
@@ -28,13 +27,15 @@ import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object MaxPool2DConfigField extends Field[MaxPool2DConfig]
 
-trait HasMaxPoolParameters {
+trait HasMaxPoolParameters extends HasLBIRStreamParameters {
   val p: Parameters
   val cfg = p(MaxPool2DConfigField)
   val maxPoolSize = cfg.input.width / cfg.output.width
   require(cfg.output.width * maxPoolSize == cfg.input.width)
   require(cfg.output.height * maxPoolSize == cfg.input.height, f"${cfg.input} / ${cfg.output} == $maxPoolSize")
   val shiftRegsSize = cfg.input.width * maxPoolSize - (cfg.input.width - maxPoolSize)
+  val paramsPerTransaction: Int = inWidth / cfg.input.dtype.bitwidth
+  val validBits = paramsPerTransaction * cfg.input.dtype.bitwidth
 }
 
 /* MaxPool2D
@@ -44,14 +45,13 @@ trait HasMaxPoolParameters {
  * moments.
  *
  */
-class MaxPool2D[T <: Bits with Num[T]](options: LayerOptions)(implicit val p: Parameters) extends Module 
+class MaxPool2D[T <: Bits with Num[T]](implicit val p: Parameters) extends Module 
 with LBIRStream
-with HasMaxPoolParameters {
+with HasMaxPoolParameters
+ {
   val logger = LoggerFactory.getLogger(this.getClass())
-  val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
-  val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
-
-  val paramsPerTransaction: Int = options.busWidthIn / cfg.input.dtype.bitwidth
+  val inStream = IO(Flipped(AXIStream(UInt(inWidth.W))))
+  val outStream = IO(AXIStream(UInt(outWidth.W)))
 
   object InputBufferState extends ChiselEnum {
     val sEMPTY = Value(0.U)
@@ -66,7 +66,6 @@ with HasMaxPoolParameters {
                  | ${cfg.output.height}.""".stripMargin.replaceAll("\n", ""))
 
   val inputs = Wire(Vec(paramsPerTransaction, cfg.input.getType[T]))
-  val validBits = paramsPerTransaction * cfg.input.dtype.bitwidth
   inputs := inStream.bits(validBits - 1, 0).asTypeOf(inputs)
   val inputsBuffer = RegEnable(inputs, inStream.fire)
   val outputsBuffer = Reg(Vec(paramsPerTransaction, cfg.input.getType[T]))
@@ -80,7 +79,7 @@ with HasMaxPoolParameters {
   val (totalInputElements, totalInputElementsWrap) =
     Counter(state === InputBufferState.sREAD_WORD, cfg.input.numParams)
   val (transactionsCounter, transactionsCounterWrap) =
-    Counter(0 until cfg.input.numTransactions(options.busWidthIn), inStream.fire)
+    Counter(0 until cfg.input.numTransactions(inWidth), inStream.fire)
   val (inputBufferCounter, inputBufferCounterWrap) =
     Counter(0 until paramsPerTransaction, state === InputBufferState.sREAD_WORD, totalInputElementsWrap)
   dontTouch(totalInputElements)
