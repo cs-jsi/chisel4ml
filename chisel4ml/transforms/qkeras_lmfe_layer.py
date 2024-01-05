@@ -8,6 +8,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import qkeras
+
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.datatype_pb2 import Datatype
 from chisel4ml.lbir.qtensor_pb2 import QTensor
@@ -22,25 +24,31 @@ class QKerasAudioPreprocess(QKerasTransform):
     Transforms an audio preprocess layer into the LBIR representation.
     """
 
-    num_layers = 1
+    num_layers = 2
     order = 3
 
     def _call_impl(self, layers):
-        lmfe_config = lbir.LMFEConfig(
-            fft_size=512,
-            num_mels=20,
-            num_frames=32,
-            input=QTensor(
-                dtype=Datatype(
-                    quantization=Datatype.QuantizationType.UNIFORM,
-                    signed=True,
-                    bitwidth=33,
-                    shift=[0],
-                    offset=[0],
-                ),
-                shape=[32, 512],
-            ),
-            output=QTensor(
+        lmfe_config = layers[1].cfg
+        if (
+            isinstance(layers[0], lbir.LayerWrap)
+            and layers[0].WhichOneof("sealed_value_optional") == "fft"
+        ):
+            lmfe_config.input.CopyFrom(layers[0].fft.output)
+        else:
+            lmfe_config.input.CopyFrom(
+                QTensor(
+                    dtype=Datatype(
+                        quantization=Datatype.QuantizationType.UNIFORM,
+                        signed=True,
+                        bitwidth=33,
+                        shift=[0],
+                        offset=[0],
+                    ),
+                    shape=[layers[1].cfg.num_frames, layers[1].cfg.fft_size],
+                )
+            )
+        lmfe_config.output.CopyFrom(
+            QTensor(
                 dtype=Datatype(
                     quantization=Datatype.QuantizationType.UNIFORM,
                     signed=True,
@@ -48,10 +56,13 @@ class QKerasAudioPreprocess(QKerasTransform):
                     shift=[0],
                     offset=[0],
                 ),
-                shape=[32, 20],
-            ),
+                shape=[layers[1].cfg.num_frames, layers[1].cfg.num_mels],
+            )
         )
-        return [lbir.LayerWrap(lmfe=lmfe_config)]
+        if isinstance(layers[0], qkeras.QActivation):
+            return [lbir.LayerWrap(lmfe=lmfe_config)]
+        else:
+            return [layers[0], lbir.LayerWrap(lmfe=lmfe_config)]
 
     def is_applicable(self, layers) -> bool:
-        return isinstance(layers[0], LMFELayer)
+        return isinstance(layers[1], LMFELayer)

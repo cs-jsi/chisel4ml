@@ -12,6 +12,7 @@ def test_compile_service(bnn_simple_model):
     opt_model = optimize.qkeras_model(bnn_simple_model)
     circuit = generate.circuit(opt_model, is_simple=False)
     assert circuit is not None
+    circuit.delete_from_server()
 
 
 def test_run_service(bnn_simple_model):
@@ -29,6 +30,7 @@ def test_run_service(bnn_simple_model):
                     f" hardware model predicted {hw_res}. Something is wrong here. The"
                     f" stated results are for the inputs {i}, {j}, {k}. "
                 )
+    circuit.delete_from_server()
 
 
 def test_run_service_2(bnn_simple_bweight_model):
@@ -53,6 +55,7 @@ def test_run_service_2(bnn_simple_bweight_model):
             f" model predicted {hw_res}. Something is wrong here. The stated results"
             f" are for the inputs: {inp}. "
         )
+    circuit.delete_from_server()
 
 
 @pytest.mark.skip(reason="to expensive to run")
@@ -80,6 +83,7 @@ def test_run_service_3(bnn_mnist_model):
             f" model predicted {hw_res}. Something is wrong here. The stated results"
             f" are for the mnist image index {i}. "
         )
+    circuit.delete_from_server()
 
 
 def test_run_service_4(sint_simple_noscale_model):
@@ -114,6 +118,7 @@ def test_run_service_4(sint_simple_noscale_model):
             f" model predicted {hw_res}. Something is wrong here. The stated results"
             f" are for the inputs {x_test[i]}. "
         )
+    circuit.delete_from_server()
 
 
 def test_run_service_5(sint_simple_model):
@@ -148,6 +153,7 @@ def test_run_service_5(sint_simple_model):
             f" model predicted {hw_res}. Something is wrong here. The stated results"
             f" are for the inputs {x_test[i]}. "
         )
+    circuit.delete_from_server()
 
 
 @pytest.mark.skip(reason="to expensive to run")
@@ -178,6 +184,7 @@ def test_run_service_6(sint_mnist_qdense_relu):
             f" {sw_index}, and the hardware model at index: {hw_index}. Something is"
             f" wrong here. The stated results are for the mnist test image index {i}. "
         )
+    circuit.delete_from_server()
 
 
 @pytest.mark.skip(reason="to expensive to run")
@@ -211,6 +218,7 @@ def test_run_service_7(sint_mnist_qdense_relu_pruned):
             f" {sw_index}, and the hardware model at index: {hw_index}. Something is"
             f" wrong here. The stated results are for the mnist test image index {i}. "
         )
+    circuit.delete_from_server()
 
 
 def test_run_service_conv_8(sint_conv_layer):
@@ -233,6 +241,7 @@ def test_run_service_conv_8(sint_conv_layer):
         assert np.array_equal(
             hw_res, sw_res.reshape(1, 2, 2)
         ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+    circuit.delete_from_server()
 
 
 def test_run_service_conv_9(sint_conv_layer):
@@ -253,6 +262,7 @@ def test_run_service_conv_9(sint_conv_layer):
         assert np.array_equal(
             hw_res, sw_res.reshape(1, 2, 2)
         ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+    circuit.delete_from_server()
 
 
 def test_run_service_conv_10(sint_conv_layer_2_channels):
@@ -274,6 +284,7 @@ def test_run_service_conv_10(sint_conv_layer_2_channels):
         assert np.array_equal(
             hw_res, sw_res.reshape(2, 2, 2)
         ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+    circuit.delete_from_server()
 
 
 def test_run_service_conv_11(sint_conv_layer_2_kernels_2_channels):
@@ -295,6 +306,7 @@ def test_run_service_conv_11(sint_conv_layer_2_kernels_2_channels):
         assert np.array_equal(
             hw_res, sw_res.reshape(4, 2, 2)
         ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+    circuit.delete_from_server()
 
 
 def test_run_service_conv_12(sint_simple_conv_model):
@@ -317,6 +329,7 @@ def test_run_service_conv_12(sint_simple_conv_model):
         assert np.array_equal(
             hw_res, sw_res.reshape(1)
         ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+    circuit.delete_from_server()
 
 
 def test_run_service_maxpool_13(sint_simple_maxpool_model):
@@ -353,6 +366,7 @@ def test_run_service_maxpool_13(sint_simple_maxpool_model):
         assert np.array_equal(
             hw_res, np.moveaxis(sw_res, -1, 1).reshape(2, 2, 2)
         ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+    circuit.delete_from_server()
 
 
 def test_run_service_conv_maxpool_14(sint_simple_conv_maxpool_model):
@@ -383,6 +397,7 @@ def test_run_service_conv_maxpool_14(sint_simple_conv_maxpool_model):
         sw_res = np.moveaxis(np.reshape(sw_res, (2, 2, 4)), -1, 0)
         hw_res = circuit(np.moveaxis(x, -1, 0))
         assert np.array_equal(hw_res, sw_res)
+    circuit.delete_from_server()
 
 
 def test_run_service_conv_maxpool_15(sint_conv_maxpool_model):
@@ -413,6 +428,7 @@ def test_run_service_conv_maxpool_15(sint_conv_maxpool_model):
         sw_res = np.moveaxis(np.reshape(sw_res, (2, 2, 6)), -1, 0)
         hw_res = circuit(np.moveaxis(x, -1, 0))
         assert np.array_equal(hw_res, sw_res)
+    circuit.delete_from_server()
 
 
 def test_run_service_conv_conv_16(sint_conv_conv_model):
@@ -443,6 +459,7 @@ def test_run_service_conv_conv_16(sint_conv_conv_model):
         sw_res = np.moveaxis(np.reshape(sw_res, (3, 3, 4)), -1, 0)
         hw_res = circuit(np.moveaxis(x, -1, 0))
         assert np.array_equal(hw_res, sw_res)
+    circuit.delete_from_server()
 
 
 def test_run_service_conv_width_noteq_height_17(sint_conv_model_width_noteq_height):
@@ -469,6 +486,7 @@ def test_run_service_conv_width_noteq_height_17(sint_conv_model_width_noteq_heig
         sw_res = np.reshape(sw_res, (4, 2, 5))
         hw_res = circuit(x)
         assert np.array_equal(hw_res, sw_res)
+    circuit.delete_from_server()
 
 
 def test_run_service_conv_width_noteq_height_18(sint_conv_model_width_noteq_height_2):
@@ -501,6 +519,7 @@ def test_run_service_conv_width_noteq_height_18(sint_conv_model_width_noteq_heig
         sw_res = np.reshape(sw_res, (4, 5, 2))
         hw_res = circuit(x)
         assert np.array_equal(hw_res, sw_res)
+    circuit.delete_from_server()
 
 
 def test_run_service_digits_partial_19(sint_digit_model_ds):
@@ -515,6 +534,7 @@ def test_run_service_digits_partial_19(sint_digit_model_ds):
         ).numpy()
         hw_res = circuit.predict(image.reshape(1, 8, 8))
         assert np.array_equal(sw_res.reshape(6, 6), hw_res.reshape(6, 6))
+    circuit.delete_from_server()
 
 
 def test_run_service_digits_20(sint_digit_model_ds):
@@ -525,3 +545,4 @@ def test_run_service_digits_20(sint_digit_model_ds):
         sw_res = opt_model.predict(image.reshape(1, 8, 8, 1))
         hw_res = circuit.predict(image.reshape(1, 8, 8))
         assert np.array_equal(sw_res.reshape(10), hw_res)
+    circuit.delete_from_server()

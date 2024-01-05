@@ -37,7 +37,6 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
     trimType = RoundHalfToEven,
     twiddleWidth = 16,
     useBitReverse = true,
-    windowFunc = WindowFunctionTypes.None(), // We do windowing in this module, because of issues with this
     overflowReg = true,
     numAddPipes = 1,
     numMulPipes = 1,
@@ -49,7 +48,6 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
 
   val window = VecInit(layer.winFn.map(_.F(16.BP)))
 
-  require(layer.fftSize == 512) // TODO: remove this restriction
   require(
     options.busWidthOut == layer.output.dtype.bitwidth,
     s"This module requires buswidhts to equal the input/output datatypes. " +
@@ -79,11 +77,11 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
 
   inStream.ready := state === fftState.sREADY
   sdffft.io.in.valid := inStream.valid && state === fftState.sREADY
-  val currWindow = window(fftCounter).asUInt
+  val currWindow = window(fftCounter).asUInt.zext
   dontTouch(currWindow)
   // U(12, 0) x S(0, 16) => S(12, 16) >> 4 => S(12,12)
-  val windowedSignal = inStream.bits.asSInt * currWindow
-  sdffft.io.in.bits.real := (windowedSignal >> 4).asTypeOf(sdffft.io.in.bits.real)
+  val windowedSignal = (inStream.bits.asSInt * currWindow) >> 4
+  sdffft.io.in.bits.real := windowedSignal.asTypeOf(sdffft.io.in.bits.real)
   sdffft.io.in.bits.imag := 0.U.asTypeOf(sdffft.io.in.bits.imag)
   sdffft.io.lastIn := inStream.last || fftCounterWrap
 
@@ -91,8 +89,4 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
   outStream.valid := sdffft.io.out.valid
   outStream.bits := sdffft.io.out.bits.real.asTypeOf(outStream.bits)
   outStream.last := outCounterWrap
-
-  when(outCounterWrap) {
-    assert(outStream.last)
-  }
 }

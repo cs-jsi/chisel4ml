@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import math
 
 import tensorflow as tf
 
@@ -29,7 +30,7 @@ def circuit(
     pipeline=False,
     use_verilator=False,
     gen_waveform=False,
-    gen_timeout_sec=600,
+    gen_timeout_sec=800,
     axi_stream_width=None,
     num_layers=None,
 ):
@@ -84,9 +85,15 @@ def circuit(
 # TODO
 def generate_layer_options(lbir_model, axi_stream_width):
     options = []
+    lmfe_only = True
     for layer in lbir_model.layers:
         if layer.HasField("fft"):
-            options.append(LayerOptions(bus_width_in=12, bus_width_out=33))
+            bus_width_out = int(24 + math.log2(layer.fft.fft_size))
+            options.append(LayerOptions(bus_width_in=12, bus_width_out=bus_width_out))
+            lmfe_only = False
+        elif layer.HasField("lmfe") and lmfe_only:
+            fft_width_out = int(24 + math.log2(layer.lmfe.fft_size))
+            options.append(LayerOptions(bus_width_in=fft_width_out, bus_width_out=32))
         else:
             if len(options) > 0:
                 options.append(
