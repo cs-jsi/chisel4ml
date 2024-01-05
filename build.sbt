@@ -61,15 +61,30 @@ val commonSettings = Seq(
 
 lazy val interfaces = (project in file("interfaces")).settings(commonSettings, name := "interfaces")
 lazy val memories = (project in file("memories")).settings(commonSettings, name := "memories")
-
-lazy val fft = (project in file("sdf-fft"))
+/*lazy val dsptools = (project in file("sdf-fft/tools/dsptools"))
+  .settings(commonSettings, name := "dsptools")
+lazy val cde = (project in file("sdf-fft/tools/cde"))
+  .settings(commonSettings, name := "cde")
+lazy val hardfloat = (project in file("sdf-fft/generators/rocket-chip/hardfloat"))
+  .settings(commonSettings, name := "hardfloat")
+lazy val rocketMacros = (project in file("sdf-fft/generators/rocket-chip/macros"))
+  .settings(commonSettings, name := "macros")*/
+  //.dependsOn(hardfloat, rocketMacros, cde)
+lazy val rocketchip = (project in file("sdf-fft/generators/rocket-chip"))
+  .settings(commonSettings, name := "rocket-chip")
+//lazy val rocket_dsp_utils = (project in file("sdf-fft/tools/rocket-dsp-utils"))
+//  .dependsOn(rocketchip, cde, dsptools)
+  
+//.dependsOn(rocketchip, rocket_dsp_utils)
+lazy val sdf_fft = (project in file("sdf-fft"))
   .settings(commonSettings, name := "sdf-fft")
 lazy val melengine = (project in file("mel-engine"))
-  .dependsOn(fft, interfaces, memories)
+  .dependsOn(interfaces, memories)
   .settings(commonSettings, name := "melengine")
 
+//.aggregate(interfaces, memories, dsptools, cde, hardfloat, rocketMacros, rocketchip, rocket_dsp_utils, sdf_fft, melengine)
 lazy val root = (project in file("."))
-  .dependsOn(melengine, fft, interfaces, memories)
+  .dependsOn(melengine, sdf_fft, interfaces, memories)
   .settings(
     commonSettings,
     assembly / mainClass := Some("chisel4ml.Chisel4mlServer"),
@@ -80,7 +95,7 @@ lazy val root = (project in file("."))
 inThisBuild(
   List(
     scalaVersion := "2.13.10",
-    semanticdbEnabled := true,
-    semanticdbVersion := scalafixSemanticdb.revision
+    //semanticdbEnabled := true,
+    //semanticdbVersion := scalafixSemanticdb.revision
   )
 )
