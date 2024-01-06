@@ -18,7 +18,6 @@ import chisel3._
 import chisel3.util._
 import chisel4ml.implicits._
 import memories.MemoryGenerator
-import chisel4ml.MemWordSize
 
 class ThreshAndShiftIO[A <: Bits](threshold: lbir.QTensor) extends Bundle {
   val thresh = threshold.getType[A]
@@ -59,12 +58,12 @@ class KernelSubsystem[W <: Bits, A <: Bits](l: lbir.Conv2DConfig) extends Module
     val weights = Valid(new KernelSubsystemIO[W, A](l.kernel, l.thresh, l.depthwise))
     val ctrl = new KernelRFLoaderControlIO(l)
   })
-  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = l.kernel.toHexString(), width = MemWordSize.bits))
+  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = l.kernel.toHexString(), width = 32))
   val kRFLoader = Module(new KernelRFLoader[W](l))
   val krf = Module(new KernelRegisterFile[W](l.kernel, l.depthwise))
   val tasu = Module(new ThreshAndShiftUnit[A](l.thresh, l.kernel))
 
-  kernelMem.io.write <> MemoryGenerator.getTieOffBundle(depth = l.kernel.memDepth(), width = MemWordSize.bits)
+  kernelMem.io.write <> MemoryGenerator.getTieOffBundle(depth = l.kernel.memDepth(), width = 32)
   kRFLoader.io.rom <> kernelMem.io.read
   krf.io.write <> kRFLoader.io.krf
 

@@ -17,7 +17,6 @@ package chisel4ml.conv2d
 
 import chisel3._
 import chisel3.util._
-import chisel4ml.MemWordSize
 import chisel4ml.implicits._
 import memories.SRAMRead
 
@@ -32,7 +31,7 @@ class KernelRFLoaderControlIO(l: lbir.Conv2DConfig) extends Bundle {
 class KernelRFLoader[W <: Bits](l: lbir.Conv2DConfig) extends Module {
   val io = IO(new Bundle {
     val krf = Valid(l.kernel.getType[W])
-    val rom = Flipped(new SRAMRead(depth = l.kernel.memDepth(), width = MemWordSize.bits))
+    val rom = Flipped(new SRAMRead(depth = l.kernel.memDepth(), width = 32))
     val ctrl = new KernelRFLoaderControlIO(l)
   })
 

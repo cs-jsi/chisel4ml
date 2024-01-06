@@ -19,14 +19,14 @@ import chisel3._
 import chisel3.util._
 import memories.SRAMRead
 import chisel4ml.implicits._
-import chisel4ml.MemWordSize
 import chisel4ml.util.isStable
+import services.LayerOptions
 
 /*
   Moves the entire tensor after obtainint the signal io.start.
   (this includes several channels)
  */
-class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
+class InputDataMover[I <: Bits](input: lbir.QTensor, options: LayerOptions) extends Module {
   object IDMState extends ChiselEnum {
     val sWAIT = Value(0.U)
     val sMOVEDATA = Value(1.U)
@@ -34,7 +34,7 @@ class InputDataMover[I <: Bits](input: lbir.QTensor) extends Module {
 
   val io = IO(new Bundle {
     val nextElement = Decoupled(input.getType[I])
-    val actMem = Flipped(new SRAMRead(input.memDepth(), MemWordSize.bits))
+    val actMem = Flipped(new SRAMRead(input.memDepth(), options.busWidthIn))
     val actMemWrittenTo = Input(UInt(log2Up(input.memDepth() + 1).W))
     val start = Input(Bool())
   })

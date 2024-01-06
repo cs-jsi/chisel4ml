@@ -5,7 +5,6 @@ import chisel3.util._
 import interfaces.amba.axis.AXIStream
 import services.LayerOptions
 import memories.MemoryGenerator
-import chisel4ml.MemWordSize
 import chisel4ml.implicits._
 import lbir.Conv2DConfig
 
@@ -20,8 +19,8 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
     val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[I]))
     val activeDone = Output(Bool())
   })
-  val actMem = Module(MemoryGenerator.SRAM(depth = l.input.memDepth(), width = MemWordSize.bits))
-  val dataMover = Module(new InputDataMover(l.input))
+  val actMem = Module(MemoryGenerator.SRAM(depth = l.input.memDepth(), width = options.busWidthIn))
+  val dataMover = Module(new InputDataMover(l.input, options))
   val shiftRegConvolver = Module(new ShiftRegisterConvolver(l))
 
   object InSubState extends ChiselEnum {
