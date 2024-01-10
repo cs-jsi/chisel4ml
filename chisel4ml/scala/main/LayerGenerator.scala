@@ -27,7 +27,6 @@ case object SupportsMultipleBeats extends Field[Boolean](true)
 object LayerGenerator {
   def apply(layerWrap: LayerWrap): Module with HasLBIRStream = {
     implicit val defaults: Parameters = new Config((site, _, _) => {
-      case LayerWrap => layerWrap
       case LBIRNumBeatsIn => if (site(SupportsMultipleBeats) == true) 4 else 1
       case LBIRNumBeatsOut => if (site(SupportsMultipleBeats) == true) 4 else 1
     })
@@ -35,7 +34,10 @@ object LayerGenerator {
       case _: DenseConfig => Module(new ProcessingElementWrapSimpleToSequential)
       case l: Conv2DConfig => Module(ProcessingElementSequentialConv(l))
       case _: MaxPool2DConfig => Module(new MaxPool2D)
-      case _: FFTConfig => Module(new FFTWrapper()(defaults.alterPartial({case SupportsMultipleBeats => false})))
+      case l: FFTConfig => Module(new FFTWrapper()(defaults.alterPartial({
+        case FFTConfigField => l
+        case SupportsMultipleBeats => false
+      })))
       case _: LMFEConfig => Module(new LMFEWrapper()(defaults.alterPartial({case SupportsMultipleBeats => false})))
       case _ => throw new RuntimeException(f"Unsupported layer type: $layerWrap")
     } 

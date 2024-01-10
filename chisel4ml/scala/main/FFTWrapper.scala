@@ -86,7 +86,7 @@ with HasFFTParameters {
   val currWindow = window(fftCounter).asUInt.zext
   dontTouch(currWindow)
   // U(12, 0) x S(0, 16) => S(12, 16) >> 4 => S(12,12)
-  val windowedSignal = (inStream.bits(0).asUInt * currWindow) >> 4
+  val windowedSignal = (inStream.bits.asSInt * currWindow) >> 4
   sdffft.io.in.bits.real := windowedSignal.asTypeOf(sdffft.io.in.bits.real)
   sdffft.io.in.bits.imag := 0.U.asTypeOf(sdffft.io.in.bits.imag)
   sdffft.io.lastIn := inStream.last || fftCounterWrap
