@@ -40,8 +40,8 @@ class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
     with HasDenseParameters {
   val logger = LoggerFactory.getLogger(this.getClass())
 
-  val inStream = IO(Flipped(AXIStream(UInt((numBeatsIn * inWidth).W))))
-  val outStream = IO(AXIStream(UInt((numBeatsOut * outWidth).W)))
+  val inStream = IO(Flipped(AXIStream(UInt(inWidth.W))))
+  val outStream = IO(AXIStream(UInt(outWidth.W)))
   val inputBuffer = RegInit(
     VecInit(Seq.fill(cfg.input.numTransactions(inWidth))(0.U(inWidth.W)))
   )

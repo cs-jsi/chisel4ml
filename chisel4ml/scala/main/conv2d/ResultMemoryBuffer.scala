@@ -29,7 +29,7 @@ with HasLBIRStreamParameters {
     val outStream = AXIStream(UInt(outWidth.W))
     val result = Flipped(Decoupled(cfg.output.getType[O]))
   })
-  val numRegs = if (cfg.output.numParams >= cfg.output.paramsPerWord()) cfg.output.paramsPerWord() else cfg.output.numParams
+  val numRegs = if (cfg.output.numParams >= numBeatsOut) numBeatsOut else cfg.output.numParams
   val regs = Reg(Vec(numRegs, UInt(cfg.output.dtype.bitwidth.W)))
   val (totalCounter, totalCounterWrap) = Counter(0 until cfg.output.numParams, io.result.fire)
   val (registerCounter, registerCounterWrap) = Counter(0 until numRegs, io.result.fire, totalCounterWrap)

@@ -7,7 +7,6 @@ import memories.MemoryGenerator
 import chisel4ml.implicits._
 import org.chipsalliance.cde.config.Parameters
 import chisel4ml.HasLBIRStreamParameters
-import lbir.Conv2DConfig
 
 /* InputActivationSubsystem
  * Handles the input data stream, and stores it in to a input buffer. It also "rolls" through the input activation
@@ -22,7 +21,7 @@ with HasLBIRStreamParameters {
     val inputActivationsWindow = Decoupled(Vec(cfg.kernel.numActiveParams(cfg.depthwise), cfg.input.getType[I]))
     val activeDone = Output(Bool())
   })
-  val actMem = Module(MemoryGenerator.SRAM(depth = cfg.input.memDepth(), width = inWidth))
+  val actMem = Module(MemoryGenerator.SRAM(depth = cfg.input.memDepth(inWidth), width = inWidth))
   val dataMover = Module(new InputDataMover())
   val shiftRegConvolver = Module(new ShiftRegisterConvolver(cfg))
 
@@ -64,7 +63,7 @@ with HasLBIRStreamParameters {
 
   when(state === InSubState.sEMPTY && io.inStream.fire) {
     state := InSubState.sRECEVING_DATA
-  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (cfg.input.memDepth() - 1).U && io.inStream.fire) {
+  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (cfg.input.memDepth(inWidth) - 1).U && io.inStream.fire) {
     assert(io.inStream.last)
     state := InSubState.sFULL
   }.elsewhen(state === InSubState.sFULL && isLastActiveWindow && io.activeDone) {

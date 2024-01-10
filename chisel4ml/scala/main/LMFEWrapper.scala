@@ -34,7 +34,6 @@ trait HasLMFEParameters extends HasLBIRStreamParameters {
   val inWidth = numBeatsIn * cfg.input.dtype.bitwidth
   val outWidth = numBeatsOut * cfg.output.dtype.bitwidth
   require(numBeatsIn == 1)
-  require(numBeatsOut == 1)
 }
 
 class LMFEWrapper(implicit val p: Parameters) extends Module 
@@ -43,8 +42,8 @@ with HasLBIRStreamParameters
 with HasLMFEParameters {
   val logger = LoggerFactory.getLogger("LMFEWrapper")
 
-  val inStream = IO(Flipped(AXIStream(UInt(cfg.input.dtype.bitwidth.W))))
-  val outStream = IO(AXIStream(UInt(8.W)))
+  val inStream = IO(Flipped(AXIStream(UInt(inWidth.W))))
+  val outStream = IO(AXIStream(UInt(outWidth.W)))
   val melEngine = Module(
     new MelEngine(
       cfg.fftSize,
@@ -61,7 +60,7 @@ with HasLMFEParameters {
 
   inStream.ready := melEngine.io.inStream.ready
   melEngine.io.inStream.valid := inStream.valid
-  melEngine.io.inStream.bits := inStream.bits(0).asTypeOf(melEngine.io.inStream.bits)
+  melEngine.io.inStream.bits := inStream.bits.asTypeOf(melEngine.io.inStream.bits)
   melEngine.io.inStream.last := inStream.last
 
   when(melEngine.io.outStream.fire) {

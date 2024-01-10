@@ -63,7 +63,7 @@ class KernelSubsystem[W <: Bits, A <: Bits](l: lbir.Conv2DConfig) extends Module
   val krf = Module(new KernelRegisterFile[W](l.kernel, l.depthwise))
   val tasu = Module(new ThreshAndShiftUnit[A](l.thresh, l.kernel))
 
-  kernelMem.io.write <> MemoryGenerator.getTieOffBundle(depth = l.kernel.memDepth(), width = 32)
+  kernelMem.io.write <> MemoryGenerator.getTieOffBundle(depth = l.kernel.memDepth(32), width = 32)
   kRFLoader.io.rom <> kernelMem.io.read
   krf.io.write <> kRFLoader.io.krf
 

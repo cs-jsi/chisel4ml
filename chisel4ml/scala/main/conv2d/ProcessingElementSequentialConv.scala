@@ -42,7 +42,6 @@ import org.chipsalliance.cde.config.{Config, Field}
 case object Conv2DConfigField extends Field[Conv2DConfig]
 
 trait HasSequentialConvParameters extends HasLBIRStreamParameters { 
-  type T = Conv2DConfig
   val p: Parameters
   val cfg = p(Conv2DConfigField)
   val inWidth = numBeatsIn * cfg.input.dtype.bitwidth
@@ -60,8 +59,8 @@ with HasSequentialConvParameters {
           | ${cfg.input.dtype}. Number of kernel parameters is ${cfg.kernel.numKernelParams}."""
   )
 
-  val inStream = IO(Flipped(AXIStream(UInt((numBeatsIn * cfg.input.dtype.bitwidth).W))))
-  val outStream = IO(AXIStream(UInt((numBeatsOut * cfg.output.dtype.bitwidth).W)))
+  val inStream = IO(Flipped(AXIStream(UInt(inWidth.W))))
+  val outStream = IO(AXIStream(UInt(outWidth.W)))
 
   val dynamicNeuron = Module(new DynamicNeuron[I, W, M, A, O](cfg, qc))
   val ctrl = Module(new PeSeqConvController(cfg))
@@ -82,7 +81,7 @@ with HasSequentialConvParameters {
 object ProcessingElementSequentialConv{
   def apply(cfg: Conv2DConfig) = {
     implicit val p: Parameters = new Config((_, _, _) => {
-      case Conv2DConfig => cfg
+      case Conv2DConfigField => cfg
       case LBIRNumBeatsIn => 4
       case LBIRNumBeatsOut => 4
     })

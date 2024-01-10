@@ -31,7 +31,7 @@ class KernelRFLoaderControlIO(l: lbir.Conv2DConfig) extends Bundle {
 class KernelRFLoader[W <: Bits](l: lbir.Conv2DConfig) extends Module {
   val io = IO(new Bundle {
     val krf = Valid(l.kernel.getType[W])
-    val rom = Flipped(new SRAMRead(depth = l.kernel.memDepth(), width = 32))
+    val rom = Flipped(new SRAMRead(depth = l.kernel.memDepth(32), width = 32))
     val ctrl = new KernelRFLoaderControlIO(l)
   })
 
@@ -44,11 +44,11 @@ class KernelRFLoader[W <: Bits](l: lbir.Conv2DConfig) extends Module {
   val state = RegInit(KrlState.sWAIT)
 
   val stall = Wire(Bool())
-  val romBaseAddr = RegInit(0.U(log2Up(l.kernel.memDepth()).W))
+  val romBaseAddr = RegInit(0.U(log2Up(l.kernel.memDepth(32)).W))
   val romBaseAddrWire = MuxLookup(
     io.ctrl.loadKernel.bits,
     0.U,
-    (0 until l.kernel.numKernels).map(i => (i.U -> (i * l.kernel.memDepthOneKernel()).U))
+    (0 until l.kernel.numKernels).map(i => (i.U -> (i * l.kernel.memDepthOneKernel(32)).U))
   )
   val (wordElemCnt, wordElemWrap) = Counter(0 until l.kernel.paramsPerWord(), io.krf.valid, io.ctrl.loadKernel.valid)
   val (_, activeElemWrap) = Counter(0 until l.kernel.numActiveParams(l.depthwise), io.krf.valid)
@@ -57,7 +57,7 @@ class KernelRFLoader[W <: Bits](l: lbir.Conv2DConfig) extends Module {
     Counter(0 until l.kernel.numChannels, io.ctrl.nextActive.getOrElse(false.B), io.ctrl.loadKernel.valid)
   val (romAddrCntValue, _) =
     Counter(
-      0 to l.kernel.memDepth(),
+      0 to l.kernel.memDepth(32),
       wordElemWrap,
       state === KrlState.sEND
     )

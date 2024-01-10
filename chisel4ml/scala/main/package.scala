@@ -87,6 +87,7 @@ package object implicits {
     }
     
     def toLBIRTransactions(busWidth: Int): Seq[UInt] = {
+      require(busWidth % qt.dtype.bitwidth == 0)
       val binaryStr = qt.toBinaryString
       val paramWidth = qt.dtype.bitwidth
       val paramsPerTransaction: Int = busWidth / paramWidth
@@ -186,14 +187,14 @@ package object implicits {
       wordSize / qt.dtype.bitwidth
     }
     def totalBitwidth: Int = qt.dtype.bitwidth * numParams
-    def memDepth(memWordSize: Int = 32): Int = {
+    def memDepth(memWordSize: Int): Int = {
       qt.shape.length match {
         // Each kernel goes to a new word!
         case 4 => math.ceil(numKernelParams.toFloat / paramsPerWord(memWordSize).toFloat).toInt * numKernels
         case _ => math.ceil(numParams.toFloat / paramsPerWord(memWordSize).toFloat).toInt
       }
     }
-    def memDepthOneKernel(memWordSize: Int = 32): Int = memDepth(memWordSize) / numKernels
+    def memDepthOneKernel(memWordSize: Int): Int = memDepth(memWordSize) / numKernels
     def numTransactions(busWidth: Int): Int = {
       require(
         busWidth >= qt.dtype.bitwidth,

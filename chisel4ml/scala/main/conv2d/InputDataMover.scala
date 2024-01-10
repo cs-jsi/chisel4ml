@@ -37,13 +37,13 @@ with HasLBIRStreamParameters {
 
   val io = IO(new Bundle {
     val nextElement = Decoupled(cfg.input.getType[I])
-    val actMem = Flipped(new SRAMRead(cfg.input.memDepth(), inWidth))
-    val actMemWrittenTo = Input(UInt(log2Up(cfg.input.memDepth() + 1).W))
+    val actMem = Flipped(new SRAMRead(cfg.input.memDepth(inWidth), inWidth))
+    val actMemWrittenTo = Input(UInt(log2Up(cfg.input.memDepth(inWidth) + 1).W))
     val start = Input(Bool())
   })
   val (elementCounter, elementCounterWrap) = Counter(0 until cfg.input.numParams, io.nextElement.fire)
-  val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until cfg.input.paramsPerWord(), io.nextElement.fire, io.start)
-  val (addressCounter, _) = Counter(0 until cfg.input.memDepth(), wordSelectCounterWrap, io.start)
+  val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until numBeatsIn, io.nextElement.fire, io.start)
+  val (addressCounter, _) = Counter(0 until cfg.input.memDepth(inWidth), wordSelectCounterWrap, io.start)
   dontTouch(elementCounterWrap)
   val state = RegInit(IDMState.sWAIT)
   when(io.start) {
@@ -55,8 +55,7 @@ with HasLBIRStreamParameters {
   io.actMem.address := addressCounter
   io.actMem.enable := state === IDMState.sMOVEDATA || io.start
 
-  val validBits = cfg.input.paramsPerWord() * cfg.input.dtype.bitwidth
-  val actMemAsVec = io.actMem.data(validBits - 1, 0).asTypeOf(Vec(cfg.input.paramsPerWord(), cfg.input.getType[I]))
+  val actMemAsVec = io.actMem.data.asTypeOf(Vec(numBeatsIn, cfg.input.getType[I]))
   io.nextElement.bits := actMemAsVec(wordSelectCounter)
   io.nextElement.valid := isStable(
     addressCounter

@@ -19,11 +19,9 @@ import chisel3._
 import lbir.Model
 import scala.collection.mutable._
 import interfaces.amba.axis._
+import java.security.Policy.Parameters
 
 class ProcessingPipeline(model: Model) extends Module with HasLBIRStream {
-  val inStream = IO(Flipped(AXIStream(UInt(model.layers.head.get.input.dtype.bitwidth.W))))
-  val outStream = IO(AXIStream(UInt(model.layers.last.get.output.dtype.bitwidth.W))) // TODO
-
   // List of processing elements - one PE per layer
   val peList = new ListBuffer[Module with HasLBIRStream]()
 
@@ -31,6 +29,9 @@ class ProcessingPipeline(model: Model) extends Module with HasLBIRStream {
   for ((layer, idx) <- model.layers.zipWithIndex) {
     peList += LayerGenerator(layer.get)
   }
+
+  val inStream = IO(Flipped(AXIStream(UInt(peList.head.inStream.bits.getWidth.W))))
+  val outStream = IO(AXIStream(UInt(peList.last.outStream.bits.getWidth.W)))
 
   // Connect the inputs and outputs of the layers
   peList.head.inStream <> inStream
