@@ -17,8 +17,6 @@ package chisel4ml
 import chisel3._
 import interfaces.amba.axis._
 import org.chipsalliance.cde.config.{Field, Parameters}
-import lbir.LayerWrap
-import lbir.HasInputOutputQTensor
 
 case object LBIRNumBeatsIn extends Field[Int]
 case object LBIRNumBeatsOut extends Field[Int]

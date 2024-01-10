@@ -25,11 +25,12 @@ import chisel4ml.implicits._
 import memories.MemoryGenerator
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.{BeforeAndAfterEachTestData, TestData}
-import services.LayerOptions
+import org.chipsalliance.cde.config.Config
 
 import java.nio.file.Paths
 import lbir.Conv2DConfig
-/*
+import chisel4ml.{LBIRNumBeatsIn, LBIRNumBeatsOut}
+
 class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTester with BeforeAndAfterEachTestData {
   val logger = LoggerFactory.getLogger(classOf[InputActivationsSubsystemTests])
 
@@ -54,7 +55,6 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
   val outParams = lbir.QTensor(
     shape = Seq(1, 1, 2, 2)
   )
-  val options = LayerOptions(32, 32)
 
   val conv2dLayer = Conv2DConfig(
     input = inputParams,
@@ -62,9 +62,14 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
     output = outParams,
     depthwise = true
   )
+  val cfg0 = new Config((_, _, _) => {
+    case Conv2DConfigField => conv2dLayer
+    case LBIRNumBeatsIn => 4
+    case LBIRNumBeatsOut => 4
+  })
   behavior.of("InputActivationSubsystem module")
   it should "Send a simple input tensor through the input interface and read out the result" in {
-    test(new InputActivationsSubsystem[UInt](conv2dLayer, options)) { dut =>
+    test(new InputActivationsSubsystem[UInt]()(cfg0)) { dut =>
       val goldenResVec = Seq(
         Vec.Lit(1.U(4.W), 2.U(4.W), 4.U(4.W), 5.U(4.W)),
         Vec.Lit(2.U(4.W), 3.U(4.W), 5.U(4.W), 6.U(4.W)),
@@ -87,9 +92,14 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
   for (testId <- 0 until 20) {
     val p = RandShiftRegConvTestParams(rand, numChannels = rand.between(1, 8))
     val (goldenVec, convLayer) = RandShiftRegConvTestParams.genShiftRegisterConvolverTestCase(p)
+    val cfg = new Config((_, _, _) => {
+      case Conv2DConfigField => convLayer
+      case LBIRNumBeatsIn => 4
+      case LBIRNumBeatsOut => 4
+    })
     it should f"Test $testId window a random input tensor with bw:${p.bitwidth} kernelHeight:${p.kernelHeight} " +
       f"kernelWidth:${p.kernelWidth}, inChannels:${p.inChannels}, inHeight:${p.inHeight}, inWidth:${p.inWidth}" in {
-      test(new InputActivationsSubsystem[UInt](convLayer, options)) { dut =>
+      test(new InputActivationsSubsystem[UInt]()(cfg)) { dut =>
         dut.io.inputActivationsWindow.initSink()
         dut.io.inputActivationsWindow.setSinkClock(dut.clock)
 
@@ -102,4 +112,4 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
       }
     }
   }
-}*/
+}

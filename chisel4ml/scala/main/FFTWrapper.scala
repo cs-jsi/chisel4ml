@@ -24,8 +24,6 @@ import dsptools._
 import fft._
 import interfaces.amba.axis._
 import org.chipsalliance.cde.config.{Field, Parameters}
-import chisel4ml.sequential.MaxPool2D
-import chisel3.experimental.FixedPoint
 
 case object FFTConfigField extends Field[FFTConfig]
 

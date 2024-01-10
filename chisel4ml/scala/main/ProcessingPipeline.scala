@@ -19,7 +19,6 @@ import chisel3._
 import lbir.Model
 import scala.collection.mutable._
 import interfaces.amba.axis._
-import java.security.Policy.Parameters
 
 class ProcessingPipeline(model: Model) extends Module with HasLBIRStream {
   // List of processing elements - one PE per layer

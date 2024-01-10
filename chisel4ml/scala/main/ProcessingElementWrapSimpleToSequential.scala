@@ -59,7 +59,7 @@ class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
   val outputBufferFull = RegInit(false.B)
 
   // (combinational) computational module
-  val peSimple = Module(ProcessingElementSimple(cfg.asInstanceOf[DenseConfig]))
+  val peSimple = Module(ProcessingElementSimple(cfg))
 
   /** *** INPUT DATA INTERFACE ****
     */

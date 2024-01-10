@@ -31,7 +31,7 @@ class LbirChiselConversionTests extends AnyFunSuite {
   for (idx <- 0 until numUniformTests) {
     val signed = r.nextFloat() < 0.5 // true/false
     val bitwidth = r.nextInt(15) + 2 // 2-16
-    val busWidth = bitwidth + r.nextInt(32)
+    val busWidth = bitwidth * (1 + r.nextInt(8))
     val length = r.nextInt(128) + 1 // 1-128
     val signAdjust = if (signed) Math.pow(2, bitwidth - 1).toFloat else 0.0f
     val values = (0 until length).map(_ => r.nextInt(Math.pow(2, bitwidth).toInt).toFloat - signAdjust)
