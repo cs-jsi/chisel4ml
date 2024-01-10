@@ -68,7 +68,7 @@ with HasMaxPoolParameters
                  | ${cfg.input.height}, output width -> ${cfg.output.width}, output height ->
                  | ${cfg.output.height}.""".stripMargin.replaceAll("\n", ""))
 
-  val inputsBuffer = RegEnable(inStream.bits, inStream.fire)
+  val inputsBuffer = RegEnable(inStream.bits.asTypeOf(Vec(numBeatsIn, cfg.input.getType[I])), inStream.fire)
   val outputsBuffer = Reg(Vec(cfg.input.paramsPerWord(inWidth), cfg.input.getType[I]))
 
   val (_, channelElementsCounterWrap) =
