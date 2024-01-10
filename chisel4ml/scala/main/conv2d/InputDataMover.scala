@@ -20,27 +20,30 @@ import chisel3.util._
 import memories.SRAMRead
 import chisel4ml.implicits._
 import chisel4ml.util.isStable
-import services.LayerOptions
+import org.chipsalliance.cde.config.Parameters
+import chisel4ml.HasLBIRStreamParameters
 
 /*
   Moves the entire tensor after obtainint the signal io.start.
   (this includes several channels)
  */
-class InputDataMover[I <: Bits](input: lbir.QTensor, options: LayerOptions) extends Module {
+class InputDataMover[I <: Bits](implicit val p: Parameters) extends Module
+with HasSequentialConvParameters
+with HasLBIRStreamParameters {
   object IDMState extends ChiselEnum {
     val sWAIT = Value(0.U)
     val sMOVEDATA = Value(1.U)
   }
 
   val io = IO(new Bundle {
-    val nextElement = Decoupled(input.getType[I])
-    val actMem = Flipped(new SRAMRead(input.memDepth(), options.busWidthIn))
-    val actMemWrittenTo = Input(UInt(log2Up(input.memDepth() + 1).W))
+    val nextElement = Decoupled(cfg.input.getType[I])
+    val actMem = Flipped(new SRAMRead(cfg.input.memDepth(), inWidth))
+    val actMemWrittenTo = Input(UInt(log2Up(cfg.input.memDepth() + 1).W))
     val start = Input(Bool())
   })
-  val (elementCounter, elementCounterWrap) = Counter(0 until input.numParams, io.nextElement.fire)
-  val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until input.paramsPerWord(), io.nextElement.fire, io.start)
-  val (addressCounter, _) = Counter(0 until input.memDepth(), wordSelectCounterWrap, io.start)
+  val (elementCounter, elementCounterWrap) = Counter(0 until cfg.input.numParams, io.nextElement.fire)
+  val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until cfg.input.paramsPerWord(), io.nextElement.fire, io.start)
+  val (addressCounter, _) = Counter(0 until cfg.input.memDepth(), wordSelectCounterWrap, io.start)
   dontTouch(elementCounterWrap)
   val state = RegInit(IDMState.sWAIT)
   when(io.start) {
@@ -52,8 +55,8 @@ class InputDataMover[I <: Bits](input: lbir.QTensor, options: LayerOptions) exte
   io.actMem.address := addressCounter
   io.actMem.enable := state === IDMState.sMOVEDATA || io.start
 
-  val validBits = input.paramsPerWord() * input.dtype.bitwidth
-  val actMemAsVec = io.actMem.data(validBits - 1, 0).asTypeOf(Vec(input.paramsPerWord(), input.getType[I]))
+  val validBits = cfg.input.paramsPerWord() * cfg.input.dtype.bitwidth
+  val actMemAsVec = io.actMem.data(validBits - 1, 0).asTypeOf(Vec(cfg.input.paramsPerWord(), cfg.input.getType[I]))
   io.nextElement.bits := actMemAsVec(wordSelectCounter)
   io.nextElement.valid := isStable(
     addressCounter

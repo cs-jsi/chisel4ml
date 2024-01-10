@@ -15,30 +15,30 @@
  */
 package chisel4ml
 
-import chisel4ml.{LBIRStream, LBIRStreamWidthIn, LBIRStreamWidthOut}
-import chisel4ml.implicits._
+import chisel4ml.{HasLBIRStream, LBIRNumBeatsIn, LBIRNumBeatsOut}
 import chisel4ml.conv2d.ProcessingElementSequentialConv
-import chisel4ml.sequential.{MaxPool2D, MaxPool2DConfigField}
+import chisel4ml.sequential.MaxPool2D
 import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
-import services.LayerOptions
 import chisel3._
-import org.chipsalliance.cde.config.Config
+import org.chipsalliance.cde.config.{Config, Parameters, Field}
+
+case object SupportsMultipleBeats extends Field[Boolean](true)
 
 object LayerGenerator {
-  // TODO: Rewrite the generation procedure to something more sensisble
-  def apply(layer_wrap: LayerWrap, options: LayerOptions): Module with LBIRStream = {
-    layer_wrap match {
-      case l: DenseConfig     => Module(new ProcessingElementWrapSimpleToSequential(l, options))
-      case l: Conv2DConfig    => Module(ProcessingElementSequentialConv(l, options))
-      case l: MaxPool2DConfig => Module(new MaxPool2D()(new Config((site, here, up) => {
-        case MaxPool2DConfigField => l
-        case LBIRStreamWidthIn => 32
-        case LBIRStreamWidthOut => 32
-      })))
-      case l: FFTConfig       => Module(new FFTWrapper(l, options))
-      case l: LMFEConfig      => Module(new LMFEWrapper(l, options))
-      case _ => throw new RuntimeException(f"Unsupported layer type: $layer_wrap")
-    }
+  def apply(layerWrap: LayerWrap): Module with HasLBIRStream = {
+    implicit val defaults: Parameters = new Config((site, _, _) => {
+      case LayerWrap => layerWrap
+      case LBIRNumBeatsIn => if (site(SupportsMultipleBeats) == true) 4 else 1
+      case LBIRNumBeatsOut => if (site(SupportsMultipleBeats) == true) 4 else 1
+    })
+    layerWrap match {
+      case _: DenseConfig => Module(new ProcessingElementWrapSimpleToSequential)
+      case l: Conv2DConfig => Module(ProcessingElementSequentialConv(l))
+      case _: MaxPool2DConfig => Module(new MaxPool2D)
+      case _: FFTConfig => Module(new FFTWrapper()(defaults.alterPartial({case SupportsMultipleBeats => false})))
+      case _: LMFEConfig => Module(new LMFEWrapper()(defaults.alterPartial({case SupportsMultipleBeats => false})))
+      case _ => throw new RuntimeException(f"Unsupported layer type: $layerWrap")
+    } 
 
   }
 }

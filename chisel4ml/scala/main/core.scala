@@ -19,85 +19,78 @@ import chisel3._
 import chisel3.util._
 import chisel4ml.util._
 
-trait QuantizationContext[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits] extends Any {
-  def mul:                  (I, W) => M
-  def add:                  Vec[M] => A
-  def actFn:                (A, A, Int) => O
-  def shiftAndRoundStatic:  (A, Int) => A
-  def shiftAndRoundDynamic: (A, UInt, Bool) => A
+object Quantization {
+  trait QuantizationContext[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits] extends Any {
+    def mul:                  (I, W) => M
+    def add:                  Vec[M] => A
+    def actFn:                (A, A, Int) => O
+    def shiftAndRoundStatic:  (A, Int) => A
+    def shiftAndRoundDynamic: (A, UInt, Bool) => A
+  }
+
+  object BinarizedQuantizationContext extends QuantizationContext[Bool, Bool, Bool, UInt, Bool] {
+    override def mul = (i: Bool, w: Bool) => ~(i ^ w)
+    override def add = (x: Vec[Bool]) => PopCount(x.asUInt)
+    override def shiftAndRoundStatic:  (UInt, Int) => UInt = shiftAndRoundUIntStatic
+    override def shiftAndRoundDynamic: (UInt, UInt, Bool) => UInt = shiftAndRoundUInt
+    override def actFn:                (UInt, UInt, Int) => Bool = signFnU
+  }
+
+  class BinaryQuantizationContext(roundingMode: lbir.RoundingMode) extends QuantizationContext[UInt, Bool, SInt, SInt, Bool] {
+    override def mul = (i: UInt, w: Bool) => Mux(w, i.zext, -(i.zext))
+    override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
+    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
+    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
+    override def actFn = signFnS
+  }
+
+  class BinaryQuantizationContextSInt(roundingMode: lbir.RoundingMode) extends QuantizationContext[SInt, Bool, SInt, SInt, Bool] {
+    override def mul = (i: SInt, w: Bool) => Mux(w, i, -i)
+    override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
+    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
+    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
+    override def actFn = signFnS
+  }
+
+  // implementiraj s dsptools?
+  class UniformQuantizationContextSSU(act: (SInt, SInt, Int) => UInt, roundingMode: lbir.RoundingMode) extends QuantizationContext[SInt, SInt, SInt, SInt, UInt] {
+    override def mul = (i: SInt, w: SInt) => i * w
+    override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
+    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
+    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
+    override def actFn = act
+  }
+
+  class UniformQuantizationContextSSUReLU(roundingMode: lbir.RoundingMode) extends UniformQuantizationContextSSU(reluFn, roundingMode)
+
+  class UniformQuantizationComputeUSU(act: (SInt, SInt, Int) => UInt, roundingMode: lbir.RoundingMode) extends QuantizationContext[UInt, SInt, SInt, SInt, UInt] {
+    override def mul = (i: UInt, w: SInt) => i * w
+    override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
+    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
+    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
+    override def actFn = act
+  }
+
+  class UniformQuantizationContextUSUReLU(roundingMode: lbir.RoundingMode) extends UniformQuantizationComputeUSU(reluFn, roundingMode)
+
+  class UniformQuantizationContextSSS(act: (SInt, SInt, Int) => SInt, roundingMode: lbir.RoundingMode) extends QuantizationContext[SInt, SInt, SInt, SInt, SInt] {
+    override def mul = (i: SInt, w: SInt) => i * w
+    override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
+    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
+    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
+    override def actFn = act
+  }
+
+  class UniformQuantizationContextSSSNoAct(roundingMode: lbir.RoundingMode) extends UniformQuantizationContextSSS((i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw), roundingMode)
+
+  class UniformQuantizationContextUSS(act: (SInt, SInt, Int) => SInt, roundingMode: lbir.RoundingMode) extends QuantizationContext[UInt, SInt, SInt, SInt, SInt] {
+    override def mul = (i: UInt, w: SInt) => i * w
+    override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
+    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
+    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
+    override def actFn = act
+  }
+
+  class UniformQuantizationContextUSSNoAct(roundingMode: lbir.RoundingMode) extends UniformQuantizationContextUSS((i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw), roundingMode)
+
 }
-
-object BinarizedQuantizationContext extends QuantizationContext[Bool, Bool, Bool, UInt, Bool] {
-  def mul = (i: Bool, w: Bool) => ~(i ^ w)
-  def add = (x: Vec[Bool]) => PopCount(x.asUInt)
-  def shiftAndRoundStatic:  (UInt, Int) => UInt = shiftAndRoundUIntStatic
-  def shiftAndRoundDynamic: (UInt, UInt, Bool) => UInt = shiftAndRoundUInt
-  def actFn:                (UInt, UInt, Int) => Bool = signFnU
-}
-
-class BinaryQuantizationContext(roundingMode: lbir.RoundingMode)
-    extends QuantizationContext[UInt, Bool, SInt, SInt, Bool] {
-  def mul = (i: UInt, w: Bool) => Mux(w, i.zext, -(i.zext))
-  def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  def actFn = signFnS
-}
-
-class BinaryQuantizationContextSInt(roundingMode: lbir.RoundingMode)
-    extends QuantizationContext[SInt, Bool, SInt, SInt, Bool] {
-  def mul = (i: SInt, w: Bool) => Mux(w, i, -i)
-  def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  def actFn = signFnS
-}
-
-// implementiraj s dsptools?
-class UniformQuantizationContextSSU(act: (SInt, SInt, Int) => UInt, roundingMode: lbir.RoundingMode)
-    extends QuantizationContext[SInt, SInt, SInt, SInt, UInt] {
-  def mul = (i: SInt, w: SInt) => i * w
-  def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  def actFn = act
-}
-
-class UniformQuantizationContextSSUReLU(roundingMode: lbir.RoundingMode)
-    extends UniformQuantizationContextSSU(reluFn, roundingMode)
-
-class UniformQuantizationComputeUSU(act: (SInt, SInt, Int) => UInt, roundingMode: lbir.RoundingMode)
-    extends QuantizationContext[UInt, SInt, SInt, SInt, UInt] {
-  def mul = (i: UInt, w: SInt) => i * w
-  def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  def actFn = act
-}
-
-class UniformQuantizationContextUSUReLU(roundingMode: lbir.RoundingMode)
-    extends UniformQuantizationComputeUSU(reluFn, roundingMode)
-
-class UniformQuantizationContextSSS(act: (SInt, SInt, Int) => SInt, roundingMode: lbir.RoundingMode)
-    extends QuantizationContext[SInt, SInt, SInt, SInt, SInt] {
-  def mul = (i: SInt, w: SInt) => i * w
-  def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  def actFn = act
-}
-
-class UniformQuantizationContextSSSNoAct(roundingMode: lbir.RoundingMode)
-    extends UniformQuantizationContextSSS((i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw), roundingMode)
-
-class UniformQuantizationContextUSS(act: (SInt, SInt, Int) => SInt, roundingMode: lbir.RoundingMode)
-    extends QuantizationContext[UInt, SInt, SInt, SInt, SInt] {
-  def mul = (i: UInt, w: SInt) => i * w
-  def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  def actFn = act
-}
-
-class UniformQuantizationContextUSSNoAct(roundingMode: lbir.RoundingMode)
-    extends UniformQuantizationContextUSS((i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw), roundingMode)

@@ -17,6 +17,7 @@ package chisel4ml
 
 import chisel4ml.{NeuronWithBias, NeuronWithoutBias}
 import chisel4ml.implicits._
+import chisel4ml.Quantization._
 import chisel4ml._
 import lbir.Datatype.QuantizationType._
 import lbir.DenseConfig
@@ -30,7 +31,7 @@ object ProcessingElementSimple {
   def apply(layer: DenseConfig) = (
     layer.input.dtype.quantization,
     layer.input.dtype.signed,
-    layer.weights.dtype.quantization,
+    layer.kernel.dtype.quantization,
     layer.output.dtype.signed
   ) match {
     case (UNIFORM, true, UNIFORM, false) =>
@@ -73,11 +74,11 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, 
   val out = IO(Output(Vec(layer.output.width, layer.output.getType[O])))
 
   val weights: Seq[Seq[W]] = layer.getWeights[W]
-  val shift:   Seq[Int] = layer.weights.dtype.shift
+  val shift:   Seq[Int] = layer.kernel.dtype.shift
   val thresh:  Seq[A] = layer.getThresh[A]
 
   for (i <- 0 until layer.output.shape(0)) {
-    if (layer.weights.dtype.quantization == BINARY && layer.input.dtype.quantization == BINARY) {
+    if (layer.kernel.dtype.quantization == BINARY && layer.input.dtype.quantization == BINARY) {
       out(i) := NeuronWithoutBias[I, W, M, A, O](
         in.map(_.asInstanceOf[I]),
         weights(i),

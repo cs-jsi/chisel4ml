@@ -16,9 +16,10 @@
 package chisel4ml
 
 import chisel3._
-import lbir.Activation.BINARY_SIGN
+import lbir.Activation.{BINARY_SIGN, RELU, NO_ACTIVATION}
 import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
-import lbir.{AXIStreamLBIRDriver, Datatype, DenseConfig, QTensor}
+import lbir.{AXIStreamLBIRDriver, Datatype, DenseConfig, QTensor, IsActiveLayer}
+import chisel4ml.Quantization._
 import org.slf4j.LoggerFactory
 import chisel4ml.util._
 import interfaces.amba.axis._
@@ -28,24 +29,40 @@ import scala.language.implicitConversions
 package object implicits {
   val logger = LoggerFactory.getLogger("chisel4ml")
 
-  implicit def axiStreamToDriver[T <: Data](x: AXIStreamIO[T]): AXIStreamDriver[T] = new AXIStreamDriver(x)
+  implicit def axiStreamToDriver(x: AXIStreamIO[UInt]): AXIStreamDriver[UInt] = new AXIStreamDriver(x)
 
   implicit def axiStreamToLBIRDriver(x: AXIStreamIO[UInt]): AXIStreamLBIRDriver = {
     new AXIStreamLBIRDriver(new AXIStreamDriver(x))
   }
 
+  implicit class ActiveConfigExtensions(layer: IsActiveLayer) 
+  {
+    def getQuantizationContext[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits] = (
+      layer.input.dtype.quantization,
+      layer.input.dtype.signed,
+      layer.kernel.dtype.quantization,
+      layer.activation
+    ) match {
+      case (UNIFORM, true, UNIFORM, RELU) => new UniformQuantizationContextSSUReLU(layer.roundingMode)
+      case (UNIFORM, false, UNIFORM, RELU) => new UniformQuantizationContextUSUReLU(layer.roundingMode)
+      case (UNIFORM, true, UNIFORM, NO_ACTIVATION) => new UniformQuantizationContextSSSNoAct(layer.roundingMode)
+      case (UNIFORM, false, UNIFORM, NO_ACTIVATION) => new UniformQuantizationContextUSSNoAct(layer.roundingMode)
+      case _ => throw new RuntimeException()
+  }
+  }
+
   implicit class DenseConfigExtensions(layer: DenseConfig) {
     def getThresh[T <: Bits]: Seq[T] =
-      (layer.input.dtype.quantization, layer.weights.dtype.quantization, layer.activation) match {
+      (layer.input.dtype.quantization, layer.kernel.dtype.quantization, layer.activation) match {
         case (BINARY, BINARY, BINARY_SIGN) =>
           layer.thresh.values.map(x => (layer.input.shape(0) + x) / 2).map(_.ceil).map(_.toInt.U).map(_.asInstanceOf[T])
         case _ => layer.thresh.values.map(_.toInt.S(layer.thresh.dtype.bitwidth.W)).map(_.asInstanceOf[T])
       }
-    def getWeights[T <: Bits]: Seq[Seq[T]] = layer.weights.dtype.quantization match {
+    def getWeights[T <: Bits]: Seq[Seq[T]] = layer.kernel.dtype.quantization match {
       case UNIFORM =>
-        layer.weights.values.map(_.toInt.S.asInstanceOf[T]).grouped(layer.weights.shape(0)).toSeq.transpose
+        layer.kernel.values.map(_.toInt.S.asInstanceOf[T]).grouped(layer.kernel.shape(0)).toSeq.transpose
       case BINARY =>
-        layer.weights.values.map(_ > 0).map(_.B.asInstanceOf[T]).grouped(layer.weights.shape(0)).toSeq.transpose
+        layer.kernel.values.map(_ > 0).map(_.B.asInstanceOf[T]).grouped(layer.kernel.shape(0)).toSeq.transpose
       case _ => throw new RuntimeException
     }
   }
@@ -68,22 +85,22 @@ package object implicits {
       case (UNIFORM, false) => UInt(qt.dtype.bitwidth.W).asInstanceOf[T]
       case _                => throw new Exception("Datatype not supported.")
     }
+    
     def toLBIRTransactions(busWidth: Int): Seq[UInt] = {
       val binaryStr = qt.toBinaryString
       val paramWidth = qt.dtype.bitwidth
-      val emptyBits = busWidth % paramWidth
       val paramsPerTransaction: Int = busWidth / paramWidth
-      val transactions = binaryStr
-        .drop(1)
+      val transactions: Seq[String] = binaryStr
+        .drop(1) // drop the "b" symbol
         .grouped(paramWidth)
-        .toList
+        .toSeq
         .reverse
         .grouped(paramsPerTransaction)
         .map(
           _.reverse.reduce(_ + _)
         )
-        .toList
-      transactions.map(s"b${"0" * emptyBits}".concat(_).U(busWidth.W))
+        .toSeq
+      transactions.map(s"b".concat(_).U(busWidth.W))
     }
 
     def toUInt: UInt = {

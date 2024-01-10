@@ -16,18 +16,22 @@
 package chisel4ml.conv2d
 import chisel4ml.implicits._
 import chisel3._
-import services.LayerOptions
 import interfaces.amba.axis.AXIStream
 import chisel3.util._
+import org.chipsalliance.cde.config.Parameters
+import chisel4ml.HasLBIRStreamParameters
 
-class ResultMemoryBuffer[O <: Bits](output: lbir.QTensor, options: LayerOptions) extends Module {
+
+class ResultMemoryBuffer[O <: Bits](implicit val p: Parameters) extends Module 
+with HasSequentialConvParameters
+with HasLBIRStreamParameters {
   val io = IO(new Bundle {
-    val outStream = AXIStream(UInt(options.busWidthOut.W))
-    val result = Flipped(Decoupled(output.getType[O]))
+    val outStream = AXIStream(UInt(outWidth.W))
+    val result = Flipped(Decoupled(cfg.output.getType[O]))
   })
-  val numRegs = if (output.numParams >= output.paramsPerWord()) output.paramsPerWord() else output.numParams
-  val regs = Reg(Vec(numRegs, UInt(output.dtype.bitwidth.W)))
-  val (totalCounter, totalCounterWrap) = Counter(0 until output.numParams, io.result.fire)
+  val numRegs = if (cfg.output.numParams >= cfg.output.paramsPerWord()) cfg.output.paramsPerWord() else cfg.output.numParams
+  val regs = Reg(Vec(numRegs, UInt(cfg.output.dtype.bitwidth.W)))
+  val (totalCounter, totalCounterWrap) = Counter(0 until cfg.output.numParams, io.result.fire)
   val (registerCounter, registerCounterWrap) = Counter(0 until numRegs, io.result.fire, totalCounterWrap)
   dontTouch(totalCounter)
 

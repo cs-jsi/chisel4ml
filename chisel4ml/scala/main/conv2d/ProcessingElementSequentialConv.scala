@@ -21,13 +21,13 @@ import lbir.Activation._
 import lbir.Conv2DConfig
 import lbir.Datatype.QuantizationType._
 import org.slf4j.LoggerFactory
-import services.LayerOptions
 import chisel3._
 import interfaces.amba.axis._
-import chisel4ml.QuantizationContext
-import spire.algebra.Ring
+import chisel4ml.Quantization._
+import org.chipsalliance.cde.config.Parameters
 import spire.implicits._
 import dsptools.numbers._
+import org.chipsalliance.cde.config.{Config, Field}
 
 /** A sequential processing element for convolutions.
   *
@@ -39,27 +39,35 @@ import dsptools.numbers._
   * thanks to the low bitwidths of parameters this should be an acceptable trade-off.
   */
 
-class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
-  layer:   Conv2DConfig,
-  options: LayerOptions
-)(qc:      QuantizationContext[I, W, M, A, O])
-    extends Module
-    with LBIRStream {
+case object Conv2DConfigField extends Field[Conv2DConfig]
+
+trait HasSequentialConvParameters extends HasLBIRStreamParameters { 
+  type T = Conv2DConfig
+  val p: Parameters
+  val cfg = p(Conv2DConfigField)
+  val inWidth = numBeatsIn * cfg.input.dtype.bitwidth
+  val outWidth = numBeatsOut * cfg.output.dtype.bitwidth
+}
+
+class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](qc: QuantizationContext[I,W,M,A,O])(implicit val p: Parameters) extends Module
+with HasLBIRStream
+with HasLBIRStreamParameters
+with HasSequentialConvParameters {
   val logger = LoggerFactory.getLogger("ProcessingElementSequentialConv")
 
   logger.info(
-    s"""Generated new depthwise: ${layer.depthwise}: ProcessingElementSequentialConv with input shape:${layer.input.shape}, input dtype:
-          | ${layer.input.dtype}. Number of kernel parameters is ${layer.kernel.numKernelParams}."""
+    s"""Generated new depthwise: ${cfg.depthwise}: ProcessingElementSequentialConv with input shape:${cfg.input.shape}, input dtype:
+          | ${cfg.input.dtype}. Number of kernel parameters is ${cfg.kernel.numKernelParams}."""
   )
 
-  val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
-  val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
+  val inStream = IO(Flipped(AXIStream(UInt((numBeatsIn * cfg.input.dtype.bitwidth).W))))
+  val outStream = IO(AXIStream(UInt((numBeatsOut * cfg.output.dtype.bitwidth).W)))
 
-  val dynamicNeuron = Module(new DynamicNeuron[I, W, M, A, O](layer, qc))
-  val ctrl = Module(new PeSeqConvController(layer))
-  val kernelSubsystem = Module(new KernelSubsystem[W, A](layer))
-  val inputSubsytem = Module(new InputActivationsSubsystem[I](layer, options))
-  val rmb = Module(new ResultMemoryBuffer[O](layer.output, options))
+  val dynamicNeuron = Module(new DynamicNeuron[I, W, M, A, O](cfg, qc))
+  val ctrl = Module(new PeSeqConvController(cfg))
+  val kernelSubsystem = Module(new KernelSubsystem[W, A](cfg))
+  val inputSubsytem = Module(new InputActivationsSubsystem[I])
+  val rmb = Module(new ResultMemoryBuffer[O])
 
   inputSubsytem.io.inStream <> inStream
   dynamicNeuron.io.in <> inputSubsytem.io.inputActivationsWindow
@@ -71,29 +79,35 @@ class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits
   kernelSubsystem.io.ctrl <> ctrl.io.kernelCtrl
 }
 
-object ProcessingElementSequentialConv {
-  def apply(layer: Conv2DConfig, options: LayerOptions) = (
-    layer.input.dtype.quantization,
-    layer.input.dtype.signed,
-    layer.kernel.dtype.quantization,
-    layer.activation
-  ) match {
-    case (UNIFORM, true, UNIFORM, RELU) =>
-      new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, UInt](layer, options)(
-        new UniformQuantizationContextSSUReLU(layer.roundingMode)
-      )
-    case (UNIFORM, false, UNIFORM, RELU) =>
-      new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, UInt](layer, options)(
-        new UniformQuantizationContextUSUReLU(layer.roundingMode)
-      )
-    case (UNIFORM, true, UNIFORM, NO_ACTIVATION) =>
-      new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt](layer, options)(
-        new UniformQuantizationContextSSSNoAct(layer.roundingMode)
-      )
-    case (UNIFORM, false, UNIFORM, NO_ACTIVATION) =>
-      new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt](layer, options)(
-        new UniformQuantizationContextUSSNoAct(layer.roundingMode)
-      )
-    case _ => throw new RuntimeException()
+object ProcessingElementSequentialConv{
+  def apply(cfg: Conv2DConfig) = {
+    implicit val p: Parameters = new Config((_, _, _) => {
+      case Conv2DConfig => cfg
+      case LBIRNumBeatsIn => 4
+      case LBIRNumBeatsOut => 4
+    })
+    (cfg.input.dtype.quantization,
+     cfg.input.dtype.signed,
+     cfg.kernel.dtype.quantization,
+     cfg.activation
+    ) match {
+      case (UNIFORM, true, UNIFORM, RELU) =>
+        new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, UInt](
+          new UniformQuantizationContextSSUReLU(cfg.roundingMode)
+        )
+      case (UNIFORM, false, UNIFORM, RELU) =>
+        new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, UInt](
+          new UniformQuantizationContextUSUReLU(cfg.roundingMode)
+        )
+      case (UNIFORM, true, UNIFORM, NO_ACTIVATION) =>
+        new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt](
+          new UniformQuantizationContextSSSNoAct(cfg.roundingMode)
+        )
+      case (UNIFORM, false, UNIFORM, NO_ACTIVATION) =>
+        new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt](
+          new UniformQuantizationContextUSSNoAct(cfg.roundingMode)
+        )
+      case _ => throw new RuntimeException()
+    }
   }
 }

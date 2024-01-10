@@ -16,22 +16,20 @@
 package chisel4ml
 
 import chisel3._
-import chisel4ml.{LBIRStream, LayerGenerator}
 import lbir.Model
 import scala.collection.mutable._
-import services.GenerateCircuitParams.Options
 import interfaces.amba.axis._
 
-class ProcessingPipeline(model: Model, options: Options) extends Module with LBIRStream {
-  val inStream = IO(Flipped(AXIStream(UInt(options.layers.head.busWidthIn.W))))
-  val outStream = IO(AXIStream(UInt(options.layers.last.busWidthOut.W)))
+class ProcessingPipeline(model: Model) extends Module with HasLBIRStream {
+  val inStream = IO(Flipped(AXIStream(UInt(model.layers.head.get.input.dtype.bitwidth.W))))
+  val outStream = IO(AXIStream(UInt(model.layers.last.get.output.dtype.bitwidth.W))) // TODO
 
   // List of processing elements - one PE per layer
-  val peList = new ListBuffer[Module with LBIRStream]()
+  val peList = new ListBuffer[Module with HasLBIRStream]()
 
   // Instantiate modules for seperate layers
   for ((layer, idx) <- model.layers.zipWithIndex) {
-    peList += LayerGenerator(layer.get, options.layers(idx))
+    peList += LayerGenerator(layer.get)
   }
 
   // Connect the inputs and outputs of the layers

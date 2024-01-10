@@ -3,9 +3,10 @@ package chisel4ml.conv2d
 import chisel3._
 import chisel3.util._
 import interfaces.amba.axis.AXIStream
-import services.LayerOptions
 import memories.MemoryGenerator
 import chisel4ml.implicits._
+import org.chipsalliance.cde.config.Parameters
+import chisel4ml.HasLBIRStreamParameters
 import lbir.Conv2DConfig
 
 /* InputActivationSubsystem
@@ -13,15 +14,17 @@ import lbir.Conv2DConfig
  * as a convolution opperation would; and does so continously until the next signal is asserted. This allows looping
  * through the input to convolve it with more than one kernel.
  */
-class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOptions) extends Module {
+class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters) extends Module 
+with HasSequentialConvParameters
+with HasLBIRStreamParameters {
   val io = IO(new Bundle {
-    val inStream = Flipped(AXIStream(UInt(options.busWidthIn.W)))
-    val inputActivationsWindow = Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[I]))
+    val inStream = Flipped(AXIStream(UInt(inWidth.W)))
+    val inputActivationsWindow = Decoupled(Vec(cfg.kernel.numActiveParams(cfg.depthwise), cfg.input.getType[I]))
     val activeDone = Output(Bool())
   })
-  val actMem = Module(MemoryGenerator.SRAM(depth = l.input.memDepth(), width = options.busWidthIn))
-  val dataMover = Module(new InputDataMover(l.input, options))
-  val shiftRegConvolver = Module(new ShiftRegisterConvolver(l))
+  val actMem = Module(MemoryGenerator.SRAM(depth = cfg.input.memDepth(), width = inWidth))
+  val dataMover = Module(new InputDataMover())
+  val shiftRegConvolver = Module(new ShiftRegisterConvolver(cfg))
 
   object InSubState extends ChiselEnum {
     val sEMPTY = Value(0.U)
@@ -30,13 +33,13 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
   }
   val state = RegInit(InSubState.sEMPTY)
 
-  val (channelCounterShift, channelCounterWrap) = Counter(0 until l.kernel.numChannels, io.activeDone)
-  val (kernelCounterShift, _) = Counter(0 until l.kernel.numKernels, channelCounterWrap)
+  val (channelCounterShift, channelCounterWrap) = Counter(0 until cfg.kernel.numChannels, io.activeDone)
+  val (kernelCounterShift, _) = Counter(0 until cfg.kernel.numKernels, channelCounterWrap)
   val isLastActiveWindow =
-    kernelCounterShift === (l.kernel.numKernels - 1).U && channelCounterShift === (l.kernel.numChannels - 1).U
+    kernelCounterShift === (cfg.kernel.numKernels - 1).U && channelCounterShift === (cfg.kernel.numChannels - 1).U
 
   val (actMemCounter, _) = Counter(
-    0 to l.input.numTransactions(options.busWidthIn),
+    0 to cfg.input.numTransactions(inWidth),
     io.inStream.fire,
     state === InSubState.sFULL && isLastActiveWindow && io.activeDone
   )
@@ -61,7 +64,7 @@ class InputActivationsSubsystem[I <: Bits](l: Conv2DConfig, options: LayerOption
 
   when(state === InSubState.sEMPTY && io.inStream.fire) {
     state := InSubState.sRECEVING_DATA
-  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (l.input.memDepth() - 1).U && io.inStream.fire) {
+  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (cfg.input.memDepth() - 1).U && io.inStream.fire) {
     assert(io.inStream.last)
     state := InSubState.sFULL
   }.elsewhen(state === InSubState.sFULL && isLastActiveWindow && io.activeDone) {

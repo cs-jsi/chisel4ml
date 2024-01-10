@@ -17,22 +17,29 @@ package chisel4ml
 
 import chisel3._
 import chisel3.util._
-import chisel4ml.LBIRStream
+import chisel4ml.HasLBIRStream
 import lbir.FFTConfig
 import org.slf4j.LoggerFactory
-import services.LayerOptions
 import dsptools._
 import fft._
 import interfaces.amba.axis._
+import org.chipsalliance.cde.config.{Field, Parameters}
+import chisel4ml.sequential.MaxPool2D
+import chisel3.experimental.FixedPoint
 
-class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LBIRStream {
-  val logger = LoggerFactory.getLogger("FFTWrapper")
+case object FFTConfigField extends Field[FFTConfig]
 
+trait HasFFTParameters extends HasLBIRStreamParameters {
+  type T = FFTConfig
+  val p: Parameters
+  val cfg = p(FFTConfigField)
+  require(numBeatsIn == 1)
+  require(numBeatsOut == 1)
   val fftParams = FFTParams.fixed(
     dataWidth = 24,
     binPoint = 12,
     trimEnable = false,
-    numPoints = layer.fftSize,
+    numPoints = cfg.fftSize,
     decimType = DITDecimType,
     trimType = RoundHalfToEven,
     twiddleWidth = 16,
@@ -42,26 +49,25 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
     numMulPipes = 1,
     sdfRadix = "2",
     runTime = false,
-    expandLogic = Array.fill(log2Up(layer.fftSize))(1),
-    keepMSBorLSB = Array.fill(log2Up(layer.fftSize))(true)
+    expandLogic = Array.fill(log2Up(cfg.fftSize))(1),
+    keepMSBorLSB = Array.fill(log2Up(cfg.fftSize))(true)
   )
+}
 
-  val window = VecInit(layer.winFn.map(_.F(16.BP)))
-
-  require(
-    options.busWidthOut == layer.output.dtype.bitwidth,
-    s"This module requires buswidhts to equal the input/output datatypes. " +
-      s"${options.busWidthOut} != ${layer.output.dtype.bitwidth}"
-  )
-  val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
-  val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
-
+class FFTWrapper(implicit val p: Parameters) extends Module 
+with HasLBIRStream
+with HasFFTParameters {
+  val logger = LoggerFactory.getLogger("FFTWrapper")
+  val inStream = IO(Flipped(AXIStream(UInt((numBeatsIn * cfg.input.dtype.bitwidth).W))))
+  val outStream = IO(AXIStream(UInt((numBeatsOut * cfg.output.dtype.bitwidth).W)))
+  
+  val window = VecInit(cfg.winFn.map(_.F(16.BP)))
   val sdffft = Module(new SDFFFT(fftParams))
 
   // Fix discrepancy between last signal semantics of LBIRDriver and FFT.
   // FFT has per frame last signals, LBIRDriver per tensor last signal.
   val (fftCounter, fftCounterWrap) = Counter(0 until fftParams.numPoints, inStream.fire)
-  val (_, outCounterWrap) = Counter(0 until layer.numFrames, sdffft.io.lastOut)
+  val (_, outCounterWrap) = Counter(0 until cfg.numFrames, sdffft.io.lastOut)
 
   object fftState extends ChiselEnum {
     val sWAIT = Value(0.U)
@@ -80,7 +86,7 @@ class FFTWrapper(layer: FFTConfig, options: LayerOptions) extends Module with LB
   val currWindow = window(fftCounter).asUInt.zext
   dontTouch(currWindow)
   // U(12, 0) x S(0, 16) => S(12, 16) >> 4 => S(12,12)
-  val windowedSignal = (inStream.bits.asSInt * currWindow) >> 4
+  val windowedSignal = (inStream.bits(0).asUInt * currWindow) >> 4
   sdffft.io.in.bits.real := windowedSignal.asTypeOf(sdffft.io.in.bits.real)
   sdffft.io.in.bits.imag := 0.U.asTypeOf(sdffft.io.in.bits.imag)
   sdffft.io.lastIn := inStream.last || fftCounterWrap
