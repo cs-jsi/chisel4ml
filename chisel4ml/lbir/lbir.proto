@@ -31,6 +31,13 @@ option (scalapb.options) = {
       "sealed trait HasInputOutputQTensor {",
       "  def input: QTensor",
       "  def output: QTensor",
+      "}",
+      " ",
+      "sealed trait IsActiveLayer extends HasInputOutputQTensor {",
+      "  def kernel: QTensor",
+      "  def thresh: QTensor",
+      "  def activation: Activation",
+      "  def roundingMode: RoundingMode",
       "}"
     ];
   };
@@ -73,8 +80,9 @@ message LayerWrap {
 }
 
 message DenseConfig {
+    option (scalapb.message).extends = "IsActiveLayer";
     QTensor thresh  = 1;
-    QTensor weights = 2;
+    QTensor kernel = 2;
     QTensor input = 3;
     QTensor output = 4;
     Activation activation = 5;
@@ -82,6 +90,7 @@ message DenseConfig {
 }
 
 message Conv2DConfig {
+    option (scalapb.message).extends = "IsActiveLayer";
     QTensor thresh  = 1;
     QTensor kernel = 2;
     QTensor input = 3;
