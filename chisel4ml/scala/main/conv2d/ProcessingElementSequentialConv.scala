@@ -49,7 +49,7 @@ trait HasSequentialConvParameters extends HasLBIRStreamParameters {
 }
 
 class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](qc: QuantizationContext[I,W,M,A,O])(implicit val p: Parameters) extends Module
-with HasLBIRStream
+with HasLBIRStream[Vec[UInt]]
 with HasLBIRStreamParameters
 with HasSequentialConvParameters {
   val logger = LoggerFactory.getLogger("ProcessingElementSequentialConv")
@@ -59,8 +59,8 @@ with HasSequentialConvParameters {
           | ${cfg.input.dtype}. Number of kernel parameters is ${cfg.kernel.numKernelParams}."""
   )
 
-  val inStream = IO(Flipped(AXIStream(UInt(inWidth.W))))
-  val outStream = IO(AXIStream(UInt(outWidth.W)))
+  val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
+  val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
 
   val dynamicNeuron = Module(new DynamicNeuron[I, W, M, A, O](cfg, qc))
   val ctrl = Module(new PeSeqConvController(cfg))

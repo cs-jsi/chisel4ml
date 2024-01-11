@@ -76,7 +76,7 @@ object Chisel4mlServer {
   */
 class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { self =>
   private[this] var server: Server = null
-  private var circuits = Map[Int, Circuit[Module with HasLBIRStream]]() // Holds the circuit and simulation object
+  private var circuits = Map[Int, Circuit[Module with HasLBIRStream[UInt]]]() // Holds the circuit and simulation object
   private var nextId: Int = 0
 
   val logger = LoggerFactory.getLogger(classOf[Chisel4mlServer])

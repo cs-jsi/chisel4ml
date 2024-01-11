@@ -53,11 +53,11 @@ trait HasFFTParameters extends HasLBIRStreamParameters {
 }
 
 class FFTWrapper(implicit val p: Parameters) extends Module 
-with HasLBIRStream
+with HasLBIRStream[Vec[UInt]]
 with HasFFTParameters {
   val logger = LoggerFactory.getLogger("FFTWrapper")
-  val inStream = IO(Flipped(AXIStream(UInt((numBeatsIn * cfg.input.dtype.bitwidth).W))))
-  val outStream = IO(AXIStream(UInt((numBeatsOut * cfg.output.dtype.bitwidth).W)))
+  val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
+  val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
   
   val window = VecInit(cfg.winFn.map(_.F(16.BP)))
   val sdffft = Module(new SDFFFT(fftParams))
@@ -84,7 +84,7 @@ with HasFFTParameters {
   val currWindow = window(fftCounter).asUInt.zext
   dontTouch(currWindow)
   // U(12, 0) x S(0, 16) => S(12, 16) >> 4 => S(12,12)
-  val windowedSignal = (inStream.bits.asSInt * currWindow) >> 4
+  val windowedSignal = (inStream.bits(0).asSInt * currWindow) >> 4
   sdffft.io.in.bits.real := windowedSignal.asTypeOf(sdffft.io.in.bits.real)
   sdffft.io.in.bits.imag := 0.U.asTypeOf(sdffft.io.in.bits.imag)
   sdffft.io.lastIn := inStream.last || fftCounterWrap

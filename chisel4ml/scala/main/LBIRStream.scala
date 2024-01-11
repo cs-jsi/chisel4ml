@@ -29,9 +29,9 @@ trait HasLBIRStreamParameters {
   require(numBeatsOut > 0)
 }
 
-trait HasLBIRStream {
-  val inStream:  AXIStreamIO[UInt]
-  val outStream: AXIStreamIO[UInt]
+trait HasLBIRStream[T <: Data] {
+  val inStream:  AXIStreamIO[T]
+  val outStream: AXIStreamIO[T]
 }
 
 trait LBIRStreamSimple {

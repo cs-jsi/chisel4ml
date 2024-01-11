@@ -20,9 +20,9 @@ import lbir.Model
 import scala.collection.mutable._
 import interfaces.amba.axis._
 
-class ProcessingPipeline(model: Model) extends Module with HasLBIRStream {
+class ProcessingPipeline(model: Model) extends Module with HasLBIRStream[UInt] {
   // List of processing elements - one PE per layer
-  val peList = new ListBuffer[Module with HasLBIRStream]()
+  val peList = new ListBuffer[Module with HasLBIRStream[Vec[UInt]]]()
 
   // Instantiate modules for seperate layers
   for ((layer, idx) <- model.layers.zipWithIndex) {
@@ -33,9 +33,15 @@ class ProcessingPipeline(model: Model) extends Module with HasLBIRStream {
   val outStream = IO(AXIStream(UInt(peList.last.outStream.bits.getWidth.W)))
 
   // Connect the inputs and outputs of the layers
-  peList.head.inStream <> inStream
+  inStream.ready := peList.head.inStream.ready
+  peList.head.inStream.valid := inStream.valid
+  peList.head.inStream.bits := inStream.bits.asTypeOf(peList.head.inStream.bits)
+  peList.head.inStream.last := inStream.last
   for (i <- 1 until model.layers.length) {
     peList(i).inStream <> peList(i - 1).outStream
   }
-  outStream <> peList.last.outStream
+  peList.last.outStream.ready := outStream.ready
+  outStream.valid := peList.last.outStream.valid
+  outStream.bits := peList.last.outStream.bits.asTypeOf(outStream.bits)
+  outStream.last := peList.last.outStream.last
 }

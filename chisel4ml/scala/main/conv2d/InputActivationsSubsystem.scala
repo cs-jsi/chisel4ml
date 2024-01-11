@@ -17,7 +17,7 @@ class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters) extends M
 with HasSequentialConvParameters
 with HasLBIRStreamParameters {
   val io = IO(new Bundle {
-    val inStream = Flipped(AXIStream(UInt(inWidth.W)))
+    val inStream = Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W))))
     val inputActivationsWindow = Decoupled(Vec(cfg.kernel.numActiveParams(cfg.depthwise), cfg.input.getType[I]))
     val activeDone = Output(Bool())
   })
@@ -46,7 +46,7 @@ with HasLBIRStreamParameters {
   /* INPUT STREAM LOGIC*/
   io.inStream.ready := state =/= InSubState.sFULL
   actMem.io.write.address := actMemCounter
-  actMem.io.write.data := io.inStream.bits
+  actMem.io.write.data := io.inStream.bits.asUInt
   actMem.io.write.enable := io.inStream.fire
 
   dataMover.io.actMem <> actMem.io.read

@@ -35,13 +35,13 @@ trait HasDenseParameters extends HasLBIRStreamParameters {
 
 class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
     extends Module
-    with HasLBIRStream
+    with HasLBIRStream[Vec[UInt]]
     with HasLBIRStreamParameters
     with HasDenseParameters {
   val logger = LoggerFactory.getLogger(this.getClass())
 
-  val inStream = IO(Flipped(AXIStream(UInt(inWidth.W))))
-  val outStream = IO(AXIStream(UInt(outWidth.W)))
+  val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
+  val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
   val inputBuffer = RegInit(
     VecInit(Seq.fill(cfg.input.numTransactions(inWidth))(0.U(inWidth.W)))
   )
@@ -65,7 +65,7 @@ class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
     */
   inStream.ready := !outputBufferFull
   when(inStream.fire) {
-    inputBuffer(inputCntValue) := inStream.bits
+    inputBuffer(inputCntValue) := inStream.bits.asUInt
   }
 
   /** *** CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE ****
@@ -81,6 +81,6 @@ class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
   /** *** OUTPUT DATA INTERFACE ****
     */
   outStream.valid := outputBufferFull
-  outStream.bits := outputBuffer(outputCntValue)
+  outStream.bits := outputBuffer(outputCntValue).asTypeOf(outStream.bits)
   outStream.last := outputCntWrap
 }

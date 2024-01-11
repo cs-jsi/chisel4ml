@@ -26,7 +26,7 @@ class ResultMemoryBuffer[O <: Bits](implicit val p: Parameters) extends Module
 with HasSequentialConvParameters
 with HasLBIRStreamParameters {
   val io = IO(new Bundle {
-    val outStream = AXIStream(UInt(outWidth.W))
+    val outStream = AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W)))
     val result = Flipped(Decoupled(cfg.output.getType[O]))
   })
   val numRegs = if (cfg.output.numParams >= numBeatsOut) numBeatsOut else cfg.output.numParams
@@ -39,7 +39,7 @@ with HasLBIRStreamParameters {
     regs(registerCounter) := io.result.bits.asUInt
   }
 
-  io.outStream.bits := regs.asUInt
+  io.outStream.bits := regs
   io.outStream.valid := RegNext(registerCounterWrap) || RegNext(totalCounterWrap)
   io.outStream.last := RegNext(totalCounterWrap)
   dontTouch(io.outStream.last)

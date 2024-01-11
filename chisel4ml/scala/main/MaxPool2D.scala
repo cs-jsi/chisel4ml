@@ -33,7 +33,6 @@ trait HasMaxPoolParameters extends HasLBIRStreamParameters {
   val p: Parameters
   val cfg = p(MaxPool2DConfigField)
   val inWidth = numBeatsIn * cfg.input.dtype.bitwidth
-  val outWidth = numBeatsOut * cfg.output.dtype.bitwidth
   val maxPoolSize = cfg.input.width / cfg.output.width
   val shiftRegsSize = cfg.input.width * maxPoolSize - (cfg.input.width - maxPoolSize)
   require(cfg.output.width * maxPoolSize == cfg.input.width)
@@ -48,13 +47,13 @@ trait HasMaxPoolParameters extends HasLBIRStreamParameters {
  *
  */
 class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters) extends Module 
-with HasLBIRStream
+with HasLBIRStream[Vec[UInt]]
 with HasLBIRStreamParameters
 with HasMaxPoolParameters
  {
   val logger = LoggerFactory.getLogger(this.getClass())
-  val inStream = IO(Flipped(AXIStream(UInt((numBeatsIn * cfg.input.dtype.bitwidth).W))))
-  val outStream = IO(AXIStream(UInt((numBeatsOut * cfg.output.dtype.bitwidth).W)))
+  val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
+  val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
 
   object InputBufferState extends ChiselEnum {
     val sEMPTY = Value(0.U)
