@@ -17,29 +17,27 @@ package chisel4ml
 
 import chisel4ml.implicits._
 import lbir.DenseConfig
-import org.slf4j.LoggerFactory
 import chisel3._
 import chisel3.util._
 import interfaces.amba.axis._
 import org.chipsalliance.cde.config.{Field, Parameters}
+import chisel4ml.logging.HasParameterLogging
 
 case object DenseConfigField extends Field[DenseConfig]
 
-trait HasDenseParameters extends HasLBIRStreamParameters {
+trait HasDenseParameters extends HasLBIRStreamParameters[DenseConfig] {
   type T = DenseConfig
   val p: Parameters
   val cfg = p(DenseConfigField)
-  val inWidth = numBeatsIn * cfg.input.dtype.bitwidth
-  val outWidth = numBeatsOut * cfg.output.dtype.bitwidth
 }
 
 class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
     extends Module
     with HasLBIRStream[Vec[UInt]]
-    with HasLBIRStreamParameters
-    with HasDenseParameters {
-  val logger = LoggerFactory.getLogger(this.getClass())
-
+    with HasLBIRStreamParameters[DenseConfig]
+    with HasDenseParameters
+    with HasParameterLogging {
+  logParameters
   val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
   val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
   val inputBuffer = RegInit(
@@ -48,11 +46,6 @@ class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
   val outputBuffer = RegInit(
     VecInit(Seq.fill(cfg.output.numTransactions(outWidth))(0.U(outWidth.W)))
   )
-
-  logger.info(s"""Created new ProcessingElementWrapSimpleToSequential module. Number of input transactions:
-                 |${cfg.input.numTransactions(inWidth)}, number of output transactions is:
-                 |${cfg.output.numTransactions(outWidth)}, busWidthIn: ${inWidth},
-                 | busWidthOut: ${outWidth}.""".stripMargin.replaceAll("\n", ""))
 
   val (inputCntValue, inputCntWrap) = Counter(inStream.fire, cfg.input.numTransactions(inWidth))
   val (outputCntValue, outputCntWrap) = Counter(outStream.fire, cfg.output.numTransactions(outWidth))

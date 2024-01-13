@@ -18,29 +18,28 @@ package chisel4ml
 import chisel3._
 import chisel3.util._
 import lbir.LMFEConfig
-import org.slf4j.LoggerFactory
 import melengine._
 import interfaces.amba.axis._
 import chisel4ml.implicits._
 import chisel3.experimental.FixedPoint
 import org.chipsalliance.cde.config.{Parameters, Field}
+import chisel4ml.logging.HasParameterLogging
 
 case object LMFEConfigField extends Field[LMFEConfig]
 
-trait HasLMFEParameters extends HasLBIRStreamParameters {
+trait HasLMFEParameters extends HasLBIRStreamParameters[LMFEConfig] with HasLBIRConfig[LMFEConfig] {
   type T = LMFEConfig
   val p: Parameters
   val cfg = p(LMFEConfigField)
-  val inWidth = numBeatsIn * cfg.input.dtype.bitwidth
   require(numBeatsIn == 1)
 }
 
 class LMFEWrapper(implicit val p: Parameters) extends Module 
 with HasLBIRStream[Vec[UInt]]
-with HasLBIRStreamParameters
-with HasLMFEParameters {
-  val logger = LoggerFactory.getLogger("LMFEWrapper")
-
+with HasLBIRStreamParameters[LMFEConfig]
+with HasLMFEParameters 
+with HasParameterLogging {
+  logParameters
   val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
   val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
   val melEngine = Module(

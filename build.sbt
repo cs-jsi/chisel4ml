@@ -41,7 +41,8 @@ val dependencies = Seq(
   "org.slf4j" % "slf4j-api" % slf4jVersion,
   "org.slf4j" % "slf4j-simple" % slf4jVersion,
   "org.scalatest" %% "scalatest" % scalatestVersion,
-  "org.scalatest" %% "scalatest" % scalatestVersion % "test"
+  "org.scalatest" %% "scalatest" % scalatestVersion % "test",
+  "org.reflections" % "reflections" % "0.10.2"
 )
 
 val scalaOptions = Seq(

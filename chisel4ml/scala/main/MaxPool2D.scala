@@ -16,7 +16,6 @@
 package chisel4ml.sequential
 
 import lbir.MaxPool2DConfig
-import org.slf4j.LoggerFactory
 import chisel3._
 import chisel3.util._
 import chisel4ml.HasLBIRStream
@@ -25,14 +24,13 @@ import interfaces.amba.axis._
 import chisel4ml.util.risingEdge
 import org.chipsalliance.cde.config.{Field, Parameters}
 import chisel4ml.HasLBIRStreamParameters
+import chisel4ml.logging.HasParameterLogging
 
 case object MaxPool2DConfigField extends Field[MaxPool2DConfig]
 
-trait HasMaxPoolParameters extends HasLBIRStreamParameters {
-  type T = MaxPool2DConfig
+trait HasMaxPoolParameters extends HasLBIRStreamParameters[MaxPool2DConfig] {
   val p: Parameters
   val cfg = p(MaxPool2DConfigField)
-  val inWidth = numBeatsIn * cfg.input.dtype.bitwidth
   val maxPoolSize = cfg.input.width / cfg.output.width
   val shiftRegsSize = cfg.input.width * maxPoolSize - (cfg.input.width - maxPoolSize)
   require(cfg.output.width * maxPoolSize == cfg.input.width)
@@ -48,10 +46,10 @@ trait HasMaxPoolParameters extends HasLBIRStreamParameters {
  */
 class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters) extends Module 
 with HasLBIRStream[Vec[UInt]]
-with HasLBIRStreamParameters
+with HasLBIRStreamParameters[MaxPool2DConfig]
 with HasMaxPoolParameters
- {
-  val logger = LoggerFactory.getLogger(this.getClass())
+with HasParameterLogging {
+  logParameters
   val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
   val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
 
@@ -61,11 +59,6 @@ with HasMaxPoolParameters
     val sSTALL = Value(2.U)
   }
   val state = RegInit(InputBufferState.sEMPTY)
-
-  logger.info(s""" MaxPool2D parameters are: maxPoolSize -> $maxPoolSize,
-                 | shiftRegsSize -> $shiftRegsSize, input width -> ${cfg.input.width}, input height ->
-                 | ${cfg.input.height}, output width -> ${cfg.output.width}, output height ->
-                 | ${cfg.output.height}.""".stripMargin.replaceAll("\n", ""))
 
   val inputsBuffer = RegEnable(inStream.bits.asTypeOf(Vec(numBeatsIn, cfg.input.getType[I])), inStream.fire)
   val outputsBuffer = Reg(Vec(cfg.input.paramsPerWord(inWidth), cfg.input.getType[I]))

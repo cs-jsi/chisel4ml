@@ -20,7 +20,6 @@ import chisel4ml.implicits._
 import lbir.Activation._
 import lbir.Conv2DConfig
 import lbir.Datatype.QuantizationType._
-import org.slf4j.LoggerFactory
 import chisel3._
 import interfaces.amba.axis._
 import chisel4ml.Quantization._
@@ -28,6 +27,8 @@ import org.chipsalliance.cde.config.Parameters
 import spire.implicits._
 import dsptools.numbers._
 import org.chipsalliance.cde.config.{Config, Field}
+import chisel4ml.logging.HasLogger
+import chisel4ml.logging.HasParameterLogging
 
 /** A sequential processing element for convolutions.
   *
@@ -41,23 +42,19 @@ import org.chipsalliance.cde.config.{Config, Field}
 
 case object Conv2DConfigField extends Field[Conv2DConfig]
 
-trait HasSequentialConvParameters extends HasLBIRStreamParameters { 
+trait HasSequentialConvParameters extends HasLBIRStreamParameters[Conv2DConfig] { 
   val p: Parameters
-  val cfg = p(Conv2DConfigField)
-  val inWidth = numBeatsIn * cfg.input.dtype.bitwidth
-  val outWidth = numBeatsOut * cfg.output.dtype.bitwidth
+  override val cfg = p(Conv2DConfigField)
 }
 
 class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](qc: QuantizationContext[I,W,M,A,O])(implicit val p: Parameters) extends Module
 with HasLBIRStream[Vec[UInt]]
-with HasLBIRStreamParameters
-with HasSequentialConvParameters {
-  val logger = LoggerFactory.getLogger("ProcessingElementSequentialConv")
-
-  logger.info(
-    s"""Generated new depthwise: ${cfg.depthwise}: ProcessingElementSequentialConv with input shape:${cfg.input.shape}, input dtype:
-          | ${cfg.input.dtype}. Number of kernel parameters is ${cfg.kernel.numKernelParams}."""
-  )
+with HasLBIRStreamParameters[Conv2DConfig] 
+with HasLBIRConfig[Conv2DConfig]
+with HasSequentialConvParameters
+with HasLogger
+with HasParameterLogging {
+  logParameters
 
   val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
   val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))

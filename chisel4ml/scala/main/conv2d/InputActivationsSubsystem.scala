@@ -7,6 +7,7 @@ import memories.MemoryGenerator
 import chisel4ml.implicits._
 import org.chipsalliance.cde.config.Parameters
 import chisel4ml.HasLBIRStreamParameters
+import lbir.Conv2DConfig
 
 /* InputActivationSubsystem
  * Handles the input data stream, and stores it in to a input buffer. It also "rolls" through the input activation
@@ -15,7 +16,7 @@ import chisel4ml.HasLBIRStreamParameters
  */
 class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters) extends Module 
 with HasSequentialConvParameters
-with HasLBIRStreamParameters {
+with HasLBIRStreamParameters[Conv2DConfig] {
   val io = IO(new Bundle {
     val inStream = Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W))))
     val inputActivationsWindow = Decoupled(Vec(cfg.kernel.numActiveParams(cfg.depthwise), cfg.input.getType[I]))

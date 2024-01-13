@@ -21,7 +21,6 @@ import chisel4ml.Quantization._
 import chisel4ml._
 import lbir.Datatype.QuantizationType._
 import lbir.DenseConfig
-import org.slf4j.LoggerFactory
 import chisel3._
 import spire.algebra.Ring
 import spire.implicits._
@@ -69,7 +68,6 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, 
 )(qc:    QuantizationContext[I, W, M, A, O])
     extends Module
     with LBIRStreamSimple {
-  val logger = LoggerFactory.getLogger("ProcessingElementSimple")
   val in = IO(Input(Vec(layer.input.width, layer.input.getType[I])))
   val out = IO(Output(Vec(layer.output.width, layer.output.getType[O])))
 
@@ -96,15 +94,4 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, 
       )(qc)
     }
   }
-
-  logger.info(
-    s"""Created new ProcessingElementSimpleDense processing element. It has an input shape:
-       | ${layer.input.shape} and output shape: ${layer.output.shape}. The input bitwidth
-       | is ${layer.input.dtype.bitwidth}, the output bitwidth
-       | ${layer.output.dtype.bitwidth}. Thus the total size of the input vector is
-       | ${layer.input.totalBitwidth} bits, and the total size of the output vector
-       | is ${layer.output.totalBitwidth} bits.
-       | The input quantization is ${layer.input.getType}, output quantization is ${layer.output.getType}.""".stripMargin
-      .replaceAll("\n", "")
-  )
 }

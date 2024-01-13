@@ -22,6 +22,7 @@ import chisel4ml.implicits._
 import chisel4ml.util.isStable
 import org.chipsalliance.cde.config.Parameters
 import chisel4ml.HasLBIRStreamParameters
+import lbir.Conv2DConfig
 
 /*
   Moves the entire tensor after obtainint the signal io.start.
@@ -29,7 +30,7 @@ import chisel4ml.HasLBIRStreamParameters
  */
 class InputDataMover[I <: Bits](implicit val p: Parameters) extends Module
 with HasSequentialConvParameters
-with HasLBIRStreamParameters {
+with HasLBIRStreamParameters[Conv2DConfig] {
   object IDMState extends ChiselEnum {
     val sWAIT = Value(0.U)
     val sMOVEDATA = Value(1.U)

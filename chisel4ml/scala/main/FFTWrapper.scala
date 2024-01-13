@@ -19,15 +19,15 @@ import chisel3._
 import chisel3.util._
 import chisel4ml.HasLBIRStream
 import lbir.FFTConfig
-import org.slf4j.LoggerFactory
 import dsptools._
 import fft._
 import interfaces.amba.axis._
 import org.chipsalliance.cde.config.{Field, Parameters}
+import chisel4ml.logging.HasParameterLogging
 
 case object FFTConfigField extends Field[FFTConfig]
 
-trait HasFFTParameters extends HasLBIRStreamParameters {
+trait HasFFTParameters extends HasLBIRStreamParameters[FFTConfig]{
   type T = FFTConfig
   val p: Parameters
   val cfg = p(FFTConfigField)
@@ -54,8 +54,9 @@ trait HasFFTParameters extends HasLBIRStreamParameters {
 
 class FFTWrapper(implicit val p: Parameters) extends Module 
 with HasLBIRStream[Vec[UInt]]
-with HasFFTParameters {
-  val logger = LoggerFactory.getLogger("FFTWrapper")
+with HasFFTParameters 
+with HasParameterLogging {
+  logParameters
   val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
   val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
   

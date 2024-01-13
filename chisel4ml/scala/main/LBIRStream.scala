@@ -17,14 +17,21 @@ package chisel4ml
 import chisel3._
 import interfaces.amba.axis._
 import org.chipsalliance.cde.config.{Field, Parameters}
+import lbir.LayerWrap
 
 case object LBIRNumBeatsIn extends Field[Int]
 case object LBIRNumBeatsOut extends Field[Int]
 
-trait HasLBIRStreamParameters {
+trait HasLBIRConfig[+T <: LayerWrap] {
+  val cfg: T
+}
+
+trait HasLBIRStreamParameters[T <: LayerWrap] extends HasLBIRConfig[T] {
   val p: Parameters
   val numBeatsIn = p(LBIRNumBeatsIn)
   val numBeatsOut = p(LBIRNumBeatsOut)
+  def inWidth = numBeatsIn * cfg.input.dtype.bitwidth
+  def outWidth = numBeatsOut * cfg.output.dtype.bitwidth
   require(numBeatsIn > 0)
   require(numBeatsOut > 0)
 }
