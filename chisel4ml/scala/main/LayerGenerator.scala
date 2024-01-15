@@ -17,7 +17,7 @@ package chisel4ml
 
 import chisel4ml.{HasLBIRStream, LBIRNumBeatsIn, LBIRNumBeatsOut}
 import chisel4ml.conv2d.ProcessingElementSequentialConv
-import chisel4ml.sequential.{MaxPool2D, MaxPool2DConfigField}
+import chisel4ml.{MaxPool2D, MaxPool2DConfigField}
 import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
 import chisel3._
 import org.chipsalliance.cde.config.{Config, Parameters}

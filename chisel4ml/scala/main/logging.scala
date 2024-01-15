@@ -21,7 +21,7 @@ import org.reflections.Reflections
 import org.reflections.scanners.Scanners.SubTypes
 import chisel4ml._
 import chisel4ml.conv2d.Conv2DConfigField
-import chisel4ml.sequential.MaxPool2DConfigField
+import chisel4ml.MaxPool2DConfigField
 import lbir.LayerWrap
 
 trait HasLogger {

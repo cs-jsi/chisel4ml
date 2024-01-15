@@ -19,7 +19,7 @@ import chisel3._
 import chisel3.util._
 import chisel4ml.util._
 
-object Quantization {
+package quantization {
   trait QuantizationContext[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits] extends Any {
     def mul:                  (I, W) => M
     def add:                  Vec[M] => A

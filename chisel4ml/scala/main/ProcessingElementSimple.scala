@@ -17,7 +17,7 @@ package chisel4ml
 
 import chisel4ml.{NeuronWithBias, NeuronWithoutBias}
 import chisel4ml.implicits._
-import chisel4ml.Quantization._
+import chisel4ml.quantization._
 import chisel4ml._
 import lbir.Datatype.QuantizationType._
 import lbir.DenseConfig

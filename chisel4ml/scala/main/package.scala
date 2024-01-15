@@ -19,7 +19,7 @@ import chisel3._
 import lbir.Activation.{BINARY_SIGN, RELU, NO_ACTIVATION}
 import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
 import lbir.{AXIStreamLBIRDriver, Datatype, DenseConfig, QTensor, IsActiveLayer}
-import chisel4ml.Quantization._
+import chisel4ml.quantization._
 import org.slf4j.LoggerFactory
 import chisel4ml.util._
 import interfaces.amba.axis._

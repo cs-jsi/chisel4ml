@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 package chisel4ml.conv2d
-import chisel4ml.implicits._
 import chisel3._
-import interfaces.amba.axis.AXIStream
 import chisel3.util._
+import chisel4ml.implicits._
+import interfaces.amba.axis.AXIStream
 import org.chipsalliance.cde.config.Parameters
 import chisel4ml.HasLBIRStreamParameters
 import lbir.Conv2DConfig

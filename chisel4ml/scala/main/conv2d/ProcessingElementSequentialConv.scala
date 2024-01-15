@@ -22,7 +22,7 @@ import lbir.Conv2DConfig
 import lbir.Datatype.QuantizationType._
 import chisel3._
 import interfaces.amba.axis._
-import chisel4ml.Quantization._
+import chisel4ml.quantization._
 import org.chipsalliance.cde.config.Parameters
 import spire.implicits._
 import dsptools.numbers._
