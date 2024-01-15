@@ -36,7 +36,7 @@ def _qkeras_base_transform_no_inp(keras_layer: KerasLayer):
         return lbir.LayerWrap(
             dense=lbir.DenseConfig(
                 thresh=_layer_to_thresh_tensor(keras_layer),
-                weights=_layer_to_weight_tensor(keras_layer),
+                kernel=_layer_to_weight_tensor(keras_layer),
                 output=_layer_to_output_tensor(keras_layer),
                 activation=_qact_to_act(keras_layer.activation),
                 rounding_mode=_qact_to_rounding_mode(keras_layer.activation),
