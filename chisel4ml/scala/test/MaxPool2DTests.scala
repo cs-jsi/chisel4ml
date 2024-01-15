@@ -17,14 +17,14 @@ package chisel4ml.tests
 
 import _root_.chisel4ml.implicits._
 import org.chipsalliance.cde.config.Config
-import chisel4ml.sequential.MaxPool2DConfigField
+import chisel4ml.MaxPool2DConfigField
 import chisel4ml.{LBIRNumBeatsIn, LBIRNumBeatsOut}
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
-import chisel4ml.sequential.MaxPool2D
+import chisel4ml.MaxPool2D
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-/*
+
 class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
   val logger = LoggerFactory.getLogger(classOf[MaxPool2DTests])
 
@@ -67,4 +67,3 @@ class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 }
-*/

@@ -30,7 +30,7 @@ import org.chipsalliance.cde.config.Config
 import java.nio.file.Paths
 import lbir.Conv2DConfig
 import chisel4ml.{LBIRNumBeatsIn, LBIRNumBeatsOut}
-/*
+
 class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTester with BeforeAndAfterEachTestData {
   val logger = LoggerFactory.getLogger(classOf[InputActivationsSubsystemTests])
 
@@ -113,4 +113,3 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
     }
   }
 }
-*/

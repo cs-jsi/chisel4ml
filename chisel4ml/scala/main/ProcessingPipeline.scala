@@ -18,9 +18,8 @@ package chisel4ml
 import chisel3._
 import lbir.Model
 import scala.collection.mutable._
-import interfaces.amba.axis._
 
-class ProcessingPipeline(model: Model) extends Module with HasLBIRStream[UInt] {
+class ProcessingPipeline(model: Model) extends Module with HasLBIRStream[Vec[UInt]] {
   // List of processing elements - one PE per layer
   val peList = new ListBuffer[Module with HasLBIRStream[Vec[UInt]]]()
 
@@ -29,19 +28,13 @@ class ProcessingPipeline(model: Model) extends Module with HasLBIRStream[UInt] {
     peList += LayerGenerator(layer.get)
   }
 
-  val inStream = IO(Flipped(AXIStream(UInt(peList.head.inStream.bits.getWidth.W))))
-  val outStream = IO(AXIStream(UInt(peList.last.outStream.bits.getWidth.W)))
+  val inStream = IO(chiselTypeOf(peList.head.inStream))
+  val outStream = IO(chiselTypeOf(peList.last.outStream))
 
   // Connect the inputs and outputs of the layers
-  inStream.ready := peList.head.inStream.ready
-  peList.head.inStream.valid := inStream.valid
-  peList.head.inStream.bits := inStream.bits.asTypeOf(peList.head.inStream.bits)
-  peList.head.inStream.last := inStream.last
+  peList.head.inStream <> inStream
   for (i <- 1 until model.layers.length) {
     peList(i).inStream <> peList(i - 1).outStream
   }
-  peList.last.outStream.ready := outStream.ready
-  outStream.valid := peList.last.outStream.valid
-  outStream.bits := peList.last.outStream.bits.asTypeOf(outStream.bits)
-  outStream.last := peList.last.outStream.last
+  outStream <> peList.last.outStream
 }

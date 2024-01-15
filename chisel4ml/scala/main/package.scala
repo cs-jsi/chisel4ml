@@ -16,10 +16,9 @@
 package chisel4ml
 
 import chisel3._
-import lbir.Activation.{BINARY_SIGN, RELU, NO_ACTIVATION}
+import lbir._
 import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
-import lbir.{AXIStreamLBIRDriver, Datatype, DenseConfig, QTensor, IsActiveLayer}
-import chisel4ml.quantization._
+import chisel3.experimental.VecLiterals._
 import org.slf4j.LoggerFactory
 import chisel4ml.util._
 import interfaces.amba.axis._
@@ -29,32 +28,14 @@ import scala.language.implicitConversions
 package object implicits {
   val logger = LoggerFactory.getLogger("chisel4ml")
 
-  implicit def axiStreamToDriver(x: AXIStreamIO[UInt]): AXIStreamDriver[UInt] = new AXIStreamDriver(x)
-
-  implicit def axiStreamToLBIRDriver(x: AXIStreamIO[UInt]): AXIStreamLBIRDriver = {
+  implicit def axiStreamToLBIRDriver(x: AXIStreamIO[Vec[UInt]]): AXIStreamLBIRDriver = {
     new AXIStreamLBIRDriver(new AXIStreamDriver(x))
-  }
-
-  implicit class ActiveConfigExtensions(layer: IsActiveLayer) 
-  {
-    def getQuantizationContext[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits] = (
-      layer.input.dtype.quantization,
-      layer.input.dtype.signed,
-      layer.kernel.dtype.quantization,
-      layer.activation
-    ) match {
-      case (UNIFORM, true, UNIFORM, RELU) => new UniformQuantizationContextSSUReLU(layer.roundingMode)
-      case (UNIFORM, false, UNIFORM, RELU) => new UniformQuantizationContextUSUReLU(layer.roundingMode)
-      case (UNIFORM, true, UNIFORM, NO_ACTIVATION) => new UniformQuantizationContextSSSNoAct(layer.roundingMode)
-      case (UNIFORM, false, UNIFORM, NO_ACTIVATION) => new UniformQuantizationContextUSSNoAct(layer.roundingMode)
-      case _ => throw new RuntimeException()
-  }
   }
 
   implicit class DenseConfigExtensions(layer: DenseConfig) {
     def getThresh[T <: Bits]: Seq[T] =
       (layer.input.dtype.quantization, layer.kernel.dtype.quantization, layer.activation) match {
-        case (BINARY, BINARY, BINARY_SIGN) =>
+        case (BINARY, BINARY, Activation.BINARY_SIGN) =>
           layer.thresh.values.map(x => (layer.input.shape(0) + x) / 2).map(_.ceil).map(_.toInt.U).map(_.asInstanceOf[T])
         case _ => layer.thresh.values.map(_.toInt.S(layer.thresh.dtype.bitwidth.W)).map(_.asInstanceOf[T])
       }
@@ -86,22 +67,29 @@ package object implicits {
       case _                => throw new Exception("Datatype not supported.")
     }
     
-    def toLBIRTransactions(busWidth: Int): Seq[UInt] = {
+    def toLBIRTransactions(busWidth: Int): Seq[Vec[UInt]] = {
       require(busWidth % qt.dtype.bitwidth == 0)
       val binaryStr = qt.toBinaryString
       val paramWidth = qt.dtype.bitwidth
-      val paramsPerTransaction: Int = busWidth / paramWidth
-      val transactions: Seq[String] = binaryStr
+      val numBeats = busWidth / paramWidth
+      val beats: Seq[UInt] = binaryStr
         .drop(1) // drop the "b" symbol
         .grouped(paramWidth)
         .toSeq
         .reverse
-        .grouped(paramsPerTransaction)
+        .map("b" + _).map(_.U(qt.dtype.bitwidth.W))
+      val diff = if(beats.length % numBeats == 0) 0 else numBeats - (beats.length % numBeats)
+      val modBeats = beats ++ Seq.fill(diff)(0.U(qt.dtype.bitwidth.W))
+      val transactions = modBeats
+        .grouped(numBeats)
         .map(
-          _.reverse.reduce(_ + _)
+         _.zipWithIndex.map((x: (UInt, Int)) => x._2 -> x._1)
+        )
+        .map(
+          Vec(numBeats, UInt(qt.dtype.bitwidth.W)).Lit(_:_*)  // This syntax just unwraps the Seq to a vararg argument
         )
         .toSeq
-      transactions.map(s"b".concat(_).U(busWidth.W))
+      transactions
     }
 
     def toUInt: UInt = {
