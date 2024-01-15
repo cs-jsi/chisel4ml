@@ -30,7 +30,7 @@ import scala.util.control.Breaks._
 import memories.MemoryGenerator
 import firrtl.transforms.NoCircuitDedupAnnotation
 
-class Circuit[+T <: Module with LBIRStream](
+class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](
   dutGen:        => T,
   outputStencil: QTensor,
   directory:     Path,

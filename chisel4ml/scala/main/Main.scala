@@ -76,7 +76,7 @@ object Chisel4mlServer {
   */
 class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { self =>
   private[this] var server: Server = null
-  private var circuits = Map[Int, Circuit[Module with LBIRStream]]() // Holds the circuit and simulation object
+  private var circuits = Map[Int, Circuit[Module with HasLBIRStream[Vec[UInt]]]]() // Holds the circuit and simulation object
   private var nextId: Int = 0
 
   val logger = LoggerFactory.getLogger(classOf[Chisel4mlServer])
@@ -106,7 +106,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
   private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
     override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
       val circuit = new Circuit[ProcessingPipeline](
-        dutGen = new ProcessingPipeline(params.model.get, params.options.get),
+        dutGen = new ProcessingPipeline(params.model.get),
         outputStencil = params.model.get.layers.last.get.output,
         directory = Paths.get(tempDir, s"circuit$nextId"),
         useVerilator = params.useVerilator,

@@ -15,49 +15,50 @@
  */
 package chisel4ml
 
-import chisel4ml.LBIRStream
 import chisel4ml.implicits._
 import lbir.DenseConfig
-import org.slf4j.LoggerFactory
-import services.LayerOptions
 import chisel3._
 import chisel3.util._
 import interfaces.amba.axis._
+import org.chipsalliance.cde.config.{Field, Parameters}
+import chisel4ml.logging.HasParameterLogging
 
-class ProcessingElementWrapSimpleToSequential(layer: DenseConfig, options: LayerOptions)
+case object DenseConfigField extends Field[DenseConfig]
+
+trait HasDenseParameters extends HasLBIRStreamParameters[DenseConfig] {
+  type T = DenseConfig
+  val p: Parameters
+  val cfg = p(DenseConfigField)
+}
+
+class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
     extends Module
-    with LBIRStream {
-  val logger = LoggerFactory.getLogger(this.getClass())
-
-  val inputValidBits = layer.input.paramsPerWord * layer.input.dtype.bitwidth
-  val outputValidBits = layer.output.paramsPerWord * layer.output.dtype.bitwidth
-
-  val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
-  val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
+    with HasLBIRStream[Vec[UInt]]
+    with HasLBIRStreamParameters[DenseConfig]
+    with HasDenseParameters
+    with HasParameterLogging {
+  logParameters
+  val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
+  val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
   val inputBuffer = RegInit(
-    VecInit(Seq.fill(layer.input.numTransactions(options.busWidthIn))(0.U(inputValidBits.W)))
+    VecInit(Seq.fill(cfg.input.numTransactions(inWidth))(0.U(inWidth.W)))
   )
   val outputBuffer = RegInit(
-    VecInit(Seq.fill(layer.output.numTransactions(options.busWidthOut))(0.U(outputValidBits.W)))
+    VecInit(Seq.fill(cfg.output.numTransactions(outWidth))(0.U(outWidth.W)))
   )
 
-  logger.info(s"""Created new ProcessingElementWrapSimpleToSequential module. Number of input transactions:
-                 |${layer.input.numTransactions(options.busWidthIn)}, number of output transactions is:
-                 |${layer.output.numTransactions(options.busWidthOut)}, busWidthIn: ${options.busWidthIn},
-                 | busWidthOut: ${options.busWidthOut}.""".stripMargin.replaceAll("\n", ""))
-
-  val (inputCntValue, inputCntWrap) = Counter(inStream.fire, layer.input.numTransactions(options.busWidthIn))
-  val (outputCntValue, outputCntWrap) = Counter(outStream.fire, layer.output.numTransactions(options.busWidthOut))
+  val (inputCntValue, inputCntWrap) = Counter(inStream.fire, cfg.input.numTransactions(inWidth))
+  val (outputCntValue, outputCntWrap) = Counter(outStream.fire, cfg.output.numTransactions(outWidth))
   val outputBufferFull = RegInit(false.B)
 
   // (combinational) computational module
-  val peSimple = Module(ProcessingElementSimple(layer))
+  val peSimple = Module(ProcessingElementSimple(cfg))
 
   /** *** INPUT DATA INTERFACE ****
     */
   inStream.ready := !outputBufferFull
   when(inStream.fire) {
-    inputBuffer(inputCntValue) := inStream.bits(inputValidBits - 1, 0)
+    inputBuffer(inputCntValue) := inStream.bits.asUInt
   }
 
   /** *** CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE ****
@@ -73,6 +74,6 @@ class ProcessingElementWrapSimpleToSequential(layer: DenseConfig, options: Layer
   /** *** OUTPUT DATA INTERFACE ****
     */
   outStream.valid := outputBufferFull
-  outStream.bits := outputBuffer(outputCntValue)
+  outStream.bits := outputBuffer(outputCntValue).asTypeOf(outStream.bits)
   outStream.last := outputCntWrap
 }

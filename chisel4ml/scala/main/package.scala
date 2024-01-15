@@ -16,9 +16,9 @@
 package chisel4ml
 
 import chisel3._
-import lbir.Activation.BINARY_SIGN
+import lbir._
 import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
-import lbir.{AXIStreamLBIRDriver, Datatype, DenseConfig, QTensor}
+import chisel3.experimental.VecLiterals._
 import org.slf4j.LoggerFactory
 import chisel4ml.util._
 import interfaces.amba.axis._
@@ -28,24 +28,22 @@ import scala.language.implicitConversions
 package object implicits {
   val logger = LoggerFactory.getLogger("chisel4ml")
 
-  implicit def axiStreamToDriver[T <: Data](x: AXIStreamIO[T]): AXIStreamDriver[T] = new AXIStreamDriver(x)
-
-  implicit def axiStreamToLBIRDriver(x: AXIStreamIO[UInt]): AXIStreamLBIRDriver = {
+  implicit def axiStreamToLBIRDriver(x: AXIStreamIO[Vec[UInt]]): AXIStreamLBIRDriver = {
     new AXIStreamLBIRDriver(new AXIStreamDriver(x))
   }
 
   implicit class DenseConfigExtensions(layer: DenseConfig) {
     def getThresh[T <: Bits]: Seq[T] =
-      (layer.input.dtype.quantization, layer.weights.dtype.quantization, layer.activation) match {
-        case (BINARY, BINARY, BINARY_SIGN) =>
+      (layer.input.dtype.quantization, layer.kernel.dtype.quantization, layer.activation) match {
+        case (BINARY, BINARY, Activation.BINARY_SIGN) =>
           layer.thresh.values.map(x => (layer.input.shape(0) + x) / 2).map(_.ceil).map(_.toInt.U).map(_.asInstanceOf[T])
         case _ => layer.thresh.values.map(_.toInt.S(layer.thresh.dtype.bitwidth.W)).map(_.asInstanceOf[T])
       }
-    def getWeights[T <: Bits]: Seq[Seq[T]] = layer.weights.dtype.quantization match {
+    def getWeights[T <: Bits]: Seq[Seq[T]] = layer.kernel.dtype.quantization match {
       case UNIFORM =>
-        layer.weights.values.map(_.toInt.S.asInstanceOf[T]).grouped(layer.weights.shape(0)).toSeq.transpose
+        layer.kernel.values.map(_.toInt.S.asInstanceOf[T]).grouped(layer.kernel.shape(0)).toSeq.transpose
       case BINARY =>
-        layer.weights.values.map(_ > 0).map(_.B.asInstanceOf[T]).grouped(layer.weights.shape(0)).toSeq.transpose
+        layer.kernel.values.map(_ > 0).map(_.B.asInstanceOf[T]).grouped(layer.kernel.shape(0)).toSeq.transpose
       case _ => throw new RuntimeException
     }
   }
@@ -68,22 +66,30 @@ package object implicits {
       case (UNIFORM, false) => UInt(qt.dtype.bitwidth.W).asInstanceOf[T]
       case _                => throw new Exception("Datatype not supported.")
     }
-    def toLBIRTransactions(busWidth: Int): Seq[UInt] = {
+    
+    def toLBIRTransactions(busWidth: Int): Seq[Vec[UInt]] = {
+      require(busWidth % qt.dtype.bitwidth == 0)
       val binaryStr = qt.toBinaryString
       val paramWidth = qt.dtype.bitwidth
-      val emptyBits = busWidth % paramWidth
-      val paramsPerTransaction: Int = busWidth / paramWidth
-      val transactions = binaryStr
-        .drop(1)
+      val numBeats = busWidth / paramWidth
+      val beats: Seq[UInt] = binaryStr
+        .drop(1) // drop the "b" symbol
         .grouped(paramWidth)
-        .toList
+        .toSeq
         .reverse
-        .grouped(paramsPerTransaction)
+        .map("b" + _).map(_.U(qt.dtype.bitwidth.W))
+      val diff = if(beats.length % numBeats == 0) 0 else numBeats - (beats.length % numBeats)
+      val modBeats = beats ++ Seq.fill(diff)(0.U(qt.dtype.bitwidth.W))
+      val transactions = modBeats
+        .grouped(numBeats)
         .map(
-          _.reverse.reduce(_ + _)
+         _.zipWithIndex.map((x: (UInt, Int)) => x._2 -> x._1)
         )
-        .toList
-      transactions.map(s"b${"0" * emptyBits}".concat(_).U(busWidth.W))
+        .map(
+          Vec(numBeats, UInt(qt.dtype.bitwidth.W)).Lit(_:_*)  // This syntax just unwraps the Seq to a vararg argument
+        )
+        .toSeq
+      transactions
     }
 
     def toUInt: UInt = {
@@ -98,10 +104,9 @@ package object implicits {
       "b".concat(values.map(_.toInt).map(toBinary(_, qt.dtype.bitwidth)).mkString)
     }
 
-    def toHexStr: String = {
-      logger.debug("Convertin QTensor to a hex file string.")
+    def toHexString(memWordWidth: Int = 32): String = {
+      require(memWordWidth >= qt.dtype.bitwidth)
       val bitwidth:       Int = qt.dtype.bitwidth
-      val memWordWidth:   Int = 32
       val paramsPerWord:  Int = memWordWidth / bitwidth
       val memValidBits:   Int = paramsPerWord * bitwidth
       val memInvalidBits: Int = memWordWidth - memValidBits
@@ -165,22 +170,25 @@ package object implicits {
     def numParams:       Int = qt.shape.reduce(_ * _)
     def numKernelParams: Int = numParams / numKernels
     def numActiveParams(depthwise: Boolean): Int = if (depthwise) width * height else numKernelParams
-    def paramsPerWord: Int = MemWordSize.bits / qt.dtype.bitwidth
+    def paramsPerWord(wordSize: Int = 32): Int = {
+      require(wordSize >= qt.dtype.bitwidth)
+      wordSize / qt.dtype.bitwidth
+    }
     def totalBitwidth: Int = qt.dtype.bitwidth * numParams
-    def memDepth: Int = {
+    def memDepth(memWordSize: Int): Int = {
       qt.shape.length match {
         // Each kernel goes to a new word!
-        case 4 => math.ceil(numKernelParams.toFloat / paramsPerWord.toFloat).toInt * numKernels
-        case _ => math.ceil(numParams.toFloat / paramsPerWord.toFloat).toInt
+        case 4 => math.ceil(numKernelParams.toFloat / paramsPerWord(memWordSize).toFloat).toInt * numKernels
+        case _ => math.ceil(numParams.toFloat / paramsPerWord(memWordSize).toFloat).toInt
       }
     }
-    def memDepthOneKernel: Int = memDepth / numKernels
+    def memDepthOneKernel(memWordSize: Int): Int = memDepth(memWordSize) / numKernels
     def numTransactions(busWidth: Int): Int = {
       require(
         busWidth >= qt.dtype.bitwidth,
         s"Buswidth must be at least the size of input data bitwidth. $busWidth !>= ${qt.dtype.bitwidth}"
       )
-      val paramsPerTrans = math.floor(busWidth.toFloat / qt.dtype.bitwidth.toFloat).toInt
+      val paramsPerTrans = paramsPerWord(busWidth)
       math.ceil(numParams.toFloat / paramsPerTrans.toFloat).toInt
     }
   }
@@ -198,10 +206,9 @@ package object implicits {
            | to the bitwidth of a single qtensor element. Buswidth is $busWidth,
            | bitwidth:${stencil.dtype.bitwidth}.""".stripMargin.replaceAll("\n", "")
       )
-      val paramsPerTransaction: Int = busWidth / stencil.dtype.bitwidth
-      val bitsPerTransaction:   Int = paramsPerTransaction * stencil.dtype.bitwidth
+      val bitsPerTransaction:   Int = stencil.paramsPerWord(busWidth) * stencil.dtype.bitwidth
       logger.debug(
-        s"$stencil, busWidth:$busWidth, paramsPerTransactions:$paramsPerTransaction, bitsPerTranscation:$bitsPerTransaction"
+        s"$stencil, busWidth:$busWidth, bitsPerTranscation:$bitsPerTransaction"
       )
 
       val binaryVals = x
@@ -218,8 +225,8 @@ package object implicits {
       }
       logger.debug(
         s"""Converted Seq[BigInt] to QTensor. Values: $values, valuesMod: $valuesMod.
-           | Original Seq: $x, paramsPerTransaction: $paramsPerTransaction, bitsPerTransaction:
-           | $bitsPerTransaction, flatVals: $flatVals. binaryVals: $binaryVals""".stripMargin
+           | Original Seq: $x, bitsPerTransaction: $bitsPerTransaction, 
+           | flatVals: $flatVals. binaryVals: $binaryVals""".stripMargin
           .replaceAll("\n", "")
       )
       QTensor(dtype = stencil.dtype, shape = stencil.shape, values = valuesMod)

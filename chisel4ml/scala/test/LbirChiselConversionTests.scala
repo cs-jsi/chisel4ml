@@ -31,13 +31,15 @@ class LbirChiselConversionTests extends AnyFunSuite {
   for (idx <- 0 until numUniformTests) {
     val signed = r.nextFloat() < 0.5 // true/false
     val bitwidth = r.nextInt(15) + 2 // 2-16
-    val busWidth = bitwidth + r.nextInt(32)
-    val length = r.nextInt(128) + 1 // 1-128
+    val numBeats = (1 + r.nextInt(8))
+    val busWidth = bitwidth * numBeats
+    val length = (r.nextInt(16) + 1) * numBeats
     val signAdjust = if (signed) Math.pow(2, bitwidth - 1).toFloat else 0.0f
     val values = (0 until length).map(_ => r.nextInt(Math.pow(2, bitwidth).toInt).toFloat - signAdjust)
     val dtype = Datatype(quantization = UNIFORM, signed = signed, bitwidth = bitwidth, shift = Seq(0), offset = Seq(0))
     val qtensor = QTensor(dtype = dtype, shape = Seq(length), values = values)
     val stencil = QTensor(dtype = dtype, shape = Seq(length))
+
     test(s"Random test QTensor -> UInt -> QTensor: $idx") {
       assert(
         qtensor.toLBIRTransactions(busWidth).map(_.litValue).toQTensor(stencil, busWidth).values == qtensor.values,

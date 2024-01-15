@@ -13,17 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.sequential
+package chisel4ml
 
 import lbir.MaxPool2DConfig
-import org.slf4j.LoggerFactory
-import services.LayerOptions
 import chisel3._
 import chisel3.util._
-import chisel4ml.LBIRStream
+import chisel4ml.HasLBIRStream
 import chisel4ml.implicits._
 import interfaces.amba.axis._
 import chisel4ml.util.risingEdge
+import org.chipsalliance.cde.config.{Field, Parameters}
+import chisel4ml.HasLBIRStreamParameters
+import chisel4ml.logging.HasParameterLogging
+
+case object MaxPool2DConfigField extends Field[MaxPool2DConfig]
+
+trait HasMaxPoolParameters extends HasLBIRStreamParameters[MaxPool2DConfig] {
+  val p: Parameters
+  val cfg = p(MaxPool2DConfigField)
+  val maxPoolSize = cfg.input.width / cfg.output.width
+  val shiftRegsSize = cfg.input.width * maxPoolSize - (cfg.input.width - maxPoolSize)
+  require(cfg.output.width * maxPoolSize == cfg.input.width)
+  require(cfg.output.height * maxPoolSize == cfg.input.height, f"${cfg.input} / ${cfg.output} == $maxPoolSize")
+}
 
 /* MaxPool2D
  *
@@ -32,17 +44,14 @@ import chisel4ml.util.risingEdge
  * moments.
  *
  */
-class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOptions) extends Module with LBIRStream {
-  val logger = LoggerFactory.getLogger(this.getClass())
-  val inStream = IO(Flipped(AXIStream(UInt(options.busWidthIn.W))))
-  val outStream = IO(AXIStream(UInt(options.busWidthOut.W)))
-
-  val maxPoolSize: Int = layer.input.width / layer.output.width
-  require(layer.output.width * maxPoolSize == layer.input.width)
-  require(layer.output.height * maxPoolSize == layer.input.height, f"${layer.input} / ${layer.output} == $maxPoolSize")
-
-  val paramsPerTransaction: Int = options.busWidthIn / layer.input.dtype.bitwidth
-  val shiftRegsSize:        Int = layer.input.width * maxPoolSize - (layer.input.width - maxPoolSize)
+class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters) extends Module 
+with HasLBIRStream[Vec[UInt]]
+with HasLBIRStreamParameters[MaxPool2DConfig]
+with HasMaxPoolParameters
+with HasParameterLogging {
+  logParameters
+  val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
+  val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
 
   object InputBufferState extends ChiselEnum {
     val sEMPTY = Value(0.U)
@@ -51,29 +60,21 @@ class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOpt
   }
   val state = RegInit(InputBufferState.sEMPTY)
 
-  logger.info(s""" MaxPool2D parameters are: maxPoolSize -> $maxPoolSize, paramsPerTransaction -> $paramsPerTransaction
-                 | shiftRegsSize -> $shiftRegsSize, input width -> ${layer.input.width}, input height ->
-                 | ${layer.input.height}, output width -> ${layer.output.width}, output height ->
-                 | ${layer.output.height}.""".stripMargin.replaceAll("\n", ""))
-
-  val inputs = Wire(Vec(paramsPerTransaction, layer.input.getType[T]))
-  val validBits = paramsPerTransaction * layer.input.dtype.bitwidth
-  inputs := inStream.bits(validBits - 1, 0).asTypeOf(inputs)
-  val inputsBuffer = RegEnable(inputs, inStream.fire)
-  val outputsBuffer = Reg(Vec(paramsPerTransaction, layer.input.getType[T]))
+  val inputsBuffer = RegEnable(inStream.bits.asTypeOf(Vec(numBeatsIn, cfg.input.getType[I])), inStream.fire)
+  val outputsBuffer = Reg(Vec(cfg.input.paramsPerWord(inWidth), cfg.input.getType[I]))
 
   val (_, channelElementsCounterWrap) =
-    Counter(state === InputBufferState.sREAD_WORD, layer.input.numActiveParams(depthwise = true))
+    Counter(state === InputBufferState.sREAD_WORD, cfg.input.numActiveParams(depthwise = true))
   val (widthCounter, widthCounterWrap) =
-    Counter(0 until layer.input.width, state === InputBufferState.sREAD_WORD, channelElementsCounterWrap)
+    Counter(0 until cfg.input.width, state === InputBufferState.sREAD_WORD, channelElementsCounterWrap)
   val (heightCounter, heightCounterWrap) =
-    Counter(0 until layer.input.height, widthCounterWrap, channelElementsCounterWrap)
+    Counter(0 until cfg.input.height, widthCounterWrap, channelElementsCounterWrap)
   val (totalInputElements, totalInputElementsWrap) =
-    Counter(state === InputBufferState.sREAD_WORD, layer.input.numParams)
+    Counter(state === InputBufferState.sREAD_WORD, cfg.input.numParams)
   val (transactionsCounter, transactionsCounterWrap) =
-    Counter(0 until layer.input.numTransactions(options.busWidthIn), inStream.fire)
+    Counter(0 until cfg.input.numTransactions(inWidth), inStream.fire)
   val (inputBufferCounter, inputBufferCounterWrap) =
-    Counter(0 until paramsPerTransaction, state === InputBufferState.sREAD_WORD, totalInputElementsWrap)
+    Counter(0 until cfg.input.paramsPerWord(inWidth), state === InputBufferState.sREAD_WORD, totalInputElementsWrap)
   dontTouch(totalInputElements)
   dontTouch(transactionsCounter)
 
@@ -94,26 +95,26 @@ class MaxPool2D[T <: Bits with Num[T]](layer: MaxPool2DConfig, options: LayerOpt
     (widthCounter % maxPoolSize.U === 0.U) &&
     state === InputBufferState.sREAD_WORD)
 
-  val inputAndValid = Wire(Valid(layer.input.getType[T]))
+  val inputAndValid = Wire(Valid(cfg.input.getType[I]))
   inputAndValid.bits := inputsBuffer(inputBufferCounter)
   inputAndValid.valid := startOfMaxPoolWindow
   val shiftRegs = ShiftRegisters(inputAndValid, shiftRegsSize, state =/= InputBufferState.sEMPTY && outStream.ready)
 
   val partialMaximums = VecInit((0 until maxPoolSize).map((i: Int) => {
     MaxSelect(
-      shiftRegs.map(_.bits).reverse(0 + (i * layer.input.width)),
-      shiftRegs.map(_.bits).reverse(1 + (i * layer.input.width)),
-      layer.input.getType[T]
+      shiftRegs.map(_.bits).reverse(0 + (i * cfg.input.width)),
+      shiftRegs.map(_.bits).reverse(1 + (i * cfg.input.width)),
+      cfg.input.getType[I]
     )
   }))
 
   val shiftRegWrite = risingEdge(shiftRegs.last.valid)
-  val (_, totalOutputCounterWrap) = Counter(shiftRegWrite, layer.output.numParams)
+  val (_, totalOutputCounterWrap) = Counter(shiftRegWrite, cfg.output.numParams)
   val (outputBufferCounter, outputBufferCounterWrap) =
-    Counter(0 until paramsPerTransaction, shiftRegWrite, totalOutputCounterWrap)
+    Counter(0 until cfg.input.paramsPerWord(inWidth), shiftRegWrite, totalOutputCounterWrap)
   when(shiftRegWrite) {
-    outputsBuffer(outputBufferCounter) := partialMaximums.reduceTree((in0: T, in1: T) =>
-      MaxSelect(in0, in1, layer.input.getType[T])
+    outputsBuffer(outputBufferCounter) := partialMaximums.reduceTree((in0: I, in1: I) =>
+      MaxSelect(in0, in1, cfg.input.getType[I])
     )
   }
   outStream.bits := outputsBuffer.asTypeOf(outStream.bits)
