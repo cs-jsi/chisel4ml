@@ -35,7 +35,6 @@ message GenerateCircuitParams {
     message Options {
         bool is_simple = 1;
         bool pipeline_circuit = 2;
-        repeated LayerOptions layers = 3;
     }
     lbir.Model model = 1;
     Options options = 2;
@@ -64,11 +63,6 @@ message RunSimulationParams {
 
 message RunSimulationReturn {
     repeated lbir.QTensor values = 1;
-}
-
-message LayerOptions {
-    uint32 bus_width_in = 6;
-    uint32 bus_width_out = 7;
 }
 
 message DeleteCircuitParams {

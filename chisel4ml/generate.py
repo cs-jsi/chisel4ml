@@ -18,7 +18,6 @@ from chisel4ml import transform
 from chisel4ml.circuit import Circuit
 from chisel4ml.lbir.services_pb2 import GenerateCircuitParams
 from chisel4ml.lbir.services_pb2 import GenerateCircuitReturn
-from chisel4ml.lbir.services_pb2 import LayerOptions
 from chisel4ml.transforms.qkeras_util import get_input_quantization
 
 log = logging.getLogger(__name__)
@@ -52,7 +51,6 @@ def circuit(
             options=GenerateCircuitParams.Options(
                 is_simple=is_simple,
                 pipeline_circuit=pipeline,
-                layers=generate_layer_options(lbir_model, axi_stream_width),
             ),
             use_verilator=use_verilator,
             gen_waveform=gen_waveform,
@@ -81,26 +79,3 @@ def circuit(
     )
     return circuit
 
-
-# TODO
-def generate_layer_options(lbir_model, axi_stream_width):
-    options = []
-    lmfe_only = True
-    for layer in lbir_model.layers:
-        if layer.HasField("fft"):
-            bus_width_out = int(24 + math.log2(layer.fft.fft_size))
-            options.append(LayerOptions(bus_width_in=12, bus_width_out=bus_width_out))
-            lmfe_only = False
-        elif layer.HasField("lmfe") and lmfe_only:
-            fft_width_out = int(24 + math.log2(layer.lmfe.fft_size))
-            options.append(LayerOptions(bus_width_in=fft_width_out, bus_width_out=32))
-        else:
-            if len(options) > 0:
-                options.append(
-                    LayerOptions(
-                        bus_width_in=options[-1].bus_width_out, bus_width_out=32
-                    )
-                )
-            else:
-                options.append(LayerOptions(bus_width_in=32, bus_width_out=32))
-    return options
