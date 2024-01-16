@@ -69,17 +69,20 @@ class Circuit:
         log.info(delete_circuit_return.msg)
         return delete_circuit_return.success
 
-    def package(self, directory=None, name="ProcessingPipeline"):
+    def package(self, directory=None):
         if directory is None:
             raise ValueError("Directory parameter missing.")
         temp_dir = self._server.temp_dir
-        temp_circuit_dir = os.path.join(temp_dir, f"circuit{self.circuitId}")
-        try:
-            temp_circuit_file = Path(temp_circuit_dir).glob("*.sv").__next__()
-        except StopIteration:
-            raise Exception("Can only package if Verilator selected as backend.")
-        dest_file = directory
+        temp_circuit_dir = os.path.join(temp_dir, f"circuit{self.circuit_id}")
+        
+        def get_files(extensions, directory):
+            all_files = []
+            for ext in extensions:
+                all_files.extend(Path(directory).glob(ext))
+            return all_files
+
+        files = get_files(('*.sv', '*.bin', '*.hex'), directory=temp_circuit_dir)
         os.makedirs(Path(directory).absolute(), exist_ok=True)
-        if os.path.isdir(directory):
-            dest_file = os.path.join(directory, f"{name}.sv")
-        shutil.copyfile(temp_circuit_file, dest_file)
+        for file in files:
+            dest_file = os.path.join(directory, os.path.split(file)[1])
+            shutil.copyfile(file, dest_file)
