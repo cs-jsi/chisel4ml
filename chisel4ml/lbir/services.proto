@@ -62,7 +62,8 @@ message RunSimulationParams {
 }
 
 message RunSimulationReturn {
-    repeated lbir.QTensor values = 1;
+    uint32 consumed_cycles = 1;
+    repeated lbir.QTensor values = 2;
 }
 
 message DeleteCircuitParams {

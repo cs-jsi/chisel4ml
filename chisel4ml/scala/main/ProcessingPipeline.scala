@@ -16,6 +16,7 @@
 package chisel4ml
 
 import chisel3._
+import chisel3.util._
 import lbir.Model
 import scala.collection.mutable._
 

@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.{ExecutionContext, Future}
 import services.GenerateCircuitReturn.ErrorMsg
 import services._
+import lbir.QTensor
 
 /** Contains the main function.
   *
@@ -105,7 +106,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
 
   private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
     override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
-      val circuit = new Circuit[ProcessingPipeline](
+      val circuit = new Circuit[Module with HasLBIRStream[Vec[UInt]]](
         dutGen = new ProcessingPipeline(params.model.get),
         outputStencil = params.model.get.layers.last.get.output,
         directory = Paths.get(tempDir, s"circuit$nextId"),
@@ -138,8 +139,12 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
 
     override def runSimulation(params: RunSimulationParams): Future[RunSimulationReturn] = {
       logger.info(s"Simulating circuit id: ${params.circuitId} circuit on ${params.inputs.length} input/s.")
+      val res: (Seq[QTensor], Int) = circuits(params.circuitId).sim(params.inputs)
       Future.successful(
-        RunSimulationReturn(values = circuits(params.circuitId).sim(params.inputs))
+        RunSimulationReturn(
+          values = res._1,
+          consumedCycles = res._2,
+        )
       )
     }
 

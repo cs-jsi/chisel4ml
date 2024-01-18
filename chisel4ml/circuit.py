@@ -41,6 +41,7 @@ class Circuit:
         self.input_qtensor = input_qtensor
         self._server = start_server_once()
         self.lbir_model = lbir_model
+        self.consumed_cycles = None
 
     def __call__(self, np_arr, sim_timeout_sec=200):
         "Simulate the circuit, timeout in seconds."
@@ -53,6 +54,7 @@ class Circuit:
         run_sim_return = self._server.send_grpc_msg(
             run_sim_params, timeout=sim_timeout_sec
         )
+        self.consumed_cycles = run_sim_return.consumed_cycles
         results = []
         for res in run_sim_return.values:
             results.append(np.array(res.values).reshape(res.shape))
