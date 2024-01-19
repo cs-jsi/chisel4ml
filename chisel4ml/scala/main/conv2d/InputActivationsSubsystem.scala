@@ -46,9 +46,9 @@ with HasLBIRStreamParameters[Conv2DConfig] {
 
   /* INPUT STREAM LOGIC*/
   io.inStream.ready := state =/= InSubState.sFULL
-  actMem.io.write.address := actMemCounter
-  actMem.io.write.data := io.inStream.bits.asUInt
-  actMem.io.write.enable := io.inStream.fire
+  actMem.io.write.get.address := actMemCounter
+  actMem.io.write.get.data := io.inStream.bits.asUInt
+  actMem.io.write.get.enable := io.inStream.fire
 
   dataMover.io.actMem <> actMem.io.read
   dataMover.io.actMemWrittenTo := actMemCounter

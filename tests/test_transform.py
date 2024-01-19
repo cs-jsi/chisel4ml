@@ -49,7 +49,7 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                         shape=[4],
                         values=[-1.0, -2.0, -0.0, -1.0],
                     ),
-                    weights=QTensor(
+                    kernel=QTensor(
                         dtype=BQ([0] * 4),
                         shape=[4, 3],
                         values=[1, -1, -1, 1, -1, 1, 1, -1, -1, -1, 1, 1],
@@ -72,7 +72,7 @@ def test_bnn_simple_model_transform(bnn_simple_model):
                         shape=[1],
                         values=[-1],
                     ),
-                    weights=QTensor(
+                    kernel=QTensor(
                         dtype=BQ([0]),
                         shape=[1, 4],
                         values=[-1, 1, -1, -1],
