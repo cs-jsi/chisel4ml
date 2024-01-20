@@ -23,13 +23,11 @@ option java_multiple_files = true;
 option java_package = "services";
 
 service Chisel4mlService {
+    rpc GetVersion (GetVersionParams) returns (GetVersionReturn) {}
 	rpc GenerateCircuit (GenerateCircuitParams) returns (GenerateCircuitReturn) {}
 	rpc RunSimulation (RunSimulationParams) returns (RunSimulationReturn) {}
     rpc DeleteCircuit (DeleteCircuitParams) returns (DeleteCircuitReturn) {}
 }
-
-message ShutdownServerParams {}
-message ShutdownServerReturn {}
 
 message GenerateCircuitParams {
     message Options {
@@ -74,3 +72,9 @@ message DeleteCircuitReturn {
     bool success = 1;
     string msg = 2;
 }
+
+message GetVersionParams {}
+message GetVersionReturn {
+    string version = 1;
+}
+

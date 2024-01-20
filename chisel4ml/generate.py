@@ -30,8 +30,8 @@ def circuit(
     use_verilator=False,
     gen_waveform=False,
     gen_timeout_sec=800,
-    axi_stream_width=None,
     num_layers=None,
+    server=None,
 ):
     assert gen_timeout_sec > 5, "Please provide at least a 5 second generation timeout."
     # TODO - add checking that the opt_model is correct
@@ -43,8 +43,13 @@ def circuit(
         assert num_layers <= len(lbir_model.layers)
         for _ in range(len(lbir_model.layers) - num_layers):
             lbir_model.layers.pop()
-
-    server = chisel4ml_server.start_server_once()
+    
+    if server is None:
+        if chisel4ml_server.default_server is None:
+            server = chisel4ml_server.connect_to_server()
+        else:
+            server = chisel4ml_server.default_server
+    
     gen_circt_ret = server.send_grpc_msg(
         GenerateCircuitParams(
             model=lbir_model,

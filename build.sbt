@@ -1,5 +1,9 @@
+import scala.sys.process._
+
+
 ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / organization := "JSI"
+ThisBuild / version := Process("git describe --tags").lineStream(0)
 
 Compile / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "main"
 Test / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "test"
@@ -42,7 +46,8 @@ val dependencies = Seq(
   "org.slf4j" % "slf4j-simple" % slf4jVersion,
   "org.scalatest" %% "scalatest" % scalatestVersion,
   "org.scalatest" %% "scalatest" % scalatestVersion % "test",
-  "org.reflections" % "reflections" % "0.10.2"
+  "org.reflections" % "reflections" % "0.10.2",
+  "com.github.scopt" %% "scopt" % "4.1.0"
 )
 
 val scalaOptions = Seq(

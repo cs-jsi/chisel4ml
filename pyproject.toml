@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61", "versioneer[toml]>=0.26"]
+requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -37,14 +37,10 @@ dev = [
 	"flake8",
     "Flake8-pyproject",
 	"pytest",
-	"pytest-cov",
-	"sphinx",
-	"versioneer",
 	"grpcio-tools",
     "mypy-protobuf",
 	"setuptools>=61",
     "build",
-    "versioneer",
     "librosa",
     "pre_commit",
     "tensorflow-datasets"

@@ -18,67 +18,48 @@ import subprocess
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-
 import grpc
-
+import chisel4ml
 import chisel4ml.lbir.services_pb2 as services
 import chisel4ml.lbir.services_pb2_grpc as services_grpc
 
 log = logging.getLogger(__name__)
-
-server = None
-_custom_temp_dir = None
-
+default_server = None
 
 class Chisel4mlServer:
     """Handles the creation of a subprocess, it is used to safely start the chisel4ml
     server.
     """
 
-    def __init__(self, command, temp_dir, host: str = "localhost", port: int = 50051):
-        self._server_addr = host + ":" + str(port)
+    def __init__(self, temp_dir, port):
+        self._server_addr = "localhost:" + str(port)
         self._channel = None
         self._stub = None
         self._temp_dir = temp_dir
-
-        # We start a new instance of the server. It will check if there is an instance
-        # already running, and if so will simply close itself.
-        self._log_file = open(os.path.join(temp_dir, "chisel4ml_server.log"), "w+")
-        self.task = subprocess.Popen(
-            command + [temp_dir], stdout=self._log_file, stderr=self._log_file
-        )
-        log.info(f"Started task with pid: {self.task.pid}.")
-
-        # We start a process to create the grpc stub (this can take some time).
-        self._pool = ThreadPoolExecutor(1)
-        self._future = self._pool.submit(self.create_grpc_channel)
+        self._channel = grpc.insecure_channel(self._server_addr)
+        self._stub = services_grpc.Chisel4mlServiceStub(self._channel)
+        scala_version = self._stub.GetVersion(services.GetVersionParams()).version
+        python_version = chisel4ml.__version__
+        assert scala_version == python_version, (
+            f"Python/scala version missmatch: {python_version}/{scala_version}.")
+        log.info(f"Created grpc channel on {self._server_addr}.")
 
         # Here we make sure that the chisel4ml server is shut down.
         atexit.register(self.stop)
         signal.signal(
             signal.SIGTERM, self.stop
-        )  # This ensures kill pid also close the server.
+        )
         signal.signal(signal.SIGINT, self.stop)
 
     @property
     def temp_dir(self):
         return self._temp_dir
 
-    @property
-    def stdout(self):
-        return self.task.stdout.read()
-
-    @property
-    def stderr(self):
-        return self.task.stderr.read()
-
-    def create_grpc_channel(self):
-        self._channel = grpc.insecure_channel(self._server_addr)
-        self._stub = services_grpc.Chisel4mlServiceStub(self._channel)
-        log.info("Created grpc channel.")
+    def stop(self):
+        if self._channel is not None:
+            self._channel.close()
 
     def send_grpc_msg(self, msg, timeout=480):
-        concurrent.futures.wait([self._future])
         if isinstance(msg, services.GenerateCircuitParams):
             ret = self._stub.GenerateCircuit(msg, wait_for_ready=True, timeout=timeout)
         elif isinstance(msg, services.RunSimulationParams):
@@ -90,47 +71,22 @@ class Chisel4mlServer:
 
         return ret
 
-    def is_running(self):
-        if self.task is None:
-            return False
-        else:
-            return self.task.poll() is None
-
-    def stop(self):
-        log.info(f"Stoping task with pid: {self.task.pid}.")
-        if self._channel is not None:
-            self._channel.close()
-        self._log_file.close()
-        self.task.terminate()
-
-
-def start_server_once():
-    global server
-    if server is None:
-        jar_file = Path(Path(__file__).parent, "bin", "chisel4ml.jar").resolve()
-        if _custom_temp_dir is not None:
-            temp_dir_root = _custom_temp_dir
-        else:
-            temp_dir_root = tempfile.gettempdir()
-        temp_dir = Path(temp_dir_root, ".chisel4ml").resolve()
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
-        os.mkdir(temp_dir)
-        # We move to the temp dir because chisels TargetDirAnotation works with
-        # relative dirs, which can cause a problem on Windows, if your working dir is
-        # not on the same disk as the temp_dir (can't get a proper relative directory)
-        backup = os.getcwd()
-        os.chdir(temp_dir)
-        try:
-            server = Chisel4mlServer(
-                command=["java", "-jar", "-Xmx14g", str(jar_file)],
-                temp_dir=str(temp_dir),
-            )
-        finally:
-            os.chdir(backup)
+def connect_to_server(temp_dir = "/tmp/.chisel4ml/", port: int = 50051):
+    global default_server
+    if os.path.exists(temp_dir):
+        shutil.rmtree(temp_dir)
+    os.mkdir(temp_dir)
+    # We move to the temp dir because chisels TargetDirAnotation works with
+    # relative dirs, which can cause a problem on Windows, if your working dir is
+    # not on the same disk as the temp_dir (can't get a proper relative directory)
+    backup = os.getcwd()
+    os.chdir(temp_dir)
+    try:
+        server = Chisel4mlServer(
+            temp_dir=str(temp_dir),
+            port=port
+        )
+    finally:
+        os.chdir(backup)
+    default_server = server
     return server
-
-
-def set_custom_temp_path(path):
-    global _custom_temp_dir
-    _custom_temp_dir = path

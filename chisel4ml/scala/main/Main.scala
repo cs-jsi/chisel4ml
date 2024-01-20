@@ -27,6 +27,13 @@ import scala.concurrent.{ExecutionContext, Future}
 import services.GenerateCircuitReturn.ErrorMsg
 import services._
 import lbir.QTensor
+import scopt.OParser
+
+
+case class Config(
+  tempDir: String = "/tmp/.chisel4ml",
+  port: Int = 50051
+)
 
 /** Contains the main function.
   *
@@ -34,17 +41,46 @@ import lbir.QTensor
   *  server instance.
   */
 object Chisel4mlServer {
-  private val port = 50051
-  var f:          File = _
-  var fRwChannel: FileChannel = _
-  var lock:       FileLock = _
+  private var port = 50051
+  private var tempDir = "/tmp/.chisel4ml/"
+  private var f:          File = _
+  private var fRwChannel: FileChannel = _
+  private var lock:       FileLock = _
+  private val chisel4mlVersion = getClass.getPackage.getImplementationVersion
+
+  val builder = OParser.builder[Config]
+  val cliParser = {
+    import builder._
+    OParser.sequence(
+      programName("chisel4ml-server"),
+      head("chisel4ml-server;", s"v$chisel4mlVersion"),
+      opt[Int]('p', "port")
+      .action((x, c) => c.copy(port = x))
+      .text("Which port should the chisel4ml-server use (default: 50051)."),
+      opt[String]('d', "dir")
+      .action((x, c) => c.copy(tempDir = x))
+      .validate(x => if(Files.exists(Paths.get(x))) success
+                     else failure(s"Directory {x} does'nt exist.")
+      )
+      .text("Which directory should chisel4ml-server use as its temporary directory (default: /tmp/.chisel4ml/).")
+    )
+  }
 
   def main(args: Array[String]): Unit = {
-    require(args.length > 0, "No argument list, you should provide an argument as a directory.")
-    require(Files.exists(Paths.get(args(0))), "Provided directory doesn't exist.")
-    val tempDir = args(0)
+    //require(args.length > 0, "No argument list, you should provide an argument as a directory.")
+    //require(Files.exists(Paths.get(args(0))), "Provided directory doesn't exist.")
+    //val tempDir = args(0)
+
+    val config = OParser.parse(cliParser, args, Config()) match {
+      case Some(config) => Some(config)
+      case _ => None
+    }
+    if (config.isEmpty) {
+      sys.exit(1)
+    }
+
+    // We use lockfiles to ensure only one instance of a chisel4ml server is running in a certain directory.
     val lockFile = Paths.get(tempDir, ".lockfile")
-    // We use lockfiles to ensure only one instance of a chisel4ml server is running.
     f = new File(lockFile.toString)
     if (f.exists()) {
       f.delete() // We try deleting it, if it exists
@@ -54,11 +90,11 @@ object Chisel4mlServer {
     if (lock == null) {
       // Lock occupied by other instance
       fRwChannel.close()
-      throw new RuntimeException("Only one instance of chisel4ml server may run at a time.")
+      throw new RuntimeException("Only one instance of chisel4ml server may run at a given directory.")
     }
     // We add a shutdown hook to release the lock on shutdown
     sys.addShutdownHook { closeFileLockHook() }
-    val server = new Chisel4mlServer(ExecutionContext.global, tempDir = tempDir)
+    val server = new Chisel4mlServer(ExecutionContext.global, tempDir = tempDir, port = port)
     server.start()
     server.blockUntilShutdown()
   }
@@ -75,27 +111,26 @@ object Chisel4mlServer {
   *  Implementation of the gRPC based Chisel4ml server.  It implements the services as defined by gRPC in the
   *  service.proto file. It also has conveinance functions for starting and stoping the server.
   */
-class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { self =>
+class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String, port: Int) { self =>
   private[this] var server: Server = null
   private var circuits = Map[Int, Circuit[Module with HasLBIRStream[Vec[UInt]]]]() // Holds the circuit and simulation object
   private var nextId: Int = 0
-
   val logger = LoggerFactory.getLogger(classOf[Chisel4mlServer])
 
   private def start(): Unit = {
     server = ServerBuilder
-      .forPort(Chisel4mlServer.port)
+      .forPort(port)
       .maxInboundMessageSize(Math.pow(2, 26).toInt)
       .addService(Chisel4mlServiceGrpc.bindService(Chisel4mlServiceImpl, executionContext))
       .build
       .start
     sys.addShutdownHook { self.stop() }
-    logger.info("Started a new chisel4ml server.")
+    logger.info(s"Started a new chisel4ml-server on port $port, using temporary directory: $tempDir.")
   }
 
   private def stop(): Unit = {
     if (server != null) {
-      // we stop all simulations properly to get vcd files
+      // we stop all simulations properly to get valid vcd files
       circuits.map(_._2.stopSimulation())
       logger.info("Shutting down chisel4ml server.")
       server.shutdown()
@@ -151,7 +186,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
     override def deleteCircuit(params: DeleteCircuitParams): Future[DeleteCircuitReturn] = {
       logger.info(s"Deleting cirucit id: ${params.circuitId} from memory.")
       val contained = circuits.contains(params.circuitId)
-      if (contained)
+      if (contained) 
         circuits = circuits - params.circuitId
       Future.successful(
         DeleteCircuitReturn(
@@ -161,6 +196,14 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: String) { sel
             else s"Circuit id ${params.circuitId} not present."
         )
       )
+    }
+
+    override def getVersion(params: GetVersionParams): Future[GetVersionReturn] = {
+      Future.successful(
+        GetVersionReturn(
+          version = Chisel4mlServer.chisel4mlVersion
+        )
+      )      
     }
   }
 }
