@@ -22,7 +22,6 @@ import chiseltest._
 import chiseltest.simulator.WriteFstAnnotation
 import firrtl.AnnotationSeq
 import firrtl.options.TargetDirAnnotation
-import java.nio.file.{Path, Paths}
 import java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, TimeUnit}
 import lbir.QTensor
 import org.slf4j.LoggerFactory
@@ -30,10 +29,11 @@ import scala.util.control.Breaks._
 import memories.MemoryGenerator
 import firrtl.transforms.NoCircuitDedupAnnotation
 
+
 class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](
   dutGen:        => T,
   outputStencil: QTensor,
-  directory:     Path,
+  directory:     os.Path,
   useVerilator:  Boolean,
   genWaveform:   Boolean)
     extends Runnable {
@@ -44,12 +44,12 @@ class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](
   val outQueue = new LinkedBlockingQueue[TimedQTensor]()
   val isGenerated = new CountDownLatch(1)
   val isStoped = new CountDownLatch(1)
-  val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString
+  val relativeDirectory = directory.relativeTo(os.pwd).toString()
 
   // NoCircuitDedupAnnotation is needed because memory deduplication is causing problems
   // This can likely be removed when upgrading to newer chisel/firrtl versions. TODO
   var annot: AnnotationSeq =
-    Seq(TargetDirAnnotation(relDir), NoCircuitDedupAnnotation) // TODO - work with .pb instead of .lo.fir
+    Seq(TargetDirAnnotation(relativeDirectory), NoCircuitDedupAnnotation) // TODO - work with .pb instead of .lo.fir
   if (genWaveform) annot = annot :+ WriteFstAnnotation
   if (useVerilator) annot = annot :+ VerilatorBackendAnnotation
 

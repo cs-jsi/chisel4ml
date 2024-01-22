@@ -17,7 +17,8 @@ import numpy as np
 
 import chisel4ml.lbir.services_pb2 as services
 from chisel4ml import transforms
-from chisel4ml.chisel4ml_server import start_server_once
+from chisel4ml.chisel4ml_server import Chisel4mlServer
+from chisel4ml.chisel4ml_server import connect_to_server
 from chisel4ml.lbir.qtensor_pb2 import QTensor
 
 log = logging.getLogger(__name__)
@@ -30,7 +31,12 @@ class Circuit:
     """
 
     def __init__(
-        self, circuit_id: int, input_quantizer, input_qtensor: QTensor, lbir_model
+        self, 
+        circuit_id: int, 
+        input_quantizer, 
+        input_qtensor: QTensor, 
+        lbir_model, 
+        server: Chisel4mlServer = None
     ):
         assert circuit_id >= 0, (
             "Invalid circuitId provided. This parameter should be positive, but is"
@@ -39,7 +45,10 @@ class Circuit:
         self.circuit_id = circuit_id
         self.input_quantizer = input_quantizer
         self.input_qtensor = input_qtensor
-        self._server = start_server_once()
+        if server is None:
+            self._server = connect_to_server()
+        else:
+            self._server = server
         self.lbir_model = lbir_model
         self.consumed_cycles = None
 

@@ -22,13 +22,16 @@ from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
+server = None
 def pytest_sessionstart(session):
-    chisel4ml_server.start_server_once()
+    global server
+    server = chisel4ml_server.connect_to_server()
 
 
 def pytest_sessionfinish(session, exitstatus):
-    server = chisel4ml_server.start_server_once()
-    server.stop()
+    global server
+    if server is not None:
+        server.stop()
 
 
 @pytest.fixture(scope="session")
