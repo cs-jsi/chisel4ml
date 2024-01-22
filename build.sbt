@@ -5,6 +5,8 @@ ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / organization := "JSI"
 ThisBuild / version := Process("git describe --tags").lineStream(0)
 
+fork := true
+
 Compile / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "main"
 Test / scalaSource := baseDirectory.value / "chisel4ml" / "scala" / "test"
 Compile / unmanagedSourceDirectories += baseDirectory.value / "chisel4ml" / "scala" / "lbir"
@@ -87,7 +89,7 @@ lazy val root = (project in file("."))
 inThisBuild(
   List(
     scalaVersion := "2.13.10",
-    //semanticdbEnabled := true,
-    //semanticdbVersion := scalafixSemanticdb.revision
+    semanticdbEnabled := true,
+    semanticdbVersion := scalafixSemanticdb.revision
   )
 )

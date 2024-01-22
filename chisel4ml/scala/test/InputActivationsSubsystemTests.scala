@@ -38,7 +38,7 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
   // uses the correct directory to generate hex file into.
   override def beforeEach(testData: TestData): Unit = {
     val genDirStr = (testData.name).replace(' ', '_')
-    val genDir = Paths.get(".", "test_run_dir", genDirStr).toAbsolutePath() // TODO: programmatically get test_run_dir?
+    val genDir = os.pwd / "test_run_dir" / genDirStr 
     MemoryGenerator.setGenDir(genDir)
     super.beforeEach(testData)
   }

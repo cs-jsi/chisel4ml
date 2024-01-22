@@ -73,20 +73,9 @@ class Chisel4mlServer:
 
 def connect_to_server(temp_dir = "/tmp/.chisel4ml/", port: int = 50051):
     global default_server
-    if os.path.exists(temp_dir):
-        shutil.rmtree(temp_dir)
-    os.mkdir(temp_dir)
-    # We move to the temp dir because chisels TargetDirAnotation works with
-    # relative dirs, which can cause a problem on Windows, if your working dir is
-    # not on the same disk as the temp_dir (can't get a proper relative directory)
-    backup = os.getcwd()
-    os.chdir(temp_dir)
-    try:
-        server = Chisel4mlServer(
-            temp_dir=str(temp_dir),
-            port=port
-        )
-    finally:
-        os.chdir(backup)
+    server = Chisel4mlServer(
+        temp_dir=str(temp_dir),
+        port=port
+    )
     default_server = server
     return server
