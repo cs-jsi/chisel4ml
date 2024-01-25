@@ -22,6 +22,7 @@ import grpc
 import chisel4ml
 import chisel4ml.lbir.services_pb2 as services
 import chisel4ml.lbir.services_pb2_grpc as services_grpc
+from chisel4ml._version import __version__ as chisel4ml__version__
 
 log = logging.getLogger(__name__)
 default_server = None
@@ -39,7 +40,7 @@ class Chisel4mlServer:
         self._channel = grpc.insecure_channel(self._server_addr)
         self._stub = services_grpc.Chisel4mlServiceStub(self._channel)
         scala_version = self._stub.GetVersion(services.GetVersionParams()).version
-        python_version = chisel4ml.__version__
+        python_version = chisel4ml__version__
         assert scala_version == python_version, (
             f"Python/scala version missmatch: {python_version}/{scala_version}.")
         log.info(f"Created grpc channel on {self._server_addr}.")

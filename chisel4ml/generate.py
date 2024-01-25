@@ -81,6 +81,7 @@ def circuit(
         get_input_quantization(opt_model),
         input_qt,
         lbir_model,
+        server
     )
     return circuit
 

@@ -21,11 +21,11 @@ import io.grpc.{Server, ServerBuilder}
 import java.util.concurrent.TimeUnit
 import org.slf4j.LoggerFactory
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.matching.Regex
 import services.GenerateCircuitReturn.ErrorMsg
 import services._
 import lbir.QTensor
 import scopt.OParser
-import memories.MemoryGenerator
 
 case class Config(
   tempDir: os.Path = os.Path("/tmp/.chisel4ml/"),
@@ -38,7 +38,15 @@ case class Config(
   *  server instance.
   */
 object Chisel4mlServer {
-  private val chisel4mlVersion = getClass.getPackage.getImplementationVersion
+  // we convert git describe output to pep440
+  private val chisel4mlVersion = {
+    val versionRegex = raw"(\d+\.\d+\.\d+)-(\d+)-(\w+)".r
+    val gitDescribe = getClass.getPackage.getImplementationVersion
+    versionRegex.findFirstMatchIn(gitDescribe) match {
+      case Some(m) => s"${m.group(1)}.dev${m.group(2)}+${m.group(3)}"
+      case None => throw new Exception("Couldn't parse git describe for pep440 version.")
+    }
+  }
   private var server: Chisel4mlServer = _
 
   val builder = OParser.builder[Config]
@@ -52,24 +60,26 @@ object Chisel4mlServer {
       .text("Which port should the chisel4ml-server use (default: 50051)."),
       opt[String]('d', "dir")
       .action((x, c) => c.copy(tempDir = os.Path(x)))
-      .text("Which directory should chisel4ml-server use as its temporary directory (default: /tmp/.chisel4ml/).")
+      .text("Which directory should chisel4ml-server use as its temporary directory (default: /tmp/.chisel4ml/)."),
+      help("help").text("Prints this usage text.")
     )
   }
 
   def main(args: Array[String]): Unit = {
     val config = OParser.parse(cliParser, args, Config()) match {
-      case Some(config) => config
-      case _ => throw new Exception
+      case Some(config) => {
+        if (!os.exists(config.tempDir)) {
+          os.makeDir(config.tempDir, "rwxrwxrw-")
+        }
+        if (os.list(config.tempDir).length != 0) {
+              throw new Exception(s"Directory ${config.tempDir} is not empty.")
+        }
+        server = new Chisel4mlServer(ExecutionContext.global, tempDir = config.tempDir, port = config.port)
+        server.start()
+        server.blockUntilShutdown()
+      }
+      case _ => 
     }
-    if (!os.exists(config.tempDir)) {
-      os.makeDir(config.tempDir, "rwxrwxrw-")
-    }
-    if (os.list(config.tempDir).length != 0) {
-          throw new Exception(s"Directory ${config.tempDir} is not empty.")
-    }
-    server = new Chisel4mlServer(ExecutionContext.global, tempDir = config.tempDir, port = config.port)
-    server.start()
-    server.blockUntilShutdown()
   }
 }
 
