@@ -23,7 +23,8 @@ dependencies = [
     "grpcio>1.0.0",
     "protobuf<=3.20.0",
     "tf2-keras-surgeon",
-    "pyparsing"
+    "pyparsing",
+    "librosa"
 ]
 
 [tool.setuptools.dynamic]
@@ -44,7 +45,6 @@ dev = [
     "mypy-protobuf",
 	"setuptools>=61",
     "build",
-    "librosa",
     "pre_commit",
     "tensorflow-datasets"
 ]
