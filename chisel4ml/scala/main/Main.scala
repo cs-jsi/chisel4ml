@@ -40,11 +40,12 @@ case class Config(
 object Chisel4mlServer {
   // we convert git describe output to pep440
   private val chisel4mlVersion = {
-    val versionRegex = raw"(\d+\.\d+\.\d+)-(\d+)-(\w+)".r
+    val versionRegex = raw"(\d+)\.(\d+)\.(\d+)-?(\d+)?-?(\w+)?".r
     val gitDescribe = getClass.getPackage.getImplementationVersion
-    versionRegex.findFirstMatchIn(gitDescribe) match {
-      case Some(m) => s"${m.group(1)}.dev${m.group(2)}+${m.group(3)}"
-      case None => throw new Exception("Couldn't parse git describe for pep440 version.")
+    gitDescribe match {
+      case versionRegex(major, minor, patch, null, null) => s"$major.$minor.$patch"
+      case versionRegex(major, minor, patch, revision, gitTag) => s"$major.$minor.${patch.toInt + 1}.dev$revision+$gitTag"
+      case _ => throw new Exception(s"Parse error on git describe string: $gitDescribe")
     }
   }
   private var server: Chisel4mlServer = _
