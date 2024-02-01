@@ -56,7 +56,7 @@ exclude = ['chisel4ml.tests']
 namespaces = false
 
 [tool.pytest.ini_options]
-addopts = "--cov=chisel4ml"
+addopts = ""
 filterwarnings = ["ignore:::.*flatbuffers*", "ignore:::.*tensorflow*"]
 testpaths = [
     "tests",
