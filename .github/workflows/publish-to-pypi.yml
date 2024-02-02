@@ -68,6 +68,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
         submodules: recursive
         fetch-depth: 0
 
@@ -118,4 +119,3 @@ jobs:
         gh release upload
         '${{ github.ref_name }}' chisel4ml/bin/chisel4ml.jar
         --repo '${{ github.repository }}'
-        
