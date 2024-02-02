@@ -14,11 +14,10 @@ import signal
 import grpc
 import chisel4ml.lbir.services_pb2 as services
 import chisel4ml.lbir.services_pb2_grpc as services_grpc
-from chisel4ml._version import __version__ as chisel4ml__version__
+import chisel4ml
 
 log = logging.getLogger(__name__)
 default_server = None
-
 
 class Chisel4mlServer:
     """Handles the creation of a subprocess, it is used to safely start the chisel4ml
@@ -33,8 +32,17 @@ class Chisel4mlServer:
         self._channel = grpc.insecure_channel(self._server_addr)
         self._stub = services_grpc.Chisel4mlServiceStub(self._channel)
         scala_version = self._stub.GetVersion(services.GetVersionParams()).version
-        python_version = chisel4ml__version__
-        assert scala_version == python_version, (
+
+        # this ignores the changes in a working repo (see _version.py)
+        if len(chisel4ml.__version_tuple__) == 5 and "." in chisel4ml.__version_tuple__[4]:
+            log.warning("Using dirty repository!")
+            vt = chisel4ml.__version_tuple__
+            githash = vt[4].split('.')[0]
+            python_version = f"{vt[0]}.{vt[1]}.{vt[2]}.{vt[3]}+{githash}"
+        else:
+            python_version = chisel4ml.__version__
+
+        assert python_version == scala_version, (
             f"Python/scala version missmatch: {python_version}/{scala_version}.")
         log.info(f"Created grpc channel on {self._server_addr}.")
 

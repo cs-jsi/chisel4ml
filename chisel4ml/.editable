@@ -1,2 +1,0 @@
-This file is used to signal the installation is editable. See __init__.py
-Should not be part of package installed via pip.

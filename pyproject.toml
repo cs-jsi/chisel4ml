@@ -36,14 +36,12 @@ version_file = "chisel4ml/_version.py"
 
 [project.optional-dependencies]
 dev = [
-    "tox<4",
+    "tox",
 	"tox-run-before",
 	"flake8",
     "Flake8-pyproject",
 	"pytest",
 	"grpcio-tools",
-    "mypy-protobuf",
-	"setuptools>=61",
     "build",
     "pre_commit",
     "tensorflow-datasets"
@@ -101,27 +99,25 @@ exclude=[
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-minversion = 3.7.0
-envlist = py37, py38, py39, py310, linters
+envlist = py38, py39, py310, lint
 isolated_build = true
-
-[gh-actions]
-python =
-    3.7:  py37
-    3.8:  py38
-    3.9:  py39
-    3.10: py310, linters
 
 [testenv]
 extras = dev
 run_before = make protobuf
-setenv =
-    PYTHONPATH = {toxinidir}
 commands =
-    pytest --basetemp={envtmpdir} tests/
+    pytest tests/
 
-[testenv:linters]
-allowlist_externals = flake8
+[testenv:lint]
+deps = flake8
+skip_install = true
 commands =
     flake8 chisel4ml tests
+
+[gh-actions]
+python =
+    3.8:  py38
+    3.9:  py39
+    3.10: py310, linters
+
 """
