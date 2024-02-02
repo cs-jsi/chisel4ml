@@ -12,6 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
+        submodules: recursive
         fetch-depth: 0
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -67,6 +68,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+        submodules: recursive
+        fetch-depth: 0
 
     - name: Setup JDK
       uses: actions/setup-java@v2
