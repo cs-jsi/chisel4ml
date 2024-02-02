@@ -115,7 +115,7 @@ jobs:
     - name: Upload jar file to GitHub Release
       env:
         GITHUB_TOKEN: ${{ github.token }}
-      runs: >-
+      run: >-
         gh release upload
         '${{ github.ref_name }}' chisel4ml/bin/chisel4ml.jar
         --repo '${{ github.repository }}'
