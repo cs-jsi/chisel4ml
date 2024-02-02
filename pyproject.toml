@@ -36,9 +36,8 @@ version_file = "chisel4ml/_version.py"
 
 [project.optional-dependencies]
 dev = [
-    "tox",
+    "tox<4",
 	"tox-run-before",
-    "tox-gh-actions",
 	"flake8",
     "Flake8-pyproject",
 	"pytest",
@@ -72,28 +71,9 @@ extend-ignore = ["E203", "E704"]
 max-line-length = 88
 count= true
 exclude=[
-    ".git",
-    "__pycache__",
-    "docs",
-    "build",
-    "dist",
-    "test_run_dir",
     "venv",
-    "target",
-    "project",
-    "AUTHORS",
-    "LICENSE",
-    "MANIFEST.in",
-    "pyproject.toml",
     "chisel4ml/_version.py",
-    "ChangeLog",
-    "Makefile",
-    "*.hex",
-    "*.ini",
-    "*.md",
-    "*.txt",
-    "build.sbt",
-    "chisel4ml/bin",
+    "chisel4ml/bin/",
     "chisel4ml/lbir"
 ]
 
@@ -113,11 +93,5 @@ commands =
 deps = flake8
 commands =
     flake8 chisel4ml tests
-
-[gh-actions]
-python =
-    3.8:  py38
-    3.9:  py39
-    3.10: py310, linters
 
 """
