@@ -9,7 +9,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+
 import tensorflow as tf
+
 from chisel4ml import chisel4ml_server
 from chisel4ml import transform
 from chisel4ml.circuit import Circuit
@@ -78,6 +80,6 @@ def circuit(
         get_input_quantization(opt_model),
         input_qt,
         lbir_model,
-        server
+        server,
     )
     return circuit

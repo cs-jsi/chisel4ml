@@ -67,7 +67,7 @@ testpaths = [
 ]
 
 [tool.flake8]
-extend-ignore = ["E203"]
+extend-ignore = ["E203", "E704"]
 max-line-length = 88
 count= true
 exclude=[
@@ -110,7 +110,6 @@ commands =
 
 [testenv:lint]
 deps = flake8
-skip_install = true
 commands =
     flake8 chisel4ml tests
 

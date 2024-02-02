@@ -36,7 +36,7 @@ class Circuit:
         input_quantizer,
         input_qtensor: QTensor,
         lbir_model,
-        server: Chisel4mlServer = None
+        server: Chisel4mlServer = None,
     ):
         assert circuit_id >= 0, (
             "Invalid circuitId provided. This parameter should be positive, but is"
@@ -92,7 +92,7 @@ class Circuit:
                 all_files.extend(Path(directory).glob(ext))
             return all_files
 
-        files = get_files(('*.sv', '*.bin', '*.hex'), directory=temp_circuit_dir)
+        files = get_files(("*.sv", "*.bin", "*.hex"), directory=temp_circuit_dir)
         os.makedirs(Path(directory).absolute(), exist_ok=True)
         for file in files:
             dest_file = os.path.join(directory, os.path.split(file)[1])

@@ -11,13 +11,16 @@
 import atexit
 import logging
 import signal
+
 import grpc
+
+import chisel4ml
 import chisel4ml.lbir.services_pb2 as services
 import chisel4ml.lbir.services_pb2_grpc as services_grpc
-import chisel4ml
 
 log = logging.getLogger(__name__)
 default_server = None
+
 
 class Chisel4mlServer:
     """Handles the creation of a subprocess, it is used to safely start the chisel4ml
@@ -34,23 +37,25 @@ class Chisel4mlServer:
         scala_version = self._stub.GetVersion(services.GetVersionParams()).version
 
         # this ignores the changes in a working repo (see _version.py)
-        if len(chisel4ml.__version_tuple__) == 5 and "." in chisel4ml.__version_tuple__[4]:
+        if (
+            len(chisel4ml.__version_tuple__) == 5
+            and "." in chisel4ml.__version_tuple__[4]
+        ):
             log.warning("Using dirty repository!")
             vt = chisel4ml.__version_tuple__
-            githash = vt[4].split('.')[0]
+            githash = vt[4].split(".")[0]
             python_version = f"{vt[0]}.{vt[1]}.{vt[2]}.{vt[3]}+{githash}"
         else:
             python_version = chisel4ml.__version__
 
-        assert python_version == scala_version, (
-            f"Python/scala version missmatch: {python_version}/{scala_version}.")
+        assert (
+            python_version == scala_version
+        ), f"Python/scala version missmatch: {python_version}/{scala_version}."
         log.info(f"Created grpc channel on {self._server_addr}.")
 
         # Here we make sure that the chisel4ml server is shut down.
         atexit.register(self.stop)
-        signal.signal(
-            signal.SIGTERM, self.stop
-        )
+        signal.signal(signal.SIGTERM, self.stop)
         signal.signal(signal.SIGINT, self.stop)
 
     @property
@@ -76,9 +81,6 @@ class Chisel4mlServer:
 
 def connect_to_server(temp_dir="/tmp/.chisel4ml/", port: int = 50051):
     global default_server
-    server = Chisel4mlServer(
-        temp_dir=str(temp_dir),
-        port=port
-    )
+    server = Chisel4mlServer(temp_dir=str(temp_dir), port=port)
     default_server = server
     return server
