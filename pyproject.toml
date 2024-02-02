@@ -38,6 +38,7 @@ version_file = "chisel4ml/_version.py"
 dev = [
     "tox",
 	"tox-run-before",
+    "tox-gh-actions",
 	"flake8",
     "Flake8-pyproject",
 	"pytest",
