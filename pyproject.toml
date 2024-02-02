@@ -9,7 +9,7 @@ authors = [
 ]
 description = "A Chisel based hardware generation library for highly quantized neural networks."
 readme = {file = "README.md", content-type = "text/markdown"}
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = { file = "LICENSE" }
 classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
