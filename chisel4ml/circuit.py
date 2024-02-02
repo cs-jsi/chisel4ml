@@ -31,11 +31,11 @@ class Circuit:
     """
 
     def __init__(
-        self, 
-        circuit_id: int, 
-        input_quantizer, 
-        input_qtensor: QTensor, 
-        lbir_model, 
+        self,
+        circuit_id: int,
+        input_quantizer,
+        input_qtensor: QTensor,
+        lbir_model,
         server: Chisel4mlServer = None
     ):
         assert circuit_id >= 0, (
@@ -85,7 +85,7 @@ class Circuit:
             raise ValueError("Directory parameter missing.")
         temp_dir = self._server.temp_dir
         temp_circuit_dir = os.path.join(temp_dir, f"circuit{self.circuit_id}")
-        
+
         def get_files(extensions, directory):
             all_files = []
             for ext in extensions:

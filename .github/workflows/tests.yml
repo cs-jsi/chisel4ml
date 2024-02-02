@@ -46,7 +46,7 @@ jobs:
       run: make protobuf
 
     - name: Spin up a chisel4ml server
-      run: java -jar chisel4ml/bin/chisel4ml.jar
+      run: java -jar chisel4ml/bin/chisel4ml.jar &
 
     - name: Test with tox
       run: tox -e py

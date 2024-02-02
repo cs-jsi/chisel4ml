@@ -9,10 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import math
-
 import tensorflow as tf
-
 from chisel4ml import chisel4ml_server
 from chisel4ml import transform
 from chisel4ml.circuit import Circuit
@@ -43,13 +40,13 @@ def circuit(
         assert num_layers <= len(lbir_model.layers)
         for _ in range(len(lbir_model.layers) - num_layers):
             lbir_model.layers.pop()
-    
+
     if server is None:
         if chisel4ml_server.default_server is None:
             server = chisel4ml_server.connect_to_server()
         else:
             server = chisel4ml_server.default_server
-    
+
     gen_circt_ret = server.send_grpc_msg(
         GenerateCircuitParams(
             model=lbir_model,
@@ -84,4 +81,3 @@ def circuit(
         server
     )
     return circuit
-

@@ -20,9 +20,9 @@ from chisel4ml.qkeras_extensions import FlattenChannelwise
 from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-
-
 server = None
+
+
 def pytest_sessionstart(session):
     global server
     server = chisel4ml_server.connect_to_server()

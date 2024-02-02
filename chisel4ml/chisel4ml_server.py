@@ -9,23 +9,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import atexit
-import concurrent.futures
 import logging
-import os
-import shutil
 import signal
-import subprocess
-import tempfile
-from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 import grpc
-import chisel4ml
 import chisel4ml.lbir.services_pb2 as services
 import chisel4ml.lbir.services_pb2_grpc as services_grpc
 from chisel4ml._version import __version__ as chisel4ml__version__
 
 log = logging.getLogger(__name__)
 default_server = None
+
 
 class Chisel4mlServer:
     """Handles the creation of a subprocess, it is used to safely start the chisel4ml
@@ -72,7 +65,8 @@ class Chisel4mlServer:
 
         return ret
 
-def connect_to_server(temp_dir = "/tmp/.chisel4ml/", port: int = 50051):
+
+def connect_to_server(temp_dir="/tmp/.chisel4ml/", port: int = 50051):
     global default_server
     server = Chisel4mlServer(
         temp_dir=str(temp_dir),

@@ -121,13 +121,7 @@ commands =
     pytest --basetemp={envtmpdir} tests/
 
 [testenv:linters]
+allowlist_externals = flake8
 commands =
     flake8 chisel4ml tests
 """
-
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "chisel4ml/_version.py"
-tag_prefix = ""
-parentdir_prefix = "chisel4ml-"
