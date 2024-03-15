@@ -19,13 +19,14 @@ def case_sint_conv_conv_model():
     w2 = np.concatenate([w2a, w2b], axis=3)
     b2 = np.array([0, 0, 0, 0])
 
-    x = x_in = tf.keras.layers.Input(shape=(5, 5, 2))
+    x = x_in = tf.keras.layers.Input(shape=(2, 5, 5))
     x = qkeras.QActivation(
         qkeras.quantized_bits(bits=4, integer=4, keep_negative=False)
     )(x)
     x = QDepthwiseConv2DPermuted(
         kernel_size=[2, 2],
         depth_multiplier=1,
+        data_format="channels_first",
         depthwise_quantizer=qkeras.quantized_bits(
             bits=4, integer=3, keep_negative=True, alpha=1.0
         ),
@@ -34,6 +35,7 @@ def case_sint_conv_conv_model():
     x = QDepthwiseConv2DPermuted(
         kernel_size=[2, 2],
         depth_multiplier=2,
+        data_format="channels_first",
         depthwise_quantizer=qkeras.quantized_bits(
             bits=4, integer=3, keep_negative=True, alpha=1.0
         ),
@@ -53,7 +55,7 @@ def case_sint_conv_conv_model():
             [15, 0, 1, 2, 3],
             [4, 5, 6, 7, 8],
         ]
-    ).reshape(5, 5, 1)
+    ).reshape(1, 5, 5)
     x1 = np.array(
         [
             [9, 10, 11, 12, 13],
@@ -62,6 +64,6 @@ def case_sint_conv_conv_model():
             [8, 9, 10, 11, 12],
             [13, 14, 15, 0, 1],
         ]
-    ).reshape(5, 5, 1)
-    data = np.concatenate((x0, x1), axis=-1).reshape(1, 5, 5, 2).astype(np.float32)
+    ).reshape(1, 5, 5)
+    data = np.concatenate((x0, x1), axis=-1).reshape(1, 2, 5, 5).astype(np.float32)
     return model, data

@@ -3,6 +3,8 @@ import qkeras
 import tensorflow as tf
 from pytest_cases import case
 
+from chisel4ml.qkeras_extensions import MaxPool2dCF
+
 
 @case(tags="non-trainable")
 def case_sint_simple_maxpool_model():
@@ -10,7 +12,7 @@ def case_sint_simple_maxpool_model():
     x = qkeras.QActivation(
         qkeras.quantized_bits(bits=4, integer=3, keep_negative=True)
     )(x)
-    x = tf.keras.layers.MaxPooling2D()(x)
+    x = MaxPool2dCF()(x)
     model = tf.keras.Model(inputs=[x_in], outputs=[x])
     model.compile()
     x0 = np.array(

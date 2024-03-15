@@ -61,6 +61,7 @@ def test_fft(request):
             use_verilator=request.config.getoption("--use-verilator"),
             gen_waveform=request.config.getoption("--gen-waveform"),
             gen_timeout_sec=request.config.getoption("--generation-timeout"),
+            debug=request.config.getoption("--debug-trans"),
         )
         hw_res = audio_preproc(frames, sim_timeout_sec=400) / (2**12)
         sw_res = opt_model(frames.reshape(1, num_frames, frame_length))
@@ -94,6 +95,7 @@ def test_fft_speech_commands(request, audio_data):
         use_verilator=request.config.getoption("--use-verilator"),
         gen_waveform=request.config.getoption("--gen-waveform"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        debug=request.config.getoption("--debug-trans"),
     )
     assert audio_preproc is not None
     ts_iter = test_set.as_numpy_iterator()
@@ -167,6 +169,7 @@ def test_mel_engine(request, audio_data):
             use_verilator=request.config.getoption("--use-verilator"),
             gen_waveform=request.config.getoption("--gen-waveform"),
             gen_timeout_sec=request.config.getoption("--generation-timeout"),
+            debug=request.config.getoption("--debug-trans"),
         )
         hw_res = audio_preproc(frames, sim_timeout_sec=400)
         sw_res = opt_model(frames.reshape(1, num_frames, frame_length))
@@ -205,6 +208,7 @@ def test_lmfe_speech_commands(request, audio_data):
         use_verilator=request.config.getoption("--use-verilator"),
         gen_waveform=request.config.getoption("--gen-waveform"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        debug=request.config.getoption("--debug-trans"),
     )
     assert audio_preproc is not None
     ts_iter = test_set.as_numpy_iterator()
@@ -243,6 +247,7 @@ def test_preproc_speech_commands(request, audio_data):
         use_verilator=request.config.getoption("--use-verilator"),
         gen_waveform=request.config.getoption("--gen-waveform"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        debug=request.config.getoption("--debug-trans"),
     )
     assert audio_preproc is not None
     ts_iter = test_set.as_numpy_iterator()

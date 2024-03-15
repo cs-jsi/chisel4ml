@@ -6,6 +6,7 @@ from pytest_cases import parametrize_with_cases
 
 from chisel4ml import generate
 from chisel4ml import optimize
+from chisel4ml.utils import get_submodel
 from tests.conftest import TEST_MODELS_LIST
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -54,6 +55,7 @@ def test_trainable_simulation(request, model_data_info):
         gen_waveform=request.config.getoption("--gen-waveform"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
         num_layers=request.config.getoption("--num-layers"),
+        debug=request.config.getoption("--debug-trans"),
     )
     assert circuit is not None
     for data in data["X_test"]:
@@ -129,6 +131,7 @@ def test_trainable_gen_simulation(request, model_data_info):
         gen_waveform=request.config.getoption("--gen-waveform"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
         num_layers=request.config.getoption("--num-layers"),
+        debug=request.config.getoption("--debug-trans"),
     )
     assert circuit is not None
     for x, _ in data["test_set"]:
@@ -151,7 +154,10 @@ def test_simulation(request, model_data):
         gen_waveform=request.config.getoption("--gen-waveform"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
         num_layers=request.config.getoption("--num-layers"),
+        debug=request.config.getoption("--debug-trans"),
     )
+    if request.config.getoption("--num-layers") is not None:
+        opt_model = get_submodel(opt_model, request.config.getoption("--num-layers"))
     assert circuit is not None
     for x in data:
         sw_res = opt_model.predict(np.expand_dims(x, axis=0))

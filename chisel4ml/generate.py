@@ -31,11 +31,12 @@ def circuit(
     gen_timeout_sec=800,
     num_layers=None,
     server=None,
+    debug=False,
 ):
     assert gen_timeout_sec > 5, "Please provide at least a 5 second generation timeout."
     # TODO - add checking that the opt_model is correct
     # opt_model = optimize.qkeras_model(model)
-    lbir_model = transform.qkeras_to_lbir(opt_model)
+    lbir_model = transform.qkeras_to_lbir(opt_model, debug=debug)
     if lbir_model is None:
         return None
     if num_layers is not None:

@@ -13,6 +13,7 @@ import tensorflow as tf
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.qtensor_pb2 import QTensor
+from chisel4ml.qkeras_extensions import MaxPool2dCF
 from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
@@ -59,6 +60,7 @@ class QKerasLbirQDenseFuse(QKerasTransform):
                     qkeras.QDense,
                     qkeras.QConv2D,
                     tf.keras.layers.MaxPooling2D,
+                    MaxPool2dCF,
                     QDepthwiseConv2DPermuted,
                 ),
             )

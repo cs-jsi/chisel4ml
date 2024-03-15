@@ -3,6 +3,7 @@ import os
 
 from chisel4ml import chisel4ml_server
 
+pytest_plugins = ["tests.data"]
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 MODEL_DIR = os.path.join(SCRIPT_DIR, "models")
@@ -66,6 +67,12 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="Turn on visualization in certain tests.",
+    )
+    parser.addoption(
+        "--debug-trans",
+        action="store_true",
+        default=False,
+        help="Print debug information when performing transformations.",
     )
 
 
