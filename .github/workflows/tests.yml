@@ -39,6 +39,12 @@ jobs:
         java-version: 11
         cache: 'sbt'
 
+    - name: Install verilator
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: verilator
+        version: @latest
+
     - name: Build scala
       run: |
           sbt --no-colors protocGenerate
@@ -48,7 +54,14 @@ jobs:
       run: make protobuf
 
     - name: Spin up a chisel4ml server
-      run: java -jar chisel4ml/bin/chisel4ml.jar &
+      run: java -jar chisel4ml/bin/chisel4ml.jar &> chisel4ml_sever.log &
 
     - name: Test with tox
       run: python -m tox -vv
+
+    - name: Cat logs on fail
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: chisel4ml_server.log
+        path: chisel4ml_server.log
