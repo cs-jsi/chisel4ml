@@ -71,19 +71,19 @@ def audio_data(request):
     test_gen = None
     if request.config.getoption("--retrain"):
 
-        def train_gen():
+        def train_gen():  # noqa: F811
             return map(
                 lambda x: tuple([get_frames(x[0]), np.array([float(x[1])])]),
                 iter(train_ds),
             )
 
-        def val_gen():
+        def val_gen():  # noqa: F811
             return map(
                 lambda x: tuple([get_frames(x[0]), np.array([float(x[1])])]),
                 iter(val_ds),
             )
 
-        def test_gen():
+        def test_gen():  # noqa: F811
             return map(
                 lambda x: tuple([get_frames(x[0]), np.array([float(x[1])])]),
                 iter(test_ds),
