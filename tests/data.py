@@ -1,3 +1,5 @@
+import pathlib
+
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -11,7 +13,9 @@ from chisel4ml.preprocess.lmfe_layer import LMFELayer
 
 @fixture(scope="session")
 def mnist_data():
-    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+    root = pathlib.Path(__file__).parent.parent.resolve()
+    mnist_data = pathlib.Path.joinpath(root, "data", "mnist", "mnist.npz")
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data(mnist_data)
     return (x_train, y_train), (x_test, y_test)
 
 
