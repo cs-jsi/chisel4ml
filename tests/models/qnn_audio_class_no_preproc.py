@@ -115,11 +115,10 @@ def case_qnn_audio_class_no_preproc(audio_data_preproc):
     )
     model.build()
     callbacks = [pruning_callbacks.UpdatePruningStep()]
-    NUM_TEST_ELEMENTS = 10
     data = {
         "train_set": train_set,
         "val_set": val_set,
-        "test_set": test_set.take(NUM_TEST_ELEMENTS),
+        "test_set": test_set,
     }
     training_info = {
         "epochs": EPOCHS,

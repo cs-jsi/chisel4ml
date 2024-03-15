@@ -98,9 +98,7 @@ def test_fft_speech_commands(request, audio_data):
         debug=request.config.getoption("--debug-trans"),
     )
     assert audio_preproc is not None
-    ts_iter = test_set.as_numpy_iterator()
-    for _ in range(10):
-        sample, _ = next(ts_iter)
+    for sample, _ in test_set:
         hw_res = audio_preproc(sample) / (2**12)
         sw_res = opt_model(sample.reshape(1, 32, 512))
         if request.config.getoption("--visualize"):
@@ -211,9 +209,7 @@ def test_lmfe_speech_commands(request, audio_data):
         debug=request.config.getoption("--debug-trans"),
     )
     assert audio_preproc is not None
-    ts_iter = test_set.as_numpy_iterator()
-    for _ in range(10):
-        sample, _ = next(ts_iter)
+    for sample, _ in test_set:
         fft_res = np.round(fft_layer(sample.reshape(1, 32, 512)))
         hw_res = audio_preproc(fft_res.reshape(1, 32, 512))
         sw_res = opt_model(fft_res.reshape(1, 32, 512))
@@ -250,9 +246,7 @@ def test_preproc_speech_commands(request, audio_data):
         debug=request.config.getoption("--debug-trans"),
     )
     assert audio_preproc is not None
-    ts_iter = test_set.as_numpy_iterator()
-    for _ in range(10):
-        sample, _ = next(ts_iter)
+    for sample, _ in test_set:
         hw_res = audio_preproc(sample)
         sw_res = opt_model(sample.reshape(1, 32, 512))
         if request.config.getoption("--visualize"):

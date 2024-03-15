@@ -46,7 +46,8 @@ dev = [
     "grpcio-tools",
     "build",
     "pre_commit",
-    "tensorflow-datasets"
+    "tensorflow-datasets",
+    "pydub",
 ]
 
 [project.urls]

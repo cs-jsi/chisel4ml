@@ -127,11 +127,10 @@ def case_qnn_audio_class(audio_data):
         metrics=["accuracy"],
     )
     callbacks = [pruning_callbacks.UpdatePruningStep()]
-    NUM_TEST_ELEMENTS = 3
     data = {
         "train_set": train_set,
         "val_set": val_set,
-        "test_set": test_set.take(NUM_TEST_ELEMENTS),
+        "test_set": test_set,
     }
     training_info = {
         "epochs": EPOCHS,
