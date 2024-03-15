@@ -51,4 +51,4 @@ jobs:
       run: java -jar chisel4ml/bin/chisel4ml.jar &
 
     - name: Test with tox
-      run: python -m tox
+      run: python -m tox -vv
