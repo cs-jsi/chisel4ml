@@ -23,6 +23,7 @@ from tensorflow.keras.layers import MaxPooling2D
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.datatype_pb2 import Datatype as LBIRDatatype
 from chisel4ml.lbir.qtensor_pb2 import QTensor
+from chisel4ml.qkeras_extensions import MaxPool2dCF
 from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 
 log = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ def _qkeras_base_transform_no_inp(keras_layer: KerasLayer):
         return lbir.LayerWrap(
             dense=lbir.DenseConfig(
                 thresh=_layer_to_thresh_tensor(keras_layer),
-                weights=_layer_to_weight_tensor(keras_layer),
+                kernel=_layer_to_weight_tensor(keras_layer),
                 output=_layer_to_output_tensor(keras_layer),
                 activation=_qact_to_act(keras_layer.activation),
                 rounding_mode=_qact_to_rounding_mode(keras_layer.activation),
@@ -63,7 +64,7 @@ def _qkeras_base_transform_no_inp(keras_layer: KerasLayer):
                 rounding_mode=_qact_to_rounding_mode(keras_layer.activation),
             )
         )
-    elif isinstance(keras_layer, MaxPooling2D):
+    elif isinstance(keras_layer, (MaxPooling2D, MaxPool2dCF)):
         return lbir.LayerWrap(
             maxpool2d=lbir.MaxPool2DConfig(
                 output=_layer_to_output_tensor(keras_layer),
@@ -184,6 +185,11 @@ def _layer_to_shape(keras_layer: KerasLayer):
 def _layer_to_output_tensor(keras_layer: KerasLayer) -> QTensor:
     tf_shape = keras_layer.get_output_shape_at(0)[1:]
     if isinstance(keras_layer, qkeras.QDense):
+        lbir_shape = tf_shape
+    elif (
+        isinstance(keras_layer, MaxPool2dCF)
+        and keras_layer.input_format == "channels_first"
+    ):
         lbir_shape = tf_shape
     elif keras_layer.data_format == "channels_first":
         lbir_shape = tf_shape

@@ -15,6 +15,7 @@ from chisel4ml.lbir.datatype_pb2 import Datatype
 from chisel4ml.lbir.lbir_pb2 import LayerWrap
 from chisel4ml.lbir.lbir_pb2 import MaxPool2DConfig
 from chisel4ml.lbir.qtensor_pb2 import QTensor
+from chisel4ml.qkeras_extensions import MaxPool2dCF
 from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
 from chisel4ml.transforms import register_qkeras_transform
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
@@ -40,7 +41,8 @@ class QKerasQActActiveFuse(QKerasTransform):
     def _call_impl(self, layers):
         shape = layers[0].get_output_shape_at(0)[1:]
         if isinstance(
-            layers[1], (qkeras.QConv2D, QDepthwiseConv2DPermuted, MaxPooling2D)
+            layers[1],
+            (qkeras.QConv2D, QDepthwiseConv2DPermuted, MaxPooling2D, MaxPool2dCF),
         ):
             if layers[1].data_format == "channels_last":
                 shape = [shape[2]] + [*shape[0:2]]
@@ -62,6 +64,19 @@ class QKerasQActActiveFuse(QKerasTransform):
             lbir_layer = LayerWrap(
                 maxpool2d=MaxPool2DConfig(input=input_tensor, output=output_tensor)
             )
+        elif isinstance(layers[1], MaxPool2dCF):
+            oshape = (shape[0],) + tuple(
+                map(lambda x: x // layers[1].pool_size[0], shape[1:])
+            )
+            assert layers[1].pool_size[0] == layers[1].pool_size[1]
+            assert oshape[1:] == tuple(
+                map(lambda x: x / layers[1].pool_size[0], shape[1:])
+            )
+            assert oshape[0] == shape[0]
+            output_tensor = QTensor(dtype=input_tensor.dtype, shape=oshape)
+            lbir_layer = LayerWrap(
+                maxpool2d=MaxPool2DConfig(input=input_tensor, output=output_tensor)
+            )
         else:
             lbir_layer = _qkeras_base_transform_no_inp(layers[1])
 
@@ -79,5 +94,11 @@ class QKerasQActActiveFuse(QKerasTransform):
     def is_applicable(self, layers) -> bool:
         return isinstance(layers[0], qkeras.QActivation) and isinstance(
             layers[1],
-            (qkeras.QDense, qkeras.QConv2D, QDepthwiseConv2DPermuted, MaxPooling2D),
+            (
+                qkeras.QDense,
+                qkeras.QConv2D,
+                QDepthwiseConv2DPermuted,
+                MaxPooling2D,
+                MaxPool2dCF,
+            ),
         )

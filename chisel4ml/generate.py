@@ -9,7 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import math
 
 import tensorflow as tf
 
@@ -18,7 +17,6 @@ from chisel4ml import transform
 from chisel4ml.circuit import Circuit
 from chisel4ml.lbir.services_pb2 import GenerateCircuitParams
 from chisel4ml.lbir.services_pb2 import GenerateCircuitReturn
-from chisel4ml.lbir.services_pb2 import LayerOptions
 from chisel4ml.transforms.qkeras_util import get_input_quantization
 
 log = logging.getLogger(__name__)
@@ -31,13 +29,14 @@ def circuit(
     use_verilator=False,
     gen_waveform=False,
     gen_timeout_sec=800,
-    axi_stream_width=None,
     num_layers=None,
+    server=None,
+    debug=False,
 ):
     assert gen_timeout_sec > 5, "Please provide at least a 5 second generation timeout."
     # TODO - add checking that the opt_model is correct
     # opt_model = optimize.qkeras_model(model)
-    lbir_model = transform.qkeras_to_lbir(opt_model)
+    lbir_model = transform.qkeras_to_lbir(opt_model, debug=debug)
     if lbir_model is None:
         return None
     if num_layers is not None:
@@ -45,14 +44,18 @@ def circuit(
         for _ in range(len(lbir_model.layers) - num_layers):
             lbir_model.layers.pop()
 
-    server = chisel4ml_server.start_server_once()
+    if server is None:
+        if chisel4ml_server.default_server is None:
+            server = chisel4ml_server.connect_to_server()
+        else:
+            server = chisel4ml_server.default_server
+
     gen_circt_ret = server.send_grpc_msg(
         GenerateCircuitParams(
             model=lbir_model,
             options=GenerateCircuitParams.Options(
                 is_simple=is_simple,
                 pipeline_circuit=pipeline,
-                layers=generate_layer_options(lbir_model, axi_stream_width),
             ),
             use_verilator=use_verilator,
             gen_waveform=gen_waveform,
@@ -78,29 +81,6 @@ def circuit(
         get_input_quantization(opt_model),
         input_qt,
         lbir_model,
+        server,
     )
     return circuit
-
-
-# TODO
-def generate_layer_options(lbir_model, axi_stream_width):
-    options = []
-    lmfe_only = True
-    for layer in lbir_model.layers:
-        if layer.HasField("fft"):
-            bus_width_out = int(24 + math.log2(layer.fft.fft_size))
-            options.append(LayerOptions(bus_width_in=12, bus_width_out=bus_width_out))
-            lmfe_only = False
-        elif layer.HasField("lmfe") and lmfe_only:
-            fft_width_out = int(24 + math.log2(layer.lmfe.fft_size))
-            options.append(LayerOptions(bus_width_in=fft_width_out, bus_width_out=32))
-        else:
-            if len(options) > 0:
-                options.append(
-                    LayerOptions(
-                        bus_width_in=options[-1].bus_width_out, bus_width_out=32
-                    )
-                )
-            else:
-                options.append(LayerOptions(bus_width_in=32, bus_width_out=32))
-    return options

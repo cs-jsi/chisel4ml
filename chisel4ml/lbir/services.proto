@@ -23,19 +23,16 @@ option java_multiple_files = true;
 option java_package = "services";
 
 service Chisel4mlService {
+    rpc GetVersion (GetVersionParams) returns (GetVersionReturn) {}
 	rpc GenerateCircuit (GenerateCircuitParams) returns (GenerateCircuitReturn) {}
 	rpc RunSimulation (RunSimulationParams) returns (RunSimulationReturn) {}
     rpc DeleteCircuit (DeleteCircuitParams) returns (DeleteCircuitReturn) {}
 }
 
-message ShutdownServerParams {}
-message ShutdownServerReturn {}
-
 message GenerateCircuitParams {
     message Options {
         bool is_simple = 1;
         bool pipeline_circuit = 2;
-        repeated LayerOptions layers = 3;
     }
     lbir.Model model = 1;
     Options options = 2;
@@ -63,12 +60,8 @@ message RunSimulationParams {
 }
 
 message RunSimulationReturn {
-    repeated lbir.QTensor values = 1;
-}
-
-message LayerOptions {
-    uint32 bus_width_in = 6;
-    uint32 bus_width_out = 7;
+    uint32 consumed_cycles = 1;
+    repeated lbir.QTensor values = 2;
 }
 
 message DeleteCircuitParams {
@@ -79,3 +72,9 @@ message DeleteCircuitReturn {
     bool success = 1;
     string msg = 2;
 }
+
+message GetVersionParams {}
+message GetVersionReturn {
+    string version = 1;
+}
+

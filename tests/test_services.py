@@ -1,548 +1,166 @@
+import os
+
 import numpy as np
-import pytest
-import tensorflow as tf
-from tensorflow.keras.datasets import mnist
+from pytest_cases import get_current_cases
+from pytest_cases import parametrize_with_cases
 
 from chisel4ml import generate
 from chisel4ml import optimize
+from chisel4ml.utils import get_submodel
+from tests.conftest import TEST_MODELS_LIST
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+MODEL_DIR = os.path.join(SCRIPT_DIR, "models")
 
 
-def test_compile_service(bnn_simple_model):
-    """Test if the compile service is working correctly."""
-    opt_model = optimize.qkeras_model(bnn_simple_model)
-    circuit = generate.circuit(opt_model, is_simple=False)
-    assert circuit is not None
-    circuit.delete_from_server()
-
-
-def test_run_service(bnn_simple_model):
-    """Tests if the run service (simulation) is working correctly)."""
-    opt_model = optimize.qkeras_model(bnn_simple_model)
-    circuit = generate.circuit(opt_model, is_simple=False)
-    assert circuit is not None
-    for i in [-1.0, 1.0]:
-        for j in [-1.0, 1.0]:
-            for k in [-1.0, 1.0]:
-                sw_res = opt_model.predict(np.array([[i, j, k]]))
-                hw_res = circuit(np.array([i, j, k]))
-                assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), (
-                    f"The software model predicted the result {sw_res}, where as the"
-                    f" hardware model predicted {hw_res}. Something is wrong here. The"
-                    f" stated results are for the inputs {i}, {j}, {k}. "
-                )
-    circuit.delete_from_server()
-
-
-def test_run_service_2(bnn_simple_bweight_model):
-    """Tests if the run service (simulation) is working correctly for binary weight
-    layers.
-    """
-    opt_model = optimize.qkeras_model(bnn_simple_bweight_model)
-    circuit = generate.circuit(opt_model, is_simple=False)
-    assert circuit is not None
-    for inp in [
-        [36.0, 22.0, 3.0],
-        [6.0, 18.0, 5.0],
-        [6.0, 22.0, 3.0],
-        [255.0, 127.0, 255.0],
-        [0.0, 0.0, 0.0],
-        [255.0, 255.0, 255.0],
-    ]:
-        sw_res = opt_model.predict(np.array([inp]))
-        hw_res = circuit(np.array(inp))
-        assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), (
-            f"The software model predicted the result {sw_res}, where as the hardware"
-            f" model predicted {hw_res}. Something is wrong here. The stated results"
-            f" are for the inputs: {inp}. "
+@parametrize_with_cases("model_data_info", cases=TEST_MODELS_LIST, has_tag="trainable")
+def test_trainable_simulation(request, model_data_info):
+    model, data, training_info = model_data_info
+    filename = get_current_cases(request)["model_data_info"][0]
+    if request.config.getoption("--retrain"):
+        print(f"Retraining model {filename}.")
+        model.fit(
+            data["X_train"],
+            data["y_train"],
+            batch_size=training_info["batch_size"],
+            epochs=training_info["epochs"],
+            callbacks=training_info["callbacks"],
+            verbose=True,
         )
-    circuit.delete_from_server()
-
-
-@pytest.mark.skip(reason="to expensive to run")
-def test_run_service_3(bnn_mnist_model):
-    """Tests if the run service (simulation) is working correctly on more complicated
-    models that have BinaryWeightDense layers.
-    """
-    (_, _), (x_test, y_test) = mnist.load_data()
-
-    # Flatten the images
-    image_vector_size = 28 * 28
-    x_test = x_test.reshape(x_test.shape[0], image_vector_size)
-    x_test = x_test.astype("float32")
-    y_test = tf.one_hot(y_test, 10)
-    y_test = np.where(y_test < 0.1, -1.0, 1.0)
-
-    opt_model = optimize.qkeras_model(bnn_mnist_model)
-    circuit = generate.circuit(opt_model, is_simple=True)
-    assert circuit is not None
-    for i in range(0, 10):
-        sw_res = opt_model.predict(x_test[i].reshape(1, 784))
-        hw_res = circuit(x_test[i])
-        assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), (
-            f"The software model predicted the result {sw_res}, where as the hardware"
-            f" model predicted {hw_res}. Something is wrong here. The stated results"
-            f" are for the mnist image index {i}. "
+        opt_model = optimize.qkeras_model(model)
+        opt_model.compile(
+            optimizer=model.optimizer.from_config(model.optimizer.get_config()),
+            loss=model.loss,
+            metrics=["accuracy"],
         )
-    circuit.delete_from_server()
-
-
-def test_run_service_4(sint_simple_noscale_model):
-    """Tests if non-binary quantized network is implemented correctly in hardware
-    (by simulation).
-    """
-    x_test = np.array(
-        [
-            [0.0, 0.0, 0.0],
-            [0.0, 1.0, 2.0],
-            [2.0, 1.0, 0.0],
-            [4.0, 4.0, 4.0],
-            [15.0, 15.0, 15.0],
-            [6.0, 0.0, 12.0],
-            [3.0, 3.0, 3.0],
-            [15.0, 0.0, 0.0],
-            [0.0, 15.0, 0.0],
-            [0.0, 0.0, 15.0],
-        ]
-    )
-
-    opt_model = optimize.qkeras_model(sint_simple_noscale_model)
+        opt_model.fit(
+            data["X_train"],
+            data["y_train"],
+            batch_size=training_info["batch_size"],
+            epochs=training_info["epochs"],
+            callbacks=training_info["callbacks"],
+            verbose=True,
+        )
+        if request.config.getoption("--save-retrained"):
+            print(f"Saving model {filename} to {filename}.h5.")
+            opt_model.save_weights(os.path.join(MODEL_DIR, f"{filename}.h5"))
+    else:
+        model_weights = os.path.join(MODEL_DIR, f"{filename}.h5")
+        print(f"Loading weights from: {model_weights}.")
+        opt_model = optimize.qkeras_model(model)
+        opt_model.load_weights(model_weights)
     circuit = generate.circuit(
-        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
+        opt_model,
+        use_verilator=request.config.getoption("--use-verilator"),
+        gen_waveform=request.config.getoption("--gen-waveform"),
+        gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        num_layers=request.config.getoption("--num-layers"),
+        debug=request.config.getoption("--debug-trans"),
     )
     assert circuit is not None
-    for i in range(0, 10):
-        sw_res = opt_model.predict(x_test[i].reshape(1, 3))
-        hw_res = circuit(x_test[i])
-        assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), (
-            f"The software model predicted the result {sw_res}, where as the hardware"
-            f" model predicted {hw_res}. Something is wrong here. The stated results"
-            f" are for the inputs {x_test[i]}. "
-        )
-    circuit.delete_from_server()
-
-
-def test_run_service_5(sint_simple_model):
-    """Tests if quantized network with scale factors is implemented correctly in
-    hardware (by simulation).
-    """
-    x_test = np.array(
-        [
-            [0.0, 0.0, 0.0],
-            [0.0, 1.0, 2.0],
-            [2.0, 1.0, 0.0],
-            [4.0, 4.0, 4.0],
-            [7.0, 7.0, 7.0],
-            [6.0, 0.0, 7.0],
-            [3.0, 3.0, 3.0],
-            [7.0, 0.0, 0.0],
-            [0.0, 7.0, 0.0],
-            [0.0, 0.0, 7.0],
-        ]
-    )
-
-    opt_model = optimize.qkeras_model(sint_simple_model)
-    circuit = generate.circuit(
-        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
-    )
-    assert circuit is not None
-    for i in range(0, 10):
-        sw_res = opt_model.predict(x_test[i].reshape(1, 3))
-        hw_res = circuit(x_test[i])
-        assert tf.reduce_all(tf.math.equal(sw_res, hw_res)), (
-            f"The software model predicted the result {sw_res}, where as the hardware"
-            f" model predicted {hw_res}. Something is wrong here. The stated results"
-            f" are for the inputs {x_test[i]}. "
-        )
-    circuit.delete_from_server()
-
-
-@pytest.mark.skip(reason="to expensive to run")
-def test_run_service_6(sint_mnist_qdense_relu):
-    """Test a more complex non-binary model."""
-    (_, _), (x_test, y_test) = mnist.load_data()
-
-    # Flatten the images
-    image_vector_size = 28 * 28
-    x_test = x_test.reshape(x_test.shape[0], image_vector_size)
-    x_test = x_test.astype("float32")
-    y_test = tf.one_hot(y_test, 10)
-
-    opt_model = optimize.qkeras_model(sint_mnist_qdense_relu)
-    circuit = generate.circuit(opt_model, is_simple=False)
-    assert circuit is not None
-    for i in range(0, 10):
-        sw_res = opt_model.predict(x_test[i].reshape(1, 784))
+    for data in data["X_test"]:
+        sw_res = opt_model.predict(np.expand_dims(data, axis=0))
         if isinstance(sw_res, tuple):
             sw_res = sw_res[0]
-        sw_index = np.where(sw_res == np.amax(sw_res))[1][0]
-        hw_res = circuit(x_test[i])
-        hw_index = np.where(hw_res == np.amax(hw_res))[0][0]
-        assert sw_index == hw_index, (
-            f"The software model predicted the result {sw_res}, where as the hardware"
-            f" model predicted {hw_res}. The index of the bigest element should be the"
-            " same but instead the bigest element of the software model is at index:"
-            f" {sw_index}, and the hardware model at index: {hw_index}. Something is"
-            f" wrong here. The stated results are for the mnist test image index {i}. "
+        hw_res = circuit(data)
+        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
+    circuit.delete_from_server()
+
+
+@parametrize_with_cases(
+    "model_data_info", cases=TEST_MODELS_LIST, has_tag="trainable-gen"
+)
+def test_trainable_gen_simulation(request, model_data_info):
+    model, data, training_info = model_data_info
+    filename = get_current_cases(request)["model_data_info"][0]
+    if request.config.getoption("--retrain"):
+        print(f"Retraining model {filename}.")
+        model.fit(
+            x=data["train_set"]
+            .batch(training_info["batch_size"], drop_remainder=True)
+            .repeat(training_info["epochs"]),
+            validation_data=data["val_set"]
+            .batch(training_info["batch_size"], drop_remainder=True)
+            .repeat(training_info["epochs"]),
+            batch_size=training_info["batch_size"],
+            steps_per_epoch=int(
+                training_info["train_len"] / training_info["batch_size"]
+            ),
+            validation_steps=int(
+                training_info["val_len"] / training_info["batch_size"]
+            ),
+            epochs=training_info["epochs"],
+            callbacks=training_info["callbacks"],
+            verbose=True,
         )
-    circuit.delete_from_server()
-
-
-@pytest.mark.skip(reason="to expensive to run")
-def test_run_service_7(sint_mnist_qdense_relu_pruned):
-    """Tests if a pruned non-binary model works correctly. Note that the optimizations
-    change the model somewhat, so this test is not really through.
-    """
-    (_, _), (x_test, y_test) = mnist.load_data()
-
-    # Flatten the images
-    image_vector_size = 28 * 28
-    x_test = x_test.reshape(x_test.shape[0], image_vector_size)
-    x_test = x_test.astype("float32")
-    y_test = tf.one_hot(y_test, 10)
-    y_test = np.where(y_test < 0.1, -1.0, 1.0)
-
-    opt_model = optimize.qkeras_model(sint_mnist_qdense_relu_pruned)
-    circuit = generate.circuit(opt_model, is_simple=False)
-    assert circuit is not None
-    for i in range(0, 6):
-        sw_res = opt_model.predict(x_test[i].reshape(1, 784))
-        if isinstance(sw_res, tuple):
-            sw_res = sw_res[0]
-        sw_index = np.where(sw_res == np.amax(sw_res))[1][0]
-        hw_res = circuit(x_test[i])
-        hw_index = np.where(hw_res == np.amax(hw_res))[0][0]
-        assert sw_index == hw_index, (
-            f"The software model predicted the result {sw_res}, where as the hardware"
-            f" model predicted {hw_res}. The index of the bigest element should be the"
-            " same but instead the bigest element of the software model is at index:"
-            f" {sw_index}, and the hardware model at index: {hw_index}. Something is"
-            f" wrong here. The stated results are for the mnist test image index {i}. "
+        opt_model = optimize.qkeras_model(model)
+        opt_model.compile(
+            optimizer=model.optimizer.from_config(model.optimizer.get_config()),
+            loss=model.loss,
+            metrics=["accuracy"],
         )
-    circuit.delete_from_server()
-
-
-def test_run_service_conv_8(sint_conv_layer):
-    x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(
-        1, 3, 3, 1
-    )
-    x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(
-        1, 3, 3, 1
-    )
-    x2 = np.zeros(9).reshape(1, 3, 3, 1)
-
-    opt_model = optimize.qkeras_model(sint_conv_layer)
+        opt_model.fit(
+            x=data["train_set"]
+            .batch(training_info["batch_size"], drop_remainder=True)
+            .repeat(training_info["epochs"]),
+            validation_data=data["val_set"]
+            .batch(training_info["batch_size"], drop_remainder=True)
+            .repeat(training_info["epochs"]),
+            batch_size=training_info["batch_size"],
+            steps_per_epoch=int(
+                training_info["train_len"] / training_info["batch_size"]
+            ),
+            validation_steps=int(
+                training_info["val_len"] / training_info["batch_size"]
+            ),
+            epochs=training_info["epochs"],
+            callbacks=training_info["callbacks"],
+            verbose=True,
+        )
+        if request.config.getoption("--save-retrained"):
+            print(f"Saving model {filename} to {filename}.h5.")
+            opt_model.save_weights(os.path.join(MODEL_DIR, f"{filename}.h5"))
+    else:
+        model_weights = os.path.join(MODEL_DIR, f"{filename}.h5")
+        print(f"Loading weights from: {model_weights}.")
+        opt_model = optimize.qkeras_model(model)
+        opt_model.load_weights(model_weights)
     circuit = generate.circuit(
-        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
+        opt_model,
+        use_verilator=request.config.getoption("--use-verilator"),
+        gen_waveform=request.config.getoption("--gen-waveform"),
+        gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        num_layers=request.config.getoption("--num-layers"),
+        debug=request.config.getoption("--debug-trans"),
     )
     assert circuit is not None
-    for x in [x0, x1, x2]:
-        sw_res = opt_model.predict(x)
+    for x, _ in data["test_set"]:
+        sw_res = opt_model.predict(np.expand_dims(x, axis=0))[0]
         hw_res = circuit(x)
-        assert np.array_equal(
-            hw_res, sw_res.reshape(1, 2, 2)
-        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
+        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
     circuit.delete_from_server()
 
 
-def test_run_service_conv_9(sint_conv_layer):
-    opt_model = optimize.qkeras_model(sint_conv_layer)
+@parametrize_with_cases("model_data", cases=TEST_MODELS_LIST, has_tag="non-trainable")
+def test_simulation(request, model_data):
+    (
+        model,
+        data,
+    ) = model_data
+    opt_model = optimize.qkeras_model(model)
     circuit = generate.circuit(
-        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
+        opt_model,
+        use_verilator=request.config.getoption("--use-verilator"),
+        gen_waveform=request.config.getoption("--gen-waveform"),
+        gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        num_layers=request.config.getoption("--num-layers"),
+        debug=request.config.getoption("--debug-trans"),
     )
+    if request.config.getoption("--num-layers") is not None:
+        opt_model = get_submodel(opt_model, request.config.getoption("--num-layers"))
     assert circuit is not None
-
-    np.random.default_rng(42)
-    for x in range(20):
-        x = np.random.rand(9).reshape(1, 3, 3, 1)  # [0, 1]
-        x = (x * 2) - 1  # [-1, 1]
-        x = np.round(x * (2**3))
-        x = np.clip(x, -(2**3), (2**3) - 1)
-        sw_res = opt_model.predict(x)
-        hw_res = circuit(x)
-        assert np.array_equal(
-            hw_res, sw_res.reshape(1, 2, 2)
-        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
-    circuit.delete_from_server()
-
-
-def test_run_service_conv_10(sint_conv_layer_2_channels):
-    x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(1, 3, 3)
-    x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(1, 3, 3)
-    x2 = np.zeros(9).reshape(1, 3, 3)
-    x01 = np.concatenate((x0, x1))
-    x10 = np.concatenate((x1, x0))
-    x21 = np.concatenate((x2, x1))
-    x12 = np.concatenate((x1, x2))
-    opt_model = optimize.qkeras_model(sint_conv_layer_2_channels)
-    circuit = generate.circuit(
-        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
-    )
-    assert circuit is not None
-    for x in [x01, x10, x21, x12]:
+    for x in data:
         sw_res = opt_model.predict(np.expand_dims(x, axis=0))
         hw_res = circuit(x)
-        assert np.array_equal(
-            hw_res, sw_res.reshape(2, 2, 2)
-        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
-    circuit.delete_from_server()
-
-
-def test_run_service_conv_11(sint_conv_layer_2_kernels_2_channels):
-    x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(1, 3, 3)
-    x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(1, 3, 3)
-    x2 = np.zeros(9).reshape(1, 3, 3)
-    x01 = np.concatenate((x0, x1))
-    x10 = np.concatenate((x1, x0))
-    x21 = np.concatenate((x2, x1))
-    x12 = np.concatenate((x1, x2))
-    opt_model = optimize.qkeras_model(sint_conv_layer_2_kernels_2_channels)
-    circuit = generate.circuit(
-        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
-    )
-    assert circuit is not None
-    for x in [x01, x10, x21, x12]:
-        sw_res = opt_model.predict(np.expand_dims(x, axis=0))
-        hw_res = circuit(x)
-        assert np.array_equal(
-            hw_res, sw_res.reshape(4, 2, 2)
-        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
-    circuit.delete_from_server()
-
-
-def test_run_service_conv_12(sint_simple_conv_model):
-    x0 = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, -1.0]]).reshape(
-        1, 1, 3, 3
-    )
-    x1 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).reshape(
-        1, 1, 3, 3
-    )
-    x2 = np.zeros(9).reshape(1, 1, 3, 3)
-
-    opt_model = optimize.qkeras_model(sint_simple_conv_model)
-    circuit = generate.circuit(
-        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
-    )
-    assert circuit is not None
-    for x in [x0, x1, x2]:
-        sw_res = opt_model.predict(x)
-        hw_res = circuit(x)
-        assert np.array_equal(
-            hw_res, sw_res.reshape(1)
-        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
-    circuit.delete_from_server()
-
-
-def test_run_service_maxpool_13(sint_simple_maxpool_model):
-    x0 = np.array(
-        [
-            [0.0, 1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0, 7.0],
-            [1.0, 2.0, 3.0, 4.0],
-            [0.0, 5.0, 6.0, 7.0],
-        ]
-    ).reshape(1, 4, 4)
-    x1 = np.array(
-        [
-            [1.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0],
-        ]
-    ).reshape(1, 4, 4)
-    x2 = np.zeros(16).reshape(1, 4, 4)
-    x01 = np.concatenate((x0, x1), axis=0)
-    x10 = np.concatenate((x1, x0), axis=0)
-    x21 = np.concatenate((x2, x1), axis=0)
-    x12 = np.concatenate((x1, x2), axis=0)
-
-    opt_model = optimize.qkeras_model(sint_simple_maxpool_model)
-    circuit = generate.circuit(
-        opt_model, is_simple=False, use_verilator=True, gen_waveform=True
-    )
-    assert circuit is not None
-    for x in [x01, x10, x21, x12]:
-        sw_res = opt_model.predict(np.expand_dims(np.moveaxis(x, 0, -1), axis=0))
-        hw_res = circuit(x)
-        assert np.array_equal(
-            hw_res, np.moveaxis(sw_res, -1, 1).reshape(2, 2, 2)
-        ), f"Software model predicted {sw_res}, but the circuit computed {hw_res}."
-    circuit.delete_from_server()
-
-
-def test_run_service_conv_maxpool_14(sint_simple_conv_maxpool_model):
-    x0 = np.array(
-        [
-            [0, 1, 2, 3, 4],
-            [5, 6, 7, 8, 9],
-            [10, 11, 12, 13, 14],
-            [15, 0, 1, 2, 3],
-            [4, 5, 6, 7, 8],
-        ]
-    ).reshape(5, 5, 1)
-
-    x1 = np.array(
-        [
-            [9, 10, 11, 12, 13],
-            [14, 15, 0, 1, 2],
-            [3, 4, 5, 6, 7],
-            [8, 9, 10, 11, 12],
-            [13, 14, 15, 0, 1],
-        ]
-    ).reshape(5, 5, 1)
-    x = np.concatenate((x0, x1), axis=-1)
-    opt_model = optimize.qkeras_model(sint_simple_conv_maxpool_model)
-    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
-    for x in [x]:
-        sw_res = opt_model.predict(np.expand_dims(x, axis=0))
-        sw_res = np.moveaxis(np.reshape(sw_res, (2, 2, 4)), -1, 0)
-        hw_res = circuit(np.moveaxis(x, -1, 0))
-        assert np.array_equal(hw_res, sw_res)
-    circuit.delete_from_server()
-
-
-def test_run_service_conv_maxpool_15(sint_conv_maxpool_model):
-    x0 = np.array(
-        [
-            [0, 1, 2, 3, 4],
-            [5, 6, 7, 8, 9],
-            [10, 11, 12, 13, 14],
-            [15, 0, 1, 2, 3],
-            [4, 5, 6, 7, 8],
-        ]
-    ).reshape(5, 5, 1)
-
-    x1 = np.array(
-        [
-            [9, 10, 11, 12, 13],
-            [14, 15, 0, 1, 2],
-            [3, 4, 5, 6, 7],
-            [8, 9, 10, 11, 12],
-            [13, 14, 15, 0, 1],
-        ]
-    ).reshape(5, 5, 1)
-    x = np.concatenate((x0, x1), axis=-1)
-    opt_model = optimize.qkeras_model(sint_conv_maxpool_model)
-    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
-    for x in [x]:
-        sw_res = opt_model.predict(np.expand_dims(x, axis=0))
-        sw_res = np.moveaxis(np.reshape(sw_res, (2, 2, 6)), -1, 0)
-        hw_res = circuit(np.moveaxis(x, -1, 0))
-        assert np.array_equal(hw_res, sw_res)
-    circuit.delete_from_server()
-
-
-def test_run_service_conv_conv_16(sint_conv_conv_model):
-    x0 = np.array(
-        [
-            [0, 1, 2, 3, 4],
-            [5, 6, 7, 8, 9],
-            [10, 11, 12, 13, 14],
-            [15, 0, 1, 2, 3],
-            [4, 5, 6, 7, 8],
-        ]
-    ).reshape(5, 5, 1)
-
-    x1 = np.array(
-        [
-            [9, 10, 11, 12, 13],
-            [14, 15, 0, 1, 2],
-            [3, 4, 5, 6, 7],
-            [8, 9, 10, 11, 12],
-            [13, 14, 15, 0, 1],
-        ]
-    ).reshape(5, 5, 1)
-    x = np.concatenate((x0, x1), axis=-1)
-    opt_model = optimize.qkeras_model(sint_conv_conv_model)
-    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
-    for x in [x]:
-        sw_res = opt_model.predict(np.expand_dims(x, axis=0))
-        sw_res = np.moveaxis(np.reshape(sw_res, (3, 3, 4)), -1, 0)
-        hw_res = circuit(np.moveaxis(x, -1, 0))
-        assert np.array_equal(hw_res, sw_res)
-    circuit.delete_from_server()
-
-
-def test_run_service_conv_width_noteq_height_17(sint_conv_model_width_noteq_height):
-    x0 = np.array(
-        [
-            [0, 1, 2, 3, 4, 5],
-            [6, 7, -1, -2, -3, -4],
-            [-1, -2, -3, -4, -5, -6],
-        ]
-    ).reshape(1, 3, 6)
-    x1 = np.array(
-        [
-            [1, 1, 1, 1, 1, 1],
-            [2, 2, 2, 2, 2, 2],
-            [3, 3, 3, 3, 3, 3],
-        ]
-    ).reshape(1, 3, 6)
-
-    x = np.concatenate((x0, x1), axis=0)
-    opt_model = optimize.qkeras_model(sint_conv_model_width_noteq_height)
-    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
-    for x in [x]:
-        sw_res = opt_model.predict(np.expand_dims(x, axis=0))
-        sw_res = np.reshape(sw_res, (4, 2, 5))
-        hw_res = circuit(x)
-        assert np.array_equal(hw_res, sw_res)
-    circuit.delete_from_server()
-
-
-def test_run_service_conv_width_noteq_height_18(sint_conv_model_width_noteq_height_2):
-    x0 = np.array(
-        [
-            [0, 1, 2],
-            [3, 4, 5],
-            [6, 7, -1],
-            [-2, -3, -4],
-            [-1, -2, -3],
-            [-4, -5, -6],
-        ]
-    ).reshape(1, 6, 3)
-    x1 = np.array(
-        [
-            [1, 1, 1],
-            [1, 1, 1],
-            [2, 2, 2],
-            [2, 2, 2],
-            [3, 3, 3],
-            [3, 3, 3],
-        ]
-    ).reshape(1, 6, 3)
-
-    x = np.concatenate((x0, x1), axis=0)
-    opt_model = optimize.qkeras_model(sint_conv_model_width_noteq_height_2)
-    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
-    for x in [x]:
-        sw_res = opt_model.predict(np.expand_dims(x, axis=0))
-        sw_res = np.reshape(sw_res, (4, 5, 2))
-        hw_res = circuit(x)
-        assert np.array_equal(hw_res, sw_res)
-    circuit.delete_from_server()
-
-
-def test_run_service_digits_partial_19(sint_digit_model_ds):
-    opt_model, digits_ds = sint_digit_model_ds
-    circuit = generate.circuit(
-        opt_model, use_verilator=True, gen_waveform=True, num_layers=1
-    )
-    for i in range(20):
-        image = digits_ds.images[i]
-        sw_res = opt_model.layers[3](
-            opt_model.layers[2]((image.reshape(1, 8, 8, 1)))
-        ).numpy()
-        hw_res = circuit.predict(image.reshape(1, 8, 8))
-        assert np.array_equal(sw_res.reshape(6, 6), hw_res.reshape(6, 6))
-    circuit.delete_from_server()
-
-
-def test_run_service_digits_20(sint_digit_model_ds):
-    opt_model, digits_ds = sint_digit_model_ds
-    circuit = generate.circuit(opt_model, use_verilator=True, gen_waveform=True)
-    for i in range(20):
-        image = digits_ds.images[i]
-        sw_res = opt_model.predict(image.reshape(1, 8, 8, 1))
-        hw_res = circuit.predict(image.reshape(1, 8, 8))
-        assert np.array_equal(sw_res.reshape(10), hw_res)
+        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
     circuit.delete_from_server()

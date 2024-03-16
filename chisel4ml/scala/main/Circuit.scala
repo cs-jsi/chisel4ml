@@ -22,7 +22,6 @@ import chiseltest._
 import chiseltest.simulator.WriteFstAnnotation
 import firrtl.AnnotationSeq
 import firrtl.options.TargetDirAnnotation
-import java.nio.file.{Path, Paths}
 import java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, TimeUnit}
 import lbir.QTensor
 import org.slf4j.LoggerFactory
@@ -30,25 +29,27 @@ import scala.util.control.Breaks._
 import memories.MemoryGenerator
 import firrtl.transforms.NoCircuitDedupAnnotation
 
+
 class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](
   dutGen:        => T,
   outputStencil: QTensor,
-  directory:     Path,
+  directory:     os.Path,
   useVerilator:  Boolean,
   genWaveform:   Boolean)
     extends Runnable {
   case class ValidQTensor(qtensor: QTensor, valid: Boolean)
+  case class TimedQTensor(qtensor: QTensor, consumedCycles: Int)
   val logger = LoggerFactory.getLogger(classOf[Circuit[T]])
   val inQueue = new LinkedBlockingQueue[ValidQTensor]()
-  val outQueue = new LinkedBlockingQueue[QTensor]()
+  val outQueue = new LinkedBlockingQueue[TimedQTensor]()
   val isGenerated = new CountDownLatch(1)
   val isStoped = new CountDownLatch(1)
-  val relDir = Paths.get("").toAbsolutePath().relativize(directory).toString
+  val relativeDirectory = directory.relativeTo(os.pwd).toString()
 
   // NoCircuitDedupAnnotation is needed because memory deduplication is causing problems
   // This can likely be removed when upgrading to newer chisel/firrtl versions. TODO
   var annot: AnnotationSeq =
-    Seq(TargetDirAnnotation(relDir), NoCircuitDedupAnnotation) // TODO - work with .pb instead of .lo.fir
+    Seq(TargetDirAnnotation(relativeDirectory), NoCircuitDedupAnnotation) // TODO - work with .pb instead of .lo.fir
   if (genWaveform) annot = annot :+ WriteFstAnnotation
   if (useVerilator) annot = annot :+ VerilatorBackendAnnotation
 
@@ -75,27 +76,42 @@ class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](
         // inQueue.take() blocks execution until data is available
         val validQTensor = inQueue.take()
         if (validQTensor.valid == false) break()
+        
         logger.info(
           s"Simulating a sequential circuit on a new input. Input shape: ${validQTensor.qtensor.shape}" +
             s", input dtype: ${validQTensor.qtensor.dtype}, output stencil: $outputStencil."
         )
+        val isOver = new CountDownLatch(1)
+        var clockCounter = 0
         fork {
           dut.inStream.enqueueQTensor(validQTensor.qtensor, dut.clock)
+          breakable{
+            while(true) {
+              dut.clock.step()
+              clockCounter = clockCounter + 1
+              if (isOver.getCount() == 0) break()
+            }
+          }
         }.fork {
-          outQueue.put(dut.outStream.dequeueQTensor(outputStencil, dut.clock))
+          val qtensor = dut.outStream.dequeueQTensor(outputStencil, dut.clock)
+          isOver.countDown()
+          outQueue.put(TimedQTensor(qtensor, clockCounter))
         }.join()
       }
     }
   }
 
-  def sim(x: Seq[QTensor]): Seq[QTensor] = {
+  def sim(x: Seq[QTensor]): (Seq[QTensor], Int) = {
     var result: Seq[QTensor] = Seq()
+    var consumedCycles: Int = 0
     for (qtensor <- x) {
       inQueue.put(ValidQTensor(qtensor, true))
     }
     for (_ <- x) {
-      result = result :+ outQueue.take() // .take() is a blocking call
+      val out = outQueue.take()
+      result = result :+ out.qtensor // .take() is a blocking call
+      consumedCycles = consumedCycles + out.consumedCycles
     }
-    result
+    (result, consumedCycles)
   }
 }

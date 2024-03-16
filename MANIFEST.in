@@ -1,3 +1,14 @@
-include chisel4ml/bin/chisel4ml.jar
-include README.md
-include LICENSE
+include chisel4ml/lbir/scalapb/*.py
+include chisel4ml/lbir/scalapb/*.pyi
+exclude Makefile
+exclude build.sbt
+global-exclude .*
+global-exclude *.scala
+global-exclude *.proto
+global-exclude *.jar
+prune chisel4ml/scala
+prune chisel4ml/bin
+prune tests
+prune .github
+prune project
+

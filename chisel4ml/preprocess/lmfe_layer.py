@@ -40,7 +40,7 @@ class LMFELayer(tf.keras.layers.Layer):
             self.filter_banks = np.array(cfg.mel_filters).reshape(
                 cfg.num_mels, ((cfg.fft_size // 2) + 1)
             )
-            assert self.filter_banks.max() < 1.0 and self.filter_banks.min() >= 0.0
+            assert self.filter_banks.max() <= 1.0 and self.filter_banks.min() >= 0.0
             for i in range(cfg.num_mels):
                 # Only two filters can be active at a time.
                 assert np.count_nonzero(self.filter_banks[:, i]) <= 2
