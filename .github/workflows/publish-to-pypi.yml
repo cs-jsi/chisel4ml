@@ -5,38 +5,27 @@ on:
     branches: [master]
 
 jobs:
-  build:
-    name: Build distribution
-    runs-on: ubuntu-latest
+  run-tests:
+    name: Test before publishing
+    uses: ./.github/workflows/tests.yml
 
+  build:
+    name: Build Python binaries
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
-        fetch-depth: 0
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install .[dev]
-    - name: Make protobuf
-      run: make protobuf
-    - name: Install pypa/build
-      run: >-
-        python3 -m
-        pip install
-        build
-        --user
-    - name: Build a binary wheel and a source tarball
-      run: python3 -m build
-    - name: Store the distribution packages
-      uses: actions/upload-artifact@v3
-      with:
-        name: python-package-distributions
-        path: dist/
+      - name: Install pypa/build
+        run: >-
+          python3 -m
+          pip install
+          build
+          --user
+      - name: Build a binary wheel and a source tarball
+        run: python3 -m build
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-package-distributions
+          path: dist/
 
   publish-to-pypi:
     name: >-
@@ -47,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/chisel4ml  # Replace <package-name> with your PyPI project name
+      url: https://pypi.org/p/chisel4ml
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
