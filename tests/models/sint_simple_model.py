@@ -18,14 +18,14 @@ def case_sint_simple_model():
     x = qkeras.QDense(
         4,
         kernel_quantizer=qkeras.quantized_bits(
-            bits=4, integer=3, keep_negative=True, alpha=np.array([0.5, 0.25, 1, 0.25])
+            bits=4, integer=3, keep_negative=True, alpha=[0.5, 0.25, 1, 0.25]
         ),
     )(x)
     x = qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3))(x)
     x = qkeras.QDense(
         1,
         kernel_quantizer=qkeras.quantized_bits(
-            bits=4, integer=3, keep_negative=True, alpha=np.array([0.125])
+            bits=4, integer=3, keep_negative=True, alpha=0.125
         ),
     )(x)
     x = qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3))(x)

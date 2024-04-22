@@ -42,6 +42,9 @@ class MaxPool2dCF(tf.keras.layers.Layer):
             x = self.activation(x)
         return x
 
+    def compute_output_shape(self, input_shape):
+        return self.maxpool.compute_output_shape(input_shape)
+
     def get_config(self):
         base_config = super().get_config()
         config = {

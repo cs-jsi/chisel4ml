@@ -20,11 +20,13 @@ keywords = ["Chisel", "FPGA", "quantized neural networks"]
 dynamic=["version"]
 dependencies = [
     "QKeras==0.9.0",
-    "grpcio>1.0.0",
-    "protobuf<=3.20.0",
+    "tensorflow<=2.9.0",
+    "grpcio",
+    "protobuf",
     "tf2-keras-surgeon",
     "pyparsing",
-    "librosa"
+    "librosa",
+    "qonnx"
 ]
 
 [tool.setuptools.dynamic]

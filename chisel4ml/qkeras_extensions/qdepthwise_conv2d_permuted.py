@@ -50,6 +50,9 @@ class QDepthwiseConv2DPermuted(tf.keras.layers.Layer):
         self.bias_quantizer_internal = self.dwconv.bias_quantizer_internal
         self.bias = self.dwconv.bias
 
+    def compute_output_shape(self, input_shape):
+        return self.dwconv.compute_output_shape(input_shape)
+
     @property
     def depthwise_kernel(self):
         return self.dwconv.depthwise_kernel

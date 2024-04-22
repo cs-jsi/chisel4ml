@@ -16,14 +16,14 @@ def case_sint_simple_noscale_model():
     x = qkeras.QDense(
         4,
         kernel_quantizer=qkeras.quantized_bits(
-            bits=4, integer=3, keep_negative=True, alpha=np.array([1, 1, 1, 1])
+            bits=4, integer=3, keep_negative=True, alpha=[1, 1, 1, 1]
         ),
     )(x)
     x = qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=4))(x)
     x = qkeras.QDense(
         1,
         kernel_quantizer=qkeras.quantized_bits(
-            bits=4, integer=3, keep_negative=True, alpha=np.array([1])
+            bits=4, integer=3, keep_negative=True, alpha=[1]
         ),
     )(x)
     model = tf.keras.Model(inputs=[x_in], outputs=[x])
