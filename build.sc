@@ -40,9 +40,14 @@ trait BaseChiselModule extends ScalaVersionModule {
 object chisel4ml extends BaseChiselModule with ScalaPBModule { m =>
     override def millSourcePath = os.pwd
     def sources = T.sources(Seq(PathRef(millSourcePath / "chisel4ml" / "scala")))
+
     override def scalaPBVersion = "0.11.15"
     override def scalaPBGrpc = true
-    override def scalaPBIncludePath = Seq(PathRef(millSourcePath / "chisel4ml" / "lbir"))
+    override def scalaPBSearchDeps = true
+    override def scalaPBSources = T.sources {
+        millSourcePath / "chisel4ml" / "lbir"
+    }
+    
     def ivyDeps = super.ivyDeps() ++ Agg(
         ivy"org.slf4j:slf4j-api:1.7.5",
         ivy"org.slf4j:slf4j-simple:1.7.5",
