@@ -20,14 +20,14 @@ import chisel4ml._
 import chisel4ml.implicits._
 import chiseltest._
 import chiseltest.simulator.WriteFstAnnotation
-import firrtl.AnnotationSeq
-import firrtl.options.TargetDirAnnotation
+import firrtl2.AnnotationSeq
+import firrtl2.options.TargetDirAnnotation
 import java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, TimeUnit}
 import lbir.QTensor
 import org.slf4j.LoggerFactory
 import scala.util.control.Breaks._
 import memories.MemoryGenerator
-import firrtl.transforms.NoCircuitDedupAnnotation
+import firrtl2.transforms.NoCircuitDedupAnnotation
 
 
 class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](

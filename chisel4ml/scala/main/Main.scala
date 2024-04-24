@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit
 import org.slf4j.LoggerFactory
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.matching.Regex
+import scala.io.Source
 import services.GenerateCircuitReturn.ErrorMsg
 import services._
 import lbir.QTensor
@@ -41,7 +42,7 @@ object Chisel4mlServer {
   // we convert git describe output to pep440
   private val chisel4mlVersion = {
     val versionRegex = raw"(\d+)\.(\d+)\.(\d+)-?(\d+)?-?(\w+)?".r
-    val gitDescribe = getClass.getPackage.getImplementationVersion
+    val gitDescribe = Source.fromResource("versionInfo/gitInfo").mkString.stripLineEnd
     gitDescribe match {
       case versionRegex(major, minor, patch, null, null) => s"$major.$minor.$patch"
       case versionRegex(major, minor, patch, revision, gitTag) => s"$major.$minor.${patch.toInt + 1}.dev$revision+$gitTag"

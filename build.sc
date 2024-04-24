@@ -41,6 +41,18 @@ object chisel4ml extends BaseChiselModule with ScalaPBModule { m =>
     override def millSourcePath = os.pwd
     def sources = T.sources(Seq(PathRef(millSourcePath / "chisel4ml" / "scala")))
 
+    def gitInfo = T.input {
+        os.proc("git", "describe", "--tags").call().out.text()
+    }
+
+    def gitInfoFileResourceDir = T {
+        val dest = T.dest / "versionInfo" / "gitInfo"
+        os.write(dest, gitInfo(), createFolders = true)
+        PathRef(T.dest)
+    }
+
+    override def resources = T.sources { Seq(gitInfoFileResourceDir()) }
+
     override def scalaPBVersion = "0.11.15"
     override def scalaPBGrpc = true
     override def scalaPBSearchDeps = true
@@ -58,7 +70,8 @@ object chisel4ml extends BaseChiselModule with ScalaPBModule { m =>
         ivy"org.slf4j:slf4j-api:1.7.5",
         ivy"org.slf4j:slf4j-simple:1.7.5",
         ivy"com.github.scopt::scopt:4.1.0",
-        ivy"org.reflections:reflections:0.10.2",    
+        ivy"org.reflections:reflections:0.10.2",  
+        ivy"io.grpc:grpc-netty:1.63.0",  
     )
     def moduleDeps = Seq(interfaces, 
                          memories, 

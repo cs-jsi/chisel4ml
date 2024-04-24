@@ -21,9 +21,9 @@ import lbir.LMFEConfig
 import melengine._
 import interfaces.amba.axis._
 import chisel4ml.implicits._
-import chisel3.experimental.FixedPoint
 import org.chipsalliance.cde.config.{Parameters, Field}
 import chisel4ml.logging.HasParameterLogging
+import fixedpoint._
 
 case object LMFEConfigField extends Field[LMFEConfig]
 

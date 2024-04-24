@@ -24,6 +24,7 @@ import fft._
 import interfaces.amba.axis._
 import org.chipsalliance.cde.config.{Field, Parameters}
 import chisel4ml.logging.HasParameterLogging
+import fixedpoint._
 
 case object FFTConfigField extends Field[FFTConfig]
 
