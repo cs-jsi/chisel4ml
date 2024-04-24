@@ -44,20 +44,28 @@ object chisel4ml extends BaseChiselModule with ScalaPBModule { m =>
     override def scalaPBVersion = "0.11.15"
     override def scalaPBGrpc = true
     override def scalaPBSearchDeps = true
+    override def scalaPBFlatPackage: T[Boolean] = true
     override def scalaPBSources = T.sources {
         millSourcePath / "chisel4ml" / "lbir"
     }
-    
+    def compileScalaPB = T {
+        val destPath = millSourcePath / "chisel4ml" / "scala"
+        os.copy(super.compileScalaPB().path, destPath, mergeFolders = true, replaceExisting = true)
+        PathRef(destPath).withRevalidateOnce
+    }
+
     def ivyDeps = super.ivyDeps() ++ Agg(
         ivy"org.slf4j:slf4j-api:1.7.5",
         ivy"org.slf4j:slf4j-simple:1.7.5",
-        ivy"com.github.scopt::scopt:4.1.0",      
+        ivy"com.github.scopt::scopt:4.1.0",
+        ivy"org.reflections:reflections:0.10.2",    
     )
     def moduleDeps = Seq(interfaces, 
                          memories, 
                          dsptools,
                          rocketchip,
-                         `sdf-fft`
+                         `sdf-fft`,
+                         `mel-engine`,
     )
 }
 
@@ -83,10 +91,17 @@ object fixedpoint extends BaseChiselModule {
 
 object `sdf-fft` extends  BaseChiselModule {
     def sources = T.sources(Seq(PathRef(millSourcePath / "src" / "main" / "scala")))
-    def dsptoolDep = dsptools
     def moduleDeps = Seq(dsptools,
                          `rocket-dsp-utils`, 
                          rocketchip,
+                         fixedpoint,
+    )
+}
+
+object `mel-engine` extends BaseChiselModule {
+    def sources = T.sources(Seq(PathRef(millSourcePath / "src" / "main" / "scala")))
+    def moduleDeps = Seq(memories,
+                         interfaces,
                          fixedpoint,
     )
 }
