@@ -30,11 +30,6 @@ trait BaseChiselModule extends ScalaVersionModule {
     override def scalacPluginIvyDeps = Agg(
         ivy"org.chipsalliance:::chisel-plugin:5.0.0",
     )
-    object test extends SbtModuleTests with TestModule.ScalaTest {
-        override def ivyDeps = super.ivyDeps() ++ Agg(
-            ivy"org.scalatest::scalatest::3.2.16",
-        )
-    }
 }
 
 object chisel4ml extends BaseChiselModule with ScalaPBModule { m =>
@@ -80,6 +75,12 @@ object chisel4ml extends BaseChiselModule with ScalaPBModule { m =>
                          `sdf-fft`,
                          `mel-engine`,
     )
+    object test extends SbtModuleTests with TestModule.ScalaTest {
+        def sources = T.sources(Seq(PathRef(millSourcePath / "chisel4ml" / "scala" / "test")))
+        override def ivyDeps = super.ivyDeps() ++ Agg(
+            ivy"org.scalatest::scalatest::3.2.16",
+        )
+    }
 }
 
 object interfaces extends BaseChiselModule 
