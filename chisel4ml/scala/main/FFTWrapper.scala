@@ -28,7 +28,7 @@ import fixedpoint._
 
 case object FFTConfigField extends Field[FFTConfig]
 
-trait HasFFTParameters extends HasLBIRStreamParameters[FFTConfig]{
+trait HasFFTParameters extends HasLBIRStreamParameters[FFTConfig] {
   type T = FFTConfig
   val p: Parameters
   val cfg = p(FFTConfigField)
@@ -53,14 +53,15 @@ trait HasFFTParameters extends HasLBIRStreamParameters[FFTConfig]{
   )
 }
 
-class FFTWrapper(implicit val p: Parameters) extends Module 
-with HasLBIRStream[Vec[UInt]]
-with HasFFTParameters 
-with HasParameterLogging {
+class FFTWrapper(implicit val p: Parameters)
+    extends Module
+    with HasLBIRStream[Vec[UInt]]
+    with HasFFTParameters
+    with HasParameterLogging {
   logParameters
   val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
   val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
-  
+
   val window = VecInit(cfg.winFn.map(_.F(16.W, 16.BP)))
   val sdffft = Module(new SDFFFT(fftParams))
 

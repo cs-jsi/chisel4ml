@@ -22,7 +22,7 @@ trait ScalaVersionModule extends SbtModule {
     )
 }
 
-trait BaseChiselModule extends ScalaVersionModule { 
+trait BaseChiselModule extends ScalaVersionModule {
     override def ivyDeps = Agg(
         ivy"org.chipsalliance::chisel:5.0.0",
         ivy"edu.berkeley.cs::chiseltest:5.0.0",
@@ -65,11 +65,11 @@ object chisel4ml extends BaseChiselModule with ScalaPBModule { m =>
         ivy"org.slf4j:slf4j-api:1.7.5",
         ivy"org.slf4j:slf4j-simple:1.7.5",
         ivy"com.github.scopt::scopt:4.1.0",
-        ivy"org.reflections:reflections:0.10.2",  
-        ivy"io.grpc:grpc-netty:1.63.0",  
+        ivy"org.reflections:reflections:0.10.2",
+        ivy"io.grpc:grpc-netty:1.63.0",
     )
-    def moduleDeps = Seq(interfaces, 
-                         memories, 
+    def moduleDeps = Seq(interfaces,
+                         memories,
                          dsptools,
                          rocketchip,
                          `sdf-fft`,
@@ -83,7 +83,7 @@ object chisel4ml extends BaseChiselModule with ScalaPBModule { m =>
     }
 }
 
-object interfaces extends BaseChiselModule 
+object interfaces extends BaseChiselModule
 object memories extends BaseChiselModule {
     def ivyDeps = super.ivyDeps() ++ Agg(
         ivy"org.slf4j:slf4j-api:1.7.5",
@@ -106,7 +106,7 @@ object fixedpoint extends BaseChiselModule {
 object `sdf-fft` extends  BaseChiselModule {
     def sources = T.sources(Seq(PathRef(millSourcePath / "src" / "main" / "scala")))
     def moduleDeps = Seq(dsptools,
-                         `rocket-dsp-utils`, 
+                         `rocket-dsp-utils`,
                          rocketchip,
                          fixedpoint,
     )
@@ -122,7 +122,7 @@ object `mel-engine` extends BaseChiselModule {
 
 object rocketchip extends BaseChiselModule {
     override def millSourcePath = os.pwd / "rocket-dsp-utils" / "tools" / "rocket-chip"
-    def moduleDeps = Seq(cde, hardfloat, macros) 
+    def moduleDeps = Seq(cde, hardfloat, macros)
         def ivyDeps = super.ivyDeps() ++ Agg(
             ivy"${scalaOrganization()}:scala-reflect:${scalaVersion()}",
             ivy"org.json4s::json4s-jackson:4.0.5",
@@ -152,5 +152,5 @@ object `rocket-dsp-utils` extends BaseChiselModule {
                          rocketchip,
                          cde,
                          fixedpoint
-    )                     
+    )
 }

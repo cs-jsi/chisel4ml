@@ -57,8 +57,10 @@ object NeuronWithoutBias {
   }
 }
 
-class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](l:  lbir.Conv2DConfig, qc: QuantizationContext[I,W,M,A,O])
-extends Module {
+class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
+  l:  lbir.Conv2DConfig,
+  qc: QuantizationContext[I, W, M, A, O])
+    extends Module {
   val io = IO(new Bundle {
     val in = Flipped(Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[I])))
     val weights = Flipped(Valid(new KernelSubsystemIO[W, A](l.kernel, l.thresh, l.depthwise)))

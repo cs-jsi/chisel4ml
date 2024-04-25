@@ -28,9 +28,10 @@ import lbir.Conv2DConfig
   Moves the entire tensor after obtainint the signal io.start.
   (this includes several channels)
  */
-class InputDataMover[I <: Bits](implicit val p: Parameters) extends Module
-with HasSequentialConvParameters
-with HasLBIRStreamParameters[Conv2DConfig] {
+class InputDataMover[I <: Bits](implicit val p: Parameters)
+    extends Module
+    with HasSequentialConvParameters
+    with HasLBIRStreamParameters[Conv2DConfig] {
   object IDMState extends ChiselEnum {
     val sWAIT = Value(0.U)
     val sMOVEDATA = Value(1.U)

@@ -58,7 +58,9 @@ class KernelSubsystem[W <: Bits, A <: Bits](l: lbir.Conv2DConfig) extends Module
     val weights = Valid(new KernelSubsystemIO[W, A](l.kernel, l.thresh, l.depthwise))
     val ctrl = new KernelRFLoaderControlIO(l)
   })
-  val kernelMem = Module(MemoryGenerator.SRAMInitFromString(hexStr = l.kernel.toHexString(), width = 32, noWritePort = true))
+  val kernelMem = Module(
+    MemoryGenerator.SRAMInitFromString(hexStr = l.kernel.toHexString(), width = 32, noWritePort = true)
+  )
   val kRFLoader = Module(new KernelRFLoader[W](l))
   val krf = Module(new KernelRegisterFile[W](l.kernel, l.depthwise))
   val tasu = Module(new ThreshAndShiftUnit[A](l.thresh, l.kernel))

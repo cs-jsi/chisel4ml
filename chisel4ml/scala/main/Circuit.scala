@@ -29,7 +29,6 @@ import scala.util.control.Breaks._
 import memories.MemoryGenerator
 import firrtl2.transforms.NoCircuitDedupAnnotation
 
-
 class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](
   dutGen:        => T,
   outputStencil: QTensor,
@@ -76,7 +75,7 @@ class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](
         // inQueue.take() blocks execution until data is available
         val validQTensor = inQueue.take()
         if (validQTensor.valid == false) break()
-        
+
         logger.info(
           s"Simulating a sequential circuit on a new input. Input shape: ${validQTensor.qtensor.shape}" +
             s", input dtype: ${validQTensor.qtensor.dtype}, output stencil: $outputStencil."
@@ -85,8 +84,8 @@ class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](
         var clockCounter = 0
         fork {
           dut.inStream.enqueueQTensor(validQTensor.qtensor, dut.clock)
-          breakable{
-            while(true) {
+          breakable {
+            while (true) {
               dut.clock.step()
               clockCounter = clockCounter + 1
               if (isOver.getCount() == 0) break()
@@ -102,7 +101,7 @@ class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](
   }
 
   def sim(x: Seq[QTensor]): (Seq[QTensor], Int) = {
-    var result: Seq[QTensor] = Seq()
+    var result:         Seq[QTensor] = Seq()
     var consumedCycles: Int = 0
     for (qtensor <- x) {
       inQueue.put(ValidQTensor(qtensor, true))

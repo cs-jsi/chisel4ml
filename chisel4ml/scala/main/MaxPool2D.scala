@@ -44,11 +44,12 @@ trait HasMaxPoolParameters extends HasLBIRStreamParameters[MaxPool2DConfig] {
  * moments.
  *
  */
-class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters) extends Module 
-with HasLBIRStream[Vec[UInt]]
-with HasLBIRStreamParameters[MaxPool2DConfig]
-with HasMaxPoolParameters
-with HasParameterLogging {
+class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
+    extends Module
+    with HasLBIRStream[Vec[UInt]]
+    with HasLBIRStreamParameters[MaxPool2DConfig]
+    with HasMaxPoolParameters
+    with HasParameterLogging {
   logParameters
   val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
   val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))

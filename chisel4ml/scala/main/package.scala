@@ -66,7 +66,7 @@ package object implicits {
       case (UNIFORM, false) => UInt(qt.dtype.bitwidth.W).asInstanceOf[T]
       case _                => throw new Exception("Datatype not supported.")
     }
-    
+
     def toLBIRTransactions(busWidth: Int): Seq[Vec[UInt]] = {
       require(busWidth % qt.dtype.bitwidth == 0)
       val binaryStr = qt.toBinaryString
@@ -77,16 +77,17 @@ package object implicits {
         .grouped(paramWidth)
         .toSeq
         .reverse
-        .map("b" + _).map(_.U(qt.dtype.bitwidth.W))
-      val diff = if(beats.length % numBeats == 0) 0 else numBeats - (beats.length % numBeats)
+        .map("b" + _)
+        .map(_.U(qt.dtype.bitwidth.W))
+      val diff = if (beats.length % numBeats == 0) 0 else numBeats - (beats.length % numBeats)
       val modBeats = beats ++ Seq.fill(diff)(0.U(qt.dtype.bitwidth.W))
       val transactions = modBeats
         .grouped(numBeats)
         .map(
-         _.zipWithIndex.map((x: (UInt, Int)) => x._2 -> x._1)
+          _.zipWithIndex.map((x: (UInt, Int)) => x._2 -> x._1)
         )
         .map(
-          Vec(numBeats, UInt(qt.dtype.bitwidth.W)).Lit(_:_*)  // This syntax just unwraps the Seq to a vararg argument
+          Vec(numBeats, UInt(qt.dtype.bitwidth.W)).Lit(_: _*) // This syntax just unwraps the Seq to a vararg argument
         )
         .toSeq
       transactions
@@ -206,7 +207,7 @@ package object implicits {
            | to the bitwidth of a single qtensor element. Buswidth is $busWidth,
            | bitwidth:${stencil.dtype.bitwidth}.""".stripMargin.replaceAll("\n", "")
       )
-      val bitsPerTransaction:   Int = stencil.paramsPerWord(busWidth) * stencil.dtype.bitwidth
+      val bitsPerTransaction: Int = stencil.paramsPerWord(busWidth) * stencil.dtype.bitwidth
       logger.debug(
         s"$stencil, busWidth:$busWidth, bitsPerTranscation:$bitsPerTransaction"
       )
@@ -225,7 +226,7 @@ package object implicits {
       }
       logger.debug(
         s"""Converted Seq[BigInt] to QTensor. Values: $values, valuesMod: $valuesMod.
-           | Original Seq: $x, bitsPerTransaction: $bitsPerTransaction, 
+           | Original Seq: $x, bitsPerTransaction: $bitsPerTransaction,
            | flatVals: $flatVals. binaryVals: $binaryVals""".stripMargin
           .replaceAll("\n", "")
       )
