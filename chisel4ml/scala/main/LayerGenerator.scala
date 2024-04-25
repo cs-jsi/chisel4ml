@@ -22,32 +22,35 @@ import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPoo
 import chisel3._
 import org.chipsalliance.cde.config.{Config, Parameters}
 
-
 object LayerGenerator {
   def apply(layerWrap: LayerWrap): Module with HasLBIRStream[Vec[UInt]] = {
     implicit val defaults: Parameters = new Config((_, _, _) => {
-      case LBIRNumBeatsIn => 4
+      case LBIRNumBeatsIn  => 4
       case LBIRNumBeatsOut => 4
     })
     layerWrap match {
-      case l: DenseConfig => Module(new ProcessingElementWrapSimpleToSequential()(defaults.alterPartial({
-        case DenseConfigField => l
-      })))
+      case l: DenseConfig =>
+        Module(new ProcessingElementWrapSimpleToSequential()(defaults.alterPartial({
+          case DenseConfigField => l
+        })))
       case l: Conv2DConfig => Module(ProcessingElementSequentialConv(l))
-      case l: MaxPool2DConfig => Module(new MaxPool2D()(defaults.alterPartial({
-        case MaxPool2DConfigField => l
-      })))
-      case l: FFTConfig => Module(new FFTWrapper()(defaults.alterPartial({
-        case FFTConfigField => l
-        case LBIRNumBeatsIn => 1
-        case LBIRNumBeatsOut => 1
-      })))
-      case l: LMFEConfig => Module(new LMFEWrapper()(defaults.alterPartial({
-        case LMFEConfigField => l
-        case LBIRNumBeatsIn => 1
-      })))
+      case l: MaxPool2DConfig =>
+        Module(new MaxPool2D()(defaults.alterPartial({
+          case MaxPool2DConfigField => l
+        })))
+      case l: FFTConfig =>
+        Module(new FFTWrapper()(defaults.alterPartial({
+          case FFTConfigField  => l
+          case LBIRNumBeatsIn  => 1
+          case LBIRNumBeatsOut => 1
+        })))
+      case l: LMFEConfig =>
+        Module(new LMFEWrapper()(defaults.alterPartial({
+          case LMFEConfigField => l
+          case LBIRNumBeatsIn  => 1
+        })))
       case _ => throw new RuntimeException(f"Unsupported layer type: $layerWrap")
-    } 
+    }
 
   }
 }

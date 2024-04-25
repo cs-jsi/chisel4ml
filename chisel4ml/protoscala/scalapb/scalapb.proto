@@ -274,7 +274,7 @@ message FieldOptions {
   // it falls back to the file option named `map_type` which defaults to
   // `scala.collection.immutable.Map`
   optional string map_type = 7;
-  
+
   // If true, no default value will be generated for this field in the message
   // constructor. If this field is set, it has the highest precedence and overrides the
   // values at the message-level and file-level.
@@ -377,4 +377,3 @@ message FieldTransformation {
 message PreprocessorOutput {
   map<string, ScalaPbOptions> options_by_file = 1;
 }
-

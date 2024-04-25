@@ -23,7 +23,6 @@ import memories.MemoryGenerator
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.{BeforeAndAfterEachTestData, TestData}
 
-
 class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with BeforeAndAfterEachTestData {
   val logger = LoggerFactory.getLogger(classOf[KernelRFLoaderTests])
 
@@ -31,7 +30,7 @@ class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with Be
   // uses the correct directory to generate hex file into.
   override def beforeEach(testData: TestData): Unit = {
     val genDirStr = (testData.name).replace(' ', '_')
-    val genDir = os.pwd / "test_run_dir" / genDirStr 
+    val genDir = os.pwd / "test_run_dir" / genDirStr
     MemoryGenerator.setGenDir(genDir)
     super.beforeEach(testData)
   }

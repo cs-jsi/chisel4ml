@@ -11,4 +11,3 @@ prune chisel4ml/bin
 prune tests
 prune .github
 prune project
-

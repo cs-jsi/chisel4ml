@@ -42,18 +42,22 @@ import chisel4ml.logging.HasParameterLogging
 
 case object Conv2DConfigField extends Field[Conv2DConfig]
 
-trait HasSequentialConvParameters extends HasLBIRStreamParameters[Conv2DConfig] { 
+trait HasSequentialConvParameters extends HasLBIRStreamParameters[Conv2DConfig] {
   val p: Parameters
   override val cfg = p(Conv2DConfigField)
 }
 
-class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](qc: QuantizationContext[I,W,M,A,O])(implicit val p: Parameters) extends Module
-with HasLBIRStream[Vec[UInt]]
-with HasLBIRStreamParameters[Conv2DConfig] 
-with HasLBIRConfig[Conv2DConfig]
-with HasSequentialConvParameters
-with HasLogger
-with HasParameterLogging {
+class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
+  qc: QuantizationContext[I, W, M, A, O]
+)(
+  implicit val p: Parameters)
+    extends Module
+    with HasLBIRStream[Vec[UInt]]
+    with HasLBIRStreamParameters[Conv2DConfig]
+    with HasLBIRConfig[Conv2DConfig]
+    with HasSequentialConvParameters
+    with HasLogger
+    with HasParameterLogging {
   logParameters
 
   val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
@@ -75,18 +79,14 @@ with HasParameterLogging {
   kernelSubsystem.io.ctrl <> ctrl.io.kernelCtrl
 }
 
-object ProcessingElementSequentialConv{
+object ProcessingElementSequentialConv {
   def apply(cfg: Conv2DConfig) = {
     implicit val p: Parameters = new Config((_, _, _) => {
       case Conv2DConfigField => cfg
-      case LBIRNumBeatsIn => 4
-      case LBIRNumBeatsOut => 4
+      case LBIRNumBeatsIn    => 4
+      case LBIRNumBeatsOut   => 4
     })
-    (cfg.input.dtype.quantization,
-     cfg.input.dtype.signed,
-     cfg.kernel.dtype.quantization,
-     cfg.activation
-    ) match {
+    (cfg.input.dtype.quantization, cfg.input.dtype.signed, cfg.kernel.dtype.quantization, cfg.activation) match {
       case (UNIFORM, true, UNIFORM, RELU) =>
         new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, UInt](
           new UniformQuantizationContextSSUReLU(cfg.roundingMode)

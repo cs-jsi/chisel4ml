@@ -44,16 +44,19 @@ jobs:
         packages: verilator
         version: 1.0
 
+    - name: Install mill
+      run: |
+        curl -L https://raw.githubusercontent.com/lefou/millw/0.4.11/millw > mill && chmod +x mill
+
     - name: Build scala
       run: |
-          sbt --no-colors protocGenerate
-          sbt --no-colors assembly
+          ./mill chisel4ml.assembly
 
     - name: Make protobuf
       run: make protobuf
 
     - name: Spin up a chisel4ml server
-      run: java -jar chisel4ml/bin/chisel4ml.jar &> chisel4ml_sever.log &
+      run: java -jar ./out/chisel4ml/assembly.dest/out.jar &> chisel4ml_sever.log &
 
     - name: Test with tox
       run: python -m tox -vv

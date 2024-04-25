@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit
 import org.slf4j.LoggerFactory
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.matching.Regex
+import scala.io.Source
 import services.GenerateCircuitReturn.ErrorMsg
 import services._
 import lbir.QTensor
@@ -29,8 +30,7 @@ import scopt.OParser
 
 case class Config(
   tempDir: os.Path = os.Path("/tmp/.chisel4ml/"),
-  port: Int = 50051
-)
+  port:    Int = 50051)
 
 /** Contains the main function.
   *
@@ -41,10 +41,11 @@ object Chisel4mlServer {
   // we convert git describe output to pep440
   private val chisel4mlVersion = {
     val versionRegex = raw"(\d+)\.(\d+)\.(\d+)-?(\d+)?-?(\w+)?".r
-    val gitDescribe = getClass.getPackage.getImplementationVersion
+    val gitDescribe = Source.fromResource("versionInfo/gitInfo").mkString.stripLineEnd
     gitDescribe match {
       case versionRegex(major, minor, patch, null, null) => s"$major.$minor.$patch"
-      case versionRegex(major, minor, patch, revision, gitTag) => s"$major.$minor.${patch.toInt + 1}.dev$revision+$gitTag"
+      case versionRegex(major, minor, patch, revision, gitTag) =>
+        s"$major.$minor.${patch.toInt + 1}.dev$revision+$gitTag"
       case _ => throw new Exception(s"Parse error on git describe string: $gitDescribe")
     }
   }
@@ -57,11 +58,11 @@ object Chisel4mlServer {
       programName("chisel4ml-server"),
       head("chisel4ml-server;", s"v$chisel4mlVersion"),
       opt[Int]('p', "port")
-      .action((x, c) => c.copy(port = x))
-      .text("Which port should the chisel4ml-server use (default: 50051)."),
+        .action((x, c) => c.copy(port = x))
+        .text("Which port should the chisel4ml-server use (default: 50051)."),
       opt[String]('d', "dir")
-      .action((x, c) => c.copy(tempDir = os.Path(x)))
-      .text("Which directory should chisel4ml-server use as its temporary directory (default: /tmp/.chisel4ml/)."),
+        .action((x, c) => c.copy(tempDir = os.Path(x)))
+        .text("Which directory should chisel4ml-server use as its temporary directory (default: /tmp/.chisel4ml/)."),
       help("help").text("Prints this usage text.")
     )
   }
@@ -73,13 +74,13 @@ object Chisel4mlServer {
           os.makeDir(config.tempDir, "rwxrwxrw-")
         }
         if (os.list(config.tempDir).length != 0) {
-              throw new Exception(s"Directory ${config.tempDir} is not empty.")
+          throw new Exception(s"Directory ${config.tempDir} is not empty.")
         }
         server = new Chisel4mlServer(ExecutionContext.global, tempDir = config.tempDir, port = config.port)
         server.start()
         server.blockUntilShutdown()
       }
-      case _ => 
+      case _ =>
     }
   }
 }
@@ -91,7 +92,8 @@ object Chisel4mlServer {
   */
 class Chisel4mlServer(executionContext: ExecutionContext, tempDir: os.Path, port: Int) { self =>
   private[this] var server: Server = null
-  private var circuits = Map[Int, Circuit[Module with HasLBIRStream[Vec[UInt]]]]() // Holds the circuit and simulation object
+  private var circuits =
+    Map[Int, Circuit[Module with HasLBIRStream[Vec[UInt]]]]() // Holds the circuit and simulation object
   private var nextId: Int = 0
   val logger = LoggerFactory.getLogger(classOf[Chisel4mlServer])
 
@@ -102,16 +104,16 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: os.Path, port
       .addService(Chisel4mlServiceGrpc.bindService(Chisel4mlServiceImpl, executionContext))
       .build
       .start
-    sys.addShutdownHook { 
+    sys.addShutdownHook {
       if (server != null) {
         // we stop all simulations properly to get valid vcd files
         circuits.map(_._2.stopSimulation())
         logger.info("Shutting down chisel4ml server.")
         server.shutdown()
-      } else { 
-        logger.error("Attempted to shut down server that was not created.") 
+      } else {
+        logger.error("Attempted to shut down server that was not created.")
       }
-     }
+    }
     logger.info(s"Started a new chisel4ml-server on port $port, using temporary directory: $tempDir.")
   }
 
@@ -156,7 +158,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: os.Path, port
       Future.successful(
         RunSimulationReturn(
           values = res._1,
-          consumedCycles = res._2,
+          consumedCycles = res._2
         )
       )
     }
@@ -166,7 +168,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: os.Path, port
       val contained = circuits.contains(params.circuitId)
       if (contained)
         circuits(params.circuitId).stopSimulation()
-        circuits = circuits - params.circuitId
+      circuits = circuits - params.circuitId
       Future.successful(
         DeleteCircuitReturn(
           success = contained,
@@ -182,7 +184,7 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: os.Path, port
         GetVersionReturn(
           version = Chisel4mlServer.chisel4mlVersion
         )
-      )      
+      )
     }
   }
 }

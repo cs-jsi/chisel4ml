@@ -38,7 +38,7 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
   // uses the correct directory to generate hex file into.
   override def beforeEach(testData: TestData): Unit = {
     val genDirStr = (testData.name).replace(' ', '_')
-    val genDir = os.pwd / "test_run_dir" / genDirStr 
+    val genDir = os.pwd / "test_run_dir" / genDirStr
     MemoryGenerator.setGenDir(genDir)
     super.beforeEach(testData)
   }
@@ -64,8 +64,8 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
   )
   val cfg0 = new Config((_, _, _) => {
     case Conv2DConfigField => conv2dLayer
-    case LBIRNumBeatsIn => 4
-    case LBIRNumBeatsOut => 4
+    case LBIRNumBeatsIn    => 4
+    case LBIRNumBeatsOut   => 4
   })
   behavior.of("InputActivationSubsystem module")
   it should "Send a simple input tensor through the input interface and read out the result" in {
@@ -94,8 +94,8 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
     val (goldenVec, convLayer) = RandShiftRegConvTestParams.genShiftRegisterConvolverTestCase(p)
     val cfg = new Config((_, _, _) => {
       case Conv2DConfigField => convLayer
-      case LBIRNumBeatsIn => 4
-      case LBIRNumBeatsOut => 4
+      case LBIRNumBeatsIn    => 4
+      case LBIRNumBeatsOut   => 4
     })
     it should f"Test $testId window a random input tensor with bw:${p.bitwidth} kernelHeight:${p.kernelHeight} " +
       f"kernelWidth:${p.kernelWidth}, inChannels:${p.inChannels}, inHeight:${p.inHeight}, inWidth:${p.inWidth}" in {

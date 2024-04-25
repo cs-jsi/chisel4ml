@@ -16,7 +16,7 @@
 package chisel4ml.logging
 
 import org.slf4j.LoggerFactory
-import org.chipsalliance.cde.config.{Parameters, Field}
+import org.chipsalliance.cde.config.{Field, Parameters}
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners.SubTypes
 import chisel4ml._
@@ -30,13 +30,15 @@ trait HasLogger {
 
 trait HasParameterLogging extends HasLogger {
   private def fields: Seq[Field[_]] = {
-    val configFields = Seq(Conv2DConfigField,
-                           MaxPool2DConfigField,
-                           DenseConfigField,
-                           FFTConfigField,
-                           LMFEConfigField,
-                           LBIRNumBeatsIn,
-                           LBIRNumBeatsOut)
+    val configFields = Seq(
+      Conv2DConfigField,
+      MaxPool2DConfigField,
+      DenseConfigField,
+      FFTConfigField,
+      LMFEConfigField,
+      LBIRNumBeatsIn,
+      LBIRNumBeatsOut
+    )
     val reflections = new Reflections("chisel4ml");
     val reflectedFields = reflections.get(SubTypes.of(classOf[Field[_]]).asClass())
     require(reflectedFields.size() == configFields.length)
@@ -50,20 +52,20 @@ trait HasParameterLogging extends HasLogger {
         val pValue = p(field)
         val pName = field.getClass().getSimpleName()
         val str = pValue match {
-          case l:LayerWrap => s""" Input shape: ${l.input.shape}, 
-                                 | Input quantization: ${l.input.dtype.quantization},
-                                 | Input sign: ${l.input.dtype.signed},
-                                 | Input shift: ${l.input.dtype.shift},
-                                 | Output shape: ${l.output.shape},
-                                 | Output quantization: ${l.output.dtype.quantization},
-                                 | Output sign: ${l.output.dtype.signed},
-                                 | Output shift: ${l.output.dtype.shift}
-                                 | Other parameters are: """.stripMargin
+          case l: LayerWrap => s""" Input shape: ${l.input.shape},
+                                  | Input quantization: ${l.input.dtype.quantization},
+                                  | Input sign: ${l.input.dtype.signed},
+                                  | Input shift: ${l.input.dtype.shift},
+                                  | Output shape: ${l.output.shape},
+                                  | Output quantization: ${l.output.dtype.quantization},
+                                  | Output sign: ${l.output.dtype.signed},
+                                  | Output shift: ${l.output.dtype.shift}
+                                  | Other parameters are: """.stripMargin
           case _ => s"$pName->$pValue, "
         }
         msg = msg + str
       } catch {
-        case _: IllegalArgumentException =>  
+        case _: IllegalArgumentException =>
       }
     }
     logger.info(msg)

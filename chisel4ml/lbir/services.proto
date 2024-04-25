@@ -77,4 +77,3 @@ message GetVersionParams {}
 message GetVersionReturn {
     string version = 1;
 }
-

@@ -21,9 +21,9 @@ import lbir.LMFEConfig
 import melengine._
 import interfaces.amba.axis._
 import chisel4ml.implicits._
-import chisel3.experimental.FixedPoint
-import org.chipsalliance.cde.config.{Parameters, Field}
+import org.chipsalliance.cde.config.{Field, Parameters}
 import chisel4ml.logging.HasParameterLogging
+import fixedpoint._
 
 case object LMFEConfigField extends Field[LMFEConfig]
 
@@ -34,11 +34,12 @@ trait HasLMFEParameters extends HasLBIRStreamParameters[LMFEConfig] with HasLBIR
   require(numBeatsIn == 1)
 }
 
-class LMFEWrapper(implicit val p: Parameters) extends Module 
-with HasLBIRStream[Vec[UInt]]
-with HasLBIRStreamParameters[LMFEConfig]
-with HasLMFEParameters 
-with HasParameterLogging {
+class LMFEWrapper(implicit val p: Parameters)
+    extends Module
+    with HasLBIRStream[Vec[UInt]]
+    with HasLBIRStreamParameters[LMFEConfig]
+    with HasLMFEParameters
+    with HasParameterLogging {
   logParameters
   val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
   val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))

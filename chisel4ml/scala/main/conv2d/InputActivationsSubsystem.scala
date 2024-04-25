@@ -14,9 +14,10 @@ import lbir.Conv2DConfig
  * as a convolution opperation would; and does so continously until the next signal is asserted. This allows looping
  * through the input to convolve it with more than one kernel.
  */
-class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters) extends Module 
-with HasSequentialConvParameters
-with HasLBIRStreamParameters[Conv2DConfig] {
+class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters)
+    extends Module
+    with HasSequentialConvParameters
+    with HasLBIRStreamParameters[Conv2DConfig] {
   val io = IO(new Bundle {
     val inStream = Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W))))
     val inputActivationsWindow = Decoupled(Vec(cfg.kernel.numActiveParams(cfg.depthwise), cfg.input.getType[I]))
@@ -64,7 +65,9 @@ with HasLBIRStreamParameters[Conv2DConfig] {
 
   when(state === InSubState.sEMPTY && io.inStream.fire) {
     state := InSubState.sRECEVING_DATA
-  }.elsewhen(state === InSubState.sRECEVING_DATA && actMemCounter === (cfg.input.memDepth(inWidth) - 1).U && io.inStream.fire) {
+  }.elsewhen(
+    state === InSubState.sRECEVING_DATA && actMemCounter === (cfg.input.memDepth(inWidth) - 1).U && io.inStream.fire
+  ) {
     assert(io.inStream.last)
     state := InSubState.sFULL
   }.elsewhen(state === InSubState.sFULL && isLastActiveWindow && io.activeDone) {

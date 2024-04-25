@@ -21,7 +21,7 @@
 
  option java_multiple_files = true;
  option java_package = "lbir";
- 
+
  message Datatype {
     option (scalapb.message).no_box = true;  // do not wrap in Option
     enum QuantizationType {

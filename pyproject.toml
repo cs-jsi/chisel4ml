@@ -75,7 +75,6 @@ max-line-length = 88
 count= true
 exclude=[
     "venv",
-    "chisel4ml/_version.py",
     "chisel4ml/bin/",
     "chisel4ml/lbir"
 ]
