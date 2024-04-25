@@ -61,7 +61,7 @@ with HasParameterLogging {
   val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
   val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
   
-  val window = VecInit(cfg.winFn.map(_.F(16.BP)))
+  val window = VecInit(cfg.winFn.map(_.F(16.W, 16.BP)))
   val sdffft = Module(new SDFFFT(fftParams))
 
   // Fix discrepancy between last signal semantics of LBIRDriver and FFT.
