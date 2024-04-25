@@ -44,9 +44,13 @@ jobs:
         packages: verilator
         version: 1.0
 
+    - name: Install mill
+      run: |
+        curl -L https://raw.githubusercontent.com/lefou/millw/0.4.11/millw > mill && chmod +x mill
+
     - name: Build scala
       run: |
-          mill chisel4ml.assembly
+          ./mill chisel4ml.assembly
 
     - name: Make protobuf
       run: make protobuf

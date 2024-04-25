@@ -96,9 +96,13 @@ jobs:
         distribution: temurin
         java-version: 11
 
+    - name: Install mill
+      run: |
+        curl -L https://raw.githubusercontent.com/lefou/millw/0.4.11/millw > mill && chmod +x mill
+
     - name: Build scala
       run: |
-        mill chisel4ml.assembly
+        ./mill chisel4ml.assembly
 
     - name: Download all the dists
       uses: actions/download-artifact@v3
