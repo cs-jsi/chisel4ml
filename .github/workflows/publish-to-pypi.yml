@@ -104,6 +104,10 @@ jobs:
       run: |
         ./mill chisel4ml.assembly
 
+    - name: Rename jar
+      run: |
+        mv ./out/chisel4ml/assembly.dest/out.jar ./out/chisel4ml/assembly.dest/chisel4ml.jar
+
     - name: Download all the dists
       uses: actions/download-artifact@v3
       with:
@@ -137,7 +141,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
       run: >-
-        mv ./out/chisel4ml/assembly.dest/out.jar ./out/chisel4ml/assembly.dest/chisel4ml.jar
         gh release upload
         '${{ github.ref_name }}' ./out/chisel4ml/assembly.dest/chisel4ml.jar
         --repo '${{ github.repository }}'
