@@ -98,8 +98,7 @@ jobs:
 
     - name: Build scala
       run: |
-        sbt --no-colors protocGenerate
-        sbt --no-colors assembly
+        mill chisel4ml.assembly
 
     - name: Download all the dists
       uses: actions/download-artifact@v3
@@ -134,6 +133,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
       run: >-
+        mv ./out/chisel4ml/assembly.dest/out.jar ./out/chisel4ml/assembly.dest/chisel4ml.jar
         gh release upload
-        '${{ github.ref_name }}' chisel4ml/bin/chisel4ml.jar
+        '${{ github.ref_name }}' ./out/chisel4ml/assembly.dest/chisel4ml.jar
         --repo '${{ github.repository }}'

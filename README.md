@@ -68,14 +68,14 @@ This will generate a circuit of a simple two layer fully-connected neural networ
 If you have verilator installed you can also add the argument: `use_verilator=True` in the `generate.circuit` function. In the first case only a firrtl file be generated (this can be converted to verilog using firtool), if you use verilator, however, a SystemVerilog file will also be created.
 
 ## Installation: from source
-1. Install [sbt](https://www.scala-sbt.org/download.html).
-2. Install [python](https://www.python.org/downloads/) 3.6 or higher
+1. Install [mill build tool](https://mill-build.com/mill/Intro_to_Mill.html).
+2. Install [python](https://www.python.org/downloads/) 3.8-3.10
 3. Create environment `python -m venv venv/`
 4. Activate environment (Linux)`source venv/bin/activate`
     - Windows `.\venv\Scripts\activate`
 5. Upgrade pip `python -m pip install --upgrade pip`
-6. Install base requirements `pip install -r requirements.txt`
-7. Install development requirements `pip install -r requirements_dev.txt`
-8. Build Python protobuf code `make`
-9. Build Scala code `sbt assembly`
-10. Run tests `pytest -svv`
+6. Install chisel4ml pip install -ve .[dev]
+7. Build Python protobuf code `make`
+8. Build Scala code `mill chisel4ml.assembly`
+9. Start a chisel4ml server `java -jar ./out/chisel4ml/assembly.dest/out.jar`
+10. In another terminal run tests `pytest -svv`
