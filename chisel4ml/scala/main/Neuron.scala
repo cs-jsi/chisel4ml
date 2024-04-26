@@ -23,6 +23,22 @@ import chisel4ml.conv2d._
 import spire.algebra.Ring
 import spire.implicits._
 
+object Neuron {
+  def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
+    in:             Seq[I],
+    weights:        Seq[W],
+    thresh:         A,
+    shift:          Int,
+    outputBitwidth: Int,
+    useThresh:      Boolean
+  )(qc:             QuantizationContext[I, W, M, A, O]
+  ): O = if (useThresh) {
+    NeuronWithBias[I, W, M, A, O](in, weights, thresh, shift, outputBitwidth)(qc)
+  } else {
+    NeuronWithoutBias[I, W, M, A, O](in, weights, thresh, shift, outputBitwidth)(qc)
+  }
+}
+
 object NeuronWithBias {
   def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
     in:             Seq[I],

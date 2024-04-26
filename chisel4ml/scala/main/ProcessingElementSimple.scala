@@ -15,7 +15,6 @@
  */
 package chisel4ml
 
-import chisel4ml.{NeuronWithBias, NeuronWithoutBias}
 import chisel4ml.implicits._
 import chisel4ml.quantization._
 import chisel4ml._
@@ -76,22 +75,13 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, 
   val thresh:  Seq[A] = layer.getThresh[A]
 
   for (i <- 0 until layer.output.shape(0)) {
-    if (layer.kernel.dtype.quantization == BINARY && layer.input.dtype.quantization == BINARY) {
-      out(i) := NeuronWithoutBias[I, W, M, A, O](
-        in.map(_.asInstanceOf[I]),
-        weights(i),
-        thresh(i),
-        shift(i),
-        layer.output.dtype.bitwidth
-      )(qc)
-    } else {
-      out(i) := NeuronWithBias[I, W, M, A, O](
-        in.map(_.asInstanceOf[I]),
-        weights(i),
-        thresh(i),
-        shift(i),
-        layer.output.dtype.bitwidth
-      )(qc)
-    }
+    out(i) := Neuron[I, W, M, A, O](
+      in.map(_.asInstanceOf[I]),
+      weights(i),
+      thresh(i),
+      shift(i),
+      layer.output.dtype.bitwidth,
+      useThresh = !(layer.kernel.dtype.quantization == BINARY && layer.input.dtype.quantization == BINARY)
+    )(qc)
   }
 }

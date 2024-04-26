@@ -4,7 +4,7 @@ import chisel3.Bits
 
 case class BSBundleParameters[T <: Bits](
   genT:     T,
-  numBeats: Int)
+  numBeats: Option[Int])
 
 case class BSMasterParameters[T <: Bits](
   bundleParams: BSBundleParameters[T])

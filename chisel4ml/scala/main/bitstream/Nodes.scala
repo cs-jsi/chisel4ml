@@ -10,7 +10,7 @@ class BSImp[T <: Bits]
   def edge(pd: BSMasterParameters[T], pu: BSSlaveParameters[T], p: Parameters, sourceInfo: SourceInfo) = {
     require(pd.bundleParams.genT.getClass == pu.bundleParams.genT.getClass)
     require(pd.bundleParams.genT.getWidth == pu.bundleParams.genT.getWidth)
-    require(pd.bundleParams.numBeats == pu.bundleParams.numBeats)
+    require(pd.bundleParams.numBeats.isDefined || pu.bundleParams.numBeats.isDefined)
     BSEdgeParameters[T](pd, pu)
   }
 
