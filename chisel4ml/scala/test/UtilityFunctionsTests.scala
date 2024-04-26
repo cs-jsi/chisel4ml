@@ -7,7 +7,7 @@ import chisel4ml.util.shiftAndRoundSIntStaticUp
 import chisel4ml.util.shiftAndRoundSIntStaticHalfToEven
 import java.math.BigDecimal
 import java.math.{RoundingMode => JavaRoundingMode}
-import chisel4ml.util.shiftAndRoundSIntUp
+import chisel4ml.util.shiftAndRoundSIntDynamicUp
 
 class RoundTestBedStaticHalfToEven(inputWidth: Int, shift: Int) extends Module {
   val in = IO(Input(SInt(inputWidth.W)))
@@ -27,7 +27,7 @@ class RoundTestBedDynamic(inputWidth: Int, shift: Int) extends Module {
   val in = IO(Input(SInt(inputWidth.W)))
   val out = IO(Output(SInt()))
 
-  out := shiftAndRoundSIntUp(in, shift.abs.U, (shift >= 0).B)
+  out := shiftAndRoundSIntDynamicUp(in, shift.abs.U, (shift >= 0).B)
 }
 
 object UtilityFunctionsTests {

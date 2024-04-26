@@ -32,33 +32,14 @@ object ProcessingElementSimple {
     layer.kernel.dtype.quantization,
     layer.output.dtype.signed
   ) match {
-    case (UNIFORM, true, UNIFORM, false) =>
-      new ProcessingElementSimple[SInt, SInt, SInt, SInt, UInt](layer)(
-        new UniformQuantizationContextSSUReLU(layer.roundingMode)
-      )
-    case (UNIFORM, false, UNIFORM, false) =>
-      new ProcessingElementSimple[UInt, SInt, SInt, SInt, UInt](layer)(
-        new UniformQuantizationContextUSUReLU(layer.roundingMode)
-      )
-    case (UNIFORM, true, UNIFORM, true) =>
-      new ProcessingElementSimple[SInt, SInt, SInt, SInt, SInt](layer)(
-        new UniformQuantizationContextSSSNoAct(layer.roundingMode)
-      )
-    case (UNIFORM, false, UNIFORM, true) =>
-      new ProcessingElementSimple[UInt, SInt, SInt, SInt, SInt](layer)(
-        new UniformQuantizationContextUSSNoAct(layer.roundingMode)
-      )
-    case (UNIFORM, false, BINARY, true) =>
-      new ProcessingElementSimple[UInt, Bool, SInt, SInt, Bool](layer)(
-        new BinaryQuantizationContext(layer.roundingMode)
-      )
-    case (UNIFORM, true, BINARY, true) =>
-      new ProcessingElementSimple[SInt, Bool, SInt, SInt, Bool](layer)(
-        new BinaryQuantizationContextSInt(layer.roundingMode)
-      )
-    case (BINARY, _, BINARY, true) =>
-      new ProcessingElementSimple[Bool, Bool, Bool, UInt, Bool](layer)(BinarizedQuantizationContext)
-    case _ => throw new RuntimeException()
+    case (UNIFORM, true, UNIFORM, false)  => new ProcessingElementSimple(layer)(UniformQuantizationContextSSUReLU)
+    case (UNIFORM, false, UNIFORM, false) => new ProcessingElementSimple(layer)(UniformQuantizationContextUSUReLU)
+    case (UNIFORM, true, UNIFORM, true)   => new ProcessingElementSimple(layer)(UniformQuantizationContextSSSNoAct)
+    case (UNIFORM, false, UNIFORM, true)  => new ProcessingElementSimple(layer)(UniformQuantizationContextUSSNoAct)
+    case (UNIFORM, false, BINARY, true)   => new ProcessingElementSimple(layer)(BinaryQuantizationContext)
+    case (UNIFORM, true, BINARY, true)    => new ProcessingElementSimple(layer)(BinaryQuantizationContextSInt)
+    case (BINARY, _, BINARY, true)        => new ProcessingElementSimple(layer)(BinarizedQuantizationContext)
+    case _                                => throw new RuntimeException()
   }
 }
 
@@ -81,7 +62,8 @@ class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, 
       thresh(i),
       shift(i),
       layer.output.dtype.bitwidth,
-      useThresh = !(layer.kernel.dtype.quantization == BINARY && layer.input.dtype.quantization == BINARY)
+      useThresh = !(layer.kernel.dtype.quantization == BINARY && layer.input.dtype.quantization == BINARY),
+      layer.roundingMode
     )(qc)
   }
 }

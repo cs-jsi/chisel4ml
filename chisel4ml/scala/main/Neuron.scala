@@ -30,12 +30,13 @@ object Neuron {
     thresh:         A,
     shift:          Int,
     outputBitwidth: Int,
-    useThresh:      Boolean
+    useThresh:      Boolean,
+    roundingMode:   lbir.RoundingMode
   )(qc:             QuantizationContext[I, W, M, A, O]
   ): O = if (useThresh) {
-    NeuronWithBias[I, W, M, A, O](in, weights, thresh, shift, outputBitwidth)(qc)
+    NeuronWithBias[I, W, M, A, O](in, weights, thresh, shift, outputBitwidth, roundingMode)(qc)
   } else {
-    NeuronWithoutBias[I, W, M, A, O](in, weights, thresh, shift, outputBitwidth)(qc)
+    NeuronWithoutBias[I, W, M, A, O](in, weights, thresh, shift, outputBitwidth, roundingMode)(qc)
   }
 }
 
@@ -45,14 +46,15 @@ object NeuronWithBias {
     weights:        Seq[W],
     thresh:         A,
     shift:          Int,
-    outputBitwidth: Int
+    outputBitwidth: Int,
+    roundingMode:   lbir.RoundingMode
   )(qc:             QuantizationContext[I, W, M, A, O]
   ): O = {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
     require(shift <= 0)
     val threshAdjusted = (thresh << shift.abs).asSInt.asInstanceOf[A]
     val pAct = qc.add(muls) - threshAdjusted
-    val sAct = qc.shiftAndRoundStatic(pAct, shift)
+    val sAct = qc.shiftAndRound(pAct, shift.abs.U, (shift > 0).B, roundingMode)
     qc.actFn(sAct, Ring[A].zero, outputBitwidth)
   }
 }
@@ -63,12 +65,13 @@ object NeuronWithoutBias {
     weights:        Seq[W],
     thresh:         A,
     shift:          Int,
-    outputBitwidth: Int
+    outputBitwidth: Int,
+    roundingMode:   lbir.RoundingMode
   )(qc:             QuantizationContext[I, W, M, A, O]
   ): O = {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
     val pAct = qc.add(muls)
-    val sAct = qc.shiftAndRoundStatic(pAct, shift)
+    val sAct = qc.shiftAndRound(pAct, shift.abs.U, (shift > 0).B, roundingMode)
     qc.actFn(sAct, thresh, outputBitwidth)
   }
 }
@@ -91,10 +94,11 @@ class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits]
   val threshAdjusted =
     (io.weights.bits.threshShift.thresh << io.weights.bits.threshShift.shift)(maxBits - 1, 0).zext.asInstanceOf[A]
   val pAct = qc.add(muls) - threshAdjusted
-  val sAct = qc.shiftAndRoundDynamic(
+  val sAct = qc.shiftAndRound(
     pAct,
     io.weights.bits.threshShift.shift,
-    io.weights.bits.threshShift.shiftLeft
+    io.weights.bits.threshShift.shiftLeft,
+    l.roundingMode
   )
   io.out.bits := qc.actFn(sAct, Ring[A].zero, l.output.dtype.bitwidth)
 

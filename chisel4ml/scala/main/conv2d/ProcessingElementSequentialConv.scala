@@ -87,22 +87,12 @@ object ProcessingElementSequentialConv {
       case LBIRNumBeatsOut   => 4
     })
     (cfg.input.dtype.quantization, cfg.input.dtype.signed, cfg.kernel.dtype.quantization, cfg.activation) match {
-      case (UNIFORM, true, UNIFORM, RELU) =>
-        new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, UInt](
-          new UniformQuantizationContextSSUReLU(cfg.roundingMode)
-        )
-      case (UNIFORM, false, UNIFORM, RELU) =>
-        new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, UInt](
-          new UniformQuantizationContextUSUReLU(cfg.roundingMode)
-        )
+      case (UNIFORM, true, UNIFORM, RELU)  => new ProcessingElementSequentialConv(UniformQuantizationContextSSUReLU)
+      case (UNIFORM, false, UNIFORM, RELU) => new ProcessingElementSequentialConv(UniformQuantizationContextUSUReLU)
       case (UNIFORM, true, UNIFORM, NO_ACTIVATION) =>
-        new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt](
-          new UniformQuantizationContextSSSNoAct(cfg.roundingMode)
-        )
+        new ProcessingElementSequentialConv(UniformQuantizationContextSSSNoAct)
       case (UNIFORM, false, UNIFORM, NO_ACTIVATION) =>
-        new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt](
-          new UniformQuantizationContextUSSNoAct(cfg.roundingMode)
-        )
+        new ProcessingElementSequentialConv(UniformQuantizationContextUSSNoAct)
       case _ => throw new RuntimeException()
     }
   }

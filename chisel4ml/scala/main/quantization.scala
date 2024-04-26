@@ -21,86 +21,105 @@ import chisel4ml.util._
 
 package quantization {
   trait QuantizationContext[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits] extends Any {
-    def mul:                  (I, W) => M
-    def add:                  Vec[M] => A
-    def actFn:                (A, A, Int) => O
-    def shiftAndRoundStatic:  (A, Int) => A
-    def shiftAndRoundDynamic: (A, UInt, Bool) => A
+    def mul:           (I, W) => M
+    def add:           Vec[M] => A
+    def actFn:         (A, A, Int) => O
+    def shiftAndRound: (A, UInt, Bool, lbir.RoundingMode) => A
+    def genI(bitwidth: Int): I
+    def genW(bitwidth: Int): W
+    def genM(bitwidth: Int): M
+    def genA(bitwidth: Int): A
+    def genO(bitwidth: Int): O
   }
 
   object BinarizedQuantizationContext extends QuantizationContext[Bool, Bool, Bool, UInt, Bool] {
     override def mul = (i: Bool, w: Bool) => ~(i ^ w)
     override def add = (x: Vec[Bool]) => PopCount(x.asUInt)
-    override def shiftAndRoundStatic:  (UInt, Int) => UInt = shiftAndRoundUIntStatic
-    override def shiftAndRoundDynamic: (UInt, UInt, Bool) => UInt = shiftAndRoundUInt
-    override def actFn:                (UInt, UInt, Int) => Bool = signFnU
+    override def shiftAndRound: (UInt, UInt, Bool, lbir.RoundingMode) => UInt = shiftAndRoundUInt
+    override def actFn:         (UInt, UInt, Int) => Bool = signFnU
+    override def genI(bitwidth: Int) = Bool()
+    override def genW(bitwidth: Int) = Bool()
+    override def genM(bitwidth: Int) = Bool()
+    override def genA(bitwidth: Int) = UInt(bitwidth.W)
+    override def genO(bitwidth: Int) = Bool()
+
   }
 
-  class BinaryQuantizationContext(roundingMode: lbir.RoundingMode)
-      extends QuantizationContext[UInt, Bool, SInt, SInt, Bool] {
+  trait HasRoundingMode {
+    val roundingMode: lbir.RoundingMode
+  }
+
+  object BinaryQuantizationContext extends QuantizationContext[UInt, Bool, SInt, SInt, Bool] {
     override def mul = (i: UInt, w: Bool) => Mux(w, i.zext, -(i.zext))
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
+    override def shiftAndRound: (SInt, UInt, Bool, lbir.RoundingMode) => SInt = shiftAndRoundSInt
     override def actFn = signFnS
+    override def genI(bitwidth: Int) = UInt(bitwidth.W)
+    override def genW(bitwidth: Int) = Bool()
+    override def genM(bitwidth: Int) = SInt(bitwidth.W)
+    override def genA(bitwidth: Int) = SInt(bitwidth.W)
+    override def genO(bitwidth: Int) = Bool()
   }
 
-  class BinaryQuantizationContextSInt(roundingMode: lbir.RoundingMode)
-      extends QuantizationContext[SInt, Bool, SInt, SInt, Bool] {
+  object BinaryQuantizationContextSInt extends QuantizationContext[SInt, Bool, SInt, SInt, Bool] {
     override def mul = (i: SInt, w: Bool) => Mux(w, i, -i)
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
+    override def shiftAndRound: (SInt, UInt, Bool, lbir.RoundingMode) => SInt = shiftAndRoundSInt
     override def actFn = signFnS
+    override def genI(bitwidth: Int) = SInt(bitwidth.W)
+    override def genW(bitwidth: Int) = Bool()
+    override def genM(bitwidth: Int) = SInt(bitwidth.W)
+    override def genA(bitwidth: Int) = SInt(bitwidth.W)
+    override def genO(bitwidth: Int) = Bool()
   }
 
   // implementiraj s dsptools?
-  class UniformQuantizationContextSSU(act: (SInt, SInt, Int) => UInt, roundingMode: lbir.RoundingMode)
-      extends QuantizationContext[SInt, SInt, SInt, SInt, UInt] {
+  object UniformQuantizationContextSSUReLU extends QuantizationContext[SInt, SInt, SInt, SInt, UInt] {
     override def mul = (i: SInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-    override def actFn = act
+    override def shiftAndRound: (SInt, UInt, Bool, lbir.RoundingMode) => SInt = shiftAndRoundSInt
+    override def actFn = reluFn
+    override def genI(bitwidth: Int) = SInt(bitwidth.W)
+    override def genW(bitwidth: Int) = SInt(bitwidth.W)
+    override def genM(bitwidth: Int) = SInt(bitwidth.W)
+    override def genA(bitwidth: Int) = SInt(bitwidth.W)
+    override def genO(bitwidth: Int) = UInt(bitwidth.W)
   }
 
-  class UniformQuantizationContextSSUReLU(roundingMode: lbir.RoundingMode)
-      extends UniformQuantizationContextSSU(reluFn, roundingMode)
-
-  class UniformQuantizationComputeUSU(act: (SInt, SInt, Int) => UInt, roundingMode: lbir.RoundingMode)
-      extends QuantizationContext[UInt, SInt, SInt, SInt, UInt] {
+  object UniformQuantizationContextUSUReLU extends QuantizationContext[UInt, SInt, SInt, SInt, UInt] {
     override def mul = (i: UInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-    override def actFn = act
+    override def shiftAndRound: (SInt, UInt, Bool, lbir.RoundingMode) => SInt = shiftAndRoundSInt
+    override def actFn = reluFn
+    override def genI(bitwidth: Int) = UInt(bitwidth.W)
+    override def genW(bitwidth: Int) = SInt(bitwidth.W)
+    override def genM(bitwidth: Int) = SInt(bitwidth.W)
+    override def genA(bitwidth: Int) = SInt(bitwidth.W)
+    override def genO(bitwidth: Int) = UInt(bitwidth.W)
   }
 
-  class UniformQuantizationContextUSUReLU(roundingMode: lbir.RoundingMode)
-      extends UniformQuantizationComputeUSU(reluFn, roundingMode)
-
-  class UniformQuantizationContextSSS(act: (SInt, SInt, Int) => SInt, roundingMode: lbir.RoundingMode)
-      extends QuantizationContext[SInt, SInt, SInt, SInt, SInt] {
+  object UniformQuantizationContextSSSNoAct extends QuantizationContext[SInt, SInt, SInt, SInt, SInt] {
     override def mul = (i: SInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-    override def actFn = act
+    override def shiftAndRound: (SInt, UInt, Bool, lbir.RoundingMode) => SInt = shiftAndRoundSInt
+    override def actFn = (i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw)
+    override def genI(bitwidth: Int) = SInt(bitwidth.W)
+    override def genW(bitwidth: Int) = SInt(bitwidth.W)
+    override def genM(bitwidth: Int) = SInt(bitwidth.W)
+    override def genA(bitwidth: Int) = SInt(bitwidth.W)
+    override def genO(bitwidth: Int) = SInt(bitwidth.W)
   }
 
-  class UniformQuantizationContextSSSNoAct(roundingMode: lbir.RoundingMode)
-      extends UniformQuantizationContextSSS((i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw), roundingMode)
-
-  class UniformQuantizationContextUSS(act: (SInt, SInt, Int) => SInt, roundingMode: lbir.RoundingMode)
-      extends QuantizationContext[UInt, SInt, SInt, SInt, SInt] {
+  object UniformQuantizationContextUSSNoAct extends QuantizationContext[UInt, SInt, SInt, SInt, SInt] {
     override def mul = (i: UInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-    override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-    override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-    override def actFn = act
+    override def shiftAndRound: (SInt, UInt, Bool, lbir.RoundingMode) => SInt = shiftAndRoundSInt
+    override def actFn = (i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw)
+    override def genI(bitwidth: Int) = UInt(bitwidth.W)
+    override def genW(bitwidth: Int) = SInt(bitwidth.W)
+    override def genM(bitwidth: Int) = SInt(bitwidth.W)
+    override def genA(bitwidth: Int) = SInt(bitwidth.W)
+    override def genO(bitwidth: Int) = SInt(bitwidth.W)
   }
-
-  class UniformQuantizationContextUSSNoAct(roundingMode: lbir.RoundingMode)
-      extends UniformQuantizationContextUSS((i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw), roundingMode)
 
 }

@@ -22,6 +22,7 @@ import chisel3._
 import lbir.RoundingMode.ROUND_UP
 import lbir.RoundingMode.ROUND_HALF_TO_EVEN
 import lbir.RoundingMode.ROUND_NONE
+import lbir.RoundingMode.ROUND_DOWN
 
 package object util {
   val logger = LoggerFactory.getLogger("chisel4ml.util.")
@@ -60,14 +61,27 @@ package object util {
     Mux(x > max, max, Mux(x < min, min, x))
   }
 
-  def shiftAndRoundSIntDynamic(roundingMode: lbir.RoundingMode): (SInt, UInt, Bool) => SInt = roundingMode match {
-    case ROUND_UP           => shiftAndRoundSIntUp
-    case ROUND_HALF_TO_EVEN => shiftAndRoundSIntDynamicHalfToEven
-    case ROUND_NONE         => (x: SInt, s: UInt, b: Bool) => x
-    case _                  => throw new NotImplementedError
+  def shiftAndRoundSInt(pAct: SInt, shift: UInt, shiftLeft: Bool, roundingMode: lbir.RoundingMode): SInt = {
+    if (shift.isLit) {
+      require(shiftLeft.isLit)
+      val mulf = if (shiftLeft.litValue == BigInt(1)) 1 else -1
+      roundingMode match {
+        case ROUND_UP           => shiftAndRoundSIntStaticUp(pAct, shift.litValue.toInt * mulf)
+        case ROUND_HALF_TO_EVEN => shiftAndRoundSIntStaticHalfToEven(pAct, shift.litValue.toInt * mulf)
+        case ROUND_NONE         => pAct
+        case _                  => throw new NotImplementedError
+      }
+    } else {
+      roundingMode match {
+        case ROUND_UP           => shiftAndRoundSIntDynamicUp(pAct, shift, shiftLeft)
+        case ROUND_HALF_TO_EVEN => shiftAndRoundSIntDynamicHalfToEven(pAct, shift, shiftLeft)
+        case ROUND_NONE         => pAct
+        case _                  => throw new NotImplementedError
+      }
+    }
   }
 
-  def shiftAndRoundSIntUp(pAct: SInt, shift: UInt, shiftLeft: Bool): SInt = {
+  def shiftAndRoundSIntDynamicUp(pAct: SInt, shift: UInt, shiftLeft: Bool): SInt = {
     val sout = Wire(SInt(pAct.getWidth.W))
     when(shiftLeft) {
       sout := (pAct << shift)
@@ -103,13 +117,6 @@ package object util {
       sout := shifted + carry.asUInt.zext
     }
     sout
-  }
-
-  def shiftAndRoundSIntStatic(roundingMode: lbir.RoundingMode): (SInt, Int) => SInt = roundingMode match {
-    case ROUND_UP           => shiftAndRoundSIntStaticUp
-    case ROUND_HALF_TO_EVEN => shiftAndRoundSIntStaticHalfToEven
-    case ROUND_NONE         => (x: SInt, s: Int) => x
-    case _                  => throw new NotImplementedError
   }
 
   def shiftAndRoundSIntStaticUp(pAct: SInt, shift: Int): SInt = shift.compare(0) match {
@@ -163,7 +170,17 @@ package object util {
       }
   }
 
-  def shiftAndRoundUInt(pAct: UInt, shift: UInt, shiftLeft: Bool): UInt = {
+  def shiftAndRoundUInt(pAct: UInt, shift: UInt, shiftLeft: Bool, roundingMode: lbir.RoundingMode): UInt = {
+    if (shift.isLit) {
+      require(shiftLeft.isLit)
+      val mulf = if (shiftLeft.litValue == BigInt(1)) 1 else -1
+      shiftAndRoundUIntStatic(pAct, shift.litValue.toInt * mulf)
+    } else {
+      shiftAndRoundUIntDynamic(pAct, shift, shiftLeft)
+    }
+  }
+
+  def shiftAndRoundUIntDynamic(pAct: UInt, shift: UInt, shiftLeft: Bool): UInt = {
     val sout = Wire(UInt(pAct.getWidth.W))
     when(shiftLeft) {
       sout := (pAct << shift)
