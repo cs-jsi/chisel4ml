@@ -47,7 +47,7 @@ trait HasSequentialConvParameters extends HasLBIRStreamParameters[Conv2DConfig] 
   override val cfg = p(Conv2DConfigField)
 }
 
-class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
+class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
   qc: QuantizationContext[I, W, M, A, O]
 )(
   implicit val p: Parameters)
@@ -86,14 +86,6 @@ object ProcessingElementSequentialConv {
       case LBIRNumBeatsIn    => 4
       case LBIRNumBeatsOut   => 4
     })
-    (cfg.input.dtype.quantization, cfg.input.dtype.signed, cfg.kernel.dtype.quantization, cfg.activation) match {
-      case (UNIFORM, true, UNIFORM, RELU)  => new ProcessingElementSequentialConv(UniformQuantizationContextSSUReLU)
-      case (UNIFORM, false, UNIFORM, RELU) => new ProcessingElementSequentialConv(UniformQuantizationContextUSUReLU)
-      case (UNIFORM, true, UNIFORM, NO_ACTIVATION) =>
-        new ProcessingElementSequentialConv(UniformQuantizationContextSSSNoAct)
-      case (UNIFORM, false, UNIFORM, NO_ACTIVATION) =>
-        new ProcessingElementSequentialConv(UniformQuantizationContextUSSNoAct)
-      case _ => throw new RuntimeException()
-    }
+    new ProcessingElementSequentialConv(LayerGenerator.layerToQC(cfg))
   }
 }

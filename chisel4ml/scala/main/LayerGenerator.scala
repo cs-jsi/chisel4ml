@@ -18,9 +18,15 @@ package chisel4ml
 import chisel4ml.{HasLBIRStream, LBIRNumBeatsIn, LBIRNumBeatsOut}
 import chisel4ml.conv2d.ProcessingElementSequentialConv
 import chisel4ml.{MaxPool2D, MaxPool2DConfigField}
+import chisel4ml.quantization._
 import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
 import chisel3._
 import org.chipsalliance.cde.config.{Config, Parameters}
+import lbir.Activation._
+import lbir.Datatype.QuantizationType._
+import lbir._
+import chisel4ml.quantization.QuantizationContext
+import org.apache.commons.lang3.NotImplementedException
 
 object LayerGenerator {
   def apply(layerWrap: LayerWrap): Module with HasLBIRStream[Vec[UInt]] = {
@@ -52,5 +58,20 @@ object LayerGenerator {
       case _ => throw new RuntimeException(f"Unsupported layer type: $layerWrap")
     }
 
+  }
+
+  def layerToQC(
+    l: LayerWrap with IsActiveLayer
+  ): QuantizationContext[_ <: Bits, _ <: Bits, _ <: Bits, _ <: Bits, _ <: Bits] = {
+    (l.input.dtype.quantization, l.input.dtype.signed, l.kernel.dtype.quantization, l.activation) match {
+      case (UNIFORM, true, UNIFORM, RELU)           => UniformQuantizationContextSSUReLU
+      case (UNIFORM, true, UNIFORM, NO_ACTIVATION)  => UniformQuantizationContextSSSNoAct
+      case (UNIFORM, false, UNIFORM, RELU)          => UniformQuantizationContextUSUReLU
+      case (UNIFORM, false, UNIFORM, NO_ACTIVATION) => UniformQuantizationContextUSSNoAct
+      case (UNIFORM, true, BINARY, BINARY_SIGN)     => BinaryQuantizationContextSInt
+      case (UNIFORM, false, BINARY, BINARY_SIGN)    => BinaryQuantizationContextUInt
+      case (BINARY, _, BINARY, BINARY_SIGN)         => BinarizedQuantizationContext
+      case _                                        => throw new RuntimeException()
+    }
   }
 }

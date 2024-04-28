@@ -18,6 +18,9 @@ package chisel4ml
 import chisel3._
 import chisel3.util._
 import chisel4ml.util._
+import spire.algebra.Ring
+import spire.implicits._
+import dsptools.numbers._
 
 package quantization {
   trait QuantizationContext[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits] extends Any {
@@ -30,6 +33,7 @@ package quantization {
     def genM(bitwidth: Int): M
     def genA(bitwidth: Int): A
     def genO(bitwidth: Int): O
+    def ringA: Ring[A]
   }
 
   object BinarizedQuantizationContext extends QuantizationContext[Bool, Bool, Bool, UInt, Bool] {
@@ -43,13 +47,14 @@ package quantization {
     override def genA(bitwidth: Int) = UInt(bitwidth.W)
     override def genO(bitwidth: Int) = Bool()
 
+    override def ringA = implicitly[Ring[UInt]]
   }
 
   trait HasRoundingMode {
     val roundingMode: lbir.RoundingMode
   }
 
-  object BinaryQuantizationContext extends QuantizationContext[UInt, Bool, SInt, SInt, Bool] {
+  object BinaryQuantizationContextUInt extends QuantizationContext[UInt, Bool, SInt, SInt, Bool] {
     override def mul = (i: UInt, w: Bool) => Mux(w, i.zext, -(i.zext))
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def shiftAndRound: (SInt, UInt, Bool, lbir.RoundingMode) => SInt = shiftAndRoundSInt
@@ -59,6 +64,8 @@ package quantization {
     override def genM(bitwidth: Int) = SInt(bitwidth.W)
     override def genA(bitwidth: Int) = SInt(bitwidth.W)
     override def genO(bitwidth: Int) = Bool()
+
+    override def ringA = implicitly[Ring[SInt]]
   }
 
   object BinaryQuantizationContextSInt extends QuantizationContext[SInt, Bool, SInt, SInt, Bool] {
@@ -71,6 +78,8 @@ package quantization {
     override def genM(bitwidth: Int) = SInt(bitwidth.W)
     override def genA(bitwidth: Int) = SInt(bitwidth.W)
     override def genO(bitwidth: Int) = Bool()
+
+    override def ringA = implicitly[Ring[SInt]]
   }
 
   // implementiraj s dsptools?
@@ -84,6 +93,8 @@ package quantization {
     override def genM(bitwidth: Int) = SInt(bitwidth.W)
     override def genA(bitwidth: Int) = SInt(bitwidth.W)
     override def genO(bitwidth: Int) = UInt(bitwidth.W)
+
+    override def ringA = implicitly[Ring[SInt]]
   }
 
   object UniformQuantizationContextUSUReLU extends QuantizationContext[UInt, SInt, SInt, SInt, UInt] {
@@ -96,6 +107,8 @@ package quantization {
     override def genM(bitwidth: Int) = SInt(bitwidth.W)
     override def genA(bitwidth: Int) = SInt(bitwidth.W)
     override def genO(bitwidth: Int) = UInt(bitwidth.W)
+
+    override def ringA = implicitly[Ring[SInt]]
   }
 
   object UniformQuantizationContextSSSNoAct extends QuantizationContext[SInt, SInt, SInt, SInt, SInt] {
@@ -108,6 +121,8 @@ package quantization {
     override def genM(bitwidth: Int) = SInt(bitwidth.W)
     override def genA(bitwidth: Int) = SInt(bitwidth.W)
     override def genO(bitwidth: Int) = SInt(bitwidth.W)
+
+    override def ringA = implicitly[Ring[SInt]]
   }
 
   object UniformQuantizationContextUSSNoAct extends QuantizationContext[UInt, SInt, SInt, SInt, SInt] {
@@ -120,6 +135,8 @@ package quantization {
     override def genM(bitwidth: Int) = SInt(bitwidth.W)
     override def genA(bitwidth: Int) = SInt(bitwidth.W)
     override def genO(bitwidth: Int) = SInt(bitwidth.W)
+
+    override def ringA = implicitly[Ring[SInt]]
   }
 
 }

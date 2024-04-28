@@ -26,24 +26,12 @@ import spire.implicits._
 import dsptools.numbers._
 
 object ProcessingElementSimple {
-  def apply(layer: DenseConfig) = (
-    layer.input.dtype.quantization,
-    layer.input.dtype.signed,
-    layer.kernel.dtype.quantization,
-    layer.output.dtype.signed
-  ) match {
-    case (UNIFORM, true, UNIFORM, false)  => new ProcessingElementSimple(layer)(UniformQuantizationContextSSUReLU)
-    case (UNIFORM, false, UNIFORM, false) => new ProcessingElementSimple(layer)(UniformQuantizationContextUSUReLU)
-    case (UNIFORM, true, UNIFORM, true)   => new ProcessingElementSimple(layer)(UniformQuantizationContextSSSNoAct)
-    case (UNIFORM, false, UNIFORM, true)  => new ProcessingElementSimple(layer)(UniformQuantizationContextUSSNoAct)
-    case (UNIFORM, false, BINARY, true)   => new ProcessingElementSimple(layer)(BinaryQuantizationContext)
-    case (UNIFORM, true, BINARY, true)    => new ProcessingElementSimple(layer)(BinaryQuantizationContextSInt)
-    case (BINARY, _, BINARY, true)        => new ProcessingElementSimple(layer)(BinarizedQuantizationContext)
-    case _                                => throw new RuntimeException()
+  def apply(layer: DenseConfig) = {
+    new ProcessingElementSimple(layer)(LayerGenerator.layerToQC(layer))
   }
 }
 
-class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
+class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
   layer: DenseConfig
 )(qc:    QuantizationContext[I, W, M, A, O])
     extends Module

@@ -24,7 +24,7 @@ import spire.algebra.Ring
 import spire.implicits._
 
 object Neuron {
-  def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
+  def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
     in:             Seq[I],
     weights:        Seq[W],
     thresh:         A,
@@ -41,7 +41,7 @@ object Neuron {
 }
 
 object NeuronWithBias {
-  def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
+  def apply[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
     in:             Seq[I],
     weights:        Seq[W],
     thresh:         A,
@@ -53,9 +53,9 @@ object NeuronWithBias {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
     require(shift <= 0)
     val threshAdjusted = (thresh << shift.abs).asSInt.asInstanceOf[A]
-    val pAct = qc.add(muls) - threshAdjusted
+    val pAct = qc.ringA.minus(qc.add(muls), threshAdjusted)
     val sAct = qc.shiftAndRound(pAct, shift.abs.U, (shift > 0).B, roundingMode)
-    qc.actFn(sAct, Ring[A].zero, outputBitwidth)
+    qc.actFn(sAct, qc.ringA.zero, outputBitwidth)
   }
 }
 
@@ -76,7 +76,7 @@ object NeuronWithoutBias {
   }
 }
 
-class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
+class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
   l:  lbir.Conv2DConfig,
   qc: QuantizationContext[I, W, M, A, O])
     extends Module {
@@ -93,14 +93,14 @@ class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits]
   val maxBits: Int = log2Up(l.thresh.values.map(_.abs).max.toInt) + l.kernel.dtype.shift.map(_.abs).max.toInt + 1
   val threshAdjusted =
     (io.weights.bits.threshShift.thresh << io.weights.bits.threshShift.shift)(maxBits - 1, 0).zext.asInstanceOf[A]
-  val pAct = qc.add(muls) - threshAdjusted
+  val pAct = qc.ringA.minus(qc.add(muls), threshAdjusted)
   val sAct = qc.shiftAndRound(
     pAct,
     io.weights.bits.threshShift.shift,
     io.weights.bits.threshShift.shiftLeft,
     l.roundingMode
   )
-  io.out.bits := qc.actFn(sAct, Ring[A].zero, l.output.dtype.bitwidth)
+  io.out.bits := qc.actFn(sAct, qc.ringA.zero, l.output.dtype.bitwidth)
 
   io.out.valid := io.in.valid && io.weights.valid
   io.in.ready := io.out.ready && io.weights.valid
