@@ -32,7 +32,8 @@ object Neuron {
     outputBitwidth: Int,
     useThresh:      Boolean,
     roundingMode:   lbir.RoundingMode
-  )(qc:             QuantizationContext[I, W, M, A, O]
+  )(
+    implicit qc: QuantizationContext[I, W, M, A, O]
   ): O = if (useThresh) {
     NeuronWithBias[I, W, M, A, O](in, weights, thresh, shift, outputBitwidth, roundingMode)(qc)
   } else {
@@ -48,7 +49,8 @@ object NeuronWithBias {
     shift:          Int,
     outputBitwidth: Int,
     roundingMode:   lbir.RoundingMode
-  )(qc:             QuantizationContext[I, W, M, A, O]
+  )(
+    implicit qc: QuantizationContext[I, W, M, A, O]
   ): O = {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
     require(shift <= 0)
@@ -67,7 +69,8 @@ object NeuronWithoutBias {
     shift:          Int,
     outputBitwidth: Int,
     roundingMode:   lbir.RoundingMode
-  )(qc:             QuantizationContext[I, W, M, A, O]
+  )(
+    implicit qc: QuantizationContext[I, W, M, A, O]
   ): O = {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
     val pAct = qc.add(muls)
@@ -77,8 +80,9 @@ object NeuronWithoutBias {
 }
 
 class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
-  l:  lbir.Conv2DConfig,
-  qc: QuantizationContext[I, W, M, A, O])
+  l: lbir.Conv2DConfig
+)(
+  implicit qc: QuantizationContext[I, W, M, A, O])
     extends Module {
   val io = IO(new Bundle {
     val in = Flipped(Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[I])))

@@ -48,9 +48,8 @@ trait HasSequentialConvParameters extends HasLBIRStreamParameters[Conv2DConfig] 
 }
 
 class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits, O <: Bits](
-  qc: QuantizationContext[I, W, M, A, O]
-)(
-  implicit val p: Parameters)
+  implicit val p:  Parameters,
+  implicit val qc: QuantizationContext[I, W, M, A, O])
     extends Module
     with HasLBIRStream[Vec[UInt]]
     with HasLBIRStreamParameters[Conv2DConfig]
@@ -63,7 +62,7 @@ class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits
   val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
   val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
 
-  val dynamicNeuron = Module(new DynamicNeuron[I, W, M, A, O](cfg, qc))
+  val dynamicNeuron = Module(new DynamicNeuron[I, W, M, A, O](cfg))
   val ctrl = Module(new PeSeqConvController(cfg))
   val kernelSubsystem = Module(new KernelSubsystem[W, A](cfg))
   val inputSubsytem = Module(new InputActivationsSubsystem[I])
@@ -86,6 +85,7 @@ object ProcessingElementSequentialConv {
       case LBIRNumBeatsIn    => 4
       case LBIRNumBeatsOut   => 4
     })
-    new ProcessingElementSequentialConv(LayerGenerator.layerToQC(cfg))
+    implicit val qc = LayerGenerator.layerToQC(cfg)
+    new ProcessingElementSequentialConv
   }
 }
