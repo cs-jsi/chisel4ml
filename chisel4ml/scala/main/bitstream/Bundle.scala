@@ -12,6 +12,6 @@ import chisel3.util._
   * @param params Parameters of the bundle.
   */
 class BSBundle[T <: Bits](val params: BSBundleParameters[T])
-    extends ReadyValidIO[Vec[T]](Vec(params.numBeats.get, params.genT)) {
+    extends ReadyValidIO[Vec[T]](Vec(params.numBeats, params.genT)) {
   val last = Output(Bool())
 }

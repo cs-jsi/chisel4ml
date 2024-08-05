@@ -1,17 +1,25 @@
 package chisel4ml.bitstream
 
 import chisel3.Bits
+import lbir.QTensor
 
 case class BSBundleParameters[T <: Bits](
   genT:     T,
-  numBeats: Option[Int])
+  numBeats: Int)
 
 case class BSMasterParameters[T <: Bits](
-  bundleParams: BSBundleParameters[T])
+  tensor:   QTensor,
+  genT:     T,
+  numBeats: Option[Int])
 
 case class BSSlaveParameters[T <: Bits](
-  bundleParams: BSBundleParameters[T])
+  tensor:   QTensor,
+  genT:     T,
+  numBeats: Option[Int])
 
 case class BSEdgeParameters[T <: Bits](
-  master: BSMasterParameters[T],
-  slave:  BSSlaveParameters[T])
+  tensor:   QTensor,
+  genT:     T,
+  numBeats: Int) {
+  val totalWidth = genT.getWidth * numBeats
+}

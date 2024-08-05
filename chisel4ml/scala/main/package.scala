@@ -192,6 +192,10 @@ package object implicits {
       val paramsPerTrans = paramsPerWord(busWidth)
       math.ceil(numParams.toFloat / paramsPerTrans.toFloat).toInt
     }
+    def numBSTransactions(numBeats: Int): Int = {
+      require(numBeats > 0)
+      math.ceil(numParams.toFloat / numBeats.toFloat).toInt
+    }
   }
 
   implicit class SeqBigIntExtensions(x: Seq[BigInt]) {

@@ -8,17 +8,24 @@ import chisel3.experimental.SourceInfo
 class BSImp[T <: Bits]
     extends SimpleNodeImp[BSMasterParameters[T], BSSlaveParameters[T], BSEdgeParameters[T], BSBundle[T]] {
   def edge(pd: BSMasterParameters[T], pu: BSSlaveParameters[T], p: Parameters, sourceInfo: SourceInfo) = {
-    require(pd.bundleParams.genT.getClass == pu.bundleParams.genT.getClass)
-    require(pd.bundleParams.genT.getWidth == pu.bundleParams.genT.getWidth)
-    require(pd.bundleParams.numBeats.isDefined || pu.bundleParams.numBeats.isDefined)
-    BSEdgeParameters[T](pd, pu)
+    require(pd.numBeats.isDefined || pu.numBeats.isDefined)
+    require(pd.genT.getClass() == pu.genT.getClass())
+    require(pd.genT.getWidth == pu.genT.getWidth)
+    // require(pd.tensor == pu.tensor)
+    val numBeats = if (pd.numBeats.isDefined) pd.numBeats.get else pu.numBeats.get
+    BSEdgeParameters(pd.tensor, pd.genT, numBeats)
   }
 
-  def bundle(e: BSEdgeParameters[T]) = new BSBundle[T](e.master.bundleParams)
+  def bundle(e: BSEdgeParameters[T]) = new BSBundle[T](
+    BSBundleParameters[T](
+      e.genT,
+      e.numBeats
+    )
+  )
 
   def render(e: BSEdgeParameters[T]) = {
-    val nb = e.master.bundleParams.numBeats
-    val gt = e.master.bundleParams.genT.toString()
+    val nb = e.numBeats
+    val gt = e.genT.toString()
     RenderedEdge(colour = "#0011cc", s"bitstream(numBeats=$nb, genT=$gt)")
   }
 }
