@@ -28,8 +28,11 @@ class WeightQuantToQTensor(Transformation):
     def apply(self, model: ModelWrapper):
         model_changed = False
         for node in model.graph.node:
-            # Quant nodes without predecessors are weight nodes
-            if node.op_type == "Quant" and model.find_direct_predecessors(node) is None:
+            # We search for quant nodes with an initialized input[0] (weights)
+            if (
+                node.op_type == "Quant"
+                and model.get_initializer(node.input[0]) is not None
+            ):
                 weight_init, scale_init, zp_init, bw_init = (
                     node.input[0],
                     node.input[1],
@@ -40,8 +43,10 @@ class WeightQuantToQTensor(Transformation):
                 shift = _scale_to_shift(
                     np.atleast_1d(model.get_initializer(scale_init))
                 )
-                offset = np.atleast_1d(model.get_initializer(zp_init)).tolist()
-                bitwidth = model.get_initializer(bw_init).item()
+                offset = (
+                    np.atleast_1d(model.get_initializer(zp_init)).astype(int).tolist()
+                )
+                bitwidth = int(model.get_initializer(bw_init).item())
                 qt = QTensor(
                     dtype=LBIRDatatype(
                         quantization=LBIRDatatype.QuantizationType.UNIFORM,
@@ -94,10 +99,7 @@ class QuantToQTensor(Transformation):
         model_changed = False
         for node in model.graph.node:
             # Quant nodes without predecessors are weight nodes
-            if (
-                node.op_type == "Quant"
-                and model.find_direct_predecessors(node) is not None
-            ):
+            if node.op_type == "Quant" and model.get_initializer(node.input[0]) is None:
                 scale_init, zp_init, bw_init = (
                     node.input[1],
                     node.input[2],
@@ -106,8 +108,10 @@ class QuantToQTensor(Transformation):
                 shift = _scale_to_shift(
                     np.atleast_1d(model.get_initializer(scale_init))
                 )
-                offset = np.atleast_1d(model.get_initializer(zp_init)).tolist()
-                bitwidth = model.get_initializer(bw_init).item()
+                offset = (
+                    np.atleast_1d(model.get_initializer(zp_init)).astype(int).tolist()
+                )
+                bitwidth = int(model.get_initializer(bw_init).item())
                 qt = QTensor(
                     dtype=LBIRDatatype(
                         quantization=LBIRDatatype.QuantizationType.UNIFORM,
