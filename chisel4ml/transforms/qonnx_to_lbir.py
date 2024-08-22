@@ -20,9 +20,9 @@ class QONNXToLBIR(Transformation):
         return model, False
 
 
-class QuantToQTensor(Transformation):
+class WeightQuantToQTensor(Transformation):
     """
-    Transforms the Quant nodes to LBIR QTensor.
+    Transforms the Quant nodes with weights to LBIR QTensor.
     """
 
     def apply(self, model: ModelWrapper):
@@ -80,7 +80,59 @@ class QuantToQTensor(Transformation):
                     values=qt.values,
                 )
                 model.graph.node.extend([new_node])
+                model_changed = True
+                break
+        return model, model_changed
 
+
+class QuantToQTensor(Transformation):
+    """
+    Transforms the other Quant nodes to LBIR QTensors.
+    """
+
+    def apply(self, model: ModelWrapper):
+        model_changed = False
+        for node in model.graph.node:
+            # Quant nodes without predecessors are weight nodes
+            if (
+                node.op_type == "Quant"
+                and model.find_direct_predecessors(node) is not None
+            ):
+                scale_init, zp_init, bw_init = (
+                    node.input[1],
+                    node.input[2],
+                    node.input[3],
+                )
+                shift = _scale_to_shift(
+                    np.atleast_1d(model.get_initializer(scale_init))
+                )
+                offset = np.atleast_1d(model.get_initializer(zp_init)).tolist()
+                bitwidth = model.get_initializer(bw_init).item()
+                qt = QTensor(
+                    dtype=LBIRDatatype(
+                        quantization=LBIRDatatype.QuantizationType.UNIFORM,
+                        signed=node.attribute[2].i == 1,
+                        bitwidth=bitwidth,
+                        shift=shift,
+                        offset=offset,
+                    ),
+                    shape=model.get_tensor_shape(node.input[0]),
+                )
+                model.graph.node.remove(node)
+                new_node = onnx.helper.make_node(
+                    op_type="QTensor",
+                    inputs=[node.input[0]],
+                    outputs=node.output,
+                    domain="chisel4ml",
+                    qtensor=qt.SerializeToString(),
+                    quantization=quantization_to_string[qt.dtype.quantization],
+                    signed=qt.dtype.signed,
+                    bitwidth=qt.dtype.bitwidth,
+                    shift=qt.dtype.shift,
+                    offset=qt.dtype.offset,
+                    shape=qt.shape,
+                )
+                model.graph.node.extend([new_node])
                 model_changed = True
                 break
         return model, model_changed

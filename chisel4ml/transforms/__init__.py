@@ -16,7 +16,11 @@ import importlib
 
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from typing import List
-from chisel4ml.transforms.qonnx_to_lbir import QONNXToLBIR, QuantToQTensor  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import (  # noqa: F401
+    QONNXToLBIR,
+    WeightQuantToQTensor,
+    QuantToQTensor,
+)
 
 qkeras_trans_list: List[QKerasTransform] = list()
 

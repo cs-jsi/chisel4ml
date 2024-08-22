@@ -20,6 +20,7 @@ from qonnx.transformation.remove import RemoveIdentityOps
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import QONNXToLBIR
 from chisel4ml.transforms import QuantToQTensor
+from chisel4ml.transforms import WeightQuantToQTensor
 
 DEFAULT_TRANSFORMS = [
     DoubleToSingleFloat(),
@@ -49,6 +50,7 @@ def qkeras_to_lbir(
     for trans in transforms:
         modelwrap = modelwrap.transform(trans)
 
+    modelwrap = modelwrap.transform(WeightQuantToQTensor())
     modelwrap = modelwrap.transform(QuantToQTensor())
     modelwrap = modelwrap.transform(QONNXToLBIR())
     onnx.save(modelwrap.model, "test_transform5.onnx")
