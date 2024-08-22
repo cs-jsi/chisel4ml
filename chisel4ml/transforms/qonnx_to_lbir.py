@@ -50,15 +50,27 @@ class QuantToQTensor(Transformation):
                     shape=weights.shape,
                     values=weights.flatten().tolist(),
                 )
+
+                successor = model.find_direct_successors(node)
+                assert len(successor) == 1
+                # This node is (most likely) here becuase it was inserted when
+                # converting from QKeras to qonnx (see QONNX converter). If this is not
+                # a case, then this function will incorrectly delete this operation.
+                if successor[0].op_type == "Mul":
+                    outputs = successor[0].output
+                    model.graph.node.remove(successor[0])
+                else:
+                    outputs = node.output
+                model.graph.node.remove(node)
                 new_node = onnx.helper.make_node(
                     op_type="QTensor",
                     inputs=[],
-                    outputs=node.output,
+                    outputs=outputs,
                     domain="chisel4ml",
                     qtensor=qt.SerializeToString(),
                 )
                 model.graph.node.extend([new_node])
-                model.graph.node.remove(node)
+
                 model_changed = True
                 break
         return model, model_changed
