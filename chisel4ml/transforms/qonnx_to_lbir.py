@@ -7,6 +7,9 @@ from chisel4ml.lbir.datatype_pb2 import Datatype as LBIRDatatype
 from chisel4ml.lbir.qtensor_pb2 import QTensor
 
 
+quantization_to_string = {0: "UNIFORM", 1: "BINARY"}
+
+
 class QONNXToLBIR(Transformation):
     """
     Transforms the QONNX nodes to LBIR nodes.
@@ -68,6 +71,13 @@ class QuantToQTensor(Transformation):
                     outputs=outputs,
                     domain="chisel4ml",
                     qtensor=qt.SerializeToString(),
+                    quantization=quantization_to_string[qt.dtype.quantization],
+                    signed=qt.dtype.signed,
+                    bitwidth=qt.dtype.bitwidth,
+                    shift=qt.dtype.shift,
+                    offset=qt.dtype.offset,
+                    shape=qt.shape,
+                    values=qt.values,
                 )
                 model.graph.node.extend([new_node])
 
