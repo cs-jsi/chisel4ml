@@ -24,6 +24,7 @@
 
  message QTensor {
    option (scalapb.message).no_box = true;  // do not wrap in Option
+
    /* Describes datatype of the tensor. I.e. signedness, scalling, bitwidth, etc.    */
    Datatype dtype = 1;
 
@@ -44,4 +45,6 @@
       implementation values can be different (1,0).
    */
    repeated float values = 3;
+
+   string rounding_mode = 4;
  }

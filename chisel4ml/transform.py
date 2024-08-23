@@ -18,6 +18,7 @@ from qonnx.transformation.infer_data_layouts import InferDataLayouts
 from qonnx.transformation.remove import RemoveIdentityOps
 
 import chisel4ml.lbir.lbir_pb2 as lbir
+from chisel4ml.transforms import BiasToQTensor
 from chisel4ml.transforms import QONNXToLBIR
 from chisel4ml.transforms import QuantToQTensor
 from chisel4ml.transforms import WeightQuantToQTensor
@@ -52,5 +53,6 @@ def qkeras_to_lbir(
 
     modelwrap = modelwrap.transform(WeightQuantToQTensor())
     modelwrap = modelwrap.transform(QuantToQTensor())
+    modelwrap = modelwrap.transform(BiasToQTensor())
     modelwrap = modelwrap.transform(QONNXToLBIR())
     onnx.save(modelwrap.model, "test_transform5.onnx")
