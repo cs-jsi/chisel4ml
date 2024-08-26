@@ -89,19 +89,19 @@ object ProcessingElementSequentialConv {
     (cfg.input.dtype.quantization, cfg.input.dtype.signed, cfg.kernel.dtype.quantization, cfg.activation) match {
       case (UNIFORM, true, UNIFORM, RELU) =>
         new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, UInt](
-          new UniformQuantizationContextSSUReLU(cfg.roundingMode)
+          new UniformQuantizationContextSSUReLU(cfg.output.roundingMode)
         )
       case (UNIFORM, false, UNIFORM, RELU) =>
         new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, UInt](
-          new UniformQuantizationContextUSUReLU(cfg.roundingMode)
+          new UniformQuantizationContextUSUReLU(cfg.output.roundingMode)
         )
       case (UNIFORM, true, UNIFORM, NO_ACTIVATION) =>
         new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt](
-          new UniformQuantizationContextSSSNoAct(cfg.roundingMode)
+          new UniformQuantizationContextSSSNoAct(cfg.output.roundingMode)
         )
       case (UNIFORM, false, UNIFORM, NO_ACTIVATION) =>
         new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt](
-          new UniformQuantizationContextUSSNoAct(cfg.roundingMode)
+          new UniformQuantizationContextUSSNoAct(cfg.output.roundingMode)
         )
       case _ => throw new RuntimeException()
     }

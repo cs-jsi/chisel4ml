@@ -46,5 +46,6 @@
    */
    repeated float values = 3;
 
+   // Ronding mode string with names and functionality equivalent to the QONNX rounding modes.
    string rounding_mode = 4;
  }

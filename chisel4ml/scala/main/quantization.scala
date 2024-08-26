@@ -36,8 +36,7 @@ package quantization {
     override def actFn:                (UInt, UInt, Int) => Bool = signFnU
   }
 
-  class BinaryQuantizationContext(roundingMode: lbir.RoundingMode)
-      extends QuantizationContext[UInt, Bool, SInt, SInt, Bool] {
+  class BinaryQuantizationContext(roundingMode: String) extends QuantizationContext[UInt, Bool, SInt, SInt, Bool] {
     override def mul = (i: UInt, w: Bool) => Mux(w, i.zext, -(i.zext))
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
@@ -45,8 +44,7 @@ package quantization {
     override def actFn = signFnS
   }
 
-  class BinaryQuantizationContextSInt(roundingMode: lbir.RoundingMode)
-      extends QuantizationContext[SInt, Bool, SInt, SInt, Bool] {
+  class BinaryQuantizationContextSInt(roundingMode: String) extends QuantizationContext[SInt, Bool, SInt, SInt, Bool] {
     override def mul = (i: SInt, w: Bool) => Mux(w, i, -i)
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
@@ -55,7 +53,7 @@ package quantization {
   }
 
   // implementiraj s dsptools?
-  class UniformQuantizationContextSSU(act: (SInt, SInt, Int) => UInt, roundingMode: lbir.RoundingMode)
+  class UniformQuantizationContextSSU(act: (SInt, SInt, Int) => UInt, roundingMode: String)
       extends QuantizationContext[SInt, SInt, SInt, SInt, UInt] {
     override def mul = (i: SInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
@@ -64,10 +62,10 @@ package quantization {
     override def actFn = act
   }
 
-  class UniformQuantizationContextSSUReLU(roundingMode: lbir.RoundingMode)
+  class UniformQuantizationContextSSUReLU(roundingMode: String)
       extends UniformQuantizationContextSSU(reluFn, roundingMode)
 
-  class UniformQuantizationComputeUSU(act: (SInt, SInt, Int) => UInt, roundingMode: lbir.RoundingMode)
+  class UniformQuantizationComputeUSU(act: (SInt, SInt, Int) => UInt, roundingMode: String)
       extends QuantizationContext[UInt, SInt, SInt, SInt, UInt] {
     override def mul = (i: UInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
@@ -76,10 +74,10 @@ package quantization {
     override def actFn = act
   }
 
-  class UniformQuantizationContextUSUReLU(roundingMode: lbir.RoundingMode)
+  class UniformQuantizationContextUSUReLU(roundingMode: String)
       extends UniformQuantizationComputeUSU(reluFn, roundingMode)
 
-  class UniformQuantizationContextSSS(act: (SInt, SInt, Int) => SInt, roundingMode: lbir.RoundingMode)
+  class UniformQuantizationContextSSS(act: (SInt, SInt, Int) => SInt, roundingMode: String)
       extends QuantizationContext[SInt, SInt, SInt, SInt, SInt] {
     override def mul = (i: SInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
@@ -88,10 +86,10 @@ package quantization {
     override def actFn = act
   }
 
-  class UniformQuantizationContextSSSNoAct(roundingMode: lbir.RoundingMode)
+  class UniformQuantizationContextSSSNoAct(roundingMode: String)
       extends UniformQuantizationContextSSS((i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw), roundingMode)
 
-  class UniformQuantizationContextUSS(act: (SInt, SInt, Int) => SInt, roundingMode: lbir.RoundingMode)
+  class UniformQuantizationContextUSS(act: (SInt, SInt, Int) => SInt, roundingMode: String)
       extends QuantizationContext[UInt, SInt, SInt, SInt, SInt] {
     override def mul = (i: UInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
@@ -100,7 +98,7 @@ package quantization {
     override def actFn = act
   }
 
-  class UniformQuantizationContextUSSNoAct(roundingMode: lbir.RoundingMode)
+  class UniformQuantizationContextUSSNoAct(roundingMode: String)
       extends UniformQuantizationContextUSS((i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw), roundingMode)
 
 }

@@ -35,27 +35,27 @@ object ProcessingElementSimple {
   ) match {
     case (UNIFORM, true, UNIFORM, false) =>
       new ProcessingElementSimple[SInt, SInt, SInt, SInt, UInt](layer)(
-        new UniformQuantizationContextSSUReLU(layer.roundingMode)
+        new UniformQuantizationContextSSUReLU(layer.output.roundingMode)
       )
     case (UNIFORM, false, UNIFORM, false) =>
       new ProcessingElementSimple[UInt, SInt, SInt, SInt, UInt](layer)(
-        new UniformQuantizationContextUSUReLU(layer.roundingMode)
+        new UniformQuantizationContextUSUReLU(layer.output.roundingMode)
       )
     case (UNIFORM, true, UNIFORM, true) =>
       new ProcessingElementSimple[SInt, SInt, SInt, SInt, SInt](layer)(
-        new UniformQuantizationContextSSSNoAct(layer.roundingMode)
+        new UniformQuantizationContextSSSNoAct(layer.output.roundingMode)
       )
     case (UNIFORM, false, UNIFORM, true) =>
       new ProcessingElementSimple[UInt, SInt, SInt, SInt, SInt](layer)(
-        new UniformQuantizationContextUSSNoAct(layer.roundingMode)
+        new UniformQuantizationContextUSSNoAct(layer.output.roundingMode)
       )
     case (UNIFORM, false, BINARY, true) =>
       new ProcessingElementSimple[UInt, Bool, SInt, SInt, Bool](layer)(
-        new BinaryQuantizationContext(layer.roundingMode)
+        new BinaryQuantizationContext(layer.output.roundingMode)
       )
     case (UNIFORM, true, BINARY, true) =>
       new ProcessingElementSimple[SInt, Bool, SInt, SInt, Bool](layer)(
-        new BinaryQuantizationContextSInt(layer.roundingMode)
+        new BinaryQuantizationContextSInt(layer.output.roundingMode)
       )
     case (BINARY, _, BINARY, true) =>
       new ProcessingElementSimple[Bool, Bool, Bool, UInt, Bool](layer)(BinarizedQuantizationContext)

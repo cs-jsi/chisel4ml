@@ -107,10 +107,12 @@ def transform_matmul(model: ModelWrapper, node) -> bool:
         output_node = sucsuc[0]
         activation_node = None
 
+    thresh = QTensor.FromString(onnx.helper.get_node_attr_value(bias_node, "qtensor"))
+    new_vals = (-np.array(thresh.values)).tolist()  # Threshold is oposite of bias
+    del thresh.values[:]
+    thresh.values.extend(new_vals)
     densecfg = DenseConfig(
-        thresh=QTensor.FromString(
-            onnx.helper.get_node_attr_value(bias_node, "qtensor")
-        ),
+        thresh=thresh,
         kernel=QTensor.FromString(
             onnx.helper.get_node_attr_value(weights_node, "qtensor")
         ),
@@ -190,7 +192,7 @@ class WeightQuantToQTensor(Transformation):
                         shift=shift,
                         offset=offset,
                     ),
-                    shape=weights.shape,
+                    shape=weights.T.shape,  # transpose to get "right" shape for lbir
                     values=weights.flatten().tolist(),
                 )
 
@@ -255,7 +257,9 @@ class QuantToQTensor(Transformation):
                         shift=shift,
                         offset=offset,
                     ),
-                    shape=model.get_tensor_shape(node.input[0]),
+                    shape=model.get_tensor_shape(node.input[0])[
+                        1:
+                    ],  # we remove the batch dimension
                     rounding_mode=onnx.helper.get_node_attr_value(
                         node, "rounding_mode"
                     ),
@@ -354,4 +358,4 @@ def _numpy_to_bitwidth(np_arr) -> int:
 
 
 def _scale_to_shift(scale):
-    return (1 / scale).astype(int).tolist()
+    return np.log2(scale).astype(int).tolist()
