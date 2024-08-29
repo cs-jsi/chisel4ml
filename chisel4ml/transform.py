@@ -22,9 +22,9 @@ from qonnx.transformation.infer_data_layouts import InferDataLayouts
 from qonnx.transformation.remove import RemoveIdentityOps
 
 import chisel4ml.lbir.lbir_pb2 as lbir
-from chisel4ml.transforms import BiasToQTensor
 from chisel4ml.transforms import QONNXToLBIR
 from chisel4ml.transforms import QuantToQTensor
+from chisel4ml.transforms import UnquantizedBiasToQTensor
 from chisel4ml.transforms import WeightQuantToQTensor
 
 DEFAULT_QONNX_TRANSFORMS = [
@@ -37,7 +37,7 @@ DEFAULT_QONNX_TRANSFORMS = [
 QONNX_TO_QKERAS_TRANSFORMS = [
     WeightQuantToQTensor(),
     QuantToQTensor(),
-    BiasToQTensor(),
+    UnquantizedBiasToQTensor(),
     QONNXToLBIR(),
 ]
 
@@ -68,6 +68,11 @@ def qkeras_to_lbir(
                 f"DEBUG_{name}_{ind}_BEFORE_{type(trans).__name__}.onnx",
             )
         modelwrap = modelwrap.transform(trans)
+    if debug:
+        onnx.save(
+            modelwrap.model,
+            f"DEBUG_{name}_FINAL_.onnx",
+        )
 
     lbir_model = _uwrap_qonnx_to_lbir(modelwrap, name)
     return lbir_model

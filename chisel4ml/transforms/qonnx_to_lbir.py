@@ -12,7 +12,35 @@ from chisel4ml.lbir.lbir_pb2 import DenseConfig
 from chisel4ml.lbir.qtensor_pb2 import QTensor
 
 
-quantization_to_string = {0: "UNIFORM", 1: "BINARY"}
+_quant_to_string_dict = {0: "UNIFORM", 1: "BINARY"}
+_act_to_string_dict = {0: "BINARY_SIGN", 1: "RELU", 2: "NO_ACTIVATION"}
+
+
+def _qtensor_to_kwargs(qtensor: QTensor, key_prefix=""):
+    kwargs = dict()
+    kwargs[f"{key_prefix}quantization"] = _quant_to_string_dict[
+        qtensor.dtype.quantization
+    ]
+    kwargs[f"{key_prefix}signed"] = qtensor.dtype.signed
+    kwargs[f"{key_prefix}bitwidth"] = qtensor.dtype.bitwidth
+    kwargs[f"{key_prefix}shift"] = qtensor.dtype.shift
+    kwargs[f"{key_prefix}offset"] = qtensor.dtype.offset
+    kwargs[f"{key_prefix}shape"] = qtensor.shape
+    if len(qtensor.values) > 0:
+        kwargs[f"{key_prefix}values"] = qtensor.values
+    if qtensor.rounding_mode != "":
+        kwargs[f"{key_prefix}rounding_mode"] = qtensor.rounding_mode
+    return kwargs
+
+
+def _denseconfig_to_kwargs(layer: DenseConfig):
+    kwargs = dict()
+    kwargs.update(_qtensor_to_kwargs(layer.input, key_prefix="input_"))
+    kwargs.update(_qtensor_to_kwargs(layer.output, key_prefix="output_"))
+    kwargs.update(_qtensor_to_kwargs(layer.thresh, key_prefix="thresh_"))
+    kwargs.update(_qtensor_to_kwargs(layer.kernel, key_prefix="kernel_"))
+    kwargs["activation"] = _act_to_string_dict[layer.activation]
+    return kwargs
 
 
 def node_has_attr(node: NodeProto, attr: str) -> bool:
@@ -103,9 +131,12 @@ def transform_matmul(model: ModelWrapper, node) -> bool:
         activation_node = sucsuc[0]
     else:
         assert sucsuc[0].op_type == "QTensor"
-        activation = lbir.Activation.NO_ACTIVATION
         output_node = sucsuc[0]
         activation_node = None
+        if onnx.helper.get_node_attr_value(output_node, "quantization") == b"BINARY":
+            activation = lbir.Activation.BINARY_SIGN
+        else:
+            activation = lbir.Activation.NO_ACTIVATION
 
     thresh = QTensor.FromString(onnx.helper.get_node_attr_value(bias_node, "qtensor"))
     new_vals = (-np.array(thresh.values)).tolist()  # Threshold is oposite of bias
@@ -128,12 +159,14 @@ def transform_matmul(model: ModelWrapper, node) -> bool:
         model.graph.node.remove(input_node)
     if activation_node is not None:
         model.graph.node.remove(activation_node)
+    kwargs = _denseconfig_to_kwargs(densecfg)
     new_node = onnx.helper.make_node(
         op_type="QDense",
         inputs=inputs,
         outputs=output_node.output,
         domain="chisel4ml",
         qdense=densecfg.SerializeToString(),
+        **kwargs,
     )
     model.graph.node.extend([new_node])
     model_changed = True
@@ -167,27 +200,45 @@ class WeightQuantToQTensor(Transformation):
         for node in model.graph.node:
             # We search for quant nodes with an initialized input[0] (weights)
             if (
-                node.op_type == "Quant"
+                node.op_type in ("Quant", "BipolarQuant")
                 and model.get_initializer(node.input[0]) is not None
             ):
-                weight_init, scale_init, zp_init, bw_init = (
-                    node.input[0],
-                    node.input[1],
-                    node.input[2],
-                    node.input[3],
-                )
-                weights = model.get_initializer(weight_init)
-                shift = _scale_to_shift(
-                    np.atleast_1d(model.get_initializer(scale_init))
-                )
-                offset = (
-                    np.atleast_1d(model.get_initializer(zp_init)).astype(int).tolist()
-                )
-                bitwidth = int(model.get_initializer(bw_init).item())
+                if node.op_type == "Quant":
+                    weight_init, scale_init, zp_init, bw_init = (
+                        node.input[0],
+                        node.input[1],
+                        node.input[2],
+                        node.input[3],
+                    )
+                    weights = model.get_initializer(weight_init)
+                    shift = _scale_to_shift(
+                        np.atleast_1d(model.get_initializer(scale_init)),
+                        weights.shape[1],
+                    )
+                    offset = (
+                        np.atleast_1d(model.get_initializer(zp_init))
+                        .astype(int)
+                        .tolist()
+                    )
+                    bitwidth = int(model.get_initializer(bw_init).item())
+                    quantization = LBIRDatatype.QuantizationType.UNIFORM
+                    signed = node.attribute[2].i == 1
+                else:
+                    weight_init, scale_init = node.input[0], node.input[1]
+                    weights = model.get_initializer(weight_init)
+                    shift = _scale_to_shift(
+                        np.atleast_1d(model.get_initializer(scale_init)),
+                        weights.shape[1],
+                    )
+                    offset = [0]
+                    bitwidth = 1
+                    quantization = LBIRDatatype.QuantizationType.BINARY
+                    signed = 1
+
                 qt = QTensor(
                     dtype=LBIRDatatype(
-                        quantization=LBIRDatatype.QuantizationType.UNIFORM,
-                        signed=node.attribute[2].i == 1,
+                        quantization=quantization,
+                        signed=signed,
                         bitwidth=bitwidth,
                         shift=shift,
                         offset=offset,
@@ -207,19 +258,14 @@ class WeightQuantToQTensor(Transformation):
                 else:
                     outputs = node.output
                 model.graph.node.remove(node)
+                kwargs = _qtensor_to_kwargs(qt)
                 new_node = onnx.helper.make_node(
                     op_type="QTensor",
                     inputs=[],
                     outputs=outputs,
                     domain="chisel4ml",
                     qtensor=qt.SerializeToString(),
-                    quantization=quantization_to_string[qt.dtype.quantization],
-                    signed=qt.dtype.signed,
-                    bitwidth=qt.dtype.bitwidth,
-                    shift=qt.dtype.shift,
-                    offset=qt.dtype.offset,
-                    shape=qt.shape,
-                    values=qt.values,
+                    **kwargs,
                 )
                 model.graph.node.extend([new_node])
                 model_changed = True
@@ -236,23 +282,47 @@ class QuantToQTensor(Transformation):
         model_changed = False
         for node in model.graph.node:
             # Quant nodes without predecessors are weight nodes
-            if node.op_type == "Quant" and model.get_initializer(node.input[0]) is None:
-                scale_init, zp_init, bw_init = (
-                    node.input[1],
-                    node.input[2],
-                    node.input[3],
-                )
-                shift = _scale_to_shift(
-                    np.atleast_1d(model.get_initializer(scale_init))
-                )
-                offset = (
-                    np.atleast_1d(model.get_initializer(zp_init)).astype(int).tolist()
-                )
-                bitwidth = int(model.get_initializer(bw_init).item())
+            if (
+                node.op_type in ("Quant", "BipolarQuant")
+                and model.get_initializer(node.input[0]) is None
+            ):
+                if node.op_type == "Quant":
+                    scale_init, zp_init, bw_init = (
+                        node.input[1],
+                        node.input[2],
+                        node.input[3],
+                    )
+                    shift = _scale_to_shift(
+                        np.atleast_1d(model.get_initializer(scale_init)),
+                        model.get_tensor_shape(node.input[0])[1],
+                    )
+                    offset = (
+                        np.atleast_1d(model.get_initializer(zp_init))
+                        .astype(int)
+                        .tolist()
+                    )
+                    bitwidth = int(model.get_initializer(bw_init).item())
+                    quantization = LBIRDatatype.QuantizationType.UNIFORM
+                    signed = node.attribute[2].i == 1
+                    rounding_mode = onnx.helper.get_node_attr_value(
+                        node, "rounding_mode"
+                    )
+                else:
+                    scale_init = node.input[1]
+                    shift = _scale_to_shift(
+                        np.atleast_1d(model.get_initializer(scale_init)),
+                        model.get_tensor_shape(node.input[0])[1],
+                    )
+                    offset = [0]
+                    bitwidth = 1
+                    quantization = LBIRDatatype.QuantizationType.BINARY
+                    signed = 1
+                    rounding_mode = ""
+
                 qt = QTensor(
                     dtype=LBIRDatatype(
-                        quantization=LBIRDatatype.QuantizationType.UNIFORM,
-                        signed=node.attribute[2].i == 1,
+                        quantization=quantization,
+                        signed=signed,
                         bitwidth=bitwidth,
                         shift=shift,
                         offset=offset,
@@ -260,9 +330,7 @@ class QuantToQTensor(Transformation):
                     shape=model.get_tensor_shape(node.input[0])[
                         1:
                     ],  # we remove the batch dimension
-                    rounding_mode=onnx.helper.get_node_attr_value(
-                        node, "rounding_mode"
-                    ),
+                    rounding_mode=rounding_mode,
                 )
                 model.graph.node.remove(node)
                 new_node = onnx.helper.make_node(
@@ -271,7 +339,7 @@ class QuantToQTensor(Transformation):
                     outputs=node.output,
                     domain="chisel4ml",
                     qtensor=qt.SerializeToString(),
-                    quantization=quantization_to_string[qt.dtype.quantization],
+                    quantization=_quant_to_string_dict[qt.dtype.quantization],
                     signed=qt.dtype.signed,
                     bitwidth=qt.dtype.bitwidth,
                     shift=qt.dtype.shift,
@@ -284,7 +352,7 @@ class QuantToQTensor(Transformation):
         return model, model_changed
 
 
-class BiasToQTensor(Transformation):
+class UnquantizedBiasToQTensor(Transformation):
     """
     If Bias is left unquantized it tries to quantize it and replaces
     the initializer node with a QTensor.
@@ -317,7 +385,7 @@ class BiasToQTensor(Transformation):
                         outputs=[param_input],
                         domain="chisel4ml",
                         qtensor=qt.SerializeToString(),
-                        quantization=quantization_to_string[qt.dtype.quantization],
+                        quantization=_quant_to_string_dict[qt.dtype.quantization],
                         signed=qt.dtype.signed,
                         bitwidth=qt.dtype.bitwidth,
                         shift=qt.dtype.shift,
@@ -357,5 +425,9 @@ def _numpy_to_bitwidth(np_arr) -> int:
     return np.ceil(np.log2(maxval)).astype(int).item() + 1
 
 
-def _scale_to_shift(scale):
-    return np.log2(scale).astype(int).tolist()
+def _scale_to_shift(scale, num_nodes):
+    shift = np.log2(scale).astype(int)
+    if shift.size == 1:
+        return shift.flatten().tolist() * num_nodes
+    else:
+        return shift.flatten().tolist()
