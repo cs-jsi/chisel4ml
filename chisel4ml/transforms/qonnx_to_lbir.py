@@ -101,6 +101,7 @@ def transform_matmul(model: ModelWrapper, node) -> bool:
     temp_inp_1 = model.find_producer(add_node.input[1])
     bias_node = temp_inp_0 if temp_inp_0.op_type == "QTensor" else temp_inp_1
     sucsuc = model.find_direct_successors(add_node)
+    assert sucsuc is not None
     if len(sucsuc) != 1:
         logging.warning(
             f"{b_err_str} Successor of matmul has {len(sucsuc)} succesors, not 1."
@@ -333,18 +334,14 @@ class QuantToQTensor(Transformation):
                     rounding_mode=rounding_mode,
                 )
                 model.graph.node.remove(node)
+                kwargs = _qtensor_to_kwargs(qt)
                 new_node = onnx.helper.make_node(
                     op_type="QTensor",
                     inputs=[node.input[0]],
                     outputs=node.output,
                     domain="chisel4ml",
                     qtensor=qt.SerializeToString(),
-                    quantization=_quant_to_string_dict[qt.dtype.quantization],
-                    signed=qt.dtype.signed,
-                    bitwidth=qt.dtype.bitwidth,
-                    shift=qt.dtype.shift,
-                    offset=qt.dtype.offset,
-                    shape=qt.shape,
+                    **kwargs,
                 )
                 model.graph.node.extend([new_node])
                 model_changed = True
@@ -379,22 +376,97 @@ class UnquantizedBiasToQTensor(Transformation):
                         else (init1, node.input[1])
                     )
                     qt = _numpy_to_qtensor(bias)
+                    kwargs = _qtensor_to_kwargs(qt)
                     new_node = onnx.helper.make_node(
                         op_type="QTensor",
                         inputs=[],
                         outputs=[param_input],
                         domain="chisel4ml",
                         qtensor=qt.SerializeToString(),
-                        quantization=_quant_to_string_dict[qt.dtype.quantization],
-                        signed=qt.dtype.signed,
-                        bitwidth=qt.dtype.bitwidth,
-                        shift=qt.dtype.shift,
-                        offset=qt.dtype.offset,
-                        shape=qt.shape,
-                        values=qt.values,
+                        **kwargs,
                     )
                     model.graph.node.extend([new_node])
                     model.del_initializer(param_input)
+                    model_changed = True
+                    break
+        return model, model_changed
+
+
+class UnquantizedOutputToQTensor(Transformation):
+    """
+    If Output is left unquantized it tries to quantize it and replaces
+    the initializer node with a QTensor.
+    """
+
+    def apply(self, model: ModelWrapper):
+        model_outputs = [out.name for out in model.graph.output]
+        model_changed = False
+        for node in model.graph.node:
+            if node.output[0] in model_outputs and node.op_type != "QTensor":
+                assert (
+                    len(node.output) == 1
+                ), "There should be only one output per node."
+                pre = model.find_direct_predecessors(node)
+                if pre[0].op_type != "QTensor":
+                    logging.warning(
+                        (
+                            f"Output {node.output[0]} left unquantized, adding default "
+                            "8-bit quantization."
+                        )
+                    )
+                    qt = QTensor(
+                        dtype=LBIRDatatype(
+                            quantization=LBIRDatatype.QuantizationType.UNIFORM,
+                            signed=True,
+                            bitwidth=8,
+                            shift=[0] * model.get_tensor_shape(node.output[0])[1],
+                            offset=[0],
+                        ),
+                        shape=model.get_tensor_shape(node.output[0])[
+                            1:
+                        ],  # we remove the batch dimension
+                        rounding_mode="NONE",
+                    )
+                    kwargs = _qtensor_to_kwargs(qt)
+                    ind = model_outputs.index(node.output[0])
+                    new_link_name = f"pre_quant_out_{ind}"
+                    new_node = onnx.helper.make_node(
+                        op_type="QTensor",
+                        inputs=[new_link_name],
+                        outputs=[node.output[0]],
+                        domain="chisel4ml",
+                        qtensor=qt.SerializeToString(),
+                        **kwargs,
+                    )
+                    node.output[0] = new_link_name
+                    model.graph.node.extend([new_node])
+                    model_changed = True
+        return model, model_changed
+
+
+class InputReluQTensorToQTensor(Transformation):
+    """
+    If input is a Relu followed by a QTensor we replace this
+    with just the QTensor (that is unsigned UNIFORM quantized)
+    """
+
+    def apply(self, model: ModelWrapper):
+        model_inputs = [inp.name for inp in model.graph.input]
+        model_changed = False
+        for node in model.graph.node:
+            if (
+                len(node.input) > 0
+                and node.input[0] in model_inputs
+                and node.op_type == "Relu"
+            ):
+                suc = model.find_direct_successors(node)
+                if suc[0].op_type == "QTensor":
+                    qtensor = QTensor.FromString(
+                        onnx.helper.get_node_attr_value(suc[0], "qtensor")
+                    )
+                    assert not qtensor.dtype.signed
+                    model.graph.node.remove(node)
+                    suc[0].input[0] = node.input[0]
                     model_changed = True
                     break
         return model, model_changed
