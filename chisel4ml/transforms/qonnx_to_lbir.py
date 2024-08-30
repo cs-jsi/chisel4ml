@@ -318,7 +318,7 @@ class QuantToQTensor(Transformation):
                     bitwidth = 1
                     quantization = LBIRDatatype.QuantizationType.BINARY
                     signed = 1
-                    rounding_mode = ""
+                    rounding_mode = "NONE"
 
                 qt = QTensor(
                     dtype=LBIRDatatype(
