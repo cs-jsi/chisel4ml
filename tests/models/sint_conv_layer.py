@@ -10,7 +10,7 @@ def case_sint_conv_layer():
     # The filters are: [1 2
     #                   3 4]
     w1 = np.array([1, 2, 3, 4]).reshape(2, 2, 1, 1)
-    b1 = np.array([0])
+    b1 = np.array([1])
 
     x = x_in = tf.keras.layers.Input(shape=(3, 3, 1))  # 3x3 monochrome images
     x = qkeras.QActivation(

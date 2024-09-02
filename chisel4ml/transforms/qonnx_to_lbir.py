@@ -2,176 +2,16 @@ import logging
 
 import numpy as np
 import onnx
-from onnx.onnx_ml_pb2 import NodeProto
 from qonnx.core.modelwrapper import ModelWrapper
 from qonnx.transformation.base import Transformation
 
-import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.datatype_pb2 import Datatype as LBIRDatatype
-from chisel4ml.lbir.lbir_pb2 import DenseConfig
 from chisel4ml.lbir.qtensor_pb2 import QTensor
-
-
-_quant_to_string_dict = {0: "UNIFORM", 1: "BINARY"}
-_act_to_string_dict = {0: "BINARY_SIGN", 1: "RELU", 2: "NO_ACTIVATION"}
-
-
-def _qtensor_to_kwargs(qtensor: QTensor, key_prefix=""):
-    kwargs = dict()
-    kwargs[f"{key_prefix}quantization"] = _quant_to_string_dict[
-        qtensor.dtype.quantization
-    ]
-    kwargs[f"{key_prefix}signed"] = qtensor.dtype.signed
-    kwargs[f"{key_prefix}bitwidth"] = qtensor.dtype.bitwidth
-    kwargs[f"{key_prefix}shift"] = qtensor.dtype.shift
-    kwargs[f"{key_prefix}offset"] = qtensor.dtype.offset
-    kwargs[f"{key_prefix}shape"] = qtensor.shape
-    if len(qtensor.values) > 0:
-        kwargs[f"{key_prefix}values"] = qtensor.values
-    if qtensor.rounding_mode != "":
-        kwargs[f"{key_prefix}rounding_mode"] = qtensor.rounding_mode
-    return kwargs
-
-
-def _denseconfig_to_kwargs(layer: DenseConfig):
-    kwargs = dict()
-    kwargs.update(_qtensor_to_kwargs(layer.input, key_prefix="input_"))
-    kwargs.update(_qtensor_to_kwargs(layer.output, key_prefix="output_"))
-    kwargs.update(_qtensor_to_kwargs(layer.thresh, key_prefix="thresh_"))
-    kwargs.update(_qtensor_to_kwargs(layer.kernel, key_prefix="kernel_"))
-    kwargs["activation"] = _act_to_string_dict[layer.activation]
-    return kwargs
-
-
-def node_has_attr(node: NodeProto, attr: str) -> bool:
-    for x in node.attribute:
-        if x.name == attr:
-            return True
-    return False
-
-
-def transform_matmul(model: ModelWrapper, node) -> bool:
-    """
-    First checks that the MatMul node has two QTensors as inputs and is followed by
-    an Add node and an (optional) activation (ReLU) node.
-    """
-    model_changed = False
-    b_err_str = (
-        f"Could not transform node: {node.op_type}, with inputs: {node.input},"
-        f" and outputs: {node.output}."
-    )
-    pre = model.find_direct_predecessors(node)
-    if len(pre) != 2:
-        logging.warning(f"{b_err_str} Because it does not have exactly 2 inputs.")
-        return False
-    if not (node_has_attr(pre[0], "values") or node_has_attr(pre[1], "values")):
-        logging.warning(
-            f"{b_err_str} Because neither of the inputs has values (weights)."
-        )
-        return False
-    weights_node, input_node = (
-        (pre[0], pre[1]) if node_has_attr(pre[0], "values") else (pre[1], pre[0])
-    )
-    if input_node.op_type == "QDense":
-        input_qtensor = DenseConfig.FromString(
-            onnx.helper.get_node_attr_value(input_node, "qdense")
-        ).output
-        inputs = input_node.output
-    else:
-        input_qtensor = QTensor.FromString(
-            onnx.helper.get_node_attr_value(input_node, "qtensor")
-        )
-        inputs = input_node.input
-    suc = model.find_direct_successors(node)
-    if len(suc) != 1:
-        logging.warning(f"{b_err_str} Because it does not have exactly 1 output.")
-        return False
-    if suc[0].op_type != "Add":
-        logging.warning(
-            f"{b_err_str} Because successor of matmul is not Add, but {suc[0].op_type}."
-        )
-        return False
-    if len(suc[0].input) != 2:
-        logging.warning(
-            f"{b_err_str} Because Add node has {len(suc[0].input)} instead of 2 inputs."
-        )
-        return False
-    add_node = suc[0]
-    temp_inp_0 = model.find_producer(add_node.input[0])
-    temp_inp_1 = model.find_producer(add_node.input[1])
-    bias_node = temp_inp_0 if temp_inp_0.op_type == "QTensor" else temp_inp_1
-    sucsuc = model.find_direct_successors(add_node)
-    assert sucsuc is not None
-    if len(sucsuc) != 1:
-        logging.warning(
-            f"{b_err_str} Successor of matmul has {len(sucsuc)} succesors, not 1."
-        )
-        return False
-    if not sucsuc[0].op_type in ("Relu", "QTensor"):
-        logging.warning(
-            (
-                f"{b_err_str} Because successor succesor is neither an activation nor"
-                f"QTensor, but {sucsuc.op_type}."
-            )
-        )
-        return False
-    if sucsuc[0].op_type in ("Relu"):
-        activation = lbir.Activation.RELU
-        sucsucsuc = model.find_direct_successors(sucsuc[0])
-        if len(sucsucsuc) != 1:
-            logging.warning(
-                f"{b_err_str} Successor of activation node has no output node."
-            )
-            return False
-        if sucsucsuc[0].op_type != "QTensor":
-            logging.warning(
-                f"{b_err_str} Successor of activation node has no output qtensor."
-            )
-            return False
-        output_node = sucsucsuc[0]
-        activation_node = sucsuc[0]
-    else:
-        assert sucsuc[0].op_type == "QTensor"
-        output_node = sucsuc[0]
-        activation_node = None
-        if onnx.helper.get_node_attr_value(output_node, "quantization") == b"BINARY":
-            activation = lbir.Activation.BINARY_SIGN
-        else:
-            activation = lbir.Activation.NO_ACTIVATION
-
-    thresh = QTensor.FromString(onnx.helper.get_node_attr_value(bias_node, "qtensor"))
-    new_vals = (-np.array(thresh.values)).tolist()  # Threshold is oposite of bias
-    del thresh.values[:]
-    thresh.values.extend(new_vals)
-    densecfg = DenseConfig(
-        thresh=thresh,
-        kernel=QTensor.FromString(
-            onnx.helper.get_node_attr_value(weights_node, "qtensor")
-        ),
-        input=input_qtensor,
-        output=QTensor.FromString(
-            onnx.helper.get_node_attr_value(output_node, "qtensor")
-        ),
-        activation=activation,
-    )
-    for n in (node, weights_node, bias_node, add_node, output_node):
-        model.graph.node.remove(n)
-    if input_node.op_type == "QTensor":
-        model.graph.node.remove(input_node)
-    if activation_node is not None:
-        model.graph.node.remove(activation_node)
-    kwargs = _denseconfig_to_kwargs(densecfg)
-    new_node = onnx.helper.make_node(
-        op_type="QDense",
-        inputs=inputs,
-        outputs=output_node.output,
-        domain="chisel4ml",
-        qdense=densecfg.SerializeToString(),
-        **kwargs,
-    )
-    model.graph.node.extend([new_node])
-    model_changed = True
-    return model_changed
+from chisel4ml.transforms.qonnx_utils import _numpy_to_qtensor
+from chisel4ml.transforms.qonnx_utils import _qtensor_to_kwargs
+from chisel4ml.transforms.qonnx_utils import _scale_to_shift
+from chisel4ml.transforms.transform_conv import transform_conv
+from chisel4ml.transforms.transform_matmul import transform_matmul
 
 
 class QONNXToLBIR(Transformation):
@@ -187,7 +27,7 @@ class QONNXToLBIR(Transformation):
                 model_changed = transform_matmul(model, node)
                 break
             if node.op_type == "Conv":
-                raise NotImplementedError
+                model_changed = transform_conv(model, node)
         return model, model_changed
 
 
@@ -235,7 +75,11 @@ class WeightQuantToQTensor(Transformation):
                     bitwidth = 1
                     quantization = LBIRDatatype.QuantizationType.BINARY
                     signed = 1
-
+                successor = model.find_direct_successors(node)
+                assert len(successor) == 1
+                new_shape = (
+                    weights.T.shape if successor[0].op_type == "Mul" else weights.shape
+                )
                 qt = QTensor(
                     dtype=LBIRDatatype(
                         quantization=quantization,
@@ -244,12 +88,9 @@ class WeightQuantToQTensor(Transformation):
                         shift=shift,
                         offset=offset,
                     ),
-                    shape=weights.T.shape,  # transpose to get "right" shape for lbir
+                    shape=new_shape,
                     values=weights.flatten().tolist(),
                 )
-
-                successor = model.find_direct_successors(node)
-                assert len(successor) == 1
                 # This node is (most likely) here becuase it was inserted when
                 # converting from QKeras to qonnx (see QONNX converter). If this is not
                 # a case, then this function will incorrectly delete this operation.
@@ -472,34 +313,57 @@ class InputReluQTensorToQTensor(Transformation):
         return model, model_changed
 
 
-def _numpy_to_qtensor(np_arr) -> QTensor:
-    "Tries to convert a numpy array to a QTensor with minimal quantization settings."
-    if not np.array_equal(np_arr, np_arr.astype(int)):
-        raise ValueError
-    qt = QTensor(
-        dtype=LBIRDatatype(
-            quantization=LBIRDatatype.QuantizationType.UNIFORM,
-            signed=np_arr.min() < 0.0,
-            bitwidth=_numpy_to_bitwidth(np_arr),
-            shift=[0],
-            offset=[0],
-        ),
-        shape=np_arr.shape,
-        values=np_arr.flatten().tolist(),
-    )
-    return qt
+class AddInputOrOutputQTensorToReshape(Transformation):
+    """
+    Reshape nodes should have either an input or output QTensor.
+    We add the other QTensor to make life easier for oter transformations."""
 
+    def apply(self, model: ModelWrapper):
+        for ind, node in enumerate(model.graph.node):
+            if node.op_type == "Reshape":
+                pre = model.find_direct_predecessors(node)
+                suc = model.find_direct_successors(node)
+                assert len(pre) == 1
+                assert len(suc) == 1
+                if pre[0].op_type == "QTensor" and suc[0].op_type == "QTensor":
+                    continue
+                qtensor_node = pre[0] if pre[0].op_type == "QTensor" else suc[0]
+                qt = QTensor.FromString(
+                    onnx.helper.get_node_attr_value(qtensor_node, "qtensor")
+                )
+                new_link_name = f"reshape_quant_{ind}"
+                tensor_tmp = (
+                    node.output[0] if pre[0].op_type == "QTensor" else node.input[0]
+                )
+                tensor_vi = model.get_tensor_valueinfo(tensor_tmp)
+                new_val_info = onnx.helper.make_value_info(
+                    name=new_link_name, type_proto=tensor_vi.type
+                )
+                new_qt = QTensor(
+                    dtype=qt.dtype,
+                    shape=model.get_tensor_shape(tensor_tmp)[1:],
+                    values=qt.values,  # should be empty
+                    rounding_mode=qt.rounding_mode,
+                    layout=qt.layout,
+                )
+                model.graph.value_info.append(new_val_info)
+                if pre[0].op_type == "QTensor":
+                    inputs = [node.output[0]]
+                    outputs = [new_link_name]
+                    suc[0].input[0] = new_link_name
+                elif suc[0].op_type == "QTensor":
+                    inputs = [pre[0].output[0]]
+                    outputs = [new_link_name]
+                    node.input[0] = new_link_name
 
-def _numpy_to_bitwidth(np_arr) -> int:
-    "The number of bits requried to represent this array."
-    # TODO: This is not completely correct
-    maxval = np.abs(np_arr).max()
-    return np.ceil(np.log2(maxval)).astype(int).item() + 1
-
-
-def _scale_to_shift(scale, num_nodes):
-    shift = np.log2(scale).astype(int)
-    if shift.size == 1:
-        return shift.flatten().tolist() * num_nodes
-    else:
-        return shift.flatten().tolist()
+                kwargs = _qtensor_to_kwargs(new_qt)
+                new_node = onnx.helper.make_node(
+                    op_type="QTensor",
+                    inputs=inputs,
+                    outputs=outputs,
+                    domain="chisel4ml",
+                    qtensor=new_qt.SerializeToString(),
+                    **kwargs,
+                )
+                model.graph.node.extend([new_node])
+        return model, False

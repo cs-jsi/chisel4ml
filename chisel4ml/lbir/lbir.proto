@@ -44,6 +44,7 @@ option (scalapb.options) = {
 message Model {
     string name = 1;
     repeated LayerWrap layers = 2;
+    bool input_channel_first = 3;
 }
 
 

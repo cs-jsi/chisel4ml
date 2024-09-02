@@ -23,6 +23,7 @@ from chisel4ml.transforms.qonnx_to_lbir import (  # noqa: F401
     UnquantizedBiasToQTensor,
     UnquantizedOutputToQTensor,
     InputReluQTensorToQTensor,
+    AddInputOrOutputQTensorToReshape,
 )
 
 qkeras_trans_list: List[QKerasTransform] = list()

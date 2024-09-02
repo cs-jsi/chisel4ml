@@ -46,6 +46,16 @@
    */
    repeated float values = 3;
 
-   // Ronding mode string with names and functionality equivalent to the QONNX rounding modes.
+   // Rounding mode string with names and functionality equivalent to the QONNX rounding modes.
    string rounding_mode = 4;
+
+   /* Specifies the layout of the QTensor.
+      Allowed values are:
+      CHW, HWC, (for Conv/MaxPool inputs/outputs)
+      KCHW, KHWC (for Conv kernels)
+      KC (For Conv thresh)
+      N (For dense inputs/thresholds)
+      MN (For dense kernels)
+   */
+   string layout = 5;
  }

@@ -17,17 +17,20 @@ import tensorflow as tf
 from onnx.onnx_ml_pb2 import NodeProto
 from qonnx.core.modelwrapper import ModelWrapper
 from qonnx.transformation.double_to_single_float import DoubleToSingleFloat
+from qonnx.transformation.extract_conv_bias import ExtractBiasFromConv
 from qonnx.transformation.general import SortGraph
 from qonnx.transformation.infer_data_layouts import InferDataLayouts
 from qonnx.transformation.remove import RemoveIdentityOps
 
 import chisel4ml.lbir.lbir_pb2 as lbir
+from chisel4ml.transforms import AddInputOrOutputQTensorToReshape
 from chisel4ml.transforms import InputReluQTensorToQTensor
 from chisel4ml.transforms import QONNXToLBIR
 from chisel4ml.transforms import QuantToQTensor
 from chisel4ml.transforms import UnquantizedBiasToQTensor
 from chisel4ml.transforms import UnquantizedOutputToQTensor
 from chisel4ml.transforms import WeightQuantToQTensor
+
 
 DEFAULT_QONNX_TRANSFORMS = [
     DoubleToSingleFloat(),
@@ -37,8 +40,10 @@ DEFAULT_QONNX_TRANSFORMS = [
 ]
 
 QONNX_TO_QKERAS_TRANSFORMS = [
+    ExtractBiasFromConv(),
     WeightQuantToQTensor(),
     QuantToQTensor(),
+    AddInputOrOutputQTensorToReshape(),
     UnquantizedBiasToQTensor(),
     UnquantizedOutputToQTensor(),
     InputReluQTensorToQTensor(),
@@ -83,9 +88,23 @@ def qkeras_to_lbir(
 
 
 def _uwrap_qonnx_to_lbir(onnx_model: ModelWrapper, name: str) -> lbir.Model:
+    if (
+        onnx_model.graph.node[0].op_type == "QTensor"
+        and onnx_model.graph.node[1].op_type == "Reshape"
+        and onnx_model.graph.node[-1].op_type == "QTensor"
+        and onnx_model.graph.node[-2].op_type == "Reshape"
+    ):
+        # This condition typically arises from QKeras conv models that have different
+        # tensor memory layout, hence the reshape ops.
+        layers = onnx_model.graph.node[2:-2]
+        input_channel_first = True
+    else:
+        layers = onnx_model.graph.node
+        input_channel_first = False
     return lbir.Model(
         name=name,
-        layers=[_unwrap_qonnx_layer_to_lbir(lay) for lay in onnx_model.graph.node],
+        layers=[_unwrap_qonnx_layer_to_lbir(lay) for lay in layers],
+        input_channel_first=input_channel_first,
     )
 
 
@@ -93,5 +112,10 @@ def _unwrap_qonnx_layer_to_lbir(layer: NodeProto) -> lbir.LayerWrap:
     if layer.op_type == "QDense":
         qdense_str = onnx.helper.get_node_attr_value(layer, "qdense")
         return lbir.LayerWrap(dense=lbir.DenseConfig.FromString(qdense_str))
+    elif layer.op_type == "QConv":
+        qconv_str = onnx.helper.get_node_attr_value(layer, "qconv")
+        return lbir.LayerWrap(conv2d=lbir.Conv2DConfig.FromString(qconv_str))
+    elif layer.op_type in ("QTensor", "Reshape"):
+        pass
     else:
         raise NotImplementedError

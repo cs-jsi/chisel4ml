@@ -60,6 +60,7 @@ package object util {
   def shiftAndRoundSIntDynamic(roundingMode: String): (SInt, UInt, Bool) => SInt = roundingMode match {
     case "UP"        => shiftAndRoundSIntUp
     case "HALF_EVEN" => shiftAndRoundSIntDynamicHalfToEven
+    case "ROUND"     => shiftAndRoundSIntDynamicHalfToEven
     case "NONE"      => (x: SInt, s: UInt, b: Bool) => x
     case _           => throw new NotImplementedError
   }
