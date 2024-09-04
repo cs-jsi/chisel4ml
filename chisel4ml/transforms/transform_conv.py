@@ -21,18 +21,14 @@ def transform_conv(model: ModelWrapper, node) -> bool:
         f"Could not transform node: {node.op_type}, with inputs: {node.input},"
         f" and outputs: {node.output}."
     )
-    pre = model.find_direct_predecessors(node)
-    if len(pre) != 2:
+    if len(node.input) != 2:
         logging.warning(f"{b_err_str} Because it does not have exactly 2 inputs.")
         return False
-    if not (node_has_attr(pre[0], "values") or node_has_attr(pre[1], "values")):
-        logging.warning(
-            f"{b_err_str} Because neither of the inputs has values (weights)."
-        )
+    input_node = model.find_producer(node.input[0])
+    weights_node = model.find_producer(node.input[1])
+    if not node_has_attr(weights_node, "values"):
+        logging.warning(f"{b_err_str} Because weight node has no values")
         return False
-    weights_node, input_node = (
-        (pre[0], pre[1]) if node_has_attr(pre[0], "values") else (pre[1], pre[0])
-    )
     if input_node.op_type == "QConv":
         input_qtensor = Conv2DConfig.FromString(
             onnx.helper.get_node_attr_value(input_node, "qconv")

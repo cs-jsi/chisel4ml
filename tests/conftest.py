@@ -51,6 +51,12 @@ def pytest_addoption(parser):
         help="Generate a waveform file (fst)?",
     )
     parser.addoption(
+        "--waveform-type",
+        default="fst",
+        type=str,
+        help="Generate a fst or vcd? Only applies if --gen-waveform is present.",
+    )
+    parser.addoption(
         "--generation-timeout",
         default=600,
         type=int,

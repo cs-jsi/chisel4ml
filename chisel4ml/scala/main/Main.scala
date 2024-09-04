@@ -126,7 +126,8 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: os.Path, port
         outputStencil = params.model.get.layers.last.get.output,
         directory = tempDir / s"circuit$nextId",
         useVerilator = params.useVerilator,
-        genWaveform = params.genWaveform
+        genWaveform = params.genWaveform,
+        waveformType = params.waveformType
       )
       circuits = circuits + (nextId -> circuit)
       logger.info(s"""Started generating hardware for circuit id:$nextId in temporary directory $tempDir

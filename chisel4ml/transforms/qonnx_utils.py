@@ -43,14 +43,20 @@ def _conv2dconfig_to_kwargs(layer: Conv2DConfig):
     kwargs.update(_qtensor_to_kwargs(layer.thresh, key_prefix="thresh_"))
     kwargs.update(_qtensor_to_kwargs(layer.kernel, key_prefix="kernel_"))
     kwargs["activation"] = _act_to_string_dict[layer.activation]
+    kwargs["depthwise"] = layer.depthwise
     return kwargs
 
 
 def _numpy_to_bitwidth(np_arr) -> int:
-    "The number of bits requried to represent this array."
-    # TODO: This is not completely correct
+    """
+    The number of bits requried to represent this array. We add an
+    extra bit so that same values can be represented in negative (thresh-bias)
+    """
     maxval = np.abs(np_arr).max()
-    return np.ceil(np.log2(maxval)).astype(int).item() + 1
+    if maxval < 0.0001:
+        return 1
+    else:
+        return np.ceil(np.log2(maxval)).astype(int).item() + 2 + int(np_arr.min() < 0.0)
 
 
 def _scale_to_shift(scale, num_nodes):

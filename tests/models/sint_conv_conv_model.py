@@ -3,8 +3,6 @@ import qkeras
 import tensorflow as tf
 from pytest_cases import case
 
-from chisel4ml.qkeras_extensions import QDepthwiseConv2DPermuted
-
 
 @case(tags="non-trainable")
 def case_sint_conv_conv_model():
@@ -23,7 +21,7 @@ def case_sint_conv_conv_model():
     x = qkeras.QActivation(
         qkeras.quantized_bits(bits=4, integer=4, keep_negative=False)
     )(x)
-    x = QDepthwiseConv2DPermuted(
+    x = qkeras.QDepthwiseConv2D(
         kernel_size=[2, 2],
         depth_multiplier=1,
         data_format="channels_first",
@@ -32,7 +30,7 @@ def case_sint_conv_conv_model():
         ),
     )(x)
     x = qkeras.QActivation(qkeras.quantized_relu(bits=4, integer=4))(x)
-    x = QDepthwiseConv2DPermuted(
+    x = qkeras.QDepthwiseConv2D(
         kernel_size=[2, 2],
         depth_multiplier=2,
         data_format="channels_first",
@@ -45,8 +43,8 @@ def case_sint_conv_conv_model():
     )(x)
     model = tf.keras.Model(inputs=[x_in], outputs=[x])
     model.compile()
-    model.layers[2].dwconv.set_weights([w1, b1])
-    model.layers[4].dwconv.set_weights([w2, b2])
+    model.layers[2].set_weights([w1, b1])
+    model.layers[4].set_weights([w2, b2])
     x0 = np.array(
         [
             [0, 1, 2, 3, 4],
@@ -65,5 +63,5 @@ def case_sint_conv_conv_model():
             [13, 14, 15, 0, 1],
         ]
     ).reshape(1, 5, 5)
-    data = np.concatenate((x0, x1), axis=-1).reshape(1, 2, 5, 5).astype(np.float32)
+    data = np.concatenate((x0, x1)).reshape(1, 2, 5, 5).astype(np.float32)
     return model, data

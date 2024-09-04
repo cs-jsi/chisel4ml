@@ -70,11 +70,7 @@ class DynamicNeuron[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits]
 
   val muls = VecInit((io.in.bits.zip(inWeights)).map { case (i, w) => qc.mul(i, w) })
   assert((!io.weights.bits.threshShift.shiftLeft) || (io.weights.bits.threshShift.shift === 0.U))
-
-  val maxBits: Int = log2Up(l.thresh.values.map(_.abs).max.toInt) + l.kernel.dtype.shift.map(_.abs).max.toInt + 1
-  val threshAdjusted =
-    (io.weights.bits.threshShift.thresh << io.weights.bits.threshShift.shift)(maxBits - 1, 0).zext.asInstanceOf[A]
-  val pAct = qc.add(muls) - threshAdjusted
+  val pAct = qc.add(muls) + io.weights.bits.threshShift.bias
   val sAct = qc.shiftAndRoundDynamic(
     pAct,
     io.weights.bits.threshShift.shift,

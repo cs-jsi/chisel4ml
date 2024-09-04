@@ -29,6 +29,7 @@ def circuit(
     use_verilator=False,
     gen_waveform=False,
     gen_timeout_sec=800,
+    waveform_type="fst",
     num_layers=None,
     server=None,
     debug=False,
@@ -60,6 +61,7 @@ def circuit(
             use_verilator=use_verilator,
             gen_waveform=gen_waveform,
             generation_timeout_sec=gen_timeout_sec,
+            waveform_type=waveform_type,
         ),
         gen_timeout_sec + 2,
     )

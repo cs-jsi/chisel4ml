@@ -19,8 +19,8 @@ import chisel3.util._
 import chisel4ml.implicits._
 import memories.MemoryGenerator
 
-class ThreshAndShiftIO[A <: Bits](threshold: lbir.QTensor) extends Bundle {
-  val thresh = threshold.getType[A]
+class BiasAndShiftIO[A <: Bits](threshold: lbir.QTensor) extends Bundle {
+  val bias = threshold.getType[A]
   val shift = UInt(8.W)
   val shiftLeft = Bool()
 }
@@ -28,7 +28,7 @@ class ThreshAndShiftIO[A <: Bits](threshold: lbir.QTensor) extends Bundle {
 class KernelSubsystemIO[W <: Bits, A <: Bits](kernel: lbir.QTensor, threshold: lbir.QTensor, depthwise: Boolean)
     extends Bundle {
   val activeKernel = Vec(kernel.numActiveParams(depthwise), kernel.getType[W])
-  val threshShift = new ThreshAndShiftIO[A](threshold)
+  val threshShift = new BiasAndShiftIO[A](threshold)
 }
 
 class KernelRegisterFile[W <: Bits](kernel: lbir.QTensor, depthwise: Boolean) extends Module {

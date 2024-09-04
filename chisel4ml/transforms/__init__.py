@@ -24,6 +24,9 @@ from chisel4ml.transforms.qonnx_to_lbir import (  # noqa: F401
     UnquantizedOutputToQTensor,
     InputReluQTensorToQTensor,
     AddInputOrOutputQTensorToReshape,
+    AddDummyBiasToConv,
+    DepthwiseConv2dNativeToConv,
+    DepthwiseConv2dNoActNativeToConv,
 )
 
 qkeras_trans_list: List[QKerasTransform] = list()

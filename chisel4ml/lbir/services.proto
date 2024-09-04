@@ -39,6 +39,7 @@ message GenerateCircuitParams {
     bool use_verilator = 3;
     bool gen_waveform = 4;
     uint32 generation_timeout_sec = 5;
+    string waveform_type = 6;
 }
 
 message GenerateCircuitReturn {

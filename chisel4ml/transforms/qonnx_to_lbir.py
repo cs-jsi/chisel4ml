@@ -78,7 +78,9 @@ class WeightQuantToQTensor(Transformation):
                 successor = model.find_direct_successors(node)
                 assert len(successor) == 1
                 new_shape = (
-                    weights.T.shape if successor[0].op_type == "Mul" else weights.shape
+                    weights.T.shape
+                    if successor[0].op_type in ("Mul", "MatMul")
+                    else weights.shape
                 )
                 qt = QTensor(
                     dtype=LBIRDatatype(
@@ -217,6 +219,8 @@ class UnquantizedBiasToQTensor(Transformation):
                         else (init1, node.input[1])
                     )
                     qt = _numpy_to_qtensor(bias)
+                    # Bias should always be signed (we invert it to get thresholds)
+                    qt.dtype.signed = True
                     kwargs = _qtensor_to_kwargs(qt)
                     new_node = onnx.helper.make_node(
                         op_type="QTensor",
@@ -367,3 +371,105 @@ class AddInputOrOutputQTensorToReshape(Transformation):
                 )
                 model.graph.node.extend([new_node])
         return model, False
+
+
+class AddDummyBiasToConv(Transformation):
+    """
+    If Conv layer has no bias, it adds a zero bias, so that further transformations
+    can extract it.
+    """
+
+    def apply(self, model):
+        model_changed = False
+        for ind, node in enumerate(model.graph.node):
+            if node.op_type in ["Conv"]:
+                # Check if the node has a bias input
+                # third (optional) input is a bias
+                if len(node.input) < 3:
+                    assert len(node.input) == 2
+                    weights_shape = model.get_tensor_shape(node.input[1])
+                    bias_shape = [weights_shape[0]]
+                    zero_bias = np.zeros(bias_shape)
+                    model.set_initializer(f"conv_{ind}_bias", zero_bias)
+                    node.input.append(f"conv_{ind}_bias")
+                    model_changed = True
+                    break
+        return model, model_changed
+
+
+class DepthwiseConv2dNativeToConv(Transformation):
+    def apply(self, model: ModelWrapper):
+        model_changed = False
+        for node in model.graph.node:
+            if node.op_type == "DepthwiseConv2dNative":
+                pre = model.find_direct_predecessors(node)
+                if pre[0].op_type != "Transpose":
+                    logging.warning("No Transpose before depthwise node.")
+                    return model, False
+                pre_transpose = pre[0]
+                suc = model.find_direct_successors(node)
+                if suc[0].op_type != "Relu":
+                    logging.warning("No Relu after depthwise node.")
+                    return model, False
+                relu = suc[0]
+                sucsuc = model.find_direct_successors(relu)
+                if sucsuc[0].op_type != "Transpose":
+                    logging.warning("No tranpose after relu.")
+                suc_transpose = sucsuc[0]
+                new_node = onnx.helper.make_node(
+                    op_type="Conv",
+                    inputs=[pre_transpose.input[0], node.input[1]],
+                    outputs=node.output,
+                    auto_pad=onnx.helper.get_node_attr_value(node, "padding"),
+                    dilations=onnx.helper.get_node_attr_value(node, "dilations"),
+                    group=model.get_tensor_shape(pre_transpose.input[0])[1],
+                    strides=onnx.helper.get_node_attr_value(node, "strides"),
+                )
+                sucsucsuc = model.find_direct_successors(suc_transpose)
+                assert len(sucsucsuc) == 1
+                sucsucsuc[0].input[0] = relu.output[0]
+                model.graph.node.remove(pre_transpose)
+                model.graph.node.remove(suc_transpose)
+                model.graph.node.remove(node)
+                model.graph.node.append(new_node)
+                conv_out_shape = model.get_tensor_shape(sucsucsuc[0].output[0])
+                model.set_tensor_shape(node.output[0], conv_out_shape)
+                model.set_tensor_shape(relu.output[0], conv_out_shape)
+                model_changed = True
+                break
+        return model, model_changed
+
+
+class DepthwiseConv2dNoActNativeToConv(Transformation):
+    def apply(self, model: ModelWrapper):
+        model_changed = False
+        for node in model.graph.node:
+            if node.op_type == "DepthwiseConv2dNative":
+                pre = model.find_direct_predecessors(node)
+                if pre[0].op_type != "Transpose":
+                    logging.warning("No Transpose before depthwise node.")
+                    return model, False
+                pre_transpose = pre[0]
+                suc = model.find_direct_successors(node)
+                if suc[0].op_type != "Transpose":
+                    logging.warning("No Relu after depthwise node.")
+                    return model, False
+                suc_transpose = suc[0]
+                new_node = onnx.helper.make_node(
+                    op_type="Conv",
+                    inputs=[pre_transpose.input[0], node.input[1]],
+                    outputs=suc_transpose.output,
+                    auto_pad=onnx.helper.get_node_attr_value(node, "padding"),
+                    dilations=onnx.helper.get_node_attr_value(node, "dilations"),
+                    group=model.get_tensor_shape(pre_transpose.input[0])[1],
+                    strides=onnx.helper.get_node_attr_value(node, "strides"),
+                )
+                model.graph.node.remove(pre_transpose)
+                model.graph.node.remove(suc_transpose)
+                model.graph.node.remove(node)
+                model.graph.node.append(new_node)
+                conv_out_shape = model.get_tensor_shape(suc_transpose.output[0])
+                model.set_tensor_shape(node.output[0], conv_out_shape)
+                model_changed = True
+                break
+        return model, model_changed
