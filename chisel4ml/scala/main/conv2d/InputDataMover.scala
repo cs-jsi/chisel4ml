@@ -44,11 +44,12 @@ class InputDataMover[I <: Bits](implicit val p: Parameters)
     val start = Input(Bool())
   })
   val (elementCounter, elementCounterWrap) = Counter(0 until cfg.input.numParams, io.nextElement.fire)
-  val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until numBeatsIn, io.nextElement.fire, io.start)
-  val (addressCounter, _) = Counter(0 until cfg.input.memDepth(inWidth), wordSelectCounterWrap, io.start)
-  dontTouch(elementCounterWrap)
   val state = RegInit(IDMState.sWAIT)
-  when(io.start) {
+  val trueStart = io.start && (state === IDMState.sWAIT || elementCounterWrap)
+  val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until numBeatsIn, io.nextElement.fire, trueStart)
+  val (addressCounter, _) = Counter(0 until cfg.input.memDepth(inWidth), wordSelectCounterWrap, trueStart)
+  dontTouch(elementCounterWrap)
+  when(trueStart) {
     state := IDMState.sMOVEDATA
   }.elsewhen(elementCounterWrap) {
     state := IDMState.sWAIT
@@ -62,8 +63,4 @@ class InputDataMover[I <: Bits](implicit val p: Parameters)
   io.nextElement.valid := isStable(
     addressCounter
   ) && addressCounter < io.actMemWrittenTo && state === IDMState.sMOVEDATA
-
-  when(state === IDMState.sMOVEDATA) {
-    assert(io.start === false.B)
-  }
 }

@@ -25,8 +25,6 @@ from qonnx.transformation.remove import RemoveIdentityOps
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import AddDummyBiasToConv
 from chisel4ml.transforms import AddInputOrOutputQTensorToReshape
-from chisel4ml.transforms import DepthwiseConv2dNativeToConv
-from chisel4ml.transforms import DepthwiseConv2dNoActNativeToConv
 from chisel4ml.transforms import InputReluQTensorToQTensor
 from chisel4ml.transforms import QONNXToLBIR
 from chisel4ml.transforms import QuantToQTensor
@@ -43,8 +41,6 @@ DEFAULT_QONNX_TRANSFORMS = [
 ]
 
 QONNX_TO_QKERAS_TRANSFORMS = [
-    DepthwiseConv2dNativeToConv(),
-    DepthwiseConv2dNoActNativeToConv(),
     AddDummyBiasToConv(),
     ExtractBiasFromConv(),
     WeightQuantToQTensor(),

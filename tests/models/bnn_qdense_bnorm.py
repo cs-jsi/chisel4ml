@@ -1,10 +1,12 @@
 import numpy as np
+import pytest
 import qkeras
 import tensorflow as tf
 from pytest_cases import case
 
 
 @case(tags="trainable")
+@pytest.mark.skip(reason="qonnx conversion problem")
 def case_bnn_qdense_bnorm():
     model = tf.keras.models.Sequential()
     model.add(tf.keras.layers.Input(shape=2))

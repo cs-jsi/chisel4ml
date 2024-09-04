@@ -10,6 +10,7 @@ from chisel4ml.lbir.qtensor_pb2 import QTensor
 from chisel4ml.transforms.qonnx_utils import _numpy_to_qtensor
 from chisel4ml.transforms.qonnx_utils import _qtensor_to_kwargs
 from chisel4ml.transforms.qonnx_utils import _scale_to_shift
+from chisel4ml.transforms.qonnx_utils import get_lbir_shape
 from chisel4ml.transforms.transform_conv import transform_conv
 from chisel4ml.transforms.transform_matmul import transform_matmul
 
@@ -77,10 +78,9 @@ class WeightQuantToQTensor(Transformation):
                     signed = 1
                 successor = model.find_direct_successors(node)
                 assert len(successor) == 1
-                new_shape = (
-                    weights.T.shape
-                    if successor[0].op_type in ("Mul", "MatMul")
-                    else weights.shape
+                old_layout = model.get_tensor_layout(node.output[0])
+                new_shape = get_lbir_shape(
+                    old_shape=weights.shape, old_layout=old_layout, is_weight=True
                 )
                 qt = QTensor(
                     dtype=LBIRDatatype(
@@ -394,82 +394,4 @@ class AddDummyBiasToConv(Transformation):
                     node.input.append(f"conv_{ind}_bias")
                     model_changed = True
                     break
-        return model, model_changed
-
-
-class DepthwiseConv2dNativeToConv(Transformation):
-    def apply(self, model: ModelWrapper):
-        model_changed = False
-        for node in model.graph.node:
-            if node.op_type == "DepthwiseConv2dNative":
-                pre = model.find_direct_predecessors(node)
-                if pre[0].op_type != "Transpose":
-                    logging.warning("No Transpose before depthwise node.")
-                    return model, False
-                pre_transpose = pre[0]
-                suc = model.find_direct_successors(node)
-                if suc[0].op_type != "Relu":
-                    logging.warning("No Relu after depthwise node.")
-                    return model, False
-                relu = suc[0]
-                sucsuc = model.find_direct_successors(relu)
-                if sucsuc[0].op_type != "Transpose":
-                    logging.warning("No tranpose after relu.")
-                suc_transpose = sucsuc[0]
-                new_node = onnx.helper.make_node(
-                    op_type="Conv",
-                    inputs=[pre_transpose.input[0], node.input[1]],
-                    outputs=node.output,
-                    auto_pad=onnx.helper.get_node_attr_value(node, "padding"),
-                    dilations=onnx.helper.get_node_attr_value(node, "dilations"),
-                    group=model.get_tensor_shape(pre_transpose.input[0])[1],
-                    strides=onnx.helper.get_node_attr_value(node, "strides"),
-                )
-                sucsucsuc = model.find_direct_successors(suc_transpose)
-                assert len(sucsucsuc) == 1
-                sucsucsuc[0].input[0] = relu.output[0]
-                model.graph.node.remove(pre_transpose)
-                model.graph.node.remove(suc_transpose)
-                model.graph.node.remove(node)
-                model.graph.node.append(new_node)
-                conv_out_shape = model.get_tensor_shape(sucsucsuc[0].output[0])
-                model.set_tensor_shape(node.output[0], conv_out_shape)
-                model.set_tensor_shape(relu.output[0], conv_out_shape)
-                model_changed = True
-                break
-        return model, model_changed
-
-
-class DepthwiseConv2dNoActNativeToConv(Transformation):
-    def apply(self, model: ModelWrapper):
-        model_changed = False
-        for node in model.graph.node:
-            if node.op_type == "DepthwiseConv2dNative":
-                pre = model.find_direct_predecessors(node)
-                if pre[0].op_type != "Transpose":
-                    logging.warning("No Transpose before depthwise node.")
-                    return model, False
-                pre_transpose = pre[0]
-                suc = model.find_direct_successors(node)
-                if suc[0].op_type != "Transpose":
-                    logging.warning("No Relu after depthwise node.")
-                    return model, False
-                suc_transpose = suc[0]
-                new_node = onnx.helper.make_node(
-                    op_type="Conv",
-                    inputs=[pre_transpose.input[0], node.input[1]],
-                    outputs=suc_transpose.output,
-                    auto_pad=onnx.helper.get_node_attr_value(node, "padding"),
-                    dilations=onnx.helper.get_node_attr_value(node, "dilations"),
-                    group=model.get_tensor_shape(pre_transpose.input[0])[1],
-                    strides=onnx.helper.get_node_attr_value(node, "strides"),
-                )
-                model.graph.node.remove(pre_transpose)
-                model.graph.node.remove(suc_transpose)
-                model.graph.node.remove(node)
-                model.graph.node.append(new_node)
-                conv_out_shape = model.get_tensor_shape(suc_transpose.output[0])
-                model.set_tensor_shape(node.output[0], conv_out_shape)
-                model_changed = True
-                break
         return model, model_changed

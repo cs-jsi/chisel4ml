@@ -83,3 +83,21 @@ def _numpy_to_qtensor(np_arr) -> QTensor:
         values=np_arr.flatten().tolist(),
     )
     return qt
+
+
+def get_lbir_shape(old_shape, old_layout, is_weight):
+    if len(old_shape) == 2:
+        return (old_shape[1], old_shape[0])
+    elif len(old_shape) == 4:
+        if old_layout == ["N", "H", "W", "C"]:
+            if is_weight:
+                return (old_shape[0], old_shape[3], old_shape[1], old_shape[2])  # KCHW
+            else:
+                return (old_shape[3], old_shape[1], old_shape[2])  # CHW
+        elif old_layout == ["N", "C", "H", "W"]:
+            if is_weight:
+                return old_shape  # KCHW
+            else:
+                return old_shape[1:]  # CHW
+    else:
+        raise NotImplementedError
