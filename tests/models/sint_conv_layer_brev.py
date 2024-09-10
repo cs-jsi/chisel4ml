@@ -46,5 +46,8 @@ def case_sint_conv_layer_brev():
     model.conv.weight = torch.nn.Parameter(torch.from_numpy(weight_tensor).float())
     model.conv.bias = torch.nn.Parameter(torch.from_numpy(bias_tensor).float())
     model.eval()
-    data = gen_finn_dt_tensor(DataType["INT4"], ishape)
+    test_data_shape = (8,) + ishape[
+        1:
+    ]  # "increase" the batch dim so there are more tests
+    data = gen_finn_dt_tensor(DataType["INT4"], test_data_shape)
     return model, ishape, data
