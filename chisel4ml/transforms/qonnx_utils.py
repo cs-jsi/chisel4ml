@@ -1,4 +1,6 @@
 import numpy as np
+from qonnx.custom_op.general.bipolar_quant import binary_quant
+from qonnx.custom_op.general.quant import quant
 
 from chisel4ml.lbir.datatype_pb2 import Datatype as LBIRDatatype
 from chisel4ml.lbir.lbir_pb2 import Conv2DConfig
@@ -86,18 +88,37 @@ def _numpy_to_qtensor(np_arr) -> QTensor:
 
 
 def get_lbir_shape(old_shape, old_layout, is_weight):
+    # TODO: Fix layout functionality in QONNX, so that this can be a proper
+    # transformation.
     if len(old_shape) == 2:
         return (old_shape[1], old_shape[0])
+    if len(old_shape) == 1:
+        return (1, old_shape[0])  # batch size == 1
     elif len(old_shape) == 4:
-        if old_layout == ["N", "H", "W", "C"]:
-            if is_weight:
-                return (old_shape[0], old_shape[3], old_shape[1], old_shape[2])  # KCHW
-            else:
-                return (old_shape[3], old_shape[1], old_shape[2])  # CHW
-        elif old_layout == ["N", "C", "H", "W"]:
-            if is_weight:
-                return old_shape  # KCHW
-            else:
-                return old_shape[1:]  # CHW
+        # We assume the layout is NCHW, because that is the default in torch
+        # where conv layers are mostly produced. Unfortunately, the tensor layout
+        # functionality in QONNX does not work correctly so using
+        # model.get_tensor_layout to determine the actualy layout is currently not
+        # possible. This can lead to problems with different layouts (like conv
+        # from keras)
+        if is_weight:
+            return old_shape  # KCHW
+        else:
+            return old_shape[1:]  # CHW
     else:
         raise NotImplementedError
+
+
+def qtensor_to_quantizer(qtensor):
+    if qtensor.dtype.quantization == LBIRDatatype.QuantizationType.UNIFORM:
+        return lambda x: quant(
+            x,
+            scale=np.exp2(np.array(qtensor.dtype.shift)),  # inverse _scale_to_shift
+            zeropt=np.array(qtensor.dtype.offset),
+            bitwidth=np.array(qtensor.dtype.bitwidth),
+            signed=qtensor.dtype.signed,
+            narrow=False,
+            rounding_mode=qtensor.rounding_mode,
+        )
+    else:
+        return lambda x: binary_quant(x, 1.0)

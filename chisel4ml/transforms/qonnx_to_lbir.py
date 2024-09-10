@@ -53,10 +53,14 @@ class WeightQuantToQTensor(Transformation):
                         node.input[3],
                     )
                     weights = model.get_initializer(weight_init)
+                    num_nodes = (
+                        weights.shape[1] if len(weights.shape) > 1 else weights.shape[0]
+                    )
                     shift = _scale_to_shift(
                         np.atleast_1d(model.get_initializer(scale_init)),
-                        weights.shape[1],
+                        num_nodes,
                     )
+
                     offset = (
                         np.atleast_1d(model.get_initializer(zp_init))
                         .astype(int)

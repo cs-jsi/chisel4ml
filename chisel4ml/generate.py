@@ -11,19 +11,21 @@
 import logging
 
 import tensorflow as tf
+import torch
 
 from chisel4ml import chisel4ml_server
 from chisel4ml import transform
 from chisel4ml.circuit import Circuit
 from chisel4ml.lbir.services_pb2 import GenerateCircuitParams
 from chisel4ml.lbir.services_pb2 import GenerateCircuitReturn
-from chisel4ml.transforms.qkeras_util import get_input_quantization
+
 
 log = logging.getLogger(__name__)
 
 
 def circuit(
-    opt_model: tf.keras.Model,
+    model,
+    ishape=None,
     is_simple=False,
     pipeline=False,
     use_verilator=False,
@@ -35,9 +37,13 @@ def circuit(
     debug=False,
 ):
     assert gen_timeout_sec > 5, "Please provide at least a 5 second generation timeout."
-    # TODO - add checking that the opt_model is correct
-    # opt_model = optimize.qkeras_model(model)
-    lbir_model = transform.qkeras_to_lbir(opt_model, debug=debug)
+    if isinstance(model, tf.keras.Model):
+        qonnx_model = transform.qkeras_to_qonnx(model)
+    elif isinstance(model, torch.nn.Module):
+        qonnx_model = transform.brevitas_to_qonnx(model, ishape)
+    else:
+        raise TypeError(f"Model of type {type(model)} not supported.")
+    lbir_model = transform.qonnx_to_lbir(qonnx_model, debug=debug)
     if lbir_model is None:
         return None
     if num_layers is not None:
@@ -79,8 +85,6 @@ def circuit(
     input_qt = getattr(lbir_model.layers[0], input_layer_type).input
     circuit = Circuit(
         gen_circt_ret.circuit_id,
-        # TODO: this is temporary
-        get_input_quantization(opt_model),
         input_qt,
         lbir_model,
         server,

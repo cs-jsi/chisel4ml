@@ -13,7 +13,8 @@ import logging
 import onnx
 import qonnx.converters
 import qonnx.util.cleanup
-import tensorflow as tf
+import torch
+from brevitas.export import export_qonnx
 from onnx.onnx_ml_pb2 import NodeProto
 from qonnx.core.modelwrapper import ModelWrapper
 from qonnx.transformation.double_to_single_float import DoubleToSingleFloat
@@ -25,13 +26,13 @@ from qonnx.transformation.remove import RemoveIdentityOps
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import AddDummyBiasToConv
 from chisel4ml.transforms import AddInputOrOutputQTensorToReshape
+from chisel4ml.transforms import ExtractQuantizedBiasFromConv
 from chisel4ml.transforms import InputReluQTensorToQTensor
 from chisel4ml.transforms import QONNXToLBIR
 from chisel4ml.transforms import QuantToQTensor
 from chisel4ml.transforms import UnquantizedBiasToQTensor
 from chisel4ml.transforms import UnquantizedOutputToQTensor
 from chisel4ml.transforms import WeightQuantToQTensor
-
 
 DEFAULT_QONNX_TRANSFORMS = [
     DoubleToSingleFloat(),
@@ -40,8 +41,9 @@ DEFAULT_QONNX_TRANSFORMS = [
     SortGraph(),
 ]
 
-QONNX_TO_QKERAS_TRANSFORMS = [
+QONNX_TO_LBIR_TRANSFORMS = [
     AddDummyBiasToConv(),
+    ExtractQuantizedBiasFromConv(),
     ExtractBiasFromConv(),
     WeightQuantToQTensor(),
     QuantToQTensor(),
@@ -53,16 +55,26 @@ QONNX_TO_QKERAS_TRANSFORMS = [
 ]
 
 
-def qkeras_to_lbir(
-    qkeras_model: tf.keras.Model,
+def qkeras_to_qonnx(qkeras_model):
+    qonnx_proto, _ = qonnx.converters.from_keras(qkeras_model)
+    modelwrap = qonnx.core.modelwrapper.ModelWrapper(qonnx_proto)
+    return modelwrap
+
+
+def brevitas_to_qonnx(brevitas_model, ishape):
+    qonnx_proto = export_qonnx(brevitas_model, torch.randn(ishape))
+    modelwrap = qonnx.core.modelwrapper.ModelWrapper(qonnx_proto)
+    return modelwrap
+
+
+def qonnx_to_lbir(
+    modelwrap: ModelWrapper,
     name="chisel4ml_model",
     custom_trans_list=[],
     cleanup=True,
     debug=False,
 ) -> lbir.Model:
-    "Applys transformation to a Keras model, and returns a LBIR model."
-    qonnx_proto, _ = qonnx.converters.from_keras(qkeras_model)
-    modelwrap = qonnx.core.modelwrapper.ModelWrapper(qonnx_proto)
+    "Applys transformation to a QONNX model, and returns a LBIR model."
     if len(custom_trans_list) == 0:
         transforms = DEFAULT_QONNX_TRANSFORMS
     else:
@@ -71,7 +83,7 @@ def qkeras_to_lbir(
     if cleanup:
         modelwrap = qonnx.util.cleanup.cleanup_model(modelwrap)
 
-    for ind, trans in enumerate(transforms + QONNX_TO_QKERAS_TRANSFORMS):
+    for ind, trans in enumerate(transforms + QONNX_TO_LBIR_TRANSFORMS):
         logging.info(f"Running transform {type(trans).__name__}.")
         if debug:
             onnx.save(

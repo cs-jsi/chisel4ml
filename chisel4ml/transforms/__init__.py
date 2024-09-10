@@ -26,6 +26,9 @@ from chisel4ml.transforms.qonnx_to_lbir import (  # noqa: F401
     AddInputOrOutputQTensorToReshape,
     AddDummyBiasToConv,
 )
+from chisel4ml.transforms.extract_quantized_bias import (  # noqa: F401
+    ExtractQuantizedBiasFromConv,
+)
 
 qkeras_trans_list: List[QKerasTransform] = list()
 

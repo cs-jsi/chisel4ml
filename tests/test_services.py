@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import torch
 from pytest_cases import get_current_cases
 from pytest_cases import parametrize_with_cases
 
@@ -164,6 +165,32 @@ def test_simulation(request, model_data):
     assert circuit is not None
     for x in data:
         sw_res = opt_model.predict(np.expand_dims(x, axis=0))
+        hw_res = circuit(x)
+        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
+    circuit.delete_from_server()
+
+
+@parametrize_with_cases("model_ishape_data", cases=TEST_MODELS_LIST, has_tag="brevitas")
+def test_brevitas(request, model_ishape_data):
+    (
+        model,
+        ishape,
+        data,
+    ) = model_ishape_data
+    circuit = generate.circuit(
+        model,
+        ishape,
+        use_verilator=request.config.getoption("--use-verilator"),
+        gen_waveform=request.config.getoption("--gen-waveform"),
+        waveform_type=request.config.getoption("--waveform-type"),
+        gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        debug=request.config.getoption("--debug-trans"),
+    )
+    assert circuit is not None
+    for x in data:
+        sw_res = (
+            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
+        )
         hw_res = circuit(x)
         assert np.array_equal(sw_res.flatten(), hw_res.flatten())
     circuit.delete_from_server()
