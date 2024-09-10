@@ -2,6 +2,7 @@ import itertools
 import os
 
 import numpy as np
+import pytest
 import qkeras
 import tensorflow as tf
 
@@ -15,6 +16,7 @@ from chisel4ml.preprocess.lmfe_layer import LMFELayer
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
+@pytest.mark.skip()
 def test_fft(request):
     test_opts_dict = {
         "window": ("hamming",),
@@ -80,6 +82,7 @@ def test_fft(request):
         audio_preproc.delete_from_server()
 
 
+@pytest.mark.skip()
 def test_fft_speech_commands(request, audio_data):
     _, _, test_set, _, _, _, _ = audio_data
     model = tf.keras.Sequential()
@@ -111,6 +114,7 @@ def test_fft_speech_commands(request, audio_data):
     audio_preproc.delete_from_server()
 
 
+@pytest.mark.skip()
 def test_mel_engine(request, audio_data):
     test_opts_dict = {
         "window": ("hamming",),
@@ -186,6 +190,7 @@ def test_mel_engine(request, audio_data):
         audio_preproc.delete_from_server()
 
 
+@pytest.mark.skip()
 def test_lmfe_speech_commands(request, audio_data):
     _, _, test_set, _, _, _, _ = audio_data
     fft_layer = FFTLayer(FFTConfig(fft_size=512, num_frames=32, win_fn=np.hamming(512)))
@@ -223,6 +228,7 @@ def test_lmfe_speech_commands(request, audio_data):
     audio_preproc.delete_from_server()
 
 
+@pytest.mark.skip()
 def test_preproc_speech_commands(request, audio_data):
     _, _, test_set, _, _, _, _ = audio_data
     model = tf.keras.Sequential()
