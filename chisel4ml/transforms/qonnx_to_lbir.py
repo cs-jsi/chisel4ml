@@ -12,6 +12,7 @@ from chisel4ml.transforms.qonnx_utils import _qtensor_to_kwargs
 from chisel4ml.transforms.qonnx_utils import _scale_to_shift
 from chisel4ml.transforms.qonnx_utils import get_lbir_shape
 from chisel4ml.transforms.transform_conv import transform_conv
+from chisel4ml.transforms.transform_fftreal import transform_fftreal
 from chisel4ml.transforms.transform_matmul import transform_matmul
 
 
@@ -27,8 +28,10 @@ class QONNXToLBIR(Transformation):
             if node.op_type == "MatMul":
                 model_changed = transform_matmul(model, node)
                 break
-            if node.op_type == "Conv":
+            elif node.op_type == "Conv":
                 model_changed = transform_conv(model, node)
+            elif node.op_type == "FFTreal":
+                model_changed = transform_fftreal(model, node)
         return model, model_changed
 
 
@@ -256,7 +259,7 @@ class UnquantizedOutputToQTensor(Transformation):
                     len(node.output) == 1
                 ), "There should be only one output per node."
                 pre = model.find_direct_predecessors(node)
-                if pre[0].op_type != "QTensor":
+                if pre is None or pre[0].op_type != "QTensor":
                     logging.warning(
                         (
                             f"Output {node.output[0]} left unquantized, adding default "
@@ -268,7 +271,7 @@ class UnquantizedOutputToQTensor(Transformation):
                             quantization=LBIRDatatype.QuantizationType.UNIFORM,
                             signed=True,
                             bitwidth=8,
-                            shift=[0] * model.get_tensor_shape(node.output[0])[1],
+                            shift=[0] * len(model.get_tensor_shape(node.output[0])),
                             offset=[0],
                         ),
                         shape=model.get_tensor_shape(node.output[0])[
@@ -399,3 +402,14 @@ class AddDummyBiasToConv(Transformation):
                     model_changed = True
                     break
         return model, model_changed
+
+
+class AddFFTrealOutputShape(Transformation):
+    def apply(self, model):
+        for node in model.graph.node:
+            if node.op_type == "FFTreal":
+                inp_shape = model.get_tensor_shape(node.input[0])
+                model.set_tensor_shape(
+                    tensor_name=node.output[0], tensor_shape=inp_shape
+                )
+        return model, False

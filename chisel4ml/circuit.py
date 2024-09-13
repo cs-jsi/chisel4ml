@@ -80,9 +80,7 @@ class Circuit:
         log.info(delete_circuit_return.msg)
         return delete_circuit_return.success
 
-    def package(self, directory=None):
-        if directory is None:
-            raise ValueError("Directory parameter missing.")
+    def package(self, directory):
         temp_dir = self._server.temp_dir
         temp_circuit_dir = os.path.join(temp_dir, f"circuit{self.circuit_id}")
 

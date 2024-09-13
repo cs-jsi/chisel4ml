@@ -25,6 +25,7 @@ from chisel4ml.transforms.qonnx_to_lbir import (  # noqa: F401
     InputReluQTensorToQTensor,
     AddInputOrOutputQTensorToReshape,
     AddDummyBiasToConv,
+    AddFFTrealOutputShape,
 )
 from chisel4ml.transforms.extract_quantized_bias import (  # noqa: F401
     ExtractQuantizedBiasFromConv,

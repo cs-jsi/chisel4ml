@@ -12,6 +12,7 @@ import logging
 
 import onnx
 import qonnx.converters
+import qonnx.custom_op.registry
 import qonnx.util.cleanup
 import torch
 from brevitas.export import export_qonnx
@@ -21,10 +22,12 @@ from qonnx.transformation.double_to_single_float import DoubleToSingleFloat
 from qonnx.transformation.extract_conv_bias import ExtractBiasFromConv
 from qonnx.transformation.general import SortGraph
 from qonnx.transformation.infer_data_layouts import InferDataLayouts
+from qonnx.transformation.infer_shapes import InferShapes
 from qonnx.transformation.remove import RemoveIdentityOps
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import AddDummyBiasToConv
+from chisel4ml.transforms import AddFFTrealOutputShape
 from chisel4ml.transforms import AddInputOrOutputQTensorToReshape
 from chisel4ml.transforms import ExtractQuantizedBiasFromConv
 from chisel4ml.transforms import InputReluQTensorToQTensor
@@ -37,6 +40,8 @@ from chisel4ml.transforms import WeightQuantToQTensor
 DEFAULT_QONNX_TRANSFORMS = [
     DoubleToSingleFloat(),
     InferDataLayouts(),
+    AddFFTrealOutputShape(),
+    InferShapes(),
     RemoveIdentityOps(),
     SortGraph(),
 ]
@@ -79,7 +84,7 @@ def qonnx_to_lbir(
         transforms = DEFAULT_QONNX_TRANSFORMS
     else:
         transforms = custom_trans_list
-
+    qonnx.custom_op.registry.register_custom_domain("chisel4ml")
     if cleanup:
         modelwrap = qonnx.util.cleanup.cleanup_model(modelwrap)
 
@@ -129,7 +134,8 @@ def _unwrap_qonnx_layer_to_lbir(layer: NodeProto) -> lbir.LayerWrap:
     elif layer.op_type == "QConv":
         qconv_str = onnx.helper.get_node_attr_value(layer, "qconv")
         return lbir.LayerWrap(conv2d=lbir.Conv2DConfig.FromString(qconv_str))
-    elif layer.op_type in ("QTensor", "Reshape"):
-        pass
+    elif layer.op_type == "FFTConfig":
+        fft_str = onnx.helper.get_node_attr_value(layer, "fft")
+        return lbir.LayerWrap(fft=lbir.FFTConfig.FromString(fft_str))
     else:
         raise NotImplementedError
