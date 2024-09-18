@@ -67,7 +67,7 @@ class Int8ActQuant(ActQuantSolver):
     )  # scale is a parameter initialized from statistics
     restrict_scaling_type = RestrictValueType.POWER_OF_TWO
     scaling_per_output_channel = False  # scale is per tensor
-    bit_width = 4  # bit width is 8
+    bit_width = 8  # bit width is 8
     signed = True  # quantization range is signed
     narrow_range = False  # quantization range is [-128, 127] rather than [-127, 127]
     zero_point_impl = ZeroZeroPoint  # zero point is 0.

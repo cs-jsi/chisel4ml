@@ -13,6 +13,7 @@ from chisel4ml.transforms.qonnx_utils import _scale_to_shift
 from chisel4ml.transforms.qonnx_utils import get_lbir_shape
 from chisel4ml.transforms.transform_conv import transform_conv
 from chisel4ml.transforms.transform_fftreal import transform_fftreal
+from chisel4ml.transforms.transform_lmfe import transform_lmfe
 from chisel4ml.transforms.transform_matmul import transform_matmul
 
 
@@ -32,6 +33,8 @@ class QONNXToLBIR(Transformation):
                 model_changed = transform_conv(model, node)
             elif node.op_type == "FFTreal":
                 model_changed = transform_fftreal(model, node)
+            elif node.op_type == "lmfe":
+                model_changed = transform_lmfe(model, node)
         return model, model_changed
 
 

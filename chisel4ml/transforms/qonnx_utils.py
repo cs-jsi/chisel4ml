@@ -5,6 +5,8 @@ from qonnx.custom_op.general.quant import quant
 from chisel4ml.lbir.datatype_pb2 import Datatype as LBIRDatatype
 from chisel4ml.lbir.lbir_pb2 import Conv2DConfig
 from chisel4ml.lbir.lbir_pb2 import DenseConfig
+from chisel4ml.lbir.lbir_pb2 import FFTConfig
+from chisel4ml.lbir.lbir_pb2 import LMFEConfig
 from chisel4ml.lbir.qtensor_pb2 import QTensor
 
 _quant_to_string_dict = {0: "UNIFORM", 1: "BINARY"}
@@ -25,6 +27,27 @@ def _qtensor_to_kwargs(qtensor: QTensor, key_prefix=""):
         kwargs[f"{key_prefix}values"] = qtensor.values
     if qtensor.rounding_mode != "":
         kwargs[f"{key_prefix}rounding_mode"] = qtensor.rounding_mode
+    return kwargs
+
+
+def _fftconfig_to_kwargs(layer: FFTConfig):
+    kwargs = dict()
+    kwargs.update(_qtensor_to_kwargs(layer.input, key_prefix="input_"))
+    kwargs.update(_qtensor_to_kwargs(layer.output, key_prefix="output_"))
+    kwargs["fft_size"] = layer.fft_size
+    kwargs["num_frames"] = layer.num_frames
+    kwargs["win_fn"] = layer.win_fn
+    return kwargs
+
+
+def _lmfeconfig_to_kwargs(layer: LMFEConfig):
+    kwargs = dict()
+    kwargs.update(_qtensor_to_kwargs(layer.input, key_prefix="input_"))
+    kwargs.update(_qtensor_to_kwargs(layer.output, key_prefix="output_"))
+    kwargs["fft_size"] = layer.fft_size
+    kwargs["num_frames"] = layer.num_frames
+    kwargs["num_mels"] = layer.num_mels
+    kwargs["mel_filters"] = layer.mel_filters
     return kwargs
 
 

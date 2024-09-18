@@ -137,5 +137,8 @@ def _unwrap_qonnx_layer_to_lbir(layer: NodeProto) -> lbir.LayerWrap:
     elif layer.op_type == "FFTConfig":
         fft_str = onnx.helper.get_node_attr_value(layer, "fft")
         return lbir.LayerWrap(fft=lbir.FFTConfig.FromString(fft_str))
+    elif layer.op_type == "LMFEConfig":
+        lmfe_str = onnx.helper.get_node_attr_value(layer, "lmfe")
+        return lbir.LayerWrap(lmfe=lbir.LMFEConfig.FromString(lmfe_str))
     else:
         raise NotImplementedError
