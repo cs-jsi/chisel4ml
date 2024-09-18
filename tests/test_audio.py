@@ -101,28 +101,40 @@ def test_fft(request):
         audio_preproc.delete_from_server()
 
 
-@pytest.mark.skip()
 def test_fft_speech_commands(request, audio_data):
     _, _, test_set, _, _, _, _ = audio_data
-    model = tf.keras.Sequential()
-    model.add(tf.keras.layers.Input(shape=(32, 512)))
-    model.add(
-        qkeras.QActivation(qkeras.quantized_bits(12, 11, keep_negative=True, alpha=1))
-    )
-    model.add(FFTLayer(FFTConfig(fft_size=512, num_frames=32, win_fn=np.hamming(512))))
-    opt_model = optimize.qkeras_model(model)
 
+    class Model(torch.nn.Module):
+        def __init__(self, fft_size, num_frames, win_fn):
+            super(Model, self).__init__()
+            self.fft_size = fft_size
+            self.num_frames = num_frames
+            self.win_fn = torch.from_numpy(np.array(win_fn))
+            self.fft = FFTreal_layer(
+                fft_size=fft_size,
+                num_frames=num_frames,
+                win_fn=self.win_fn,
+                input_quant=Int12ActQuant,
+                output_quant=Int33ActQuant,
+            )
+
+        def forward(self, x):
+            return self.fft.forward(x)
+
+    model = Model(fft_size=512, num_frames=32, win_fn=np.hamming(512))
     audio_preproc = generate.circuit(
-        opt_model=opt_model,
+        model=model,
+        ishape=(1, 32, 512),
         use_verilator=request.config.getoption("--use-verilator"),
         gen_waveform=request.config.getoption("--gen-waveform"),
+        waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
         debug=request.config.getoption("--debug-trans"),
     )
     assert audio_preproc is not None
     for sample, _ in test_set:
-        hw_res = audio_preproc(sample) / (2**12)
-        sw_res = opt_model(sample.reshape(1, 32, 512))
+        hw_res = audio_preproc(sample, sim_timeout_sec=400) / 2**12
+        sw_res = model(torch.from_numpy(sample.reshape(1, 32, 512)))
         if request.config.getoption("--visualize"):
             import matplotlib.pyplot as plt
 
