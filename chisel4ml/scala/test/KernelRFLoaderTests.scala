@@ -35,7 +35,8 @@ class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with Be
     super.beforeEach(testData)
   }
 
-  val dtype = new lbir.Datatype(quantization = UNIFORM, bitwidth = 5, signed = false, shift = Seq(0), offset = Seq(0))
+  val dtype =
+    new lbir.Datatype(quantization = UNIFORM, bitwidth = 5, signed = false, shift = Seq(0, 0), offset = Seq(0, 0))
   val testParameters = lbir.QTensor(
     dtype = dtype,
     shape = Seq(1, 2, 3, 3),
