@@ -37,7 +37,7 @@ def FFTreal_abstract(x, win_fn, fft_size, num_frames):
 
 
 def FFTreal_symbolic(g, x, win_fn, fft_size, num_frames):
-    return g.op("chisel4ml::FFTreal", x, win_fn, fft_size, num_frames)
+    return g.op("chisel4ml.preprocess::FFTreal", x, win_fn, fft_size, num_frames)
 
 
 torch.onnx.register_custom_op_symbolic("chisel4ml::FFTreal", FFTreal_symbolic, 1)

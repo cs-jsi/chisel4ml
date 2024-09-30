@@ -36,13 +36,13 @@ trait HasLMFEParameters extends HasLBIRStreamParameters[LMFEConfig] with HasLBIR
 
 class LMFEWrapper(implicit val p: Parameters)
     extends Module
-    with HasLBIRStream[Vec[UInt]]
+    with HasLBIRStream[UInt]
     with HasLBIRStreamParameters[LMFEConfig]
     with HasLMFEParameters
     with HasParameterLogging {
   logParameters
-  val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
-  val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
+  val inStream = IO(Flipped(AXIStream(UInt(cfg.input.dtype.bitwidth.W), numBeatsIn)))
+  val outStream = IO(AXIStream(UInt(cfg.output.dtype.bitwidth.W), numBeatsOut))
   val melEngine = Module(
     new MelEngine(
       cfg.fftSize,

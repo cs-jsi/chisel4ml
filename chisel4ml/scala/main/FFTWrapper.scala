@@ -55,12 +55,12 @@ trait HasFFTParameters extends HasLBIRStreamParameters[FFTConfig] {
 
 class FFTWrapper(implicit val p: Parameters)
     extends Module
-    with HasLBIRStream[Vec[UInt]]
+    with HasLBIRStream[UInt]
     with HasFFTParameters
     with HasParameterLogging {
   logParameters
-  val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
-  val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
+  val inStream = IO(Flipped(AXIStream(UInt(cfg.input.dtype.bitwidth.W), numBeatsIn)))
+  val outStream = IO(AXIStream(UInt(cfg.output.dtype.bitwidth.W), numBeatsOut))
 
   val window = VecInit(cfg.winFn.map(_.F(16.W, 16.BP)))
   val sdffft = Module(new SDFFFT(fftParams))

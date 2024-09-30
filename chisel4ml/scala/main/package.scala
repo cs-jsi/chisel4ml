@@ -28,7 +28,7 @@ import scala.language.implicitConversions
 package object implicits {
   val logger = LoggerFactory.getLogger("chisel4ml")
 
-  implicit def axiStreamToLBIRDriver(x: AXIStreamIO[Vec[UInt]]): AXIStreamLBIRDriver = {
+  implicit def axiStreamToLBIRDriver(x: AXIStreamIO[UInt]): AXIStreamLBIRDriver = {
     new AXIStreamLBIRDriver(new AXIStreamDriver(x))
   }
 

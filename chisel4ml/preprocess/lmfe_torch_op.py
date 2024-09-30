@@ -54,7 +54,9 @@ def lmfe_abstract(x, filter_banks, fft_size, num_mels, num_frames):
 
 
 def lmfe_symbolic(g, x, filter_banks, fft_size, num_mels, num_frames):
-    return g.op("chisel4ml::lmfe", x, filter_banks, fft_size, num_mels, num_frames)
+    return g.op(
+        "chisel4ml.preprocess::lmfe", x, filter_banks, fft_size, num_mels, num_frames
+    )
 
 
 torch.onnx.register_custom_op_symbolic("chisel4ml::lmfe", lmfe_symbolic, 1)

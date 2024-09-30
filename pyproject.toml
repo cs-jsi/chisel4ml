@@ -23,6 +23,8 @@ dependencies = [
     "grpcio>1.0.0",
     "tf2-keras-surgeon",
     "librosa",
+    "brevitas",
+    "onnxoptimizer"
 ]
 
 [tool.setuptools.dynamic]

@@ -33,13 +33,13 @@ trait HasDenseParameters extends HasLBIRStreamParameters[DenseConfig] {
 
 class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
     extends Module
-    with HasLBIRStream[Vec[UInt]]
+    with HasLBIRStream[UInt]
     with HasLBIRStreamParameters[DenseConfig]
     with HasDenseParameters
     with HasParameterLogging {
   logParameters
-  val inStream = IO(Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W)))))
-  val outStream = IO(AXIStream(Vec(numBeatsOut, UInt(cfg.output.dtype.bitwidth.W))))
+  val inStream = IO(Flipped(AXIStream(UInt(cfg.input.dtype.bitwidth.W), numBeatsIn)))
+  val outStream = IO(AXIStream(UInt(cfg.output.dtype.bitwidth.W), numBeatsOut))
   val inputBuffer = RegInit(
     VecInit(Seq.fill(cfg.input.numTransactions(inWidth))(0.U(inWidth.W)))
   )

@@ -19,7 +19,7 @@ import chisel3._
 import chisel4ml.implicits._
 import interfaces.amba.axis._
 
-class AXIStreamLBIRDriver(val axiDrive: AXIStreamDriver[Vec[UInt]]) {
+class AXIStreamLBIRDriver(val axiDrive: AXIStreamDriver[UInt]) {
   /*
         Drives a AXIStreamIO with a LBIR QTensor.
    */

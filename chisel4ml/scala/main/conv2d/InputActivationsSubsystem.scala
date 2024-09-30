@@ -19,7 +19,7 @@ class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters)
     with HasSequentialConvParameters
     with HasLBIRStreamParameters[Conv2DConfig] {
   val io = IO(new Bundle {
-    val inStream = Flipped(AXIStream(Vec(numBeatsIn, UInt(cfg.input.dtype.bitwidth.W))))
+    val inStream = Flipped(AXIStream(UInt(cfg.input.dtype.bitwidth.W), numBeatsIn))
     val inputActivationsWindow = Decoupled(Vec(cfg.kernel.numActiveParams(cfg.depthwise), cfg.input.getType[I]))
     val activeDone = Output(Bool())
   })
