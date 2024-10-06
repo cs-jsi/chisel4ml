@@ -36,12 +36,12 @@ trait HasLBIRStreamParameters[T <: LayerWrap] extends HasLBIRConfig[T] {
   require(numBeatsOut > 0)
 }
 
-trait HasLBIRStream[T <: Data] {
-  val inStream:  AXIStreamIO[T]
-  val outStream: AXIStreamIO[T]
+trait HasLBIRStream {
+  val inStream:  AXIStreamIO[Data]
+  val outStream: AXIStreamIO[Data]
 }
 
 trait LBIRStreamSimple {
-  val in:  Vec[Bits]
-  val out: Vec[Bits]
+  val in:  Vec[Data]
+  val out: Vec[Data]
 }

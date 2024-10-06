@@ -19,9 +19,9 @@ import chisel3._
 import lbir.Model
 import scala.collection.mutable._
 
-class ProcessingPipeline(model: Model) extends Module with HasLBIRStream[UInt] {
+class ProcessingPipeline(model: Model) extends Module with HasLBIRStream {
   // List of processing elements - one PE per layer
-  val peList = new ListBuffer[Module with HasLBIRStream[UInt]]()
+  val peList = new ListBuffer[Module with HasLBIRStream]()
 
   // Instantiate modules for seperate layers
   for ((layer, idx) <- model.layers.zipWithIndex) {

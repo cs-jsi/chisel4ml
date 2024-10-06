@@ -47,7 +47,7 @@ trait HasMaxPoolParameters extends HasLBIRStreamParameters[MaxPool2DConfig] {
  */
 class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
     extends Module
-    with HasLBIRStream[UInt]
+    with HasLBIRStream
     with HasLBIRStreamParameters[MaxPool2DConfig]
     with HasMaxPoolParameters
     with HasParameterLogging {

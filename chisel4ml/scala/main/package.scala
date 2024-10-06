@@ -28,7 +28,7 @@ import scala.language.implicitConversions
 package object implicits {
   val logger = LoggerFactory.getLogger("chisel4ml")
 
-  implicit def axiStreamToLBIRDriver(x: AXIStreamIO[UInt]): AXIStreamLBIRDriver = {
+  implicit def axiStreamToLBIRDriver[T <: Data](x: AXIStreamIO[T]): AXIStreamLBIRDriver[T] = {
     new AXIStreamLBIRDriver(new AXIStreamDriver(x))
   }
 
@@ -67,12 +67,12 @@ package object implicits {
       case _                => throw new Exception("Datatype not supported.")
     }
 
-    def toLBIRTransactions(busWidth: Int): Seq[Vec[UInt]] = {
+    def toLBIRTransactions[T <: Data](busWidth: Int): Seq[Vec[T]] = {
       require(busWidth % qt.dtype.bitwidth == 0)
       val binaryStr = qt.toBinaryString
       val paramWidth = qt.dtype.bitwidth
       val numBeats = busWidth / paramWidth
-      val beats: Seq[UInt] = binaryStr
+      val beats: Seq[Data] = binaryStr
         .drop(1) // drop the "b" symbol
         .grouped(paramWidth)
         .toSeq
@@ -82,12 +82,12 @@ package object implicits {
       val diff = if (beats.length % numBeats == 0) 0 else numBeats - (beats.length % numBeats)
       val modBeats = beats ++ Seq.fill(diff)(0.U(qt.dtype.bitwidth.W))
       val transactions = modBeats
+        .map(
+          _.asInstanceOf[T]
+        )
         .grouped(numBeats)
         .map(
-          _.zipWithIndex.map((x: (UInt, Int)) => x._2 -> x._1)
-        )
-        .map(
-          Vec(numBeats, UInt(qt.dtype.bitwidth.W)).Lit(_: _*) // This syntax just unwraps the Seq to a vararg argument
+          Vec.Lit(_: _*) // _* syntax just unwraps the Seq to a vararg argument
         )
         .toSeq
       transactions

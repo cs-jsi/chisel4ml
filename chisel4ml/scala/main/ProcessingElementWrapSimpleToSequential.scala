@@ -33,7 +33,7 @@ trait HasDenseParameters extends HasLBIRStreamParameters[DenseConfig] {
 
 class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
     extends Module
-    with HasLBIRStream[UInt]
+    with HasLBIRStream
     with HasLBIRStreamParameters[DenseConfig]
     with HasDenseParameters
     with HasParameterLogging {

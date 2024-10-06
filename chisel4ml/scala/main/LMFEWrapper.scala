@@ -36,7 +36,7 @@ trait HasLMFEParameters extends HasLBIRStreamParameters[LMFEConfig] with HasLBIR
 
 class LMFEWrapper(implicit val p: Parameters)
     extends Module
-    with HasLBIRStream[UInt]
+    with HasLBIRStream
     with HasLBIRStreamParameters[LMFEConfig]
     with HasLMFEParameters
     with HasParameterLogging {

@@ -52,7 +52,7 @@ class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits
 )(
   implicit val p: Parameters)
     extends Module
-    with HasLBIRStream[UInt]
+    with HasLBIRStream
     with HasLBIRStreamParameters[Conv2DConfig]
     with HasLBIRConfig[Conv2DConfig]
     with HasSequentialConvParameters

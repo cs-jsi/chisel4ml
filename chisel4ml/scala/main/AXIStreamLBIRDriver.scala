@@ -19,12 +19,12 @@ import chisel3._
 import chisel4ml.implicits._
 import interfaces.amba.axis._
 
-class AXIStreamLBIRDriver(val axiDrive: AXIStreamDriver[UInt]) {
+class AXIStreamLBIRDriver[T <: Data](val axiDrive: AXIStreamDriver[T]) {
   /*
         Drives a AXIStreamIO with a LBIR QTensor.
    */
   def enqueueQTensor(qt: QTensor, clock: Clock): Unit = {
-    val transactions = qt.toLBIRTransactions(axiDrive.getBusWidth())
+    val transactions = qt.toLBIRTransactions[T](axiDrive.getBusWidth())
     axiDrive.enqueuePacket(transactions, clock)
   }
 

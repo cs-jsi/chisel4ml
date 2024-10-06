@@ -23,7 +23,7 @@ import chisel3._
 import org.chipsalliance.cde.config.{Config, Parameters}
 
 object LayerGenerator {
-  def apply(layerWrap: LayerWrap): Module with HasLBIRStream[UInt] = {
+  def apply(layerWrap: LayerWrap): Module with HasLBIRStream = {
     implicit val defaults: Parameters = new Config((_, _, _) => {
       case LBIRNumBeatsIn  => 4
       case LBIRNumBeatsOut => 4
