@@ -73,7 +73,7 @@ class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
   val (totalInputElements, totalInputElementsWrap) =
     Counter(state === InputBufferState.sREAD_WORD, cfg.input.numParams)
   val (transactionsCounter, transactionsCounterWrap) =
-    Counter(0 until cfg.input.numTransactions(inWidth), inStream.fire)
+    Counter(0 until cfg.input.numTransactions(numBeatsIn), inStream.fire)
   val (inputBufferCounter, inputBufferCounterWrap) =
     Counter(0 until cfg.input.paramsPerWord(inWidth), state === InputBufferState.sREAD_WORD, totalInputElementsWrap)
   dontTouch(totalInputElements)

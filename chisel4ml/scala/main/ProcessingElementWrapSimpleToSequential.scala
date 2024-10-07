@@ -22,6 +22,7 @@ import chisel3.util._
 import interfaces.amba.axis._
 import org.chipsalliance.cde.config.{Field, Parameters}
 import chisel4ml.logging.HasParameterLogging
+import chisel4ml.util.risingEdge
 
 case object DenseConfigField extends Field[DenseConfig]
 
@@ -40,39 +41,44 @@ class ProcessingElementWrapSimpleToSequential[I <: Bits, O <: Bits](implicit val
   logParameters
   val inStream = IO(Flipped(AXIStream(cfg.input.getType[I], numBeatsIn)))
   val outStream = IO(AXIStream(cfg.output.getType[O], numBeatsOut))
-  val inputBuffer = RegInit(
-    VecInit(Seq.fill(cfg.input.numTransactions(inWidth))(0.U(inWidth.W).asInstanceOf[I]))
-  )
-  val outputBuffer = RegInit(
-    VecInit(Seq.fill(cfg.output.numTransactions(outWidth))(0.U(outWidth.W).asInstanceOf[O]))
-  )
+  val genI =
+    if (cfg.input.dtype.signed) 0.S(cfg.input.dtype.bitwidth.W).asInstanceOf[I]
+    else 0.U(cfg.input.dtype.bitwidth.W).asInstanceOf[I]
+  val genO =
+    if (cfg.output.dtype.signed) 0.S(cfg.output.dtype.bitwidth.W).asInstanceOf[O]
+    else 0.U(cfg.output.dtype.bitwidth.W).asInstanceOf[O]
+  val inputBuffer = RegInit(VecInit.fill(cfg.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(genI)))
+  dontTouch(inputBuffer)
+  require(inputBuffer.flatten.length >= inStream.beats)
+  val outputBuffer = RegInit(VecInit.fill(cfg.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(genO)))
+  dontTouch(outputBuffer)
+  require(outputBuffer.flatten.length >= outStream.beats)
 
-  val (inputCntValue, inputCntWrap) = Counter(inStream.fire, cfg.input.numTransactions(inWidth))
-  val (outputCntValue, outputCntWrap) = Counter(outStream.fire, cfg.output.numTransactions(outWidth))
+  val (inputCntValue, _) = Counter(inStream.fire, cfg.input.numTransactions(numBeatsIn))
+  val (outputCntValue, outputCntWrap) = Counter(outStream.fire, cfg.output.numTransactions(numBeatsOut))
   val outputBufferFull = RegInit(false.B)
 
   // (combinational) computational module
   val peSimple = Module(ProcessingElementSimple(cfg))
 
-  /** *** INPUT DATA INTERFACE ****
-    */
+  // INPUT DATA INTERFACE
   inStream.ready := !outputBufferFull
   when(inStream.fire) {
     inputBuffer(inputCntValue) := inStream.bits
   }
 
-  /** *** CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE ****
-    */
-  peSimple.in := inputBuffer
-  when(RegNext(inStream.last)) {
-    outputBuffer := peSimple.out
+  // CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE
+  peSimple.in := inputBuffer.flatten.slice(0, peSimple.in.length)
+  val cond = RegNext(risingEdge(inStream.last))
+  dontTouch(cond)
+  when(cond) {
+    outputBuffer := peSimple.out.asTypeOf(outputBuffer)
     outputBufferFull := true.B
   }.elsewhen(outStream.last) {
     outputBufferFull := false.B
   }
 
-  /** *** OUTPUT DATA INTERFACE ****
-    */
+  // OUTPUT DATA INTERFACE
   outStream.valid := outputBufferFull
   outStream.bits := outputBuffer(outputCntValue)
   outStream.last := outputCntWrap

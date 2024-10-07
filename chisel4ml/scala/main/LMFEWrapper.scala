@@ -53,7 +53,7 @@ class LMFEWrapper(implicit val p: Parameters)
     )
   )
   val (beatCounter, beatCounterWrap) = Counter(0 to numBeatsOut, melEngine.io.outStream.fire, outStream.fire)
-  val (transactionCounter, _) = Counter(0 to cfg.input.numTransactions(inWidth))
+  val (transactionCounter, _) = Counter(0 to cfg.input.numTransactions(numBeatsIn))
   dontTouch(transactionCounter)
   val outputBuffer = RegInit(VecInit(Seq.fill(numBeatsOut)(0.U(8.W))))
 

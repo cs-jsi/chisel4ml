@@ -21,8 +21,6 @@ import chisel4ml.{MaxPool2D, MaxPool2DConfigField}
 import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
 import chisel3._
 import org.chipsalliance.cde.config.{Config, Parameters}
-import lbir.Datatype.QuantizationType._
-import chisel4ml.quantization._
 
 object LayerGenerator {
   def apply(layerWrap: LayerWrap): Module with HasLBIRStream = {

@@ -40,7 +40,7 @@ class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters)
     kernelCounterShift === (cfg.kernel.numKernels - 1).U && channelCounterShift === (cfg.kernel.numChannels - 1).U
 
   val (actMemCounter, _) = Counter(
-    0 to cfg.input.numTransactions(inWidth),
+    0 to cfg.input.numTransactions(numBeatsIn),
     io.inStream.fire,
     state === InSubState.sFULL && isLastActiveWindow && io.activeDone
   )

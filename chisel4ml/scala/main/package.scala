@@ -179,13 +179,8 @@ package object implicits {
       }
     }
     def memDepthOneKernel(memWordSize: Int): Int = memDepth(memWordSize) / numKernels
-    def numTransactions(busWidth: Int): Int = {
-      require(
-        busWidth >= qt.dtype.bitwidth,
-        s"Buswidth must be at least the size of input data bitwidth. $busWidth !>= ${qt.dtype.bitwidth}"
-      )
-      val paramsPerTrans = paramsPerWord(busWidth)
-      math.ceil(numParams.toFloat / paramsPerTrans.toFloat).toInt
+    def numTransactions(beats: Int): Int = {
+      math.ceil(numParams.toFloat / beats.toFloat).toInt
     }
   }
 

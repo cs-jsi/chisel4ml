@@ -21,7 +21,6 @@ import io.grpc.{Server, ServerBuilder}
 import java.util.concurrent.TimeUnit
 import org.slf4j.LoggerFactory
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.matching.Regex
 import scala.io.Source
 import services.GenerateCircuitReturn.ErrorMsg
 import services._
@@ -68,7 +67,7 @@ object Chisel4mlServer {
   }
 
   def main(args: Array[String]): Unit = {
-    val config = OParser.parse(cliParser, args, Config()) match {
+    OParser.parse(cliParser, args, Config()) match {
       case Some(config) => {
         if (!os.exists(config.tempDir)) {
           os.makeDir(config.tempDir, "rwxrwxrw-")
