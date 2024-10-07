@@ -67,15 +67,26 @@ package object implicits {
       case _                => throw new Exception("Datatype not supported.")
     }
 
+    def gen[T <: Data]: T = (qt.dtype.quantization, qt.dtype.signed) match {
+      case (BINARY, _)      => false.B.asInstanceOf[T]
+      case (UNIFORM, true)  => 0.S(qt.dtype.bitwidth.W).asInstanceOf[T]
+      case (UNIFORM, false) => 0.U(qt.dtype.bitwidth.W).asInstanceOf[T]
+      case _                => throw new Exception("Datatype not supported.")
+    }
+
     def toLBIRTransactions[T <: Data](busWidth: Int): Seq[Vec[T]] = {
       require(busWidth % qt.dtype.bitwidth == 0)
       val paramWidth = qt.dtype.bitwidth
       val numBeats = busWidth / paramWidth
       val beats: Seq[Int] = qt.values.map(_.toInt)
-      val typeBeats = if (qt.dtype.signed) beats.map(_.S(qt.dtype.bitwidth.W)) else beats.map(_.U(qt.dtype.bitwidth.W))
+      val typeBeats = (qt.dtype.quantization, qt.dtype.signed) match {
+        case (UNIFORM, true)  => beats.map(_.S(qt.dtype.bitwidth.W))
+        case (UNIFORM, false) => beats.map(_.U(qt.dtype.bitwidth.W))
+        case (BINARY, _)      => beats.map(_ > 0).map(_.B)
+        case _                => throw new NotImplementedError
+      }
       val diff = if (typeBeats.length % numBeats == 0) 0 else numBeats - (typeBeats.length % numBeats)
-      val diffAdd = if (qt.dtype.signed) 0.S(qt.dtype.bitwidth.W) else 0.U(qt.dtype.bitwidth.W)
-      val modBeats = typeBeats ++ Seq.fill(diff)(diffAdd.asInstanceOf[T])
+      val modBeats = typeBeats ++ Seq.fill(diff)(qt.gen[T])
       val transactions = modBeats
         .map(
           _.asInstanceOf[T]

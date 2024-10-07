@@ -41,16 +41,12 @@ class ProcessingElementWrapSimpleToSequential[I <: Bits, O <: Bits](implicit val
   logParameters
   val inStream = IO(Flipped(AXIStream(cfg.input.getType[I], numBeatsIn)))
   val outStream = IO(AXIStream(cfg.output.getType[O], numBeatsOut))
-  val genI =
-    if (cfg.input.dtype.signed) 0.S(cfg.input.dtype.bitwidth.W).asInstanceOf[I]
-    else 0.U(cfg.input.dtype.bitwidth.W).asInstanceOf[I]
-  val genO =
-    if (cfg.output.dtype.signed) 0.S(cfg.output.dtype.bitwidth.W).asInstanceOf[O]
-    else 0.U(cfg.output.dtype.bitwidth.W).asInstanceOf[O]
-  val inputBuffer = RegInit(VecInit.fill(cfg.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(genI)))
+  val inputBuffer = RegInit(VecInit.fill(cfg.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(cfg.input.gen[I])))
   dontTouch(inputBuffer)
   require(inputBuffer.flatten.length >= inStream.beats)
-  val outputBuffer = RegInit(VecInit.fill(cfg.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(genO)))
+  val outputBuffer = RegInit(
+    VecInit.fill(cfg.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(cfg.output.gen[O]))
+  )
   dontTouch(outputBuffer)
   require(outputBuffer.flatten.length >= outStream.beats)
 
