@@ -16,7 +16,6 @@
 package chisel4ml
 
 import lbir.MaxPool2DConfig
-import lbir.QTensor
 import chisel3._
 import chisel3.util._
 import chisel4ml.HasLBIRStream
@@ -52,8 +51,8 @@ class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
     with HasMaxPoolParameters
     with HasParameterLogging {
   logParameters
-  val inStream = IO(Flipped(AXIStream(UInt(cfg.input.dtype.bitwidth.W), numBeatsIn)))
-  val outStream = IO(AXIStream(UInt(cfg.output.dtype.bitwidth.W), numBeatsOut))
+  val inStream = IO(Flipped(AXIStream(cfg.input.getType[I], numBeatsIn)))
+  val outStream = IO(AXIStream(cfg.input.getType[I], numBeatsOut))
 
   object InputBufferState extends ChiselEnum {
     val sEMPTY = Value(0.U)
@@ -62,7 +61,7 @@ class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
   }
   val state = RegInit(InputBufferState.sEMPTY)
 
-  val inputsBuffer = RegEnable(inStream.bits.asTypeOf(Vec(numBeatsIn, cfg.input.getType[I])), inStream.fire)
+  val inputsBuffer = RegEnable(inStream.bits, inStream.fire)
   val outputsBuffer = Reg(Vec(cfg.input.paramsPerWord(inWidth), cfg.input.getType[I]))
 
   val (_, channelElementsCounterWrap) =

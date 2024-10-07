@@ -21,6 +21,8 @@ import chisel4ml.{MaxPool2D, MaxPool2DConfigField}
 import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
 import chisel3._
 import org.chipsalliance.cde.config.{Config, Parameters}
+import lbir.Datatype.QuantizationType._
+import chisel4ml.quantization._
 
 object LayerGenerator {
   def apply(layerWrap: LayerWrap): Module with HasLBIRStream = {
@@ -28,6 +30,14 @@ object LayerGenerator {
       case LBIRNumBeatsIn  => 4
       case LBIRNumBeatsOut => 4
     })
+    /*val qc = (layerWrap.input.dtype.quantization, layerWrap.input.dtype.signed, layerWrap.output.dtype.quantization, layerWrap.output.dtype.signed) match {
+      case (UNIFORM, true, UNIFORM, false) => new UniformQuantizationContextSSUReLU(layerWrap.output.roundingMode)
+      case (UNIFORM, false, UNIFORM, false) =>new UniformQuantizationContextUSUReLU(layerWrap.output.roundingMode)
+      case (UNIFORM, true, UNIFORM, true) => new UniformQuantizationContextSSSNoAct(layerWrap.output.roundingMode)
+      case (UNIFORM, false, UNIFORM, true) => new UniformQuantizationContextUSSNoAct(layerWrap.output.roundingMode)
+      case _ => throw new RuntimeException()
+    }*/
+
     layerWrap match {
       case l: DenseConfig =>
         Module(new ProcessingElementWrapSimpleToSequential()(defaults.alterPartial({

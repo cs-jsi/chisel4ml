@@ -19,13 +19,13 @@ class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters)
     with HasSequentialConvParameters
     with HasLBIRStreamParameters[Conv2DConfig] {
   val io = IO(new Bundle {
-    val inStream = Flipped(AXIStream(UInt(cfg.input.dtype.bitwidth.W), numBeatsIn))
+    val inStream = Flipped(AXIStream(cfg.input.getType[I], numBeatsIn))
     val inputActivationsWindow = Decoupled(Vec(cfg.kernel.numActiveParams(cfg.depthwise), cfg.input.getType[I]))
     val activeDone = Output(Bool())
   })
   val actMem = Module(MemoryGenerator.SRAM(depth = cfg.input.memDepth(inWidth), width = inWidth))
-  val dataMover = Module(new InputDataMover())
-  val shiftRegConvolver = Module(new ShiftRegisterConvolver(cfg))
+  val dataMover = Module(new InputDataMover[I]())
+  val shiftRegConvolver = Module(new ShiftRegisterConvolver[I](cfg))
 
   object InSubState extends ChiselEnum {
     val sEMPTY = Value(0.U)

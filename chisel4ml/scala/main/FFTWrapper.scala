@@ -59,8 +59,8 @@ class FFTWrapper(implicit val p: Parameters)
     with HasFFTParameters
     with HasParameterLogging {
   logParameters
-  val inStream = IO(Flipped(AXIStream(UInt(cfg.input.dtype.bitwidth.W), numBeatsIn)))
-  val outStream = IO(AXIStream(UInt(cfg.output.dtype.bitwidth.W), numBeatsOut))
+  val inStream = IO(Flipped(AXIStream(SInt(cfg.input.dtype.bitwidth.W), numBeatsIn)))
+  val outStream = IO(AXIStream(SInt(cfg.output.dtype.bitwidth.W), numBeatsOut))
 
   val window = VecInit(cfg.winFn.map(_.F(16.W, 16.BP)))
   val sdffft = Module(new SDFFFT(fftParams))
@@ -87,7 +87,7 @@ class FFTWrapper(implicit val p: Parameters)
   val currWindow = window(fftCounter).asUInt.zext
   dontTouch(currWindow)
   // U(12, 0) x S(0, 16) => S(12, 16) >> 4 => S(12,12)
-  val windowedSignal = (inStream.bits(0).asUInt.asSInt * currWindow) >> 4
+  val windowedSignal = (inStream.bits.head.asUInt.asSInt * currWindow) >> 4
   sdffft.io.in.bits.real := windowedSignal.asTypeOf(sdffft.io.in.bits.real)
   sdffft.io.in.bits.imag := 0.U.asTypeOf(sdffft.io.in.bits.imag)
   sdffft.io.lastIn := inStream.last || fftCounterWrap

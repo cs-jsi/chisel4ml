@@ -41,7 +41,7 @@ class LMFEWrapper(implicit val p: Parameters)
     with HasLMFEParameters
     with HasParameterLogging {
   logParameters
-  val inStream = IO(Flipped(AXIStream(UInt(cfg.input.dtype.bitwidth.W), numBeatsIn)))
+  val inStream = IO(Flipped(AXIStream(SInt(cfg.input.dtype.bitwidth.W), numBeatsIn)))
   val outStream = IO(AXIStream(UInt(cfg.output.dtype.bitwidth.W), numBeatsOut))
   val melEngine = Module(
     new MelEngine(

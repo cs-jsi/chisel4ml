@@ -27,17 +27,17 @@ class ResultMemoryBuffer[O <: Bits](implicit val p: Parameters)
     with HasSequentialConvParameters
     with HasLBIRStreamParameters[Conv2DConfig] {
   val io = IO(new Bundle {
-    val outStream = AXIStream(UInt(cfg.output.dtype.bitwidth.W), numBeatsOut)
+    val outStream = AXIStream(cfg.output.getType[O], numBeatsOut)
     val result = Flipped(Decoupled(cfg.output.getType[O]))
   })
   val numRegs = if (cfg.output.numParams >= numBeatsOut) numBeatsOut else cfg.output.numParams
-  val regs = Reg(Vec(numRegs, UInt(cfg.output.dtype.bitwidth.W)))
+  val regs = Reg(Vec(numRegs, cfg.output.getType[O]))
   val (totalCounter, totalCounterWrap) = Counter(0 until cfg.output.numParams, io.result.fire)
   val (registerCounter, registerCounterWrap) = Counter(0 until numRegs, io.result.fire, totalCounterWrap)
   dontTouch(totalCounter)
 
   when(io.result.fire) {
-    regs(registerCounter) := io.result.bits.asUInt
+    regs(registerCounter) := io.result.bits
   }
 
   io.outStream.bits := regs

@@ -69,18 +69,13 @@ package object implicits {
 
     def toLBIRTransactions[T <: Data](busWidth: Int): Seq[Vec[T]] = {
       require(busWidth % qt.dtype.bitwidth == 0)
-      val binaryStr = qt.toBinaryString
       val paramWidth = qt.dtype.bitwidth
       val numBeats = busWidth / paramWidth
-      val beats: Seq[Data] = binaryStr
-        .drop(1) // drop the "b" symbol
-        .grouped(paramWidth)
-        .toSeq
-        .reverse
-        .map("b" + _)
-        .map(_.U(qt.dtype.bitwidth.W))
-      val diff = if (beats.length % numBeats == 0) 0 else numBeats - (beats.length % numBeats)
-      val modBeats = beats ++ Seq.fill(diff)(0.U(qt.dtype.bitwidth.W))
+      val beats: Seq[Int] = qt.values.map(_.toInt)
+      val typeBeats = if (qt.dtype.signed) beats.map(_.S(qt.dtype.bitwidth.W)) else beats.map(_.U(qt.dtype.bitwidth.W))
+      val diff = if (typeBeats.length % numBeats == 0) 0 else numBeats - (typeBeats.length % numBeats)
+      val diffAdd = if (qt.dtype.signed) 0.S(qt.dtype.bitwidth.W) else 0.U(qt.dtype.bitwidth.W)
+      val modBeats = typeBeats ++ Seq.fill(diff)(diffAdd.asInstanceOf[T])
       val transactions = modBeats
         .map(
           _.asInstanceOf[T]

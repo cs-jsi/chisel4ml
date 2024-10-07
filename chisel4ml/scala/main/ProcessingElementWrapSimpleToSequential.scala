@@ -31,20 +31,20 @@ trait HasDenseParameters extends HasLBIRStreamParameters[DenseConfig] {
   val cfg = p(DenseConfigField)
 }
 
-class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
+class ProcessingElementWrapSimpleToSequential[I <: Bits, O <: Bits](implicit val p: Parameters)
     extends Module
     with HasLBIRStream
     with HasLBIRStreamParameters[DenseConfig]
     with HasDenseParameters
     with HasParameterLogging {
   logParameters
-  val inStream = IO(Flipped(AXIStream(UInt(cfg.input.dtype.bitwidth.W), numBeatsIn)))
-  val outStream = IO(AXIStream(UInt(cfg.output.dtype.bitwidth.W), numBeatsOut))
+  val inStream = IO(Flipped(AXIStream(cfg.input.getType[I], numBeatsIn)))
+  val outStream = IO(AXIStream(cfg.output.getType[O], numBeatsOut))
   val inputBuffer = RegInit(
-    VecInit(Seq.fill(cfg.input.numTransactions(inWidth))(0.U(inWidth.W)))
+    VecInit(Seq.fill(cfg.input.numTransactions(inWidth))(0.U(inWidth.W).asInstanceOf[I]))
   )
   val outputBuffer = RegInit(
-    VecInit(Seq.fill(cfg.output.numTransactions(outWidth))(0.U(outWidth.W)))
+    VecInit(Seq.fill(cfg.output.numTransactions(outWidth))(0.U(outWidth.W).asInstanceOf[O]))
   )
 
   val (inputCntValue, inputCntWrap) = Counter(inStream.fire, cfg.input.numTransactions(inWidth))
@@ -58,14 +58,14 @@ class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
     */
   inStream.ready := !outputBufferFull
   when(inStream.fire) {
-    inputBuffer(inputCntValue) := inStream.bits.asUInt
+    inputBuffer(inputCntValue) := inStream.bits
   }
 
   /** *** CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE ****
     */
-  peSimple.in := inputBuffer.asTypeOf(peSimple.in)
+  peSimple.in := inputBuffer
   when(RegNext(inStream.last)) {
-    outputBuffer := peSimple.out.asTypeOf(outputBuffer)
+    outputBuffer := peSimple.out
     outputBufferFull := true.B
   }.elsewhen(outStream.last) {
     outputBufferFull := false.B
@@ -74,6 +74,6 @@ class ProcessingElementWrapSimpleToSequential(implicit val p: Parameters)
   /** *** OUTPUT DATA INTERFACE ****
     */
   outStream.valid := outputBufferFull
-  outStream.bits := outputBuffer(outputCntValue).asTypeOf(outStream.bits)
+  outStream.bits := outputBuffer(outputCntValue)
   outStream.last := outputCntWrap
 }
