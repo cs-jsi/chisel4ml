@@ -47,8 +47,8 @@ trait HasSequentialConvParameters extends HasLBIRStreamParameters[Conv2DConfig] 
   override val cfg = p(Conv2DConfigField)
 }
 
-class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
-  qc: QuantizationContext[I, W, M, A, O]
+class ProcessingElementSequentialConv(
+  val qc: QuantizationContext
 )(
   implicit val p: Parameters)
     extends Module
@@ -60,14 +60,14 @@ class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits
     with HasParameterLogging {
   logParameters
 
-  val inStream = IO(Flipped(AXIStream(cfg.input.getType[I], numBeatsIn)))
-  val outStream = IO(AXIStream(cfg.output.getType[O], numBeatsOut))
+  val inStream = IO(Flipped(AXIStream(cfg.input.getType[qc.I], numBeatsIn)))
+  val outStream = IO(AXIStream(cfg.output.getType[qc.O], numBeatsOut))
 
-  val dynamicNeuron = Module(new DynamicNeuron[I, W, M, A, O](cfg, qc))
+  val dynamicNeuron = Module(new DynamicNeuron(cfg, qc))
   val ctrl = Module(new PeSeqConvController(cfg))
-  val kernelSubsystem = Module(new KernelSubsystem[W, A](cfg))
-  val inputSubsytem = Module(new InputActivationsSubsystem[I])
-  val rmb = Module(new ResultMemoryBuffer[O])
+  val kernelSubsystem = Module(new KernelSubsystem[qc.W, qc.A](cfg))
+  val inputSubsytem = Module(new InputActivationsSubsystem[qc.I])
+  val rmb = Module(new ResultMemoryBuffer[qc.O])
 
   inputSubsytem.io.inStream <> inStream
   dynamicNeuron.io.in <> inputSubsytem.io.inputActivationsWindow
@@ -79,6 +79,7 @@ class ProcessingElementSequentialConv[I <: Bits, W <: Bits, M <: Bits, A <: Bits
   kernelSubsystem.io.ctrl <> ctrl.io.kernelCtrl
 }
 
+/*
 object ProcessingElementSequentialConv {
   def apply(cfg: Conv2DConfig) = {
     implicit val p: Parameters = new Config((_, _, _) => {
@@ -106,4 +107,4 @@ object ProcessingElementSequentialConv {
       case _ => throw new RuntimeException()
     }
   }
-}
+}*/

@@ -19,8 +19,14 @@ import chisel4ml.{HasLBIRStream, LBIRNumBeatsIn, LBIRNumBeatsOut}
 import chisel4ml.conv2d.ProcessingElementSequentialConv
 import chisel4ml.{MaxPool2D, MaxPool2DConfigField}
 import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
+import lbir.Datatype.QuantizationType.UNIFORM
+import lbir.Datatype.QuantizationType.BINARY
+import chisel4ml.implicits._
 import chisel3._
 import org.chipsalliance.cde.config.{Config, Parameters}
+import chisel4ml.quantization._
+import chisel4ml.conv2d.Conv2DConfigField
+import lbir.IsActiveLayer
 
 object LayerGenerator {
   def apply(layerWrap: LayerWrap): Module with HasLBIRStream = {
@@ -28,20 +34,7 @@ object LayerGenerator {
       case LBIRNumBeatsIn  => 4
       case LBIRNumBeatsOut => 4
     })
-    /*val qc = (layerWrap.input.dtype.quantization, layerWrap.input.dtype.signed, layerWrap.output.dtype.quantization, layerWrap.output.dtype.signed) match {
-      case (UNIFORM, true, UNIFORM, false) => new UniformQuantizationContextSSUReLU(layerWrap.output.roundingMode)
-      case (UNIFORM, false, UNIFORM, false) =>new UniformQuantizationContextUSUReLU(layerWrap.output.roundingMode)
-      case (UNIFORM, true, UNIFORM, true) => new UniformQuantizationContextSSSNoAct(layerWrap.output.roundingMode)
-      case (UNIFORM, false, UNIFORM, true) => new UniformQuantizationContextUSSNoAct(layerWrap.output.roundingMode)
-      case _ => throw new RuntimeException()
-    }*/
-
     layerWrap match {
-      case l: DenseConfig =>
-        Module(new ProcessingElementWrapSimpleToSequential()(defaults.alterPartial({
-          case DenseConfigField => l
-        })))
-      case l: Conv2DConfig => Module(ProcessingElementSequentialConv(l))
       case l: MaxPool2DConfig =>
         Module(new MaxPool2D()(defaults.alterPartial({
           case MaxPool2DConfigField => l
@@ -57,8 +50,42 @@ object LayerGenerator {
           case LMFEConfigField => l
           case LBIRNumBeatsIn  => 1
         })))
+      case l: IsActiveLayer =>
+        l match {
+          case l: DenseConfig =>
+            Module(new ProcessingElementWrapSimpleToSequential(this.getQuantizationContext(l))(defaults.alterPartial({
+              case DenseConfigField => l
+            })))
+          case l: Conv2DConfig =>
+            Module(new ProcessingElementSequentialConv(this.getQuantizationContext(l))(defaults.alterPartial({
+              case Conv2DConfigField => l
+            })))
+          case _ => throw new RuntimeException
+        }
       case _ => throw new RuntimeException(f"Unsupported layer type: $layerWrap")
     }
-
   }
+
+  def getQuantizationContext(l: LayerWrap with IsActiveLayer): QuantizationContext =
+    (
+      l.input.dtype.quantization,
+      l.input.dtype.signed,
+      l.kernel.dtype.quantization,
+      l.kernel.dtype.signed,
+      l.output.dtype.quantization,
+      l.output.dtype.signed
+    ) match {
+      case (BINARY, _, BINARY, _, BINARY, _)      => BinarizedQuantizationContext
+      case (UNIFORM, false, BINARY, _, BINARY, _) => new BinaryQuantizationContext(l.output.roundingMode)
+      case (UNIFORM, true, BINARY, _, BINARY, _)  => new BinaryQuantizationContextSInt(l.output.roundingMode)
+      case (UNIFORM, true, UNIFORM, true, UNIFORM, false) =>
+        new UniformQuantizationContextSSUReLU(l.output.roundingMode)
+      case (UNIFORM, false, UNIFORM, true, UNIFORM, false) =>
+        new UniformQuantizationContextUSUReLU(l.output.roundingMode)
+      case (UNIFORM, true, UNIFORM, true, UNIFORM, true) =>
+        new UniformQuantizationContextSSSNoAct(l.output.roundingMode)
+      case (UNIFORM, false, UNIFORM, true, UNIFORM, true) =>
+        new UniformQuantizationContextUSSNoAct(l.output.roundingMode)
+      case _ => throw new RuntimeException
+    }
 }

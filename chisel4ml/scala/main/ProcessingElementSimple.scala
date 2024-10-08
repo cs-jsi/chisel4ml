@@ -22,76 +22,37 @@ import chisel4ml._
 import lbir.Datatype.QuantizationType._
 import lbir.DenseConfig
 import chisel3._
-import spire.algebra.Ring
-import spire.implicits._
 import dsptools.numbers._
 
-object ProcessingElementSimple {
-  def apply(layer: DenseConfig) = (
-    layer.input.dtype.quantization,
-    layer.input.dtype.signed,
-    layer.kernel.dtype.quantization,
-    layer.output.dtype.signed
-  ) match {
-    case (UNIFORM, true, UNIFORM, false) =>
-      new ProcessingElementSimple[SInt, SInt, SInt, SInt, UInt](layer)(
-        new UniformQuantizationContextSSUReLU(layer.output.roundingMode)
-      )
-    case (UNIFORM, false, UNIFORM, false) =>
-      new ProcessingElementSimple[UInt, SInt, SInt, SInt, UInt](layer)(
-        new UniformQuantizationContextUSUReLU(layer.output.roundingMode)
-      )
-    case (UNIFORM, true, UNIFORM, true) =>
-      new ProcessingElementSimple[SInt, SInt, SInt, SInt, SInt](layer)(
-        new UniformQuantizationContextSSSNoAct(layer.output.roundingMode)
-      )
-    case (UNIFORM, false, UNIFORM, true) =>
-      new ProcessingElementSimple[UInt, SInt, SInt, SInt, SInt](layer)(
-        new UniformQuantizationContextUSSNoAct(layer.output.roundingMode)
-      )
-    case (UNIFORM, false, BINARY, true) =>
-      new ProcessingElementSimple[UInt, Bool, SInt, SInt, Bool](layer)(
-        new BinaryQuantizationContext(layer.output.roundingMode)
-      )
-    case (UNIFORM, true, BINARY, true) =>
-      new ProcessingElementSimple[SInt, Bool, SInt, SInt, Bool](layer)(
-        new BinaryQuantizationContextSInt(layer.output.roundingMode)
-      )
-    case (BINARY, _, BINARY, true) =>
-      new ProcessingElementSimple[Bool, Bool, Bool, UInt, Bool](layer)(BinarizedQuantizationContext)
-    case _ => throw new RuntimeException()
-  }
-}
-
-class ProcessingElementSimple[I <: Bits, W <: Bits, M <: Bits, A <: Bits: Ring, O <: Bits](
-  layer: DenseConfig
-)(qc:    QuantizationContext[I, W, M, A, O])
+class ProcessingElementSimple(
+  layer:  DenseConfig
+)(val qc: QuantizationContext)
     extends Module
     with LBIRStreamSimple {
-  val in = IO(Input(Vec(layer.input.width, layer.input.getType[I])))
-  val out = IO(Output(Vec(layer.output.width, layer.output.getType[O])))
+  val in = IO(Input(Vec(layer.input.width, layer.input.getType[qc.I])))
+  val out = IO(Output(Vec(layer.output.width, layer.output.getType[qc.O])))
 
-  val weights: Seq[Seq[W]] = layer.getWeights[W]
+  val weights: Seq[Seq[qc.W]] = layer.getWeights[qc.W]
   val shift:   Seq[Int] = layer.kernel.dtype.shift
-  val thresh:  Seq[A] = layer.getThresh[A]
+  val thresh:  Seq[qc.A] = layer.getThresh[qc.A]
 
   for (i <- 0 until layer.output.shape(0)) {
     if (layer.kernel.dtype.quantization == BINARY && layer.input.dtype.quantization == BINARY) {
-      out(i) := NeuronWithoutBias[I, W, M, A, O](
-        in.map(_.asInstanceOf[I]),
+      out(i) := NeuronWithoutBias(qc)(
+        in.map(_.asInstanceOf[qc.I]),
         weights(i),
         thresh(i),
         shift(i),
         layer.output.dtype.bitwidth
-      )(qc)
+      )
     } else {
-      out(i) := NeuronWithBias[I, W, M, A, O](
-        in.map(_.asInstanceOf[I]),
+      out(i) := NeuronWithBias(qc)(
+        in.map(_.asInstanceOf[qc.I]),
         weights(i),
         thresh(i),
         shift(i),
         layer.output.dtype.bitwidth
-      )(qc)
+      )
     }
   }
 }

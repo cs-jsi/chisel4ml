@@ -23,6 +23,8 @@ import interfaces.amba.axis._
 import org.chipsalliance.cde.config.{Field, Parameters}
 import chisel4ml.logging.HasParameterLogging
 import chisel4ml.util.risingEdge
+import chisel4ml.quantization.QuantizationContext
+import spire.algebra.Ring
 
 case object DenseConfigField extends Field[DenseConfig]
 
@@ -32,20 +34,22 @@ trait HasDenseParameters extends HasLBIRStreamParameters[DenseConfig] {
   val cfg = p(DenseConfigField)
 }
 
-class ProcessingElementWrapSimpleToSequential[I <: Bits, O <: Bits](implicit val p: Parameters)
+class ProcessingElementWrapSimpleToSequential(val qc: QuantizationContext)(implicit val p: Parameters)
     extends Module
     with HasLBIRStream
     with HasLBIRStreamParameters[DenseConfig]
     with HasDenseParameters
     with HasParameterLogging {
   logParameters
-  val inStream = IO(Flipped(AXIStream(cfg.input.getType[I], numBeatsIn)))
-  val outStream = IO(AXIStream(cfg.output.getType[O], numBeatsOut))
-  val inputBuffer = RegInit(VecInit.fill(cfg.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(cfg.input.gen[I])))
+  val inStream = IO(Flipped(AXIStream(cfg.input.getType[qc.I], numBeatsIn)))
+  val outStream = IO(AXIStream(cfg.output.getType[qc.O], numBeatsOut))
+  val inputBuffer = RegInit(
+    VecInit.fill(cfg.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(cfg.input.gen[qc.I]))
+  )
   dontTouch(inputBuffer)
   require(inputBuffer.flatten.length >= inStream.beats)
   val outputBuffer = RegInit(
-    VecInit.fill(cfg.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(cfg.output.gen[O]))
+    VecInit.fill(cfg.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(cfg.output.gen[qc.O]))
   )
   dontTouch(outputBuffer)
   require(outputBuffer.flatten.length >= outStream.beats)
@@ -55,7 +59,7 @@ class ProcessingElementWrapSimpleToSequential[I <: Bits, O <: Bits](implicit val
   val outputBufferFull = RegInit(false.B)
 
   // (combinational) computational module
-  val peSimple = Module(ProcessingElementSimple(cfg))
+  val peSimple = Module(new ProcessingElementSimple(cfg)(qc))
 
   // INPUT DATA INTERFACE
   inStream.ready := !outputBufferFull
