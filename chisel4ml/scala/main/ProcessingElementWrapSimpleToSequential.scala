@@ -24,7 +24,6 @@ import org.chipsalliance.cde.config.{Field, Parameters}
 import chisel4ml.logging.HasParameterLogging
 import chisel4ml.util.risingEdge
 import chisel4ml.quantization.QuantizationContext
-import spire.algebra.Ring
 
 case object DenseConfigField extends Field[DenseConfig]
 

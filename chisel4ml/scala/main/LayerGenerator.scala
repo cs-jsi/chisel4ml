@@ -21,7 +21,6 @@ import chisel4ml.{MaxPool2D, MaxPool2DConfigField}
 import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
 import lbir.Datatype.QuantizationType.UNIFORM
 import lbir.Datatype.QuantizationType.BINARY
-import chisel4ml.implicits._
 import chisel3._
 import org.chipsalliance.cde.config.{Config, Parameters}
 import chisel4ml.quantization._

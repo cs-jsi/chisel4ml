@@ -17,16 +17,12 @@ package chisel4ml.conv2d
 
 import chisel4ml._
 import chisel4ml.implicits._
-import lbir.Activation._
 import lbir.Conv2DConfig
-import lbir.Datatype.QuantizationType._
 import chisel3._
 import interfaces.amba.axis._
 import chisel4ml.quantization._
 import org.chipsalliance.cde.config.Parameters
-import spire.implicits._
-import dsptools.numbers._
-import org.chipsalliance.cde.config.{Config, Field}
+import org.chipsalliance.cde.config.Field
 import chisel4ml.logging.HasLogger
 import chisel4ml.logging.HasParameterLogging
 
@@ -78,33 +74,3 @@ class ProcessingElementSequentialConv(
   ctrl.io.activeDone := inputSubsytem.io.activeDone
   kernelSubsystem.io.ctrl <> ctrl.io.kernelCtrl
 }
-
-/*
-object ProcessingElementSequentialConv {
-  def apply(cfg: Conv2DConfig) = {
-    implicit val p: Parameters = new Config((_, _, _) => {
-      case Conv2DConfigField => cfg
-      case LBIRNumBeatsIn    => 4
-      case LBIRNumBeatsOut   => 4
-    })
-    (cfg.input.dtype.quantization, cfg.input.dtype.signed, cfg.kernel.dtype.quantization, cfg.activation) match {
-      case (UNIFORM, true, UNIFORM, RELU) =>
-        new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, UInt](
-          new UniformQuantizationContextSSUReLU(cfg.output.roundingMode)
-        )
-      case (UNIFORM, false, UNIFORM, RELU) =>
-        new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, UInt](
-          new UniformQuantizationContextUSUReLU(cfg.output.roundingMode)
-        )
-      case (UNIFORM, true, UNIFORM, NO_ACTIVATION) =>
-        new ProcessingElementSequentialConv[SInt, SInt, SInt, SInt, SInt](
-          new UniformQuantizationContextSSSNoAct(cfg.output.roundingMode)
-        )
-      case (UNIFORM, false, UNIFORM, NO_ACTIVATION) =>
-        new ProcessingElementSequentialConv[UInt, SInt, SInt, SInt, SInt](
-          new UniformQuantizationContextUSSNoAct(cfg.output.roundingMode)
-        )
-      case _ => throw new RuntimeException()
-    }
-  }
-}*/

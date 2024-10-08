@@ -22,7 +22,6 @@ import chisel4ml._
 import lbir.Datatype.QuantizationType._
 import lbir.DenseConfig
 import chisel3._
-import dsptools.numbers._
 
 class ProcessingElementSimple(
   layer:  DenseConfig

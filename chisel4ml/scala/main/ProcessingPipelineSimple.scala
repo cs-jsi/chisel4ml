@@ -21,11 +21,12 @@ import chisel4ml.implicits._
 import lbir.{DenseConfig, LayerWrap, Model}
 import scala.collection.mutable._
 import services.GenerateCircuitParams.Options
-/*
+import chisel4ml.LayerGenerator.getQuantizationContext
+
 class ProcessingPipelineSimple(model: Model, options: Options) extends Module with LBIRStreamSimple {
   def layerGeneratorSimple(layer: LayerWrap): Module with LBIRStreamSimple = {
     layer match {
-      case l: DenseConfig => Module(new ProcessingElementSimple(l)(qc))
+      case l: DenseConfig => Module(new ProcessingElementSimple(l)(getQuantizationContext(l)))
       case _ => throw new RuntimeException(f"Unsupported layer type")
     }
   }
@@ -52,4 +53,3 @@ class ProcessingPipelineSimple(model: Model, options: Options) extends Module wi
   }
   out := peList.last.out
 }
- */
