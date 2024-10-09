@@ -17,15 +17,12 @@ package chisel4ml
 
 import chisel3._
 import lbir.Model
-import scala.collection.mutable._
+import lbir.LayerWrap
 
 class ProcessingPipeline(model: Model) extends Module with HasLBIRStream {
-  // List of processing elements - one PE per layer
-  val peList = new ListBuffer[Module with HasLBIRStream]()
-
   // Instantiate modules for seperate layers
-  for ((layer, idx) <- model.layers.zipWithIndex) {
-    peList += LayerGenerator(layer.get)
+  val peList: Seq[Module with HasLBIRStream] = model.layers.map { l: Option[LayerWrap] =>
+    LayerGenerator(l.get)
   }
 
   val inStream = IO(chiselTypeOf(peList.head.inStream))

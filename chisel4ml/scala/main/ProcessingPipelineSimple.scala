@@ -19,7 +19,6 @@ import chisel3._
 import chisel4ml.ProcessingElementSimple
 import chisel4ml.implicits._
 import lbir.{DenseConfig, LayerWrap, Model}
-import scala.collection.mutable._
 import services.GenerateCircuitParams.Options
 import chisel4ml.LayerGenerator.getQuantizationContext
 
@@ -31,12 +30,9 @@ class ProcessingPipelineSimple(model: Model, options: Options) extends Module wi
     }
   }
 
-  // List of processing elements - one PE per layer
-  val peList = new ListBuffer[Module with LBIRStreamSimple]()
-
-  // Instantiate modules for seperate layers, for now we only support DENSE layers
-  for (layer <- model.layers) {
-    peList += layerGeneratorSimple(layer.get)
+  // Instantiate modules for seperate layers
+  val peList: Seq[Module with LBIRStreamSimple] = model.layers.map { l: Option[LayerWrap] =>
+    layerGeneratorSimple(l.get)
   }
 
   val in = IO(Input(Vec(model.layers.head.get.input.width, model.layers.head.get.input.getType)))
