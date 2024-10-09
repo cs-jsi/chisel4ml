@@ -16,11 +16,11 @@
 package chisel4ml
 
 import chisel3._
+import chisel4ml.LayerGenerator.getQuantizationContext
 import chisel4ml.ProcessingElementSimple
 import chisel4ml.implicits._
 import lbir.{DenseConfig, LayerWrap, Model}
 import services.GenerateCircuitParams.Options
-import chisel4ml.LayerGenerator.getQuantizationContext
 
 class ProcessingPipelineSimple(model: Model, options: Options) extends Module with LBIRStreamSimple {
   def layerGeneratorSimple(layer: LayerWrap): Module with LBIRStreamSimple = {

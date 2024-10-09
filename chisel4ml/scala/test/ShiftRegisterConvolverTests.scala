@@ -15,14 +15,14 @@
  */
 package chisel4ml.tests
 
-import chisel3._
-import chisel3.experimental.VecLiterals._
-import chiseltest._
-import chisel4ml.conv2d.ShiftRegisterConvolver
-import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.LoggerFactory
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import breeze.linalg.DenseMatrix
+import chisel3._
+import chisel3.experimental.VecLiterals._
+import chisel4ml.conv2d.ShiftRegisterConvolver
+import chiseltest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.slf4j.LoggerFactory
 
 case class RandShiftRegConvTestParams(
   bitwidth:     Int,

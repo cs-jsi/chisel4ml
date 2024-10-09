@@ -15,13 +15,12 @@
  */
 package chisel4ml
 
-import chisel4ml.{NeuronWithBias, NeuronWithoutBias}
+import chisel3._
 import chisel4ml.implicits._
 import chisel4ml.quantization._
-import chisel4ml._
+import chisel4ml.{NeuronWithBias, NeuronWithoutBias, _}
 import lbir.Datatype.QuantizationType._
 import lbir.DenseConfig
-import chisel3._
 
 class ProcessingElementSimple(
   layer:  DenseConfig

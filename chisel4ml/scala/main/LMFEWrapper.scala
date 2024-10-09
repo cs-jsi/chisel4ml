@@ -17,13 +17,13 @@ package chisel4ml
 
 import chisel3._
 import chisel3.util._
-import lbir.LMFEConfig
-import melengine._
-import interfaces.amba.axis._
 import chisel4ml.implicits._
-import org.chipsalliance.cde.config.{Field, Parameters}
 import chisel4ml.logging.HasParameterLogging
 import fixedpoint._
+import interfaces.amba.axis._
+import lbir.LMFEConfig
+import melengine._
+import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object LMFEConfigField extends Field[LMFEConfig]
 

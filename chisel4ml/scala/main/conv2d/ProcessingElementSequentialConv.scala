@@ -15,16 +15,14 @@
  */
 package chisel4ml.conv2d
 
+import chisel3._
 import chisel4ml._
 import chisel4ml.implicits._
-import lbir.Conv2DConfig
-import chisel3._
-import interfaces.amba.axis._
+import chisel4ml.logging.{HasLogger, HasParameterLogging}
 import chisel4ml.quantization._
-import org.chipsalliance.cde.config.Parameters
-import org.chipsalliance.cde.config.Field
-import chisel4ml.logging.HasLogger
-import chisel4ml.logging.HasParameterLogging
+import interfaces.amba.axis._
+import lbir.Conv2DConfig
+import org.chipsalliance.cde.config.{Field, Parameters}
 
 /** A sequential processing element for convolutions.
   *

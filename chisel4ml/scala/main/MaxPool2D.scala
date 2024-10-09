@@ -15,16 +15,15 @@
  */
 package chisel4ml
 
-import lbir.MaxPool2DConfig
 import chisel3._
 import chisel3.util._
-import chisel4ml.HasLBIRStream
 import chisel4ml.implicits._
-import interfaces.amba.axis._
-import chisel4ml.util.risingEdge
-import org.chipsalliance.cde.config.{Field, Parameters}
-import chisel4ml.HasLBIRStreamParameters
 import chisel4ml.logging.HasParameterLogging
+import chisel4ml.util.risingEdge
+import chisel4ml.{HasLBIRStream, HasLBIRStreamParameters}
+import interfaces.amba.axis._
+import lbir.MaxPool2DConfig
+import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object MaxPool2DConfigField extends Field[MaxPool2DConfig]
 

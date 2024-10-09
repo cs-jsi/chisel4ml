@@ -18,13 +18,13 @@ package chisel4ml
 import chisel3._
 import chisel3.util._
 import chisel4ml.HasLBIRStream
-import lbir.FFTConfig
+import chisel4ml.logging.HasParameterLogging
 import dsptools._
 import fft._
-import interfaces.amba.axis._
-import org.chipsalliance.cde.config.{Field, Parameters}
-import chisel4ml.logging.HasParameterLogging
 import fixedpoint._
+import interfaces.amba.axis._
+import lbir.FFTConfig
+import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object FFTConfigField extends Field[FFTConfig]
 

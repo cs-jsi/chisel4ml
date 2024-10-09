@@ -16,11 +16,11 @@
 package chisel4ml.conv2d
 import chisel3._
 import chisel3.util._
+import chisel4ml.HasLBIRStreamParameters
 import chisel4ml.implicits._
 import interfaces.amba.axis.AXIStream
-import org.chipsalliance.cde.config.Parameters
-import chisel4ml.HasLBIRStreamParameters
 import lbir.Conv2DConfig
+import org.chipsalliance.cde.config.Parameters
 
 class ResultMemoryBuffer[O <: Bits](implicit val p: Parameters)
     extends Module

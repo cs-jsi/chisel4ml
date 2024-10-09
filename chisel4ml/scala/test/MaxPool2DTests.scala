@@ -16,13 +16,11 @@
 package chisel4ml.tests
 
 import _root_.chisel4ml.implicits._
-import org.chipsalliance.cde.config.Config
-import chisel4ml.MaxPool2DConfigField
-import chisel4ml.{LBIRNumBeatsIn, LBIRNumBeatsOut}
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
-import chisel4ml.MaxPool2D
+import chisel4ml.{LBIRNumBeatsIn, LBIRNumBeatsOut, MaxPool2D, MaxPool2DConfigField}
 import chiseltest._
+import org.chipsalliance.cde.config.Config
 import org.scalatest.flatspec.AnyFlatSpec
 
 class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {

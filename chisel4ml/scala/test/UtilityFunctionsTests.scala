@@ -1,13 +1,11 @@
 package chisel4ml.tests
 
 import _root_.chisel3._
+import chisel4ml.util.{shiftAndRoundSIntStaticHalfToEven, shiftAndRoundSIntStaticUp, shiftAndRoundSIntUp}
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import chisel4ml.util.shiftAndRoundSIntStaticUp
-import chisel4ml.util.shiftAndRoundSIntStaticHalfToEven
-import java.math.BigDecimal
-import java.math.{RoundingMode => JavaRoundingMode}
-import chisel4ml.util.shiftAndRoundSIntUp
+
+import java.math.{BigDecimal, RoundingMode => JavaRoundingMode}
 
 class RoundTestBedStaticHalfToEven(inputWidth: Int, shift: Int) extends Module {
   val in = IO(Input(SInt(inputWidth.W)))

@@ -17,9 +17,9 @@ package chisel4ml
 
 import chisel3._
 import chisel3.util._
+import chisel4ml.conv2d._
 import chisel4ml.implicits._
 import chisel4ml.quantization._
-import chisel4ml.conv2d._
 
 trait StaticNeuron {
   def apply(

@@ -55,7 +55,7 @@ package object util {
     case "UP"        => shiftAndRoundSIntUp
     case "HALF_EVEN" => shiftAndRoundSIntDynamicHalfToEven
     case "ROUND"     => shiftAndRoundSIntDynamicHalfToEven
-    case "NONE"      => (x: SInt, s: UInt, b: Bool) => x
+    case "NONE"      => (x: SInt, _: UInt, _: Bool) => x
     case _           => throw new NotImplementedError
   }
 
@@ -101,7 +101,7 @@ package object util {
     case "UP"        => shiftAndRoundSIntStaticUp
     case "HALF_EVEN" => shiftAndRoundSIntStaticHalfToEven
     case "ROUND"     => shiftAndRoundSIntStaticHalfToEven
-    case "NONE"      => (x: SInt, s: Int) => x
+    case "NONE"      => (x: SInt, _: Int) => x
     case _           => throw new NotImplementedError
   }
 

@@ -16,12 +16,12 @@
 package chisel4ml
 
 import chisel3._
-import lbir._
-import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
 import chisel3.experimental.VecLiterals._
-import org.slf4j.LoggerFactory
 import chisel4ml.util._
 import interfaces.amba.axis._
+import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
+import lbir._
+import org.slf4j.LoggerFactory
 
 import scala.language.implicitConversions
 

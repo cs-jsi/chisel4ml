@@ -15,14 +15,13 @@
  */
 package chisel4ml.logging
 
-import org.slf4j.LoggerFactory
+import chisel4ml.conv2d.Conv2DConfigField
+import chisel4ml.{MaxPool2DConfigField, _}
+import lbir.LayerWrap
 import org.chipsalliance.cde.config.{Field, Parameters}
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners.SubTypes
-import chisel4ml._
-import chisel4ml.conv2d.Conv2DConfigField
-import chisel4ml.MaxPool2DConfigField
-import lbir.LayerWrap
+import org.slf4j.LoggerFactory
 
 trait HasLogger {
   val logger = LoggerFactory.getLogger(this.getClass().toString())

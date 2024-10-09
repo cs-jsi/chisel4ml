@@ -16,8 +16,7 @@
 package chisel4ml
 
 import chisel3._
-import lbir.Model
-import lbir.LayerWrap
+import lbir.{LayerWrap, Model}
 
 class ProcessingPipeline(model: Model) extends Module with HasLBIRStream {
   // Instantiate modules for seperate layers

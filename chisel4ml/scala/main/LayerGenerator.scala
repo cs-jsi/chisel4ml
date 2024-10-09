@@ -15,17 +15,13 @@
  */
 package chisel4ml
 
-import chisel4ml.{HasLBIRStream, LBIRNumBeatsIn, LBIRNumBeatsOut}
-import chisel4ml.conv2d.ProcessingElementSequentialConv
-import chisel4ml.{MaxPool2D, MaxPool2DConfigField}
-import lbir.{Conv2DConfig, DenseConfig, FFTConfig, LMFEConfig, LayerWrap, MaxPool2DConfig}
-import lbir.Datatype.QuantizationType.UNIFORM
-import lbir.Datatype.QuantizationType.BINARY
 import chisel3._
-import org.chipsalliance.cde.config.{Config, Parameters}
+import chisel4ml.conv2d.{Conv2DConfigField, ProcessingElementSequentialConv}
 import chisel4ml.quantization._
-import chisel4ml.conv2d.Conv2DConfigField
-import lbir.IsActiveLayer
+import chisel4ml.{HasLBIRStream, LBIRNumBeatsIn, LBIRNumBeatsOut, MaxPool2D, MaxPool2DConfigField}
+import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
+import lbir.{Conv2DConfig, DenseConfig, FFTConfig, IsActiveLayer, LMFEConfig, LayerWrap, MaxPool2DConfig}
+import org.chipsalliance.cde.config.{Config, Parameters}
 
 object LayerGenerator {
   def apply(layerWrap: LayerWrap): Module with HasLBIRStream = {

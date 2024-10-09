@@ -2,12 +2,12 @@ package chisel4ml.conv2d
 
 import chisel3._
 import chisel3.util._
-import interfaces.amba.axis.AXIStream
-import memories.MemoryGenerator
-import chisel4ml.implicits._
-import org.chipsalliance.cde.config.Parameters
 import chisel4ml.HasLBIRStreamParameters
+import chisel4ml.implicits._
+import interfaces.amba.axis.AXIStream
 import lbir.Conv2DConfig
+import memories.MemoryGenerator
+import org.chipsalliance.cde.config.Parameters
 
 /* InputActivationSubsystem
  * Handles the input data stream, and stores it in to a input buffer. It also "rolls" through the input activation

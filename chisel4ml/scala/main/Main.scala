@@ -18,14 +18,15 @@ package chisel4ml
 import chisel3._
 import chisel4ml.Circuit
 import io.grpc.{Server, ServerBuilder}
-import java.util.concurrent.TimeUnit
+import lbir.QTensor
 import org.slf4j.LoggerFactory
-import scala.concurrent.{ExecutionContext, Future}
-import scala.io.Source
+import scopt.OParser
 import services.GenerateCircuitReturn.ErrorMsg
 import services._
-import lbir.QTensor
-import scopt.OParser
+
+import java.util.concurrent.TimeUnit
+import scala.concurrent.{ExecutionContext, Future}
+import scala.io.Source
 
 case class Config(
   tempDir: os.Path = os.Path("/tmp/.chisel4ml/"),

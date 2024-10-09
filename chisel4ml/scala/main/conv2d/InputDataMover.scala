@@ -17,12 +17,12 @@ package chisel4ml.conv2d
 
 import chisel3._
 import chisel3.util._
-import memories.SRAMRead
+import chisel4ml.HasLBIRStreamParameters
 import chisel4ml.implicits._
 import chisel4ml.util.isStable
-import org.chipsalliance.cde.config.Parameters
-import chisel4ml.HasLBIRStreamParameters
 import lbir.Conv2DConfig
+import memories.SRAMRead
+import org.chipsalliance.cde.config.Parameters
 
 /*
   Moves the entire tensor after obtainint the signal io.start.

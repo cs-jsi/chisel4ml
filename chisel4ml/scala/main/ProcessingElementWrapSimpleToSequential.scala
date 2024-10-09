@@ -15,15 +15,15 @@
  */
 package chisel4ml
 
-import chisel4ml.implicits._
-import lbir.DenseConfig
 import chisel3._
 import chisel3.util._
-import interfaces.amba.axis._
-import org.chipsalliance.cde.config.{Field, Parameters}
+import chisel4ml.implicits._
 import chisel4ml.logging.HasParameterLogging
-import chisel4ml.util.risingEdge
 import chisel4ml.quantization.QuantizationContext
+import chisel4ml.util.risingEdge
+import interfaces.amba.axis._
+import lbir.DenseConfig
+import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object DenseConfigField extends Field[DenseConfig]
 

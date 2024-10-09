@@ -15,21 +15,19 @@
  */
 package chisel4ml.tests
 
-import chisel4ml.conv2d._
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
 import chisel3._
 import chisel3.experimental.VecLiterals._
-import chiseltest._
+import chisel4ml.conv2d._
 import chisel4ml.implicits._
+import chisel4ml.{LBIRNumBeatsIn, LBIRNumBeatsOut}
+import chiseltest._
+import lbir.Conv2DConfig
 import memories.MemoryGenerator
+import org.chipsalliance.cde.config.Config
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.{BeforeAndAfterEachTestData, TestData}
-import org.chipsalliance.cde.config.Config
-
-import java.nio.file.Paths
-import lbir.Conv2DConfig
-import chisel4ml.{LBIRNumBeatsIn, LBIRNumBeatsOut}
 
 class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTester with BeforeAndAfterEachTestData {
   val logger = LoggerFactory.getLogger(classOf[InputActivationsSubsystemTests])
