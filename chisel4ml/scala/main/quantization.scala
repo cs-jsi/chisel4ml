@@ -26,12 +26,12 @@ package quantization {
     type M <: Bits
     type A <: Bits
     type O <: Bits
-    def mul:  (I, W) => M
-    def add:  Vec[M] => A
-    def addA: (A, A) => A
-    def minA: (A, A) => A
-    def zeroA(bw: Int): A
-    def actFn:                (A, A, Int) => O
+    def mul:                  (I, W) => M
+    def add:                  Vec[M] => A
+    def addA:                 (A, A) => A
+    def minA:                 (A, A) => A
+    def zeroA:                A
+    def actFn:                (A, A) => O
     def shiftAndRoundStatic:  (A, Int) => A
     def shiftAndRoundDynamic: (A, UInt, Bool) => A
   }
@@ -46,10 +46,10 @@ package quantization {
     override def add = (x: Vec[Bool]) => PopCount(x.asUInt)
     override def addA = (x: UInt, y: UInt) => x +& y
     override def minA = (x: UInt, y: UInt) => x -& y
-    override def zeroA(bw: Int) = 0.U(bw.W)
+    override def zeroA = 0.U
     override def shiftAndRoundStatic:  (UInt, Int) => UInt = shiftAndRoundUIntStatic
     override def shiftAndRoundDynamic: (UInt, UInt, Bool) => UInt = shiftAndRoundUInt
-    override def actFn:                (UInt, UInt, Int) => Bool = signFnU
+    override def actFn:                (UInt, UInt) => Bool = new SignFunction[UInt].actFn
   }
 
   class BinaryQuantizationContext(roundingMode: String) extends QuantizationContext {
@@ -62,10 +62,10 @@ package quantization {
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y
     override def minA = (x: SInt, y: SInt) => x -& y
-    override def zeroA(bw: Int) = 0.S(bw.W)
+    override def zeroA = 0.S
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-    override def actFn = signFnS
+    override def actFn = new SignFunction[SInt].actFn
   }
 
   class BinaryQuantizationContextSInt(roundingMode: String) extends QuantizationContext {
@@ -78,13 +78,13 @@ package quantization {
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y
     override def minA = (x: SInt, y: SInt) => x -& y
-    override def zeroA(bw: Int) = 0.S(bw.W)
+    override def zeroA = 0.S
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-    override def actFn = signFnS
+    override def actFn = new SignFunction[SInt].actFn
   }
 
-  class UniformQuantizationContextSSU(act: (SInt, SInt, Int) => UInt, roundingMode: String)
+  class UniformQuantizationContextSSU(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
       extends QuantizationContext {
     type I = SInt
     type W = SInt
@@ -95,16 +95,13 @@ package quantization {
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y
     override def minA = (x: SInt, y: SInt) => x -& y
-    override def zeroA(bw: Int) = 0.S(bw.W)
+    override def zeroA = 0.S
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-    override def actFn = act
+    override def actFn = Utilities.activationToFunctionSU(act, outputBitwidth)
   }
 
-  class UniformQuantizationContextSSUReLU(roundingMode: String)
-      extends UniformQuantizationContextSSU(reluFn, roundingMode)
-
-  class UniformQuantizationComputeUSU(act: (SInt, SInt, Int) => UInt, roundingMode: String)
+  class UniformQuantizationContextUSU(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
       extends QuantizationContext {
     type I = UInt
     type W = SInt
@@ -115,16 +112,13 @@ package quantization {
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y
     override def minA = (x: SInt, y: SInt) => x -& y
-    override def zeroA(bw: Int) = 0.S(bw.W)
+    override def zeroA = 0.S
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-    override def actFn = act
+    override def actFn = Utilities.activationToFunctionSU(act, outputBitwidth)
   }
 
-  class UniformQuantizationContextUSUReLU(roundingMode: String)
-      extends UniformQuantizationComputeUSU(reluFn, roundingMode)
-
-  class UniformQuantizationContextSSS(act: (SInt, SInt, Int) => SInt, roundingMode: String)
+  class UniformQuantizationContextSSS(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
       extends QuantizationContext {
     type I = SInt
     type W = SInt
@@ -135,16 +129,13 @@ package quantization {
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y
     override def minA = (x: SInt, y: SInt) => x -& y
-    override def zeroA(bw: Int) = 0.S(bw.W)
+    override def zeroA = 0.S
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-    override def actFn = act
+    override def actFn = Utilities.activationToFunctionSS(act, outputBitwidth)
   }
 
-  class UniformQuantizationContextSSSNoAct(roundingMode: String)
-      extends UniformQuantizationContextSSS((i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw), roundingMode)
-
-  class UniformQuantizationContextUSS(act: (SInt, SInt, Int) => SInt, roundingMode: String)
+  class UniformQuantizationContextUSS(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
       extends QuantizationContext {
     type I = UInt
     type W = SInt
@@ -155,12 +146,37 @@ package quantization {
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y
     override def minA = (x: SInt, y: SInt) => x -& y
-    override def zeroA(bw: Int) = 0.S(bw.W)
+    override def zeroA = 0.S
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-    override def actFn = act
+    override def actFn = Utilities.activationToFunctionSS(act, outputBitwidth)
   }
 
-  class UniformQuantizationContextUSSNoAct(roundingMode: String)
-      extends UniformQuantizationContextUSS((i: SInt, t: SInt, bw: Int) => saturateFnS(i - t, bw), roundingMode)
+  trait ActivationFunction[A <: Bits, O <: Bits] {
+    def actFn: (A, A) => O
+  }
+
+  class SignFunction[A <: Bits with Num[A]] extends ActivationFunction[A, Bool] {
+    def actFn = (act: A, thresh: A) => act >= thresh
+  }
+
+  class ReluFunction(bitwidth: Int) extends ActivationFunction[SInt, UInt] {
+    def reluNoSaturation(act: SInt, thresh: SInt): UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
+    def actFn = (act: SInt, thresh: SInt) => saturateFnU(reluNoSaturation(act, thresh), bitwidth)
+  }
+
+  class LinearFunction(bitwidth: Int) extends ActivationFunction[SInt, SInt] {
+    def actFn = (act: SInt, thresh: SInt) => saturateFnS(act - thresh, bitwidth)
+  }
+
+  object Utilities {
+    def activationToFunctionSU(act: lbir.Activation, bitwidth: Int): (SInt, SInt) => (UInt) = act match {
+      case lbir.Activation.RELU => new ReluFunction(bitwidth).actFn
+      case _                    => throw new RuntimeException
+    }
+    def activationToFunctionSS(act: lbir.Activation, bitwidth: Int): (SInt, SInt) => (SInt) = act match {
+      case lbir.Activation.NO_ACTIVATION => new LinearFunction(bitwidth).actFn
+      case _                             => throw new RuntimeException
+    }
+  }
 }

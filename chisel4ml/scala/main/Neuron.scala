@@ -21,44 +21,49 @@ import chisel4ml.implicits._
 import chisel4ml.quantization._
 import chisel4ml.conv2d._
 
-object NeuronWithBias {
+trait StaticNeuron {
   def apply(
-    qc:             QuantizationContext
-  )(in:             Seq[qc.I],
-    weights:        Seq[qc.W],
-    thresh:         qc.A,
-    shift:          Int,
-    outputBitwidth: Int
+    qc:      QuantizationContext
+  )(in:      Seq[qc.I],
+    weights: Seq[qc.W],
+    thresh:  qc.A,
+    shift:   Int
+  ): qc.O
+}
+
+object NeuronWithBias extends StaticNeuron {
+  def apply(
+    qc:      QuantizationContext
+  )(in:      Seq[qc.I],
+    weights: Seq[qc.W],
+    thresh:  qc.A,
+    shift:   Int
   ): qc.O = {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
     require(shift <= 0)
     val threshAdjusted = (thresh << shift.abs).asSInt.asInstanceOf[qc.A]
     val pAct = qc.minA(qc.add(muls), threshAdjusted)
     val sAct = qc.shiftAndRoundStatic(pAct, shift)
-    qc.actFn(sAct, qc.zeroA(outputBitwidth), outputBitwidth)
+    qc.actFn(sAct, qc.zeroA)
   }
 }
 
-object NeuronWithoutBias {
+object NeuronWithoutBias extends StaticNeuron {
   def apply(
-    qc:             QuantizationContext
-  )(in:             Seq[qc.I],
-    weights:        Seq[qc.W],
-    thresh:         qc.A,
-    shift:          Int,
-    outputBitwidth: Int
+    qc:      QuantizationContext
+  )(in:      Seq[qc.I],
+    weights: Seq[qc.W],
+    thresh:  qc.A,
+    shift:   Int
   ): qc.O = {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
     val pAct = qc.add(muls)
     val sAct = qc.shiftAndRoundStatic(pAct, shift)
-    qc.actFn(sAct, thresh, outputBitwidth)
+    qc.actFn(sAct, thresh)
   }
 }
 
-class DynamicNeuron(
-  l:      lbir.Conv2DConfig,
-  val qc: QuantizationContext)
-    extends Module {
+class DynamicNeuron(l: lbir.Conv2DConfig, val qc: QuantizationContext) extends Module {
   val io = IO(new Bundle {
     val in = Flipped(Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[qc.I])))
     val weights = Flipped(Valid(new KernelSubsystemIO[qc.W, qc.A](l.kernel, l.thresh, l.depthwise)))
@@ -75,7 +80,7 @@ class DynamicNeuron(
     io.weights.bits.threshShift.shift,
     io.weights.bits.threshShift.shiftLeft
   )
-  io.out.bits := qc.actFn(sAct, qc.zeroA(l.output.dtype.bitwidth), l.output.dtype.bitwidth)
+  io.out.bits := qc.actFn(sAct, qc.zeroA)
 
   io.out.valid := io.in.valid && io.weights.valid
   io.in.ready := io.out.ready && io.weights.valid

@@ -78,13 +78,13 @@ object LayerGenerator {
       case (UNIFORM, false, BINARY, _, BINARY, _) => new BinaryQuantizationContext(l.output.roundingMode)
       case (UNIFORM, true, BINARY, _, BINARY, _)  => new BinaryQuantizationContextSInt(l.output.roundingMode)
       case (UNIFORM, true, UNIFORM, true, UNIFORM, false) =>
-        new UniformQuantizationContextSSUReLU(l.output.roundingMode)
+        new UniformQuantizationContextSSU(l.activation, l.output.dtype.bitwidth, l.output.roundingMode)
       case (UNIFORM, false, UNIFORM, true, UNIFORM, false) =>
-        new UniformQuantizationContextUSUReLU(l.output.roundingMode)
+        new UniformQuantizationContextUSU(l.activation, l.output.dtype.bitwidth, l.output.roundingMode)
       case (UNIFORM, true, UNIFORM, true, UNIFORM, true) =>
-        new UniformQuantizationContextSSSNoAct(l.output.roundingMode)
+        new UniformQuantizationContextSSS(l.activation, l.output.dtype.bitwidth, l.output.roundingMode)
       case (UNIFORM, false, UNIFORM, true, UNIFORM, true) =>
-        new UniformQuantizationContextUSSNoAct(l.output.roundingMode)
+        new UniformQuantizationContextUSS(l.activation, l.output.dtype.bitwidth, l.output.roundingMode)
       case _ => throw new RuntimeException
     }
 }

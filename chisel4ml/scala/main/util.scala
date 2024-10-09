@@ -41,12 +41,6 @@ package object util {
       x
   }
 
-  def signFnU(act:     UInt, thresh: UInt, bw: Int = 1): Bool = act >= thresh
-  def signFnS(act:     SInt, thresh: SInt, bw: Int = 1): Bool = act >= thresh
-  def reluFnNoSat(act: SInt, thresh: SInt): UInt = Mux((act - thresh) > 0.S, (act - thresh).asUInt, 0.U)
-  def reluFn(act:      SInt, thresh: SInt, bw: Int): UInt = saturateFnU(reluFnNoSat(act, thresh), bw)
-  def linFn(act:       SInt, thresh: SInt): SInt = act - thresh
-
   def saturateFnU(x: UInt, bitwidth: Int): UInt = {
     val max = (pow(2, bitwidth) - 1).toInt.U
     Mux(x > max, max, x)
@@ -89,7 +83,7 @@ package object util {
       sout := (pAct << shift)
     }.otherwise {
       assert(pAct.getWidth.U > shift)
-      assert(shift > 1.U)
+      assert(shift > 1.U, f"$shift lower then 1")
       val shifted = (pAct >> shift).asSInt
       val sign = pAct(pAct.getWidth - 1)
       val nsign = !sign

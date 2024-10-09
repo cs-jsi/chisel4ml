@@ -35,23 +35,18 @@ class ProcessingElementSimple(
   val shift:   Seq[Int] = layer.kernel.dtype.shift
   val thresh:  Seq[qc.A] = layer.getThresh[qc.A]
 
-  for (i <- 0 until layer.output.shape(0)) {
+  val Neuron: StaticNeuron =
     if (layer.kernel.dtype.quantization == BINARY && layer.input.dtype.quantization == BINARY) {
-      out(i) := NeuronWithoutBias(qc)(
-        in.map(_.asInstanceOf[qc.I]),
-        weights(i),
-        thresh(i),
-        shift(i),
-        layer.output.dtype.bitwidth
-      )
+      NeuronWithoutBias
     } else {
-      out(i) := NeuronWithBias(qc)(
-        in.map(_.asInstanceOf[qc.I]),
-        weights(i),
-        thresh(i),
-        shift(i),
-        layer.output.dtype.bitwidth
-      )
+      NeuronWithBias
     }
+  for (i <- 0 until layer.output.shape(0)) {
+    out(i) := Neuron(qc)(
+      in.map(_.asInstanceOf[qc.I]),
+      weights(i),
+      thresh(i),
+      shift(i)
+    )
   }
 }
