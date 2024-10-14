@@ -19,46 +19,40 @@ import chisel3._
 import chisel3.util._
 import chisel4ml.implicits._
 import chisel4ml.logging.HasParameterLogging
-import chisel4ml.quantization.QuantizationContext
 import chisel4ml.util.risingEdge
 import interfaces.amba.axis._
-import lbir.DenseConfig
+import lbir.{DenseConfig, QTensor}
 import org.chipsalliance.cde.config.{Field, Parameters}
-
 case object DenseConfigField extends Field[DenseConfig]
 
-trait HasDenseParameters extends HasLBIRStreamParameters[DenseConfig] {
-  type T = DenseConfig
-  val p: Parameters
-  val cfg = p(DenseConfigField)
-}
-
-class ProcessingElementWrapSimpleToSequential(val qc: QuantizationContext)(implicit val p: Parameters)
+class ProcessingElementWrapSimpleToSequential[I <: Bits, O <: Bits](
+  input:  QTensor,
+  output: QTensor,
+  module: => Module with LBIRStreamSimple
+)(
+  implicit val p: Parameters)
     extends Module
     with HasLBIRStream
-    with HasLBIRStreamParameters[DenseConfig]
-    with HasDenseParameters
+    with HasLBIRStreamParameters
     with HasParameterLogging {
   logParameters
-  val inStream = IO(Flipped(AXIStream(cfg.input.getType[qc.I], numBeatsIn)))
-  val outStream = IO(AXIStream(cfg.output.getType[qc.O], numBeatsOut))
+  val inStream = IO(Flipped(AXIStream(input.getType[I], numBeatsIn)))
+  val outStream = IO(AXIStream(output.getType[O], numBeatsOut))
+  val CombModule = Module(module)
   val inputBuffer = RegInit(
-    VecInit.fill(cfg.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(cfg.input.gen[qc.I]))
+    VecInit.fill(input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(input.gen[I]))
   )
   dontTouch(inputBuffer)
   require(inputBuffer.flatten.length >= inStream.beats)
   val outputBuffer = RegInit(
-    VecInit.fill(cfg.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(cfg.output.gen[qc.O]))
+    VecInit.fill(output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(output.gen[O]))
   )
   dontTouch(outputBuffer)
   require(outputBuffer.flatten.length >= outStream.beats)
 
-  val (inputCntValue, _) = Counter(inStream.fire, cfg.input.numTransactions(numBeatsIn))
-  val (outputCntValue, outputCntWrap) = Counter(outStream.fire, cfg.output.numTransactions(numBeatsOut))
+  val (inputCntValue, _) = Counter(inStream.fire, input.numTransactions(numBeatsIn))
+  val (outputCntValue, outputCntWrap) = Counter(outStream.fire, output.numTransactions(numBeatsOut))
   val outputBufferFull = RegInit(false.B)
-
-  // (combinational) computational module
-  val peSimple = Module(new ProcessingElementSimple(cfg)(qc))
 
   // INPUT DATA INTERFACE
   inStream.ready := !outputBufferFull
@@ -67,11 +61,11 @@ class ProcessingElementWrapSimpleToSequential(val qc: QuantizationContext)(impli
   }
 
   // CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE
-  peSimple.in := inputBuffer.flatten.slice(0, peSimple.in.length)
+  CombModule.in := inputBuffer.flatten.slice(0, CombModule.in.length)
   val cond = RegNext(risingEdge(inStream.last))
   dontTouch(cond)
   when(cond) {
-    outputBuffer := peSimple.out.asTypeOf(outputBuffer)
+    outputBuffer := CombModule.out.asTypeOf(outputBuffer)
     outputBufferFull := true.B
   }.elsewhen(outStream.last) {
     outputBufferFull := false.B

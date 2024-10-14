@@ -34,6 +34,7 @@ package quantization {
     def actFn:                (A, A) => O
     def shiftAndRoundStatic:  (A, Int) => A
     def shiftAndRoundDynamic: (A, UInt, Bool) => A
+    def gt:                   (I, I) => Bool
   }
 
   object BinarizedQuantizationContext extends QuantizationContext {
@@ -50,6 +51,12 @@ package quantization {
     override def shiftAndRoundStatic:  (UInt, Int) => UInt = shiftAndRoundUIntStatic
     override def shiftAndRoundDynamic: (UInt, UInt, Bool) => UInt = shiftAndRoundUInt
     override def actFn:                (UInt, UInt) => Bool = new SignFunction[UInt].actFn
+    // i0 i1 out
+    // 0  0   x
+    // 0  1   0
+    // 1  0   1
+    // 1  1   x
+    override def gt = (i0: Bool, _: Bool) => i0
   }
 
   class BinaryQuantizationContext(roundingMode: String) extends QuantizationContext {
@@ -66,6 +73,7 @@ package quantization {
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
     override def actFn = new SignFunction[SInt].actFn
+    override def gt = (i0: UInt, i1: UInt) => i0 > i1
   }
 
   class BinaryQuantizationContextSInt(roundingMode: String) extends QuantizationContext {
@@ -82,6 +90,7 @@ package quantization {
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
     override def actFn = new SignFunction[SInt].actFn
+    override def gt = (i0: SInt, i1: SInt) => i0 > i1
   }
 
   class UniformQuantizationContextSSU(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
@@ -99,6 +108,7 @@ package quantization {
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
     override def actFn = Utilities.activationToFunctionSU(act, outputBitwidth)
+    override def gt = (i0: SInt, i1: SInt) => i0 > i1
   }
 
   class UniformQuantizationContextUSU(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
@@ -116,6 +126,7 @@ package quantization {
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
     override def actFn = Utilities.activationToFunctionSU(act, outputBitwidth)
+    override def gt = (i0: UInt, i1: UInt) => i0 > i1
   }
 
   class UniformQuantizationContextSSS(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
@@ -133,6 +144,7 @@ package quantization {
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
     override def actFn = Utilities.activationToFunctionSS(act, outputBitwidth)
+    override def gt = (i0: SInt, i1: SInt) => i0 > i1
   }
 
   class UniformQuantizationContextUSS(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
@@ -150,8 +162,10 @@ package quantization {
     override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
     override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
     override def actFn = Utilities.activationToFunctionSS(act, outputBitwidth)
+    override def gt = (i0: UInt, i1: UInt) => i0 > i1
   }
 
+  // ACTIVATION FUNCTIONS
   trait ActivationFunction[A <: Bits, O <: Bits] {
     def actFn: (A, A) => O
   }

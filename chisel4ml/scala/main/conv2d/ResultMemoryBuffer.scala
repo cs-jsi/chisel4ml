@@ -19,13 +19,12 @@ import chisel3.util._
 import chisel4ml.HasLBIRStreamParameters
 import chisel4ml.implicits._
 import interfaces.amba.axis.AXIStream
-import lbir.Conv2DConfig
 import org.chipsalliance.cde.config.Parameters
 
 class ResultMemoryBuffer[O <: Bits](implicit val p: Parameters)
     extends Module
     with HasSequentialConvParameters
-    with HasLBIRStreamParameters[Conv2DConfig] {
+    with HasLBIRStreamParameters {
   val io = IO(new Bundle {
     val outStream = AXIStream(cfg.output.getType[O], numBeatsOut)
     val result = Flipped(Decoupled(cfg.output.getType[O]))

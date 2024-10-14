@@ -20,7 +20,6 @@ import chisel3.util._
 import chisel4ml.HasLBIRStreamParameters
 import chisel4ml.implicits._
 import chisel4ml.util.isStable
-import lbir.Conv2DConfig
 import memories.SRAMRead
 import org.chipsalliance.cde.config.Parameters
 
@@ -31,7 +30,7 @@ import org.chipsalliance.cde.config.Parameters
 class InputDataMover[I <: Bits](implicit val p: Parameters)
     extends Module
     with HasSequentialConvParameters
-    with HasLBIRStreamParameters[Conv2DConfig] {
+    with HasLBIRStreamParameters {
   object IDMState extends ChiselEnum {
     val sWAIT = Value(0.U)
     val sMOVEDATA = Value(1.U)
@@ -39,15 +38,18 @@ class InputDataMover[I <: Bits](implicit val p: Parameters)
 
   val io = IO(new Bundle {
     val nextElement = Decoupled(cfg.input.getType[I])
-    val actMem = Flipped(new SRAMRead(cfg.input.memDepth(inWidth), inWidth))
-    val actMemWrittenTo = Input(UInt(log2Up(cfg.input.memDepth(inWidth) + 1).W))
+    val actMem = Flipped(
+      new SRAMRead(cfg.input.memDepth(cfg.input.transactionWidth(numBeatsIn)), cfg.input.transactionWidth(numBeatsIn))
+    )
+    val actMemWrittenTo = Input(UInt(log2Up(cfg.input.memDepth(cfg.input.transactionWidth(numBeatsIn)) + 1).W))
     val start = Input(Bool())
   })
   val (elementCounter, elementCounterWrap) = Counter(0 until cfg.input.numParams, io.nextElement.fire)
   val state = RegInit(IDMState.sWAIT)
   val trueStart = io.start && (state === IDMState.sWAIT || elementCounterWrap)
   val (wordSelectCounter, wordSelectCounterWrap) = Counter(0 until numBeatsIn, io.nextElement.fire, trueStart)
-  val (addressCounter, _) = Counter(0 until cfg.input.memDepth(inWidth), wordSelectCounterWrap, trueStart)
+  val (addressCounter, _) =
+    Counter(0 until cfg.input.memDepth(cfg.input.transactionWidth(numBeatsIn)), wordSelectCounterWrap, trueStart)
   dontTouch(elementCounterWrap)
   when(trueStart) {
     state := IDMState.sMOVEDATA

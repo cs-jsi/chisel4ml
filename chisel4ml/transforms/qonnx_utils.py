@@ -114,7 +114,7 @@ def get_lbir_shape(old_shape, old_layout, is_weight):
     # TODO: Fix layout functionality in QONNX, so that this can be a proper
     # transformation.
     if len(old_shape) == 2:
-        return (old_shape[1], old_shape[0])
+        return old_shape
     if len(old_shape) == 1:
         return (1, old_shape[0])  # batch size == 1
     elif len(old_shape) == 4:

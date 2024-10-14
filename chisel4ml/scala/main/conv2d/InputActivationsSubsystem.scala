@@ -5,7 +5,6 @@ import chisel3.util._
 import chisel4ml.HasLBIRStreamParameters
 import chisel4ml.implicits._
 import interfaces.amba.axis.AXIStream
-import lbir.Conv2DConfig
 import memories.MemoryGenerator
 import org.chipsalliance.cde.config.Parameters
 
@@ -17,13 +16,18 @@ import org.chipsalliance.cde.config.Parameters
 class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters)
     extends Module
     with HasSequentialConvParameters
-    with HasLBIRStreamParameters[Conv2DConfig] {
+    with HasLBIRStreamParameters {
   val io = IO(new Bundle {
     val inStream = Flipped(AXIStream(cfg.input.getType[I], numBeatsIn))
     val inputActivationsWindow = Decoupled(Vec(cfg.kernel.numActiveParams(cfg.depthwise), cfg.input.getType[I]))
     val activeDone = Output(Bool())
   })
-  val actMem = Module(MemoryGenerator.SRAM(depth = cfg.input.memDepth(inWidth), width = inWidth))
+  val actMem = Module(
+    MemoryGenerator.SRAM(
+      depth = cfg.input.memDepth(cfg.input.transactionWidth(numBeatsIn)),
+      width = cfg.input.transactionWidth(numBeatsIn)
+    )
+  )
   val dataMover = Module(new InputDataMover[I]())
   val shiftRegConvolver = Module(new ShiftRegisterConvolver[I](cfg))
 
@@ -66,7 +70,8 @@ class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters)
   when(state === InSubState.sEMPTY && io.inStream.fire) {
     state := InSubState.sRECEVING_DATA
   }.elsewhen(
-    state === InSubState.sRECEVING_DATA && actMemCounter === (cfg.input.memDepth(inWidth) - 1).U && io.inStream.fire
+    state === InSubState.sRECEVING_DATA && actMemCounter === (cfg.input
+      .memDepth(cfg.input.transactionWidth(numBeatsIn)) - 1).U && io.inStream.fire
   ) {
     assert(io.inStream.last)
     state := InSubState.sFULL

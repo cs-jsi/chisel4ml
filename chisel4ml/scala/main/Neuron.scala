@@ -21,7 +21,7 @@ import chisel4ml.conv2d._
 import chisel4ml.implicits._
 import chisel4ml.quantization._
 
-trait StaticNeuron {
+trait Transformation {
   def apply(
     qc:      QuantizationContext
   )(in:      Seq[qc.I],
@@ -31,7 +31,11 @@ trait StaticNeuron {
   ): qc.O
 }
 
-object NeuronWithBias extends StaticNeuron {
+trait TransformationIO {
+  def apply(qc: QuantizationContext)(in: Seq[qc.I]): qc.O
+}
+
+object NeuronWithBias extends Transformation {
   def apply(
     qc:      QuantizationContext
   )(in:      Seq[qc.I],
@@ -48,7 +52,7 @@ object NeuronWithBias extends StaticNeuron {
   }
 }
 
-object NeuronWithoutBias extends StaticNeuron {
+object NeuronWithoutBias extends Transformation {
   def apply(
     qc:      QuantizationContext
   )(in:      Seq[qc.I],
@@ -60,6 +64,21 @@ object NeuronWithoutBias extends StaticNeuron {
     val pAct = qc.add(muls)
     val sAct = qc.shiftAndRoundStatic(pAct, shift)
     qc.actFn(sAct, thresh)
+  }
+}
+
+object MaximumTransformationIO extends TransformationIO {
+  def getMaximum(qc: QuantizationContext)(in0: qc.I, in1: qc.I): qc.I = {
+    val out: qc.I = Wire(chiselTypeOf(in0))
+    when(qc.gt(in0, in1)) {
+      out := in0
+    }.otherwise {
+      out := in1
+    }
+    out.asInstanceOf
+  }
+  def apply(qc: QuantizationContext)(in: Seq[qc.I]): qc.O = {
+    VecInit(in).reduceTree(getMaximum(qc)(_, _)).asInstanceOf[qc.O]
   }
 }
 

@@ -27,7 +27,7 @@ import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object MaxPool2DConfigField extends Field[MaxPool2DConfig]
 
-trait HasMaxPoolParameters extends HasLBIRStreamParameters[MaxPool2DConfig] {
+trait HasMaxPoolParameters extends HasLBIRStreamParameters {
   val p: Parameters
   val cfg = p(MaxPool2DConfigField)
   val maxPoolSize = cfg.input.width / cfg.output.width
@@ -46,7 +46,7 @@ trait HasMaxPoolParameters extends HasLBIRStreamParameters[MaxPool2DConfig] {
 class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
     extends Module
     with HasLBIRStream
-    with HasLBIRStreamParameters[MaxPool2DConfig]
+    with HasLBIRStreamParameters
     with HasMaxPoolParameters
     with HasParameterLogging {
   logParameters
@@ -61,7 +61,7 @@ class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
   val state = RegInit(InputBufferState.sEMPTY)
 
   val inputsBuffer = RegEnable(inStream.bits, inStream.fire)
-  val outputsBuffer = Reg(Vec(cfg.input.paramsPerWord(inWidth), cfg.input.getType[I]))
+  val outputsBuffer = Reg(Vec(numBeatsIn, cfg.input.getType[I]))
 
   val (_, channelElementsCounterWrap) =
     Counter(state === InputBufferState.sREAD_WORD, cfg.input.numActiveParams(depthwise = true))
@@ -74,7 +74,7 @@ class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
   val (transactionsCounter, transactionsCounterWrap) =
     Counter(0 until cfg.input.numTransactions(numBeatsIn), inStream.fire)
   val (inputBufferCounter, inputBufferCounterWrap) =
-    Counter(0 until cfg.input.paramsPerWord(inWidth), state === InputBufferState.sREAD_WORD, totalInputElementsWrap)
+    Counter(0 until numBeatsIn, state === InputBufferState.sREAD_WORD, totalInputElementsWrap)
   dontTouch(totalInputElements)
   dontTouch(transactionsCounter)
 
@@ -111,7 +111,7 @@ class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
   val shiftRegWrite = risingEdge(shiftRegs.last.valid)
   val (_, totalOutputCounterWrap) = Counter(shiftRegWrite, cfg.output.numParams)
   val (outputBufferCounter, outputBufferCounterWrap) =
-    Counter(0 until cfg.input.paramsPerWord(inWidth), shiftRegWrite, totalOutputCounterWrap)
+    Counter(0 until numBeatsIn, shiftRegWrite, totalOutputCounterWrap)
   when(shiftRegWrite) {
     outputsBuffer(outputBufferCounter) := partialMaximums.reduceTree((in0: I, in1: I) =>
       MaxSelect(in0, in1, cfg.input.getType[I])

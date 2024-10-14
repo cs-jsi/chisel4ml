@@ -16,31 +16,38 @@
 package chisel4ml
 
 import chisel3._
-import chisel4ml.LayerGenerator.getQuantizationContext
-import chisel4ml.ProcessingElementSimple
+import chisel4ml.LayerGenerator.{getIOContext, getQuantizationContext}
 import chisel4ml.implicits._
-import lbir.{DenseConfig, LayerWrap, Model}
+import chisel4ml.quantization.BinarizedQuantizationContext
+import lbir.{HasInputOutputQTensor, IsActiveLayer, LayerWrap, MaxPool2DConfig}
 import services.GenerateCircuitParams.Options
 
-class ProcessingPipelineSimple(model: Model, options: Options) extends Module with LBIRStreamSimple {
-  def layerGeneratorSimple(layer: LayerWrap): Module with LBIRStreamSimple = {
-    layer match {
-      case l: DenseConfig => Module(new ProcessingElementSimple(l)(getQuantizationContext(l)))
-      case _ => throw new RuntimeException(f"Unsupported layer type")
+class ProcessingPipelineSimple(layers: Seq[LayerWrap with HasInputOutputQTensor], options: Options)
+    extends Module
+    with LBIRStreamSimple {
+  def layerGeneratorSimple(layer: LayerWrap): Module with LBIRStreamSimple = layer match {
+    case l: MaxPool2DConfig => Module(new ProcessingElementCombinationalIO(getIOContext(l))(l, MaximumTransformationIO))
+    case l: IsActiveLayer => {
+      val qc = getQuantizationContext(l)
+      qc match {
+        case BinarizedQuantizationContext => Module(new ProcessingElementCombinational(qc)(l, NeuronWithoutBias))
+        case _                            => Module(new ProcessingElementCombinational(qc)(l, NeuronWithBias))
+      }
     }
+    case _ => throw new RuntimeException(f"Unsupported layer type")
   }
 
   // Instantiate modules for seperate layers
-  val peList: Seq[Module with LBIRStreamSimple] = model.layers.map { l: Option[LayerWrap] =>
-    layerGeneratorSimple(l.get)
+  val peList: Seq[Module with LBIRStreamSimple] = layers.map { l: LayerWrap =>
+    layerGeneratorSimple(l)
   }
 
-  val in = IO(Input(Vec(model.layers.head.get.input.width, model.layers.head.get.input.getType)))
-  val out = IO(Output(Vec(model.layers.last.get.output.width, model.layers.last.get.output.getType)))
+  val in = IO(Input(Vec(layers.head.input.width, layers.head.input.getType)))
+  val out = IO(Output(Vec(layers.last.output.width, layers.last.output.getType)))
 
   // Connect the inputs and outputs of the layers
   peList.head.in := in
-  for (i <- 1 until model.layers.length) {
+  for (i <- 1 until layers.length) {
     if (options.pipelineCircuit) {
       peList(i).in := RegNext(peList(i - 1).out)
     } else {

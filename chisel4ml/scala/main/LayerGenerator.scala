@@ -20,7 +20,16 @@ import chisel4ml.conv2d.{Conv2DConfigField, ProcessingElementSequentialConv}
 import chisel4ml.quantization._
 import chisel4ml.{HasLBIRStream, LBIRNumBeatsIn, LBIRNumBeatsOut, MaxPool2D, MaxPool2DConfigField}
 import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
-import lbir.{Conv2DConfig, DenseConfig, FFTConfig, IsActiveLayer, LMFEConfig, LayerWrap, MaxPool2DConfig}
+import lbir.{
+  Conv2DConfig,
+  DenseConfig,
+  FFTConfig,
+  HasInputOutputQTensor,
+  IsActiveLayer,
+  LMFEConfig,
+  LayerWrap,
+  MaxPool2DConfig
+}
 import org.chipsalliance.cde.config.{Config, Parameters}
 
 object LayerGenerator {
@@ -45,21 +54,59 @@ object LayerGenerator {
           case LMFEConfigField => l
           case LBIRNumBeatsIn  => 1
         })))
-      case l: IsActiveLayer =>
-        l match {
-          case l: DenseConfig =>
-            Module(new ProcessingElementWrapSimpleToSequential(this.getQuantizationContext(l))(defaults.alterPartial({
-              case DenseConfigField => l
-            })))
-          case l: Conv2DConfig =>
-            Module(new ProcessingElementSequentialConv(this.getQuantizationContext(l))(defaults.alterPartial({
+      case l: IsActiveLayer => {
+        val qc = this.getQuantizationContext(l)
+        (l, qc) match {
+          case (l: DenseConfig, BinarizedQuantizationContext) =>
+            Module(
+              new ProcessingElementWrapSimpleToSequential[qc.I, qc.O](
+                l.input,
+                l.output,
+                new ProcessingElementCombinational(qc)(l, NeuronWithoutBias)
+              )(defaults.alterPartial({
+                case DenseConfigField => l
+              }))
+            )
+          case (l: DenseConfig, _) =>
+            Module(
+              new ProcessingElementWrapSimpleToSequential[qc.I, qc.O](
+                l.input,
+                l.output,
+                new ProcessingElementCombinational(qc)(l, NeuronWithBias)
+              )(defaults.alterPartial({
+                case DenseConfigField => l
+              }))
+            )
+          case (l: Conv2DConfig, _) =>
+            Module(new ProcessingElementSequentialConv(qc)(defaults.alterPartial({
               case Conv2DConfigField => l
             })))
           case _ => throw new RuntimeException
         }
+      }
       case _ => throw new RuntimeException(f"Unsupported layer type: $layerWrap")
     }
   }
+  def getIOContext(l: LayerWrap with HasInputOutputQTensor): QuantizationContext =
+    (
+      l.input.dtype.quantization,
+      l.input.dtype.signed,
+      l.output.dtype.quantization,
+      l.output.dtype.signed
+    ) match {
+      case (BINARY, _, BINARY, _)      => BinarizedQuantizationContext
+      case (UNIFORM, false, BINARY, _) => new BinaryQuantizationContext(l.output.roundingMode)
+      case (UNIFORM, true, BINARY, _)  => new BinaryQuantizationContextSInt(l.output.roundingMode)
+      case (UNIFORM, true, UNIFORM, false) =>
+        new UniformQuantizationContextSSU(lbir.Activation.NO_ACTIVATION, l.output.dtype.bitwidth, l.output.roundingMode)
+      case (UNIFORM, false, UNIFORM, false) =>
+        new UniformQuantizationContextUSU(lbir.Activation.NO_ACTIVATION, l.output.dtype.bitwidth, l.output.roundingMode)
+      case (UNIFORM, false, UNIFORM, true) =>
+        new UniformQuantizationContextUSS(lbir.Activation.NO_ACTIVATION, l.output.dtype.bitwidth, l.output.roundingMode)
+      case (UNIFORM, true, UNIFORM, true) =>
+        new UniformQuantizationContextSSS(lbir.Activation.NO_ACTIVATION, l.output.dtype.bitwidth, l.output.roundingMode)
+      case _ => throw new RuntimeException
+    }
 
   def getQuantizationContext(l: LayerWrap with IsActiveLayer): QuantizationContext =
     (

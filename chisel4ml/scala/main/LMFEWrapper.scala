@@ -27,7 +27,7 @@ import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object LMFEConfigField extends Field[LMFEConfig]
 
-trait HasLMFEParameters extends HasLBIRStreamParameters[LMFEConfig] with HasLBIRConfig[LMFEConfig] {
+trait HasLMFEParameters extends HasLBIRStreamParameters {
   type T = LMFEConfig
   val p: Parameters
   val cfg = p(LMFEConfigField)
@@ -37,7 +37,7 @@ trait HasLMFEParameters extends HasLBIRStreamParameters[LMFEConfig] with HasLBIR
 class LMFEWrapper(implicit val p: Parameters)
     extends Module
     with HasLBIRStream
-    with HasLBIRStreamParameters[LMFEConfig]
+    with HasLBIRStreamParameters
     with HasLMFEParameters
     with HasParameterLogging {
   logParameters

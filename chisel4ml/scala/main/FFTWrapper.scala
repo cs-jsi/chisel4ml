@@ -28,7 +28,7 @@ import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object FFTConfigField extends Field[FFTConfig]
 
-trait HasFFTParameters extends HasLBIRStreamParameters[FFTConfig] {
+trait HasFFTParameters extends HasLBIRStreamParameters {
   type T = FFTConfig
   val p: Parameters
   val cfg = p(FFTConfigField)

@@ -36,9 +36,9 @@ import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object Conv2DConfigField extends Field[Conv2DConfig]
 
-trait HasSequentialConvParameters extends HasLBIRStreamParameters[Conv2DConfig] {
+trait HasSequentialConvParameters extends HasLBIRStreamParameters {
   val p: Parameters
-  override val cfg = p(Conv2DConfigField)
+  val cfg = p(Conv2DConfigField)
 }
 
 class ProcessingElementSequentialConv(
@@ -47,8 +47,7 @@ class ProcessingElementSequentialConv(
   implicit val p: Parameters)
     extends Module
     with HasLBIRStream
-    with HasLBIRStreamParameters[Conv2DConfig]
-    with HasLBIRConfig[Conv2DConfig]
+    with HasLBIRStreamParameters
     with HasSequentialConvParameters
     with HasLogger
     with HasParameterLogging {

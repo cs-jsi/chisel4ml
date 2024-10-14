@@ -32,22 +32,6 @@ package object implicits {
     new AXIStreamLBIRDriver(new AXIStreamDriver(x))
   }
 
-  implicit class DenseConfigExtensions(layer: DenseConfig) {
-    def getThresh[T <: Bits]: Seq[T] =
-      (layer.input.dtype.quantization, layer.kernel.dtype.quantization, layer.activation) match {
-        case (BINARY, BINARY, Activation.BINARY_SIGN) =>
-          layer.thresh.values.map(x => (layer.input.shape(0) + x) / 2).map(_.ceil).map(_.toInt.U).map(_.asInstanceOf[T])
-        case _ => layer.thresh.values.map(_.toInt.S(layer.thresh.dtype.bitwidth.W)).map(_.asInstanceOf[T])
-      }
-    def getWeights[T <: Bits]: Seq[Seq[T]] = layer.kernel.dtype.quantization match {
-      case UNIFORM =>
-        layer.kernel.values.map(_.toInt.S.asInstanceOf[T]).grouped(layer.kernel.shape(0)).toSeq.transpose
-      case BINARY =>
-        layer.kernel.values.map(_ > 0).map(_.B.asInstanceOf[T]).grouped(layer.kernel.shape(0)).toSeq.transpose
-      case _ => throw new RuntimeException
-    }
-  }
-
   implicit class QTensorExtensions(qt: QTensor) {
     /* LBIR Transactions contain all parameters bit packed, with no parameter being
      * separated into two transactions. Thus, depending on the bitwidth of parameters and
@@ -182,6 +166,7 @@ package object implicits {
       wordSize / qt.dtype.bitwidth
     }
     def totalBitwidth: Int = qt.dtype.bitwidth * numParams
+    def transactionWidth(beats: Int): Int = beats * qt.dtype.bitwidth
     def memDepth(memWordSize: Int): Int = {
       qt.shape.length match {
         // Each kernel goes to a new word!
