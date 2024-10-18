@@ -19,7 +19,7 @@ import chisel3._
 import lbir.{LayerWrap, Model}
 
 class ProcessingPipeline(model: Model) extends Module with HasLBIRStream {
-  // Instantiate modules for seperate layers
+  // Instantiate modules for separate layers
   val peList: Seq[Module with HasLBIRStream] = model.layers.map { l: Option[LayerWrap] =>
     LayerGenerator(l.get)
   }
