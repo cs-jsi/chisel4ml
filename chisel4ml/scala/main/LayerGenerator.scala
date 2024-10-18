@@ -30,14 +30,11 @@ import lbir.{
   LayerWrap,
   MaxPool2DConfig
 }
-import org.chipsalliance.cde.config.{Config, Parameters}
+import org.chipsalliance.cde.config.Parameters
 
 object LayerGenerator {
   def apply(layerWrap: LayerWrap): Module with HasLBIRStream = {
-    implicit val defaults: Parameters = new Config((_, _, _) => {
-      case LBIRNumBeatsIn  => 4
-      case LBIRNumBeatsOut => 4
-    })
+    implicit val defaults: Parameters = Parameters.empty
     layerWrap match {
       case l: MaxPool2DConfig =>
         Module(new MaxPool2D()(defaults.alterPartial({
@@ -59,7 +56,7 @@ object LayerGenerator {
         (l, qc) match {
           case (l: DenseConfig, BinarizedQuantizationContext) =>
             Module(
-              new ProcessingElementWrapSimpleToSequential[qc.I, qc.O](
+              new ProcessingElementWrapSimpleToSequential[qc.io.I, qc.io.O](
                 l.input,
                 l.output,
                 new ProcessingElementCombinational(qc)(l, NeuronWithoutBias)
@@ -69,7 +66,7 @@ object LayerGenerator {
             )
           case (l: DenseConfig, _) =>
             Module(
-              new ProcessingElementWrapSimpleToSequential[qc.I, qc.O](
+              new ProcessingElementWrapSimpleToSequential[qc.io.I, qc.io.O](
                 l.input,
                 l.output,
                 new ProcessingElementCombinational(qc)(l, NeuronWithBias)

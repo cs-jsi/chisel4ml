@@ -26,8 +26,8 @@ class ProcessingElementCombinational(
   operation: Transformation)
     extends Module
     with LBIRStreamSimple {
-  val in = IO(Input(Vec(layer.input.width, layer.input.getType[qc.I])))
-  val out = IO(Output(Vec(layer.output.width, layer.output.getType[qc.O])))
+  val in = IO(Input(Vec(layer.input.width, layer.input.getType[qc.io.I])))
+  val out = IO(Output(Vec(layer.output.width, layer.output.getType[qc.io.O])))
 
   val kernel: Seq[qc.W] = LayerMapping.getKernel[qc.W](layer)
   val thresh: Seq[qc.A] = LayerMapping.getThresh[qc.A](layer)
@@ -40,7 +40,7 @@ class ProcessingElementCombinational(
 
   for (i <- 0 until layer.output.shape(0)) {
     out(i) := operation(qc)(
-      LayerMapping.getReceptiveField[qc.I](in.map(_.asInstanceOf[qc.I]), inMap(i)),
+      LayerMapping.getReceptiveField[qc.io.I](in.map(_.asInstanceOf[qc.io.I]), inMap(i)),
       LayerMapping.getReceptiveField[qc.W](kernel, kernelMap(i)),
       threshMap(i),
       shiftMap(i)
@@ -54,12 +54,12 @@ class ProcessingElementCombinationalIO(
   operationIO: TransformationIO)
     extends Module
     with LBIRStreamSimple {
-  val in = IO(Input(Vec(layer.input.width, layer.input.getType[qc.I])))
-  val out = IO(Output(Vec(layer.output.width, layer.output.getType[qc.O])))
+  val in = IO(Input(Vec(layer.input.width, layer.input.getType[qc.io.I])))
+  val out = IO(Output(Vec(layer.output.width, layer.output.getType[qc.io.O])))
 
   val inMap: Seq[Seq[Int]] = LayerMapping.layerToInputMap(layer)
 
   for (i <- 0 until layer.output.shape(0)) {
-    out(i) := operationIO(qc)(LayerMapping.getReceptiveField[qc.I](in.map(_.asInstanceOf[qc.I]), inMap(i)))
+    out(i) := operationIO(qc)(LayerMapping.getReceptiveField[qc.io.I](in.map(_.asInstanceOf[qc.io.I]), inMap(i)))
   }
 }

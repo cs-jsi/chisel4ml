@@ -28,7 +28,6 @@ import org.chipsalliance.cde.config.{Field, Parameters}
 case object LMFEConfigField extends Field[LMFEConfig]
 
 trait HasLMFEParameters extends HasLBIRStreamParameters {
-  type T = LMFEConfig
   val p: Parameters
   val cfg = p(LMFEConfigField)
   require(numBeatsIn == 1)

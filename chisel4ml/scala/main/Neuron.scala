@@ -24,25 +24,25 @@ import chisel4ml.quantization._
 trait Transformation {
   def apply(
     qc:      QuantizationContext
-  )(in:      Seq[qc.I],
+  )(in:      Seq[qc.io.I],
     weights: Seq[qc.W],
     thresh:  qc.A,
     shift:   Int
-  ): qc.O
+  ): qc.io.O
 }
 
 trait TransformationIO {
-  def apply(qc: QuantizationContext)(in: Seq[qc.I]): qc.O
+  def apply(qc: QuantizationContext)(in: Seq[qc.io.I]): qc.io.O
 }
 
 object NeuronWithBias extends Transformation {
   def apply(
     qc:      QuantizationContext
-  )(in:      Seq[qc.I],
+  )(in:      Seq[qc.io.I],
     weights: Seq[qc.W],
     thresh:  qc.A,
     shift:   Int
-  ): qc.O = {
+  ): qc.io.O = {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
     require(shift <= 0)
     val threshAdjusted = (thresh << shift.abs).asSInt.asInstanceOf[qc.A]
@@ -55,11 +55,11 @@ object NeuronWithBias extends Transformation {
 object NeuronWithoutBias extends Transformation {
   def apply(
     qc:      QuantizationContext
-  )(in:      Seq[qc.I],
+  )(in:      Seq[qc.io.I],
     weights: Seq[qc.W],
     thresh:  qc.A,
     shift:   Int
-  ): qc.O = {
+  ): qc.io.O = {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => qc.mul(i, w) })
     val pAct = qc.add(muls)
     val sAct = qc.shiftAndRoundStatic(pAct, shift)
@@ -68,8 +68,8 @@ object NeuronWithoutBias extends Transformation {
 }
 
 object MaximumTransformationIO extends TransformationIO {
-  def getMaximum(qc: QuantizationContext)(in0: qc.I, in1: qc.I): qc.I = {
-    val out: qc.I = Wire(chiselTypeOf(in0))
+  def getMaximum(qc: QuantizationContext)(in0: qc.io.I, in1: qc.io.I): qc.io.I = {
+    val out: qc.io.I = Wire(chiselTypeOf(in0))
     when(qc.gt(in0, in1)) {
       out := in0
     }.otherwise {
@@ -77,16 +77,16 @@ object MaximumTransformationIO extends TransformationIO {
     }
     out.asInstanceOf
   }
-  def apply(qc: QuantizationContext)(in: Seq[qc.I]): qc.O = {
-    VecInit(in).reduceTree(getMaximum(qc)(_, _)).asInstanceOf[qc.O]
+  def apply(qc: QuantizationContext)(in: Seq[qc.io.I]): qc.io.O = {
+    VecInit(in).reduceTree(getMaximum(qc)(_, _)).asInstanceOf[qc.io.O]
   }
 }
 
 class DynamicNeuron(l: lbir.Conv2DConfig, val qc: QuantizationContext) extends Module {
   val io = IO(new Bundle {
-    val in = Flipped(Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[qc.I])))
+    val in = Flipped(Decoupled(Vec(l.kernel.numActiveParams(l.depthwise), l.input.getType[qc.io.I])))
     val weights = Flipped(Valid(new KernelSubsystemIO[qc.W, qc.A](l.kernel, l.thresh, l.depthwise)))
-    val out = Decoupled(l.output.getType[qc.O])
+    val out = Decoupled(l.output.getType[qc.io.O])
   })
   val inWeights =
     io.weights.bits.activeKernel.asTypeOf(Vec(l.kernel.numActiveParams(l.depthwise), l.kernel.getType[qc.W]))

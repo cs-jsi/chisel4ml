@@ -18,8 +18,8 @@ import chisel3._
 import interfaces.amba.axis._
 import org.chipsalliance.cde.config.{Field, Parameters}
 
-case object LBIRNumBeatsIn extends Field[Int]
-case object LBIRNumBeatsOut extends Field[Int]
+case object LBIRNumBeatsIn extends Field[Int](default = 4)
+case object LBIRNumBeatsOut extends Field[Int](default = 4)
 
 trait HasLBIRStreamParameters {
   val p: Parameters

@@ -20,29 +20,67 @@ import chisel3.util._
 import chisel4ml.util._
 
 package quantization {
-  trait QuantizationContext {
+  abstract class IOContext {
     type I <: Bits
+    type O <: Bits
+  }
+
+  object IOContextBB extends IOContext {
+    type I = Bool
+    type O = Bool
+  }
+
+  object IOContextUB extends IOContext {
+    type I = UInt
+    type O = Bool
+  }
+
+  object IOContextSB extends IOContext {
+    type I = SInt
+    type O = Bool
+  }
+
+  object IOContextSU extends IOContext {
+    type I = SInt
+    type O = UInt
+  }
+
+  object IOContextSS extends IOContext {
+    type I = SInt
+    type O = SInt
+  }
+
+  object IOContextUU extends IOContext {
+    type I = UInt
+    type O = UInt
+  }
+
+  object IOContextUS extends IOContext {
+    type I = UInt
+    type O = SInt
+  }
+
+  abstract class QuantizationContext {
     type W <: Bits
     type M <: Bits
     type A <: Bits
-    type O <: Bits
-    def mul:                  (I, W) => M
+    val io: IOContext
+    def mul:                  (io.I, W) => M
     def add:                  Vec[M] => A
     def addA:                 (A, A) => A
     def minA:                 (A, A) => A
     def zeroA:                A
-    def actFn:                (A, A) => O
+    def actFn:                (A, A) => io.O
     def shiftAndRoundStatic:  (A, Int) => A
     def shiftAndRoundDynamic: (A, UInt, Bool) => A
-    def gt:                   (I, I) => Bool
+    def gt:                   (io.I, io.I) => Bool
   }
 
   object BinarizedQuantizationContext extends QuantizationContext {
-    type I = Bool
     type W = Bool
     type M = Bool
     type A = UInt
-    type O = Bool
+    override val io = IOContextBB
     override def mul = (i: Bool, w: Bool) => ~(i ^ w)
     override def add = (x: Vec[Bool]) => PopCount(x.asUInt)
     override def addA = (x: UInt, y: UInt) => x +& y
@@ -60,11 +98,10 @@ package quantization {
   }
 
   class BinaryQuantizationContext(roundingMode: String) extends QuantizationContext {
-    type I = UInt
     type W = Bool
     type M = SInt
     type A = SInt
-    type O = Bool
+    override val io = IOContextUB
     override def mul = (i: UInt, w: Bool) => Mux(w, i.zext, -(i.zext))
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y
@@ -77,11 +114,10 @@ package quantization {
   }
 
   class BinaryQuantizationContextSInt(roundingMode: String) extends QuantizationContext {
-    type I = SInt
     type W = Bool
     type M = SInt
     type A = SInt
-    type O = Bool
+    val io = IOContextSB
     override def mul = (i: SInt, w: Bool) => Mux(w, i, -i)
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y
@@ -95,11 +131,10 @@ package quantization {
 
   class UniformQuantizationContextSSU(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
       extends QuantizationContext {
-    type I = SInt
     type W = SInt
     type M = SInt
     type A = SInt
-    type O = UInt
+    override val io = IOContextSU
     override def mul = (i: SInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y
@@ -113,11 +148,10 @@ package quantization {
 
   class UniformQuantizationContextUSU(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
       extends QuantizationContext {
-    type I = UInt
     type W = SInt
     type M = SInt
     type A = SInt
-    type O = UInt
+    override val io = IOContextUU
     override def mul = (i: UInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y
@@ -131,11 +165,10 @@ package quantization {
 
   class UniformQuantizationContextSSS(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
       extends QuantizationContext {
-    type I = SInt
     type W = SInt
     type M = SInt
     type A = SInt
-    type O = SInt
+    override val io = IOContextSS
     override def mul = (i: SInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y
@@ -149,11 +182,10 @@ package quantization {
 
   class UniformQuantizationContextUSS(act: lbir.Activation, outputBitwidth: Int, roundingMode: String)
       extends QuantizationContext {
-    type I = UInt
     type W = SInt
     type M = SInt
     type A = SInt
-    type O = SInt
+    val io = IOContextUS
     override def mul = (i: UInt, w: SInt) => i * w
     override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
     override def addA = (x: SInt, y: SInt) => x +& y

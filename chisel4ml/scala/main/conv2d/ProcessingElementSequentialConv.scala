@@ -53,14 +53,14 @@ class ProcessingElementSequentialConv(
     with HasParameterLogging {
   logParameters
 
-  val inStream = IO(Flipped(AXIStream(cfg.input.getType[qc.I], numBeatsIn)))
-  val outStream = IO(AXIStream(cfg.output.getType[qc.O], numBeatsOut))
+  val inStream = IO(Flipped(AXIStream(cfg.input.getType[qc.io.I], numBeatsIn)))
+  val outStream = IO(AXIStream(cfg.output.getType[qc.io.O], numBeatsOut))
 
   val dynamicNeuron = Module(new DynamicNeuron(cfg, qc))
   val ctrl = Module(new PeSeqConvController(cfg))
   val kernelSubsystem = Module(new KernelSubsystem[qc.W, qc.A](cfg))
-  val inputSubsytem = Module(new InputActivationsSubsystem[qc.I])
-  val rmb = Module(new ResultMemoryBuffer[qc.O])
+  val inputSubsytem = Module(new InputActivationsSubsystem[qc.io.I])
+  val rmb = Module(new ResultMemoryBuffer[qc.io.O])
 
   inputSubsytem.io.inStream <> inStream
   dynamicNeuron.io.in <> inputSubsytem.io.inputActivationsWindow

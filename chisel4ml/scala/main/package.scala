@@ -44,7 +44,7 @@ package object implicits {
      *  xx_00010_00011_00100_00011_00010_00001
      *  xx_xxxxx_xxxxx_xxxxx_xxxxx_xxxxx_00001
      */
-    def getType[T <: Bits]: T = (qt.dtype.quantization, qt.dtype.signed) match {
+    def getType[T <: Data]: T = (qt.dtype.quantization, qt.dtype.signed) match {
       case (BINARY, _)      => Bool().asInstanceOf[T]
       case (UNIFORM, true)  => SInt(qt.dtype.bitwidth.W).asInstanceOf[T]
       case (UNIFORM, false) => UInt(qt.dtype.bitwidth.W).asInstanceOf[T]
