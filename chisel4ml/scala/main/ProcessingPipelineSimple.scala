@@ -16,15 +16,12 @@
 package chisel4ml
 
 import chisel3._
-import chisel4ml.LayerGenerator.{getIOContext, getQuantizationContext}
+import chisel4ml.AcceleratorGenerator.{getIOContext, getQuantizationContext}
 import chisel4ml.implicits._
 import chisel4ml.quantization.BinarizedQuantizationContext
 import lbir.{HasInputOutputQTensor, IsActiveLayer, LayerWrap, MaxPool2DConfig}
-import services.GenerateCircuitParams.Options
 
-class ProcessingPipelineSimple(layers: Seq[LayerWrap with HasInputOutputQTensor], options: Options)
-    extends Module
-    with LBIRStreamSimple {
+class ProcessingPipelineSimple(layers: Seq[LayerWrap with HasInputOutputQTensor]) extends Module with LBIRStreamSimple {
   def layerGeneratorSimple(layer: LayerWrap): Module with LBIRStreamSimple = layer match {
     case l: MaxPool2DConfig => Module(new ProcessingElementCombinationalIO(getIOContext(l))(l, MaximumTransformationIO))
     case l: IsActiveLayer => {
@@ -48,11 +45,7 @@ class ProcessingPipelineSimple(layers: Seq[LayerWrap with HasInputOutputQTensor]
   // Connect the inputs and outputs of the layers
   peList.head.in := in
   for (i <- 1 until layers.length) {
-    if (options.pipelineCircuit) {
-      peList(i).in := RegNext(peList(i - 1).out)
-    } else {
-      peList(i).in := peList(i - 1).out
-    }
+    peList(i).in := RegNext(peList(i - 1).out)
   }
   out := peList.last.out
 }

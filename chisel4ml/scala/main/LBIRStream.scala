@@ -15,11 +15,14 @@
  */
 package chisel4ml
 import chisel3._
+import chisel4ml.quantization.IOContext
 import interfaces.amba.axis._
+import lbir.LayerWrap
 import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object LBIRNumBeatsIn extends Field[Int](default = 4)
 case object LBIRNumBeatsOut extends Field[Int](default = 4)
+case object LayerWrapIOField extends Field[Seq[(LayerWrap, IOContext)]]()
 
 trait HasLBIRStreamParameters {
   val p: Parameters
@@ -27,6 +30,7 @@ trait HasLBIRStreamParameters {
   val numBeatsOut = p(LBIRNumBeatsOut)
   require(numBeatsIn > 0)
   require(numBeatsOut > 0)
+  val _cfg = p(LayerWrapIOField)
 }
 
 trait HasLBIRStream {

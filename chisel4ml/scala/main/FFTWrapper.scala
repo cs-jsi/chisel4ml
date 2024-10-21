@@ -23,17 +23,14 @@ import dsptools._
 import fft._
 import fixedpoint._
 import interfaces.amba.axis._
-import lbir.FFTConfig
-import org.chipsalliance.cde.config.{Field, Parameters}
-
-case object FFTConfigField extends Field[FFTConfig]
+import lbir.{FFTConfig, LayerWrap}
+import org.chipsalliance.cde.config.Parameters
 
 trait HasFFTParameters extends HasLBIRStreamParameters {
-  type T = FFTConfig
   val p: Parameters
-  val cfg = p(FFTConfigField)
-  require(numBeatsIn == 1)
-  require(numBeatsOut == 1)
+  val cfg:                  FFTConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head._1.asMessage).get.asInstanceOf[FFTConfig]
+  override val numBeatsIn:  Int = 1
+  override val numBeatsOut: Int = 1
   val fftParams = FFTParams.fixed(
     dataWidth = 24,
     binPoint = 12,

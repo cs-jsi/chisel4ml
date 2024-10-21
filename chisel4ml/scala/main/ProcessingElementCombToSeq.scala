@@ -21,11 +21,15 @@ import chisel4ml.implicits._
 import chisel4ml.logging.HasParameterLogging
 import chisel4ml.util.risingEdge
 import interfaces.amba.axis._
-import lbir.{DenseConfig, QTensor}
-import org.chipsalliance.cde.config.{Field, Parameters}
-case object DenseConfigField extends Field[DenseConfig]
+import lbir.QTensor
+import org.chipsalliance.cde.config.Parameters
+import services.Accelerator
 
-class ProcessingElementWrapSimpleToSequential[I <: Bits, O <: Bits](
+trait AcceleratorConstructorInterface[T <: Module with HasLBIRStream] {
+  def apply(a: Accelerator): T
+}
+
+class ProcessingElementCombToSeq[I <: Bits, O <: Bits](
   input:  QTensor,
   output: QTensor,
   module: => Module with LBIRStreamSimple

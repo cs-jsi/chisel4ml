@@ -22,18 +22,19 @@ import chisel4ml.logging.HasParameterLogging
 import chisel4ml.util.risingEdge
 import chisel4ml.{HasLBIRStream, HasLBIRStreamParameters}
 import interfaces.amba.axis._
-import lbir.MaxPool2DConfig
-import org.chipsalliance.cde.config.{Field, Parameters}
-
-case object MaxPool2DConfigField extends Field[MaxPool2DConfig]
+import lbir.{LayerWrap, MaxPool2DConfig}
+import org.chipsalliance.cde.config.Parameters
 
 trait HasMaxPoolParameters extends HasLBIRStreamParameters {
   val p: Parameters
-  val cfg = p(MaxPool2DConfigField)
+  val cfg: MaxPool2DConfig =
+    LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head._1.asMessage).get.asInstanceOf[MaxPool2DConfig]
   val maxPoolSize = cfg.input.width / cfg.output.width
   val shiftRegsSize = cfg.input.width * maxPoolSize - (cfg.input.width - maxPoolSize)
   require(cfg.output.width * maxPoolSize == cfg.input.width)
   require(cfg.output.height * maxPoolSize == cfg.input.height, f"${cfg.input} / ${cfg.output} == $maxPoolSize")
+  override val numBeatsIn = 1
+  override val numBeatsOut = 1
 }
 
 /* MaxPool2D

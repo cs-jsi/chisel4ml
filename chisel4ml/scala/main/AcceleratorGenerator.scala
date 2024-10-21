@@ -15,74 +15,40 @@
  */
 package chisel4ml
 
-/*
 import chisel3._
-import chisel4ml.conv2d.{Conv2DConfigField, ProcessingElementSequentialConv}
+import chisel4ml.conv2d.ProcessingElementSequentialConv
 import chisel4ml.quantization._
-import chisel4ml.{HasLBIRStream, LBIRNumBeatsIn, LBIRNumBeatsOut, MaxPool2D, MaxPool2DConfigField}
+import chisel4ml.{HasLBIRStream, MaxPool2D}
 import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
-import lbir.{
-  Conv2DConfig,
-  DenseConfig,
-  FFTConfig,
-  HasInputOutputQTensor,
-  IsActiveLayer,
-  LMFEConfig,
-  LayerWrap,
-  MaxPool2DConfig
-}
+import lbir.{HasInputOutputQTensor, IsActiveLayer, LayerWrap}
 import org.chipsalliance.cde.config.Parameters
+import services.Accelerator
 
-object LayerGenerator {
-  def apply(layerWrap: LayerWrap): Module with HasLBIRStream = {
-    implicit val defaults: Parameters = Parameters.empty
-    layerWrap match {
-      case l: MaxPool2DConfig =>
-        Module(new MaxPool2D()(defaults.alterPartial({
-          case MaxPool2DConfigField => l
-        })))
-      case l: FFTConfig =>
-        Module(new FFTWrapper()(defaults.alterPartial({
-          case FFTConfigField  => l
-          case LBIRNumBeatsIn  => 1
-          case LBIRNumBeatsOut => 1
-        })))
-      case l: LMFEConfig =>
-        Module(new LMFEWrapper()(defaults.alterPartial({
-          case LMFEConfigField => l
-          case LBIRNumBeatsIn  => 1
-        })))
-      case l: IsActiveLayer => {
-        val qc = this.getQuantizationContext(l)
-        (l, qc) match {
-          case (l: DenseConfig, BinarizedQuantizationContext) =>
+object AcceleratorGenerator {
+  def apply(accel: Accelerator): Module with HasLBIRStream = {
+    implicit val defaults: Parameters = Parameters.empty.alterPartial({
+      case LayerWrapIOField => accel.layers.map(_.get).map((_, this.getIOContext(_)))
+    })
+    (accel.name, accel.layers) match {
+      case ("MaxPool2D", _)   => Module(new MaxPool2D())
+      case ("FFTWrapper", _)  => Module(new FFTWrapper())
+      case ("LMFEWrapper", _) => Module(new LMFEWrapper())
+      case (accelName, accelLayers: Seq[Option[LayerWrap with HasInputOutputQTensor with IsActiveLayer]]) => {
+        val qcList = accelLayers.map(_.get).map(this.getQuantizationContext(_))
+        accelName match {
+          case "ProcessingElementSequentialConv" => Module(new ProcessingElementSequentialConv(qcList.head))
+          case "ProcessingElementWrapSimpleToSequential" =>
             Module(
-              new ProcessingElementWrapSimpleToSequential[qc.io.I, qc.io.O](
-                l.input,
-                l.output,
-                new ProcessingElementCombinational(qc)(l, NeuronWithoutBias)
-              )(defaults.alterPartial({
-                case DenseConfigField => l
-              }))
+              new ProcessingElementCombToSeq(
+                accel.layers.head.get.input,
+                accel.layers.last.get.output,
+                new ProcessingPipelineSimple(accel.layers.map(_.get))
+              )
             )
-          case (l: DenseConfig, _) =>
-            Module(
-              new ProcessingElementWrapSimpleToSequential[qc.io.I, qc.io.O](
-                l.input,
-                l.output,
-                new ProcessingElementCombinational(qc)(l, NeuronWithBias)
-              )(defaults.alterPartial({
-                case DenseConfigField => l
-              }))
-            )
-          case (l: Conv2DConfig, _) =>
-            Module(new ProcessingElementSequentialConv(qc)(defaults.alterPartial({
-              case Conv2DConfigField => l
-            })))
           case _ => throw new RuntimeException
         }
       }
-      case _ => throw new RuntimeException(f"Unsupported layer type: $layerWrap")
+      case _ => throw new RuntimeException
     }
   }
   def getIOContext(l: LayerWrap with HasInputOutputQTensor): QuantizationContext =
@@ -129,4 +95,3 @@ object LayerGenerator {
       case _ => throw new RuntimeException
     }
 }
- */

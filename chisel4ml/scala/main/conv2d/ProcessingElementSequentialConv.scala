@@ -21,8 +21,8 @@ import chisel4ml.implicits._
 import chisel4ml.logging.{HasLogger, HasParameterLogging}
 import chisel4ml.quantization._
 import interfaces.amba.axis._
-import lbir.Conv2DConfig
-import org.chipsalliance.cde.config.{Field, Parameters}
+import lbir.{Conv2DConfig, LayerWrap}
+import org.chipsalliance.cde.config.Parameters
 
 /** A sequential processing element for convolutions.
   *
@@ -34,11 +34,9 @@ import org.chipsalliance.cde.config.{Field, Parameters}
   * thanks to the low bitwidths of parameters this should be an acceptable trade-off.
   */
 
-case object Conv2DConfigField extends Field[Conv2DConfig]
-
 trait HasSequentialConvParameters extends HasLBIRStreamParameters {
   val p: Parameters
-  val cfg = p(Conv2DConfigField)
+  val cfg: Conv2DConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head._1.asMessage).get.asInstanceOf[Conv2DConfig]
 }
 
 class ProcessingElementSequentialConv(

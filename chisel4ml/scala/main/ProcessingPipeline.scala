@@ -16,20 +16,18 @@
 package chisel4ml
 
 import chisel3._
-import lbir.{LayerWrap, Model}
+import services.Accelerator
 
-class ProcessingPipeline(model: Model) extends Module with HasLBIRStream {
+class ProcessingPipeline(accelerators: Seq[Accelerator]) extends Module with HasLBIRStream {
   // Instantiate modules for separate layers
-  val peList: Seq[Module with HasLBIRStream] = model.layers.map { l: Option[LayerWrap] =>
-    LayerGenerator(l.get)
-  }
+  val peList: Seq[Module with HasLBIRStream] = accelerators.map(AcceleratorGenerator(_))
 
   val inStream = IO(chiselTypeOf(peList.head.inStream))
   val outStream = IO(chiselTypeOf(peList.last.outStream))
 
   // Connect the inputs and outputs of the layers
   peList.head.inStream <> inStream
-  for (i <- 1 until model.layers.length) {
+  for (i <- 1 until accelerators.length) {
     peList(i).inStream <> peList(i - 1).outStream
   }
   outStream <> peList.last.outStream

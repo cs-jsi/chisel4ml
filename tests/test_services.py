@@ -177,9 +177,13 @@ def test_brevitas(request, model_ishape_data):
         ishape,
         data,
     ) = model_ishape_data
+    accelerators, lbir_model = generate.accelerators(
+        model, ishape=ishape, minimize="area"
+    )
+
     circuit = generate.circuit(
-        model,
-        ishape,
+        accelerators,
+        lbir_model,
         use_verilator=request.config.getoption("--use-verilator"),
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),

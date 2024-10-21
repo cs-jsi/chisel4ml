@@ -21,16 +21,15 @@ import chisel4ml.implicits._
 import chisel4ml.logging.HasParameterLogging
 import fixedpoint._
 import interfaces.amba.axis._
-import lbir.LMFEConfig
+import lbir.{LMFEConfig, LayerWrap}
 import melengine._
-import org.chipsalliance.cde.config.{Field, Parameters}
-
-case object LMFEConfigField extends Field[LMFEConfig]
+import org.chipsalliance.cde.config.Parameters
 
 trait HasLMFEParameters extends HasLBIRStreamParameters {
   val p: Parameters
-  val cfg = p(LMFEConfigField)
-  require(numBeatsIn == 1)
+  val cfg:                  LMFEConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head._1.asMessage).get.asInstanceOf[LMFEConfig]
+  override val numBeatsIn:  Int = 1
+  override val numBeatsOut: Int = 1
 }
 
 class LMFEWrapper(implicit val p: Parameters)

@@ -24,7 +24,7 @@ option java_package = "services";
 
 service Chisel4mlService {
     rpc GetVersion (GetVersionParams) returns (GetVersionReturn) {}
-	rpc GenerateCircuit (GenerateCircuitParams) returns (GenerateCircuitReturn) {}
+	rpc GenerateCircuit (GenerateCircuitParams2) returns (GenerateCircuitReturn) {}
 	rpc RunSimulation (RunSimulationParams) returns (RunSimulationReturn) {}
     rpc DeleteCircuit (DeleteCircuitParams) returns (DeleteCircuitReturn) {}
 }
@@ -37,6 +37,22 @@ message GenerateCircuitParams {
     lbir.Model model = 1;
     Options options = 2;
     bool use_verilator = 3;
+    bool gen_waveform = 4;
+    uint32 generation_timeout_sec = 5;
+    string waveform_type = 6;
+}
+
+
+message Accelerator {
+    string name = 1;
+    repeated lbir.LayerWrap layers = 2;
+    repeated string options = 3;
+    repeated string values = 4;
+}
+
+message GenerateCircuitParams2 {
+    repeated Accelerator accelerators = 1;
+    bool use_verilator = 2;
     bool gen_waveform = 4;
     uint32 generation_timeout_sec = 5;
     string waveform_type = 6;

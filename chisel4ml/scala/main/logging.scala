@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 package chisel4ml.logging
-
-import chisel4ml.conv2d.Conv2DConfigField
-import chisel4ml.{MaxPool2DConfigField, _}
+import chisel4ml._
 import lbir.LayerWrap
 import org.chipsalliance.cde.config.{Field, Parameters}
 import org.reflections.Reflections
@@ -30,11 +28,7 @@ trait HasLogger {
 trait HasParameterLogging extends HasLogger {
   private def fields: Seq[Field[_]] = {
     val configFields = Seq(
-      Conv2DConfigField,
-      MaxPool2DConfigField,
-      DenseConfigField,
-      FFTConfigField,
-      LMFEConfigField,
+      LayerWrapIOField,
       LBIRNumBeatsIn,
       LBIRNumBeatsOut
     )

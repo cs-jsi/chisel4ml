@@ -120,10 +120,10 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: os.Path, port
   private def blockUntilShutdown(): Unit = { if (server != null) { server.awaitTermination() } }
 
   private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
-    override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
+    override def generateCircuit(params: GenerateCircuitParams2): Future[GenerateCircuitReturn] = {
       val circuit = new Circuit[Module with HasLBIRStream](
-        dutGen = new ProcessingPipeline(params.model.get),
-        outputStencil = params.model.get.layers.last.get.output,
+        dutGen = new ProcessingPipeline(params.accelerators),
+        outputStencil = params.accelerators.last.layers.last.get.output,
         directory = tempDir / s"circuit$nextId",
         useVerilator = params.useVerilator,
         genWaveform = params.genWaveform,
