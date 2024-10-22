@@ -67,7 +67,7 @@ class Chisel4mlServer:
             self._channel.close()
 
     def send_grpc_msg(self, msg, timeout=480):
-        if isinstance(msg, services.GenerateCircuitParams2):
+        if isinstance(msg, services.GenerateCircuitParams):
             ret = self._stub.GenerateCircuit(msg, wait_for_ready=True, timeout=timeout)
         elif isinstance(msg, services.RunSimulationParams):
             ret = self._stub.RunSimulation(msg, wait_for_ready=True, timeout=timeout)

@@ -22,7 +22,7 @@ from chisel4ml.accelerator import ACCELERATORS
 from chisel4ml.accelerator import ProcessingElementCombToSeq
 from chisel4ml.circuit import Circuit
 from chisel4ml.lbir.services_pb2 import Accelerator
-from chisel4ml.lbir.services_pb2 import GenerateCircuitParams2
+from chisel4ml.lbir.services_pb2 import GenerateCircuitParams
 from chisel4ml.lbir.services_pb2 import GenerateCircuitReturn
 
 log = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ def accelerators(model, ishape=None, num_layers=None, minimize="area", debug=Fal
     solver = cp_model.CpSolver()
     solution_collector = VarArraySolutionCollector(vars_cp, lbir_model, ACCELERATORS)
     solution_status = solver.solve(model_cp, solution_collector)
-    assert solution_status == cp_model.FEASIBLE or solution_status == cp_model.OPTIMAL
+    assert solution_status in (cp_model.FEASIBLE, cp_model.OPTIMAL)
     solution = solution_collector.solution_list[0]
     accelerators = solution_to_accelerators(solution, lbir_model.layers)
     return accelerators, lbir_model
@@ -144,7 +144,7 @@ def circuit(
             server = chisel4ml_server.default_server
 
     gen_circt_ret = server.send_grpc_msg(
-        GenerateCircuitParams2(
+        GenerateCircuitParams(
             accelerators=accelerators,
             use_verilator=use_verilator,
             gen_waveform=gen_waveform,
