@@ -136,3 +136,22 @@ class Int33ActQuant(ActQuantSolver):
     narrow_range = False  # quantization range is [-128, 127] rather than [-127, 127]
     zero_point_impl = ZeroZeroPoint  # zero point is 0.
     scaling_init = 2 ** (bit_width - 1)
+
+
+class IntActQuant(ActQuantSolver):
+    def __init__(self, bit_width):
+        self.quant_type = QuantType.INT  # integer quantization
+        self.bit_width_impl_type = BitWidthImplType.CONST  # constant bit width
+        self.float_to_int_impl_type = FloatToIntImplType.ROUND  # round to nearest
+        self.scaling_impl_type = (
+            ScalingImplType.CONST
+        )  # scale is a parameter initialized from statistics
+        self.restrict_scaling_type = RestrictValueType.POWER_OF_TWO
+        self.scaling_per_output_channel = False  # scale is per tensor
+        self.bit_width = bit_width
+        self.signed = True  # quantization range is signed
+        self.narrow_range = (
+            False  # quantization range is [-128, 127] rather than [-127, 127]
+        )
+        self.zero_point_impl = ZeroZeroPoint  # zero point is 0.
+        self.scaling_init = 2 ** (bit_width - 1)

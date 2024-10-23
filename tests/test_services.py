@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import pytest
 import torch
 from pytest_cases import get_current_cases
 from pytest_cases import parametrize_with_cases
@@ -8,6 +9,10 @@ from pytest_cases import parametrize_with_cases
 from chisel4ml import generate
 from chisel4ml import optimize
 from chisel4ml.utils import get_submodel
+from tests.brevitas_models import get_brevitas_model
+from tests.brevitas_quantizers import Int4ActQuant
+from tests.brevitas_quantizers import Int8BiasQuant
+from tests.brevitas_quantizers import LearnedSFInt4WeightPerChannel
 from tests.conftest import TEST_MODELS_LIST
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -181,6 +186,69 @@ def test_brevitas(request, model_ishape_data):
         model, ishape=ishape, minimize="area"
     )
 
+    circuit = generate.circuit(
+        accelerators,
+        lbir_model,
+        use_verilator=request.config.getoption("--use-verilator"),
+        gen_waveform=request.config.getoption("--gen-waveform"),
+        waveform_type=request.config.getoption("--waveform-type"),
+        gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        debug=request.config.getoption("--debug-trans"),
+    )
+    assert circuit is not None
+    for x in data:
+        sw_res = (
+            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
+        )
+        hw_res = circuit(x)
+        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
+    circuit.delete_from_server()
+
+
+def get_random_config(num_tests):
+    pass
+
+
+comb_test_conf = [
+    (
+        [
+            {
+                "ich": 1,
+                "och": 1,
+                "groups": 1,
+                "ks": (3, 3),
+                "pa": 0,
+                "st": 1,
+                "iq": Int4ActQuant,
+                "wq": LearnedSFInt4WeightPerChannel,
+                "bq": Int8BiasQuant,
+                "oq": Int4ActQuant,
+            }
+        ],  # conv_confs
+        [{"ks": (2, 2), "st": 1, "pa": 0}],  # mp_confs
+        [
+            {
+                "in_size": 5 * 5,
+                "out_size": 3,
+                "iq": Int4ActQuant,
+                "wq": LearnedSFInt4WeightPerChannel,
+                "bq": Int8BiasQuant,
+                "oq": Int4ActQuant,
+            }
+        ],  # dense_confs
+        (8, 8),  # input_size
+    )
+]
+
+
+@pytest.mark.parametrize("conv_confs,maxp_confs,dense_confs,input_size", comb_test_conf)
+def test_combinational(request, conv_confs, maxp_confs, dense_confs, input_size):
+    model, ishape, data = get_brevitas_model(
+        conv_confs, maxp_confs, dense_confs, input_size
+    )
+    accelerators, lbir_model = generate.accelerators(
+        model, ishape=ishape, minimize="delay"
+    )
     circuit = generate.circuit(
         accelerators,
         lbir_model,
