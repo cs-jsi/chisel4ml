@@ -27,7 +27,7 @@ import org.chipsalliance.cde.config.Parameters
 
 trait HasLMFEParameters extends HasLBIRStreamParameters {
   val p: Parameters
-  val cfg:                  LMFEConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head._1.asMessage).get.asInstanceOf[LMFEConfig]
+  val cfg:                  LMFEConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head.asMessage).get.asInstanceOf[LMFEConfig]
   override val numBeatsIn:  Int = 1
   override val numBeatsOut: Int = 1
 }

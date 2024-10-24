@@ -28,7 +28,7 @@ import org.chipsalliance.cde.config.Parameters
 
 trait HasFFTParameters extends HasLBIRStreamParameters {
   val p: Parameters
-  val cfg:                  FFTConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head._1.asMessage).get.asInstanceOf[FFTConfig]
+  val cfg:                  FFTConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head.asMessage).get.asInstanceOf[FFTConfig]
   override val numBeatsIn:  Int = 1
   override val numBeatsOut: Int = 1
   val fftParams = FFTParams.fixed(

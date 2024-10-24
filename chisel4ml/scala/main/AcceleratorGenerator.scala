@@ -27,7 +27,8 @@ import services.Accelerator
 object AcceleratorGenerator {
   def apply(accel: Accelerator): Module with HasLBIRStream = {
     implicit val defaults: Parameters = Parameters.empty.alterPartial({
-      case LayerWrapIOField => accel.layers.map(_.get).map((_, this.getIOContext(_)))
+      case LayerWrapSeqField => accel.layers.map(_.get)
+      case IOContextField    => getIOContext(accel.layers.map(_.get))
     })
     (accel.name, accel.layers) match {
       case ("MaxPool2D", _)   => Module(new MaxPool2D())
@@ -36,39 +37,48 @@ object AcceleratorGenerator {
       case (accelName, accelLayers: Seq[Option[LayerWrap with HasInputOutputQTensor with IsActiveLayer]]) => {
         val qcList = accelLayers.map(_.get).map(this.getQuantizationContext(_))
         accelName match {
-          case "ProcessingElementSequentialConv" => Module(new ProcessingElementSequentialConv(qcList.head))
-          case "ProcessingElementWrapSimpleToSequential" =>
-            Module(
-              new ProcessingElementCombToSeq(
-                accel.layers.head.get.input,
-                accel.layers.last.get.output,
-                new ProcessingPipelineSimple(accel.layers.map(_.get))
-              )
-            )
-          case _ => throw new RuntimeException
+          case "ProcessingElementSequentialConv"         => Module(new ProcessingElementSequentialConv(qcList.head))
+          case "ProcessingElementWrapSimpleToSequential" => Module(new ProcessingElementCombToSeq())
+          case _                                         => throw new RuntimeException
         }
       }
       case _ => throw new RuntimeException
     }
   }
-  def getIOContext(l: LayerWrap with HasInputOutputQTensor): QuantizationContext =
+  def getIOContext(l: Seq[LayerWrap with HasInputOutputQTensor]): QuantizationContext =
     (
-      l.input.dtype.quantization,
-      l.input.dtype.signed,
-      l.output.dtype.quantization,
-      l.output.dtype.signed
+      l.head.input.dtype.quantization,
+      l.head.input.dtype.signed,
+      l.last.output.dtype.quantization,
+      l.last.output.dtype.signed
     ) match {
       case (BINARY, _, BINARY, _)      => BinarizedQuantizationContext
-      case (UNIFORM, false, BINARY, _) => new BinaryQuantizationContext(l.output.roundingMode)
-      case (UNIFORM, true, BINARY, _)  => new BinaryQuantizationContextSInt(l.output.roundingMode)
+      case (UNIFORM, false, BINARY, _) => new BinaryQuantizationContext(l.last.output.roundingMode)
+      case (UNIFORM, true, BINARY, _)  => new BinaryQuantizationContextSInt(l.last.output.roundingMode)
       case (UNIFORM, true, UNIFORM, false) =>
-        new UniformQuantizationContextSSU(lbir.Activation.NO_ACTIVATION, l.output.dtype.bitwidth, l.output.roundingMode)
+        new UniformQuantizationContextSSU(
+          lbir.Activation.NO_ACTIVATION,
+          l.last.output.dtype.bitwidth,
+          l.last.output.roundingMode
+        )
       case (UNIFORM, false, UNIFORM, false) =>
-        new UniformQuantizationContextUSU(lbir.Activation.NO_ACTIVATION, l.output.dtype.bitwidth, l.output.roundingMode)
+        new UniformQuantizationContextUSU(
+          lbir.Activation.NO_ACTIVATION,
+          l.last.output.dtype.bitwidth,
+          l.last.output.roundingMode
+        )
       case (UNIFORM, false, UNIFORM, true) =>
-        new UniformQuantizationContextUSS(lbir.Activation.NO_ACTIVATION, l.output.dtype.bitwidth, l.output.roundingMode)
+        new UniformQuantizationContextUSS(
+          lbir.Activation.NO_ACTIVATION,
+          l.last.output.dtype.bitwidth,
+          l.last.output.roundingMode
+        )
       case (UNIFORM, true, UNIFORM, true) =>
-        new UniformQuantizationContextSSS(lbir.Activation.NO_ACTIVATION, l.output.dtype.bitwidth, l.output.roundingMode)
+        new UniformQuantizationContextSSS(
+          lbir.Activation.NO_ACTIVATION,
+          l.last.output.dtype.bitwidth,
+          l.last.output.roundingMode
+        )
       case _ => throw new RuntimeException
     }
 

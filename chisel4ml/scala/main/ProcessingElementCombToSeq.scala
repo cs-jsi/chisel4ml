@@ -21,41 +21,31 @@ import chisel4ml.implicits._
 import chisel4ml.logging.HasParameterLogging
 import chisel4ml.util.risingEdge
 import interfaces.amba.axis._
-import lbir.QTensor
 import org.chipsalliance.cde.config.Parameters
-import services.Accelerator
 
-trait AcceleratorConstructorInterface[T <: Module with HasLBIRStream] {
-  def apply(a: Accelerator): T
-}
-
-class ProcessingElementCombToSeq[I <: Bits, O <: Bits](
-  input:  QTensor,
-  output: QTensor,
-  module: => Module with LBIRStreamSimple
-)(
-  implicit val p: Parameters)
+class ProcessingElementCombToSeq(implicit val p: Parameters)
     extends Module
     with HasLBIRStream
     with HasLBIRStreamParameters
-    with HasParameterLogging {
+    with HasParameterLogging
+    with HasIOContext {
   logParameters
-  val inStream = IO(Flipped(AXIStream(input.getType[I], numBeatsIn)))
-  val outStream = IO(AXIStream(output.getType[O], numBeatsOut))
-  val CombModule = Module(module)
+  val inStream = IO(Flipped(AXIStream(_cfg.head.input.getType[ioc.I], numBeatsIn)))
+  val outStream = IO(AXIStream(_cfg.last.output.getType[ioc.O], numBeatsOut))
+  val CombModule = Module(new ProcessingPipelineSimple(_cfg))
   val inputBuffer = RegInit(
-    VecInit.fill(input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(input.gen[I]))
+    VecInit.fill(_cfg.head.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(_cfg.head.input.gen[ioc.I]))
   )
   dontTouch(inputBuffer)
   require(inputBuffer.flatten.length >= inStream.beats)
   val outputBuffer = RegInit(
-    VecInit.fill(output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(output.gen[O]))
+    VecInit.fill(_cfg.last.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(_cfg.last.output.gen[ioc.O]))
   )
   dontTouch(outputBuffer)
   require(outputBuffer.flatten.length >= outStream.beats)
 
-  val (inputCntValue, _) = Counter(inStream.fire, input.numTransactions(numBeatsIn))
-  val (outputCntValue, outputCntWrap) = Counter(outStream.fire, output.numTransactions(numBeatsOut))
+  val (inputCntValue, _) = Counter(inStream.fire, _cfg.head.input.numTransactions(numBeatsIn))
+  val (outputCntValue, outputCntWrap) = Counter(outStream.fire, _cfg.last.output.numTransactions(numBeatsOut))
   val outputBufferFull = RegInit(false.B)
 
   // INPUT DATA INTERFACE

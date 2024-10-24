@@ -28,13 +28,11 @@ import org.chipsalliance.cde.config.Parameters
 trait HasMaxPoolParameters extends HasLBIRStreamParameters {
   val p: Parameters
   val cfg: MaxPool2DConfig =
-    LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head._1.asMessage).get.asInstanceOf[MaxPool2DConfig]
+    LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head.asMessage).get.asInstanceOf[MaxPool2DConfig]
   val maxPoolSize = cfg.input.width / cfg.output.width
   val shiftRegsSize = cfg.input.width * maxPoolSize - (cfg.input.width - maxPoolSize)
   require(cfg.output.width * maxPoolSize == cfg.input.width)
   require(cfg.output.height * maxPoolSize == cfg.input.height, f"${cfg.input} / ${cfg.output} == $maxPoolSize")
-  override val numBeatsIn = 1
-  override val numBeatsOut = 1
 }
 
 /* MaxPool2D

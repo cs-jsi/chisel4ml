@@ -36,7 +36,7 @@ import org.chipsalliance.cde.config.Parameters
 
 trait HasSequentialConvParameters extends HasLBIRStreamParameters {
   val p: Parameters
-  val cfg: Conv2DConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head._1.asMessage).get.asInstanceOf[Conv2DConfig]
+  val cfg: Conv2DConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head.asMessage).get.asInstanceOf[Conv2DConfig]
 }
 
 class ProcessingElementSequentialConv(
