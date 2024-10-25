@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, TimeUnit}
 import scala.util.control.Breaks._
 
-class Circuit[+T <: Module with HasLBIRStream](
+class Circuit[+T <: Module with HasAXIStream](
   dutGen:        => T,
   outputStencil: QTensor,
   directory:     os.Path,

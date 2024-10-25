@@ -19,7 +19,6 @@ from ortools.sat.python import cp_model
 from chisel4ml import chisel4ml_server
 from chisel4ml import transform
 from chisel4ml.accelerator import ACCELERATORS
-from chisel4ml.accelerator import ProcessingElementCombToSeq
 from chisel4ml.circuit import Circuit
 from chisel4ml.lbir.services_pb2 import Accelerator
 from chisel4ml.lbir.services_pb2 import GenerateCircuitParams
@@ -29,47 +28,51 @@ log = logging.getLogger(__name__)
 
 
 class VarArraySolutionCollector(cp_model.CpSolverSolutionCallback):
-    def __init__(self, variables, lbir_model, accelerators):
+    def __init__(self, variables, lbir_model, accels):
         cp_model.CpSolverSolutionCallback.__init__(self)
         self.variables = variables
         self.solution_list = []
         self.lbir_model = lbir_model
-        self.accelerators = accelerators
+        self.accels = accels
 
     def on_solution_callback(self):
-        solution_raw = np.zeros((len(self.lbir_model.layers), len(self.accelerators)))
+        solution_raw = np.zeros((len(self.lbir_model.layers), len(self.accels)))
         for lay, a in self.variables.keys():
             solution_raw[lay][a] = self.Value(self.variables[(lay, a)])
         solution = []
         for lay in solution_raw:
             acc_ind = lay.tolist().index(1)
-            solution.append(self.accelerators[acc_ind])
+            solution.append(self.accels[acc_ind])
         self.solution_list.append(solution)
 
 
+def _create_accelerator(solution_layers):
+    solution, layers = solution_layers
+    acc = Accelerator()
+    acc.name = type(solution).__name__
+    layer_mod = layers
+    if not hasattr(layers, "__iter__"):
+        layer_mod = [layers]
+    for layer in layer_mod:
+        acc.layers.append(layer)
+    return acc
+
+
 def solution_to_accelerators(solution, lbir_layers):
-    merged = []
-    comb_list = []
+    assert len(solution) == len(lbir_layers)
+    solution_layers = zip(solution, lbir_layers)
+    accels = list(map(_create_accelerator, solution_layers))
     # merging ProcessingElementCombToSeq
-    for ind, ls in enumerate(solution):
-        if isinstance(ls, ProcessingElementCombToSeq):
-            comb_list += (ls, lbir_layers[ind])
-        else:
-            if len(comb_list) > 0:
-                merged += [comb_list] + [[(ls, lbir_layers[ind])]]
-                comb_list = []
-            else:
-                merged += [[(ls, lbir_layers[ind])]]
-    if len(comb_list) > 0:
-        merged += [comb_list]
-    acc_list = []
-    for layer_list in merged:
-        acc = Accelerator()
-        acc.name = type(solution[0]).__name__
-        for _, lbir_layer in layer_list:
-            acc.layers.append(lbir_layer)
-        acc_list.append(acc)
-    return acc_list
+    for ind, accel in enumerate(accels):
+        if accel.name == "ProcessingElementCombToSeq":
+            if ind > 1 and accels[ind - 1].name == "ProcessingElementCombToSeq":
+                accels[ind].layers = None
+    new_accels = []
+    for accel in accels:
+        if accel.layers is None:
+            continue
+        new_accels.append(accel)
+    return new_accels
 
 
 def accelerators(model, ishape=None, num_layers=None, minimize="area", debug=False):
@@ -121,12 +124,12 @@ def accelerators(model, ishape=None, num_layers=None, minimize="area", debug=Fal
     solution_status = solver.solve(model_cp, solution_collector)
     assert solution_status in (cp_model.FEASIBLE, cp_model.OPTIMAL)
     solution = solution_collector.solution_list[0]
-    accelerators = solution_to_accelerators(solution, lbir_model.layers)
-    return accelerators, lbir_model
+    accels = solution_to_accelerators(solution, lbir_model.layers)
+    return accels, lbir_model
 
 
 def circuit(
-    accelerators,
+    accels,
     lbir_model,
     use_verilator=False,
     gen_waveform=False,
@@ -145,7 +148,7 @@ def circuit(
 
     gen_circt_ret = server.send_grpc_msg(
         GenerateCircuitParams(
-            accelerators=accelerators,
+            accelerators=accels,
             use_verilator=use_verilator,
             gen_waveform=gen_waveform,
             generation_timeout_sec=gen_timeout_sec,
@@ -162,9 +165,9 @@ def circuit(
         )
         return None
 
-    input_layer_type = accelerators[0].layers[0].WhichOneof("sealed_value_optional")
+    input_layer_type = accels[0].layers[0].WhichOneof("sealed_value_optional")
     assert input_layer_type is not None
-    input_qt = getattr(accelerators[0].layers[0], input_layer_type).input
+    input_qt = getattr(accels[0].layers[0], input_layer_type).input
     circuit = Circuit(
         gen_circt_ret.circuit_id,
         input_qt,

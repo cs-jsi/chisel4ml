@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.conv2d
+package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
@@ -35,10 +35,8 @@ class ThreshAndShiftUnit[A <: Bits](thresh: lbir.QTensor, kernel: lbir.QTensor) 
   val shiftWithIndex = kernel.dtype.shift.zipWithIndex
   io.tas.bias := MuxLookup(
     kernelNum,
-    0.S.asTypeOf(thresh.getType[A]),
-    threshWithIndex.map(x =>
-      (x._2.toInt.U -> ((-x._1.toInt) << kernel.dtype.shift(x._2)).S.asTypeOf(thresh.getType[A]))
-    )
+    0.S.asTypeOf(thresh.gen[A]),
+    threshWithIndex.map(x => (x._2.toInt.U -> ((-x._1.toInt) << kernel.dtype.shift(x._2)).S.asTypeOf(thresh.gen[A])))
   )
 
   io.tas.shift := MuxLookup(kernelNum, 0.U, shiftWithIndex.map(x => (x._2.toInt.U -> x._1.abs.U)))

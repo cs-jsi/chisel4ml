@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.conv2d
+package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._

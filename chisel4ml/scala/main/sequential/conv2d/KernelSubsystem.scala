@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.conv2d
+package chisel4ml.sequential
 import chisel3._
 import chisel3.util._
 import chisel4ml.implicits._
@@ -37,7 +37,7 @@ class KernelRegisterFile[W <: Bits](kernel: lbir.QTensor, depthwise: Boolean) ex
     val activeKernel = Valid(Vec(kernel.numActiveParams(depthwise), kernel.getType[W]))
   })
   val valid = RegInit(false.B)
-  val regs = RegInit(VecInit(Seq.fill(kernel.numActiveParams(depthwise))(0.U.asTypeOf(kernel.getType[W]))))
+  val regs = RegInit(VecInit(Seq.fill(kernel.numActiveParams(depthwise))(kernel.gen[W])))
   val (regCnt, regCntWrap) = Counter(0 until kernel.numActiveParams(depthwise), io.write.valid)
   when(regCntWrap) {
     valid := true.B

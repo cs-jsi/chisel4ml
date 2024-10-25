@@ -13,22 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml
+package chisel4ml.combinational
 
 import chisel3._
-import services.Accelerator
+import chisel4ml.compute.OrderCompute
 
-class ProcessingPipeline(accelerators: Seq[Accelerator]) extends Module with HasLBIRStream {
-  // Instantiate modules for separate layers
-  val peList: Seq[Module with HasLBIRStream] = accelerators.map(AcceleratorGenerator(_))
+trait OrderOperation {
+  def apply(oc: OrderCompute)(in: Seq[oc.T]): oc.T
+}
 
-  val inStream = IO(chiselTypeOf(peList.head.inStream))
-  val outStream = IO(chiselTypeOf(peList.last.outStream))
-
-  // Connect the inputs and outputs of the layers
-  peList.head.inStream <> inStream
-  for (i <- 1 until accelerators.length) {
-    peList(i).inStream <> peList(i - 1).outStream
+object MaxPoolOperation extends OrderOperation {
+  def max(oc: OrderCompute)(x: oc.T, y: oc.T): oc.T = {
+    val out = Wire(chiselTypeOf(x))
+    when(oc.gte(x, y)) {
+      out := x
+    }.otherwise {
+      out := y
+    }
+    out
   }
-  outStream <> peList.last.outStream
+  def apply(oc: OrderCompute)(in: Seq[oc.T]): oc.T = {
+    VecInit(in).reduceTree(this.max(oc)(_, _))
+  }
 }

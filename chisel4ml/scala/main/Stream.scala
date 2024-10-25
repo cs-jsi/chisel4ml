@@ -15,42 +15,31 @@
  */
 package chisel4ml
 import chisel3._
-import chisel4ml.quantization.IOContext
 import interfaces.amba.axis._
-import lbir.{IsActiveLayer, LayerWrap}
+import lbir.LayerWrap
 import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object NumBeatsInField extends Field[Int](default = 4)
 case object NumBeatsOutField extends Field[Int](default = 4)
 case object LayerWrapSeqField extends Field[Seq[LayerWrap]]()
-case object IOContextField extends Field[IOContext]()
 
-trait HasLBIRStreamParameters {
+trait HasLayerWrapSeq {
+  val p: Parameters
+  val _cfg = p(LayerWrapSeqField)
+}
+
+trait HasAXIStreamParameters {
   val p: Parameters
   val numBeatsIn = p(NumBeatsInField)
   val numBeatsOut = p(NumBeatsOutField)
-  require(numBeatsIn > 0)
-  require(numBeatsOut > 0)
-  val _cfg = p(LayerWrapSeqField)
-}
-trait HasIOContext extends HasLBIRStreamParameters {
-  val p: Parameters
-  val ioc = p(IOContextField)
-}
-trait HasActiveLayer {
-  val cfg: LayerWrap with IsActiveLayer
-}
-trait HasQuantizationContext extends HasIOContext with HasActiveLayer {
-  val p: Parameters
-  val qc = AcceleratorGenerator.getQuantizationContext(cfg)
 }
 
-trait HasLBIRStream {
+trait HasAXIStream {
   val inStream:  AXIStreamIO[Data]
   val outStream: AXIStreamIO[Data]
 }
 
-trait LBIRStreamSimple {
+trait HasSimpleStream {
   val in:  Vec[Data]
   val out: Vec[Data]
 }

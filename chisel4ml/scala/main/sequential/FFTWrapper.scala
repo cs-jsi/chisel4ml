@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml
+package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
-import chisel4ml.HasLBIRStream
 import chisel4ml.logging.HasParameterLogging
+import chisel4ml.{HasAXIStream, HasAXIStreamParameters, HasLayerWrapSeq}
 import dsptools._
 import fft._
 import fixedpoint._
@@ -26,7 +26,7 @@ import interfaces.amba.axis._
 import lbir.{FFTConfig, LayerWrap}
 import org.chipsalliance.cde.config.Parameters
 
-trait HasFFTParameters extends HasLBIRStreamParameters {
+trait HasFFTParameters extends HasAXIStreamParameters with HasLayerWrapSeq {
   val p: Parameters
   val cfg:                  FFTConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head.asMessage).get.asInstanceOf[FFTConfig]
   override val numBeatsIn:  Int = 1
@@ -48,11 +48,14 @@ trait HasFFTParameters extends HasLBIRStreamParameters {
     expandLogic = Array.fill(log2Up(cfg.fftSize))(1),
     keepMSBorLSB = Array.fill(log2Up(cfg.fftSize))(true)
   )
+  require(_cfg.length == 1)
+  require(cfg.input.dtype.signed)
+  require(cfg.output.dtype.signed)
 }
 
 class FFTWrapper(implicit val p: Parameters)
     extends Module
-    with HasLBIRStream
+    with HasAXIStream
     with HasFFTParameters
     with HasParameterLogging {
   logParameters

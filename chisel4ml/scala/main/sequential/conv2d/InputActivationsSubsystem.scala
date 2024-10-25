@@ -1,8 +1,8 @@
-package chisel4ml.conv2d
+package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
-import chisel4ml.HasLBIRStreamParameters
+import chisel4ml.HasAXIStreamParameters
 import chisel4ml.implicits._
 import interfaces.amba.axis.AXIStream
 import memories.MemoryGenerator
@@ -16,7 +16,7 @@ import org.chipsalliance.cde.config.Parameters
 class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters)
     extends Module
     with HasSequentialConvParameters
-    with HasLBIRStreamParameters {
+    with HasAXIStreamParameters {
   val io = IO(new Bundle {
     val inStream = Flipped(AXIStream(cfg.input.getType[I], numBeatsIn))
     val inputActivationsWindow = Decoupled(Vec(cfg.kernel.numActiveParams(cfg.depthwise), cfg.input.getType[I]))

@@ -21,25 +21,45 @@ import chisel4ml.implicits._
 import chisel4ml.logging.HasParameterLogging
 import chisel4ml.util.risingEdge
 import interfaces.amba.axis._
+import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
 import org.chipsalliance.cde.config.Parameters
+import services.Accelerator
 
-class ProcessingElementCombToSeq(implicit val p: Parameters)
+object ProcessingElementCombToSeq {
+  def apply(accel: Accelerator)(implicit p: Parameters) = {
+    val idt = accel.layers.head.get.input.dtype
+    val odt = accel.layers.last.get.output.dtype
+    (idt.quantization, idt.signed, odt.quantization, odt.signed) match {
+      case (BINARY, _, BINARY, _)           => new ProcessingElementCombToSeq[Bool, Bool]
+      case (BINARY, _, UNIFORM, false)      => new ProcessingElementCombToSeq[Bool, UInt]
+      case (BINARY, _, UNIFORM, true)       => new ProcessingElementCombToSeq[Bool, SInt]
+      case (UNIFORM, false, BINARY, _)      => new ProcessingElementCombToSeq[UInt, Bool]
+      case (UNIFORM, true, BINARY, _)       => new ProcessingElementCombToSeq[SInt, Bool]
+      case (UNIFORM, true, UNIFORM, true)   => new ProcessingElementCombToSeq[SInt, SInt]
+      case (UNIFORM, true, UNIFORM, false)  => new ProcessingElementCombToSeq[SInt, UInt]
+      case (UNIFORM, false, UNIFORM, true)  => new ProcessingElementCombToSeq[UInt, SInt]
+      case (UNIFORM, false, UNIFORM, false) => new ProcessingElementCombToSeq[UInt, UInt]
+    }
+  }
+}
+
+class ProcessingElementCombToSeq[I <: Bits, O <: Bits](implicit val p: Parameters)
     extends Module
-    with HasLBIRStream
-    with HasLBIRStreamParameters
+    with HasAXIStream
+    with HasAXIStreamParameters
     with HasParameterLogging
-    with HasIOContext {
+    with HasLayerWrapSeq {
   logParameters
-  val inStream = IO(Flipped(AXIStream(_cfg.head.input.getType[ioc.I], numBeatsIn)))
-  val outStream = IO(AXIStream(_cfg.last.output.getType[ioc.O], numBeatsOut))
-  val CombModule = Module(new ProcessingPipelineSimple(_cfg))
+  val CombModule = Module(new ProcessingPipelineCombinational(_cfg))
+  val inStream = IO(Flipped(AXIStream(chiselTypeOf(CombModule.in.head), numBeatsIn)))
+  val outStream = IO(AXIStream(chiselTypeOf(CombModule.out.head), numBeatsOut))
   val inputBuffer = RegInit(
-    VecInit.fill(_cfg.head.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(_cfg.head.input.gen[ioc.I]))
+    VecInit.fill(_cfg.head.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(_cfg.head.input.gen[I]))
   )
   dontTouch(inputBuffer)
   require(inputBuffer.flatten.length >= inStream.beats)
   val outputBuffer = RegInit(
-    VecInit.fill(_cfg.last.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(_cfg.last.output.gen[ioc.O]))
+    VecInit.fill(_cfg.last.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(_cfg.last.output.gen[O]))
   )
   dontTouch(outputBuffer)
   require(outputBuffer.flatten.length >= outStream.beats)

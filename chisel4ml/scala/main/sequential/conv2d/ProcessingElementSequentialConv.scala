@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.conv2d
+package chisel4ml.sequential
 
 import chisel3._
 import chisel4ml._
-import chisel4ml.implicits._
+import chisel4ml.compute.NeuronCompute
 import chisel4ml.logging.{HasLogger, HasParameterLogging}
-import chisel4ml.quantization._
 import interfaces.amba.axis._
 import lbir.{Conv2DConfig, LayerWrap}
 import org.chipsalliance.cde.config.Parameters
+import services.Accelerator
 
 /** A sequential processing element for convolutions.
   *
@@ -34,31 +34,32 @@ import org.chipsalliance.cde.config.Parameters
   * thanks to the low bitwidths of parameters this should be an acceptable trade-off.
   */
 
-trait HasSequentialConvParameters extends HasLBIRStreamParameters {
+trait HasSequentialConvParameters extends HasAXIStreamParameters with HasLayerWrapSeq {
   val p: Parameters
   val cfg: Conv2DConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head.asMessage).get.asInstanceOf[Conv2DConfig]
+  require(_cfg.length == 1)
 }
 
 class ProcessingElementSequentialConv(
-  val qc: QuantizationContext
+  val nc: NeuronCompute
 )(
   implicit val p: Parameters)
     extends Module
-    with HasLBIRStream
-    with HasLBIRStreamParameters
+    with HasAXIStream
+    with HasAXIStreamParameters
     with HasSequentialConvParameters
     with HasLogger
     with HasParameterLogging {
   logParameters
 
-  val inStream = IO(Flipped(AXIStream(cfg.input.getType[qc.io.I], numBeatsIn)))
-  val outStream = IO(AXIStream(cfg.output.getType[qc.io.O], numBeatsOut))
+  val inStream = IO(Flipped(AXIStream(nc.genI, numBeatsIn)))
+  val outStream = IO(AXIStream(nc.genO, numBeatsOut))
 
-  val dynamicNeuron = Module(new DynamicNeuron(cfg, qc))
+  val dynamicNeuron = Module(new DynamicNeuron(nc)(cfg))
   val ctrl = Module(new PeSeqConvController(cfg))
-  val kernelSubsystem = Module(new KernelSubsystem[qc.W, qc.A](cfg))
-  val inputSubsytem = Module(new InputActivationsSubsystem[qc.io.I])
-  val rmb = Module(new ResultMemoryBuffer[qc.io.O])
+  val kernelSubsystem = Module(new KernelSubsystem[nc.W, nc.A](cfg))
+  val inputSubsytem = Module(new InputActivationsSubsystem[nc.I])
+  val rmb = Module(new ResultMemoryBuffer[nc.O])
 
   inputSubsytem.io.inStream <> inStream
   dynamicNeuron.io.in <> inputSubsytem.io.inputActivationsWindow
@@ -68,4 +69,14 @@ class ProcessingElementSequentialConv(
 
   ctrl.io.activeDone := inputSubsytem.io.activeDone
   kernelSubsystem.io.ctrl <> ctrl.io.kernelCtrl
+}
+
+object ProcessingElementSequentialConv {
+  def apply(accel: Accelerator)(implicit p: Parameters): Module with HasAXIStream = {
+    require(accel.name == "ProcessingElementSequentialConv")
+    require(accel.layers.length == 1)
+    accel.layers.head.get match {
+      case l: Conv2DConfig => new ProcessingElementSequentialConv(NeuronCompute(l))
+    }
+  }
 }

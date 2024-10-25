@@ -25,17 +25,20 @@ import lbir.{LMFEConfig, LayerWrap}
 import melengine._
 import org.chipsalliance.cde.config.Parameters
 
-trait HasLMFEParameters extends HasLBIRStreamParameters {
+trait HasLMFEParameters extends HasAXIStreamParameters with HasLayerWrapSeq {
   val p: Parameters
   val cfg:                  LMFEConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head.asMessage).get.asInstanceOf[LMFEConfig]
   override val numBeatsIn:  Int = 1
   override val numBeatsOut: Int = 1
+
+  require(cfg.input.dtype.signed)
+  require(!cfg.output.dtype.signed)
 }
 
 class LMFEWrapper(implicit val p: Parameters)
     extends Module
-    with HasLBIRStream
-    with HasLBIRStreamParameters
+    with HasAXIStream
+    with HasAXIStreamParameters
     with HasLMFEParameters
     with HasParameterLogging {
   logParameters

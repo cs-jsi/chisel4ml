@@ -13,24 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml
+package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
+import chisel4ml.combinational.MaxPoolOperation
+import chisel4ml.compute.OrderCompute
 import chisel4ml.implicits._
 import chisel4ml.logging.HasParameterLogging
 import chisel4ml.util.risingEdge
-import chisel4ml.{HasLBIRStream, HasLBIRStreamParameters}
+import chisel4ml.{HasAXIStream, HasAXIStreamParameters, HasLayerWrapSeq}
 import interfaces.amba.axis._
 import lbir.{LayerWrap, MaxPool2DConfig}
 import org.chipsalliance.cde.config.Parameters
+import services.Accelerator
 
-trait HasMaxPoolParameters extends HasLBIRStreamParameters {
+trait HasMaxPoolParameters extends HasAXIStreamParameters with HasLayerWrapSeq {
   val p: Parameters
   val cfg: MaxPool2DConfig =
     LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head.asMessage).get.asInstanceOf[MaxPool2DConfig]
   val maxPoolSize = cfg.input.width / cfg.output.width
   val shiftRegsSize = cfg.input.width * maxPoolSize - (cfg.input.width - maxPoolSize)
+  require(_cfg.length == 1)
   require(cfg.output.width * maxPoolSize == cfg.input.width)
   require(cfg.output.height * maxPoolSize == cfg.input.height, f"${cfg.input} / ${cfg.output} == $maxPoolSize")
 }
@@ -42,15 +46,16 @@ trait HasMaxPoolParameters extends HasLBIRStreamParameters {
  * moments.
  *
  */
-class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
+class MaxPool2D(val oc: OrderCompute)(implicit val p: Parameters)
     extends Module
-    with HasLBIRStream
-    with HasLBIRStreamParameters
+    with HasAXIStream
+    with HasLayerWrapSeq
+    with HasAXIStreamParameters
     with HasMaxPoolParameters
     with HasParameterLogging {
   logParameters
-  val inStream = IO(Flipped(AXIStream(cfg.input.getType[I], numBeatsIn)))
-  val outStream = IO(AXIStream(cfg.input.getType[I], numBeatsOut))
+  val inStream = IO(Flipped(AXIStream(oc.genT, numBeatsIn)))
+  val outStream = IO(AXIStream(oc.genT, numBeatsOut))
 
   object InputBufferState extends ChiselEnum {
     val sEMPTY = Value(0.U)
@@ -60,7 +65,7 @@ class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
   val state = RegInit(InputBufferState.sEMPTY)
 
   val inputsBuffer = RegEnable(inStream.bits, inStream.fire)
-  val outputsBuffer = Reg(Vec(numBeatsIn, cfg.input.getType[I]))
+  val outputsBuffer = Reg(Vec(numBeatsIn, oc.genT))
 
   val (_, channelElementsCounterWrap) =
     Counter(state === InputBufferState.sREAD_WORD, cfg.input.numActiveParams(depthwise = true))
@@ -94,16 +99,15 @@ class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
     (widthCounter % maxPoolSize.U === 0.U) &&
     state === InputBufferState.sREAD_WORD)
 
-  val inputAndValid = Wire(Valid(cfg.input.getType[I]))
+  val inputAndValid = Wire(Valid(oc.genT))
   inputAndValid.bits := inputsBuffer(inputBufferCounter)
   inputAndValid.valid := startOfMaxPoolWindow
   val shiftRegs = ShiftRegisters(inputAndValid, shiftRegsSize, state =/= InputBufferState.sEMPTY && outStream.ready)
 
   val partialMaximums = VecInit((0 until maxPoolSize).map((i: Int) => {
-    MaxSelect(
+    MaxPoolOperation.max(oc)(
       shiftRegs.map(_.bits).reverse(0 + (i * cfg.input.width)),
-      shiftRegs.map(_.bits).reverse(1 + (i * cfg.input.width)),
-      cfg.input.getType[I]
+      shiftRegs.map(_.bits).reverse(1 + (i * cfg.input.width))
     )
   }))
 
@@ -112,9 +116,7 @@ class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
   val (outputBufferCounter, outputBufferCounterWrap) =
     Counter(0 until numBeatsIn, shiftRegWrite, totalOutputCounterWrap)
   when(shiftRegWrite) {
-    outputsBuffer(outputBufferCounter) := partialMaximums.reduceTree((in0: I, in1: I) =>
-      MaxSelect(in0, in1, cfg.input.getType[I])
-    )
+    outputsBuffer(outputBufferCounter) := partialMaximums.reduceTree((in0, in1) => MaxPoolOperation.max(oc)(in0, in1))
   }
   outStream.bits := outputsBuffer.asTypeOf(outStream.bits)
   outStream.valid := RegNext(outputBufferCounterWrap || totalOutputCounterWrap)
@@ -129,23 +131,12 @@ class MaxPool2D[I <: Bits with Num[I]](implicit val p: Parameters)
   }
 }
 
-class MaxSelect[T <: Bits with Num[T]](genT: T) extends Module {
-  val in0 = IO(Input(genT))
-  val in1 = IO(Input(genT))
-  val out = IO(Output(genT))
-
-  when(in0 > in1) {
-    out := in0
-  }.otherwise {
-    out := in1
-  }
-}
-
-object MaxSelect {
-  def apply[T <: Bits with Num[T]](in0: T, in1: T, genT: T): T = {
-    val m = Module(new MaxSelect[T](genT))
-    m.in0 := in0
-    m.in1 := in1
-    m.out
+object MaxPool2D {
+  def apply(accel: Accelerator)(implicit p: Parameters): Module with HasAXIStream = {
+    require(accel.name == "MaxPool2D")
+    require(accel.layers.length == 1)
+    accel.layers.head.get match {
+      case l: MaxPool2DConfig => new MaxPool2D(OrderCompute(l))
+    }
   }
 }

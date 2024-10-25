@@ -16,19 +16,17 @@
 package chisel4ml
 
 import chisel3._
-import chisel4ml.AcceleratorGenerator.{getIOContext, getQuantizationContext}
-import chisel4ml.quantization._
+import chisel4ml.combinational.{MaxPoolOperation, NeuronProcessingUnit, OrderProcessingUnit}
+import chisel4ml.compute.{BinarizedNeuronCompute, NeuronCompute, OrderCompute}
 import lbir.{HasInputOutputQTensor, IsActiveLayer, LayerWrap, MaxPool2DConfig}
 
 object AcceleratorGeneratorCombinational {
-  def apply(layer: LayerWrap with HasInputOutputQTensor): Module with LBIRStreamSimple = layer match {
-    case l: MaxPool2DConfig =>
-      Module(new ProcessingElementCombinationalIO(getIOContext(Seq(l)))(l, MaximumTransformationIO))
+  def apply(layer: LayerWrap with HasInputOutputQTensor): Module with HasSimpleStream = layer match {
+    case l: MaxPool2DConfig => Module(new OrderProcessingUnit(OrderCompute(l))(l, MaxPoolOperation))
     case l: IsActiveLayer => {
-      val qc = getQuantizationContext(l)
-      qc match {
-        case BinarizedQuantizationContext => Module(new ProcessingElementCombinational(qc)(l, NeuronWithoutBias))
-        case _                            => Module(new ProcessingElementCombinational(qc)(l, NeuronWithBias))
+      NeuronCompute(l) match {
+        case nc: BinarizedNeuronCompute.type => Module(new NeuronProcessingUnit(nc)(l, combinational.NeuronWithoutBias))
+        case nc => Module(new NeuronProcessingUnit(nc)(l, combinational.NeuronWithBias))
       }
     }
     case _ => throw new RuntimeException(f"Unsupported layer type")

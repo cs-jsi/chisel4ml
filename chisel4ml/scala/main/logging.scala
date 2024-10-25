@@ -30,8 +30,7 @@ trait HasParameterLogging extends HasLogger {
     val configFields = Seq(
       LayerWrapSeqField,
       NumBeatsInField,
-      NumBeatsOutField,
-      IOContextField
+      NumBeatsOutField
     )
     val reflections = new Reflections("chisel4ml");
     val reflectedFields = reflections.get(SubTypes.of(classOf[Field[_]]).asClass())

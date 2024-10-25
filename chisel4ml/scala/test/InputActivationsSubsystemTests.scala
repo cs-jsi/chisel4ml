@@ -19,8 +19,8 @@ import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import _root_.org.slf4j.LoggerFactory
 import chisel3._
 import chisel3.experimental.VecLiterals._
-import chisel4ml.conv2d._
 import chisel4ml.implicits._
+import chisel4ml.sequential._
 import chisel4ml.{LayerWrapSeqField, NumBeatsInField, NumBeatsOutField}
 import chiseltest._
 import lbir.Conv2DConfig

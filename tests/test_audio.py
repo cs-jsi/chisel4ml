@@ -12,7 +12,7 @@ from tests.brevitas_quantizers import Int12ActQuant
 from tests.brevitas_quantizers import Int31ActQuant
 from tests.brevitas_quantizers import Int32ActQuant
 from tests.brevitas_quantizers import Int33ActQuant
-from tests.brevitas_quantizers import Int8ActQuant
+from tests.brevitas_quantizers import UInt8ActQuant
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -47,7 +47,7 @@ def get_model(fft_size, num_frames, num_mels):
                     num_mels=num_mels,
                     num_frames=num_frames,
                     input_quant=None,
-                    output_quant=Int8ActQuant,
+                    output_quant=UInt8ActQuant,
                 )
 
         def forward(self, x):
@@ -97,9 +97,13 @@ def test_fft(
         num_frames=num_frames,
         num_mels=0,  # we dont use the lmfe layer in this test
     )
+    ishape = (1, num_frames, frame_length)
+    accelerators, lbir_model = generate.accelerators(
+        model, ishape=ishape, minimize="area"
+    )
     audio_preproc = generate.circuit(
-        model=model,
-        ishape=(1, num_frames, frame_length),
+        accelerators,
+        lbir_model,
         use_verilator=request.config.getoption("--use-verilator"),
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
@@ -155,9 +159,11 @@ def test_lmfe(
 
     model = get_model(fft_size=frame_length, num_frames=num_frames, num_mels=num_mels)
 
+    ishape = (1, num_frames, frame_length)
+    accels, lbir_model = generate.accelerators(model, ishape=ishape, minimize="area")
     audio_preproc = generate.circuit(
-        model=model,
-        ishape=(1, num_frames, frame_length),
+        accels,
+        lbir_model,
         use_verilator=request.config.getoption("--use-verilator"),
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),

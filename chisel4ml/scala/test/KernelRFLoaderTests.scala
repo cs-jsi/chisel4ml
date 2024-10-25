@@ -15,13 +15,13 @@
  */
 package chisel4ml.tests
 
-import _root_.chisel4ml.conv2d.KernelSubsystem
-import _root_.lbir.Datatype.QuantizationType.UNIFORM
-import _root_.org.slf4j.LoggerFactory
+import chisel4ml.sequential.KernelSubsystem
 import chiseltest._
+import lbir.Datatype.QuantizationType.UNIFORM
 import memories.MemoryGenerator
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.{BeforeAndAfterEachTestData, TestData}
+import org.slf4j.LoggerFactory
 
 class KernelRFLoaderTests extends AnyFlatSpec with ChiselScalatestTester with BeforeAndAfterEachTestData {
   val logger = LoggerFactory.getLogger(classOf[KernelRFLoaderTests])

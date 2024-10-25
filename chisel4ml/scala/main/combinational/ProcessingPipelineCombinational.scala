@@ -16,17 +16,17 @@
 package chisel4ml
 
 import chisel3._
-import chisel4ml.implicits._
 import lbir.{HasInputOutputQTensor, LayerWrap}
 
-class ProcessingPipelineSimple(layers: Seq[LayerWrap with HasInputOutputQTensor]) extends Module with LBIRStreamSimple {
-
-  // Instantiate modules for seperate layers
-  val peList: Seq[Module with LBIRStreamSimple] = layers.map { l: LayerWrap =>
+class ProcessingPipelineCombinational(layers: Seq[LayerWrap with HasInputOutputQTensor])
+    extends Module
+    with HasSimpleStream {
+  // Instantiate modules for separate layers
+  val peList: Seq[Module with HasSimpleStream] = layers.map { l: LayerWrap =>
     AcceleratorGeneratorCombinational(l)
   }
-  val in = IO(Input(Vec(layers.head.input.width, layers.head.input.getType)))
-  val out = IO(Output(Vec(layers.last.output.width, layers.last.output.getType)))
+  val in = IO(Input(chiselTypeOf(peList.head.in)))
+  val out = IO(Output(chiselTypeOf(peList.last.out)))
 
   // Connect the inputs and outputs of the layers
   peList.head.in := in

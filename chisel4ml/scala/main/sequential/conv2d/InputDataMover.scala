@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package chisel4ml.conv2d
+package chisel4ml.sequential
 
 import chisel3._
 import chisel3.util._
-import chisel4ml.HasLBIRStreamParameters
+import chisel4ml.HasAXIStreamParameters
 import chisel4ml.implicits._
 import chisel4ml.util.isStable
 import memories.SRAMRead
@@ -30,7 +30,7 @@ import org.chipsalliance.cde.config.Parameters
 class InputDataMover[I <: Bits](implicit val p: Parameters)
     extends Module
     with HasSequentialConvParameters
-    with HasLBIRStreamParameters {
+    with HasAXIStreamParameters {
   object IDMState extends ChiselEnum {
     val sWAIT = Value(0.U)
     val sMOVEDATA = Value(1.U)

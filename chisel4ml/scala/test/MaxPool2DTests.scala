@@ -15,13 +15,15 @@
  */
 package chisel4ml.tests
 
-import _root_.chisel4ml.implicits._
-import _root_.lbir.Datatype.QuantizationType.UNIFORM
-import _root_.org.slf4j.LoggerFactory
-import chisel4ml.{LayerWrapSeqField, MaxPool2D, NumBeatsInField, NumBeatsOutField}
+import chisel4ml.compute.OrderCompute
+import chisel4ml.implicits._
+import chisel4ml.sequential._
+import chisel4ml.{LayerWrapSeqField, NumBeatsInField, NumBeatsOutField}
 import chiseltest._
+import lbir.Datatype.QuantizationType.UNIFORM
 import org.chipsalliance.cde.config.Config
 import org.scalatest.flatspec.AnyFlatSpec
+import org.slf4j.LoggerFactory
 
 class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
   val logger = LoggerFactory.getLogger(classOf[MaxPool2DTests])
@@ -54,7 +56,7 @@ class MaxPool2DTests extends AnyFlatSpec with ChiselScalatestTester {
       case NumBeatsInField   => 4
       case NumBeatsOutField  => 4
     })
-    test(new MaxPool2D()(cfg)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+    test(new MaxPool2D(OrderCompute(layer))(cfg)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
       var res: lbir.QTensor = lbir.QTensor()
       fork {
         dut.inStream.enqueueQTensor(testParameters, dut.clock)

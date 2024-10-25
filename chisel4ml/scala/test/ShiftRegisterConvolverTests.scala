@@ -19,7 +19,7 @@ import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import breeze.linalg.DenseMatrix
 import chisel3._
 import chisel3.experimental.VecLiterals._
-import chisel4ml.conv2d.ShiftRegisterConvolver
+import chisel4ml.sequential.ShiftRegisterConvolver
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.LoggerFactory
