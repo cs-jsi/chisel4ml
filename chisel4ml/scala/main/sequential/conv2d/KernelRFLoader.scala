@@ -47,9 +47,9 @@ class KernelRFLoader[W <: Bits](l: lbir.Conv2DConfig) extends Module {
   val romBaseAddr = RegInit(0.U(log2Up(l.kernel.memDepth(32)).W))
   val romBaseAddrWire = MuxLookup(
     io.ctrl.loadKernel.bits,
-    0.U,
-    (0 until l.kernel.numKernels).map(i => (i.U -> (i * l.kernel.memDepthOneKernel(32)).U))
-  )
+    0.U
+  )((0 until l.kernel.numKernels).map(i => (i.U -> (i * l.kernel.memDepthOneKernel(32)).U)))
+
   val (wordElemCnt, wordElemWrap) = Counter(0 until l.kernel.paramsPerWord(), io.krf.valid, io.ctrl.loadKernel.valid)
   val (_, activeElemWrap) = Counter(0 until l.kernel.numActiveParams(l.depthwise), io.krf.valid)
   val (_, kernelElemWrap) = Counter(0 until l.kernel.numKernelParams, io.krf.valid, io.ctrl.loadKernel.valid)
