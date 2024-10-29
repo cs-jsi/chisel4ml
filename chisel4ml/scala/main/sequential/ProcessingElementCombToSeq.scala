@@ -39,6 +39,7 @@ object ProcessingElementCombToSeq {
       case (UNIFORM, true, UNIFORM, false)  => new ProcessingElementCombToSeq[SInt, UInt]
       case (UNIFORM, false, UNIFORM, true)  => new ProcessingElementCombToSeq[UInt, SInt]
       case (UNIFORM, false, UNIFORM, false) => new ProcessingElementCombToSeq[UInt, UInt]
+      case _                                => throw new RuntimeException
     }
   }
 }

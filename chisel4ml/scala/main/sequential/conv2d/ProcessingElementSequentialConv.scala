@@ -77,6 +77,7 @@ object ProcessingElementSequentialConv {
     require(accel.layers.length == 1)
     accel.layers.head.get match {
       case l: Conv2DConfig => new ProcessingElementSequentialConv(NeuronCompute(l))
+      case _ => throw new RuntimeException
     }
   }
 }

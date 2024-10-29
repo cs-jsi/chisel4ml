@@ -137,6 +137,7 @@ object MaxPool2D {
     require(accel.layers.length == 1)
     accel.layers.head.get match {
       case l: MaxPool2DConfig => new MaxPool2D(OrderCompute(l))
+      case _ => throw new RuntimeException
     }
   }
 }

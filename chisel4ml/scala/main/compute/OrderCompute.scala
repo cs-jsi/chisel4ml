@@ -24,6 +24,7 @@ object OrderCompute {
     case (BINARY, _)      => BoolOrderComputable
     case (UNIFORM, true)  => new SIntOrderComputable(l.input.dtype.bitwidth)
     case (UNIFORM, false) => new UIntOrderComputable(l.input.dtype.bitwidth)
+    case _                => throw new RuntimeException
   }
 }
 
