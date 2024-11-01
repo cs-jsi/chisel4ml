@@ -84,12 +84,9 @@ def _numpy_to_bitwidth(np_arr) -> int:
         return np.ceil(np.log2(maxval)).astype(int).item() + 2 + int(np_arr.min() < 0.0)
 
 
-def _scale_to_shift(scale, num_nodes):
+def _scale_to_shift(scale):
     shift = np.log2(scale).astype(int)
-    if shift.size == 1:
-        return shift.flatten().tolist() * num_nodes
-    else:
-        return shift.flatten().tolist()
+    return shift.flatten().tolist()
 
 
 def _numpy_to_qtensor(np_arr) -> QTensor:

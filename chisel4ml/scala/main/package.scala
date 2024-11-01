@@ -32,6 +32,13 @@ package object implicits {
     new AXIStreamLBIRDriver(new AXIStreamDriver(x))
   }
 
+  implicit class LayerWrapExtensions(layerWrap: LayerWrap with IsActiveLayer) {
+    def numActiveParams: Int = layerWrap match {
+      case l: DenseConfig  => l.input.shape(0)
+      case l: Conv2DConfig => l.kernel.numActiveParams(l.depthwise)
+    }
+  }
+
   implicit class QTensorExtensions(qt: QTensor) {
     /* LBIR Transactions contain all parameters bit packed, with no parameter being
      * separated into two transactions. Thus, depending on the bitwidth of parameters and

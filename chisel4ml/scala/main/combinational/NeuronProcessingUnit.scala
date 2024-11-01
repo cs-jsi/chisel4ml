@@ -27,8 +27,8 @@ class NeuronProcessingUnit(
   operation: NeuronOperation)
     extends Module
     with HasSimpleStream {
-  val in = IO(Input(Vec(layer.input.width, nc.genI)))
-  val out = IO(Output(Vec(layer.output.width, nc.genO)))
+  val in = IO(Input(Vec(layer.input.numParams, nc.genI)))
+  val out = IO(Output(Vec(layer.output.numParams, nc.genO)))
 
   val kernel: Seq[nc.W] = LayerMapping.getKernel[nc.W](layer)
   val thresh: Seq[nc.A] = LayerMapping.getThresh[nc.A](layer)
@@ -36,15 +36,15 @@ class NeuronProcessingUnit(
 
   val inMap:     Seq[Seq[Int]] = LayerMapping.layerToInputMap(layer)
   val kernelMap: Seq[Seq[Int]] = LayerMapping.layerToKernelMap(layer)
-  val threshMap: Seq[nc.A] = thresh
-  val shiftMap:  Seq[Int] = shift
+  val threshMap: Seq[Int] = LayerMapping.layerToThreshMap(layer)
+  val shiftMap:  Seq[Int] = LayerMapping.layerToShiftMap(layer)
 
-  for (i <- 0 until layer.output.shape(0)) {
+  for (i <- 0 until layer.output.numParams) {
     out(i) := operation(nc)(
       LayerMapping.getReceptiveField[nc.I](in.map(_.asInstanceOf[nc.I]), inMap(i)),
       LayerMapping.getReceptiveField[nc.W](kernel, kernelMap(i)),
-      threshMap(i),
-      shiftMap(i)
+      thresh(threshMap(i)),
+      shift(shiftMap(i))
     )
   }
 }

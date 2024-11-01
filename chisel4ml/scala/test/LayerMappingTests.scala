@@ -40,7 +40,8 @@ class LayerMappingTests extends AnyFlatSpec {
       stride = Seq(1, 1),
       padding = Seq(0, 0),
       dilation = Seq(),
-      groups = 1
+      groups = 1,
+      outChannels = 1
     )
     assert(res == reference)
   }
@@ -76,7 +77,31 @@ class LayerMappingTests extends AnyFlatSpec {
       stride = Seq(1, 1),
       padding = Seq(1, 1),
       dilation = Seq(),
-      groups = 1
+      groups = 1,
+      outChannels = 1
+    )
+    assert(res == reference)
+  }
+  it should "get the right map for a 3 dimensional convolution" in {
+    /*  0 1 2   9  10 11  18 19 20
+        3 4 5   12 13 14  21 22 23
+        6 7 8   15 16 17  24 25 26
+     */
+    val reference = Seq(
+      Seq(0, 1, 3, 4, 9, 10, 12, 13, 18, 19, 21, 22),
+      Seq(1, 2, 4, 5, 10, 11, 13, 14, 19, 20, 22, 23),
+      Seq(3, 4, 6, 7, 12, 13, 15, 16, 21, 22, 24, 25),
+      Seq(4, 5, 7, 8, 13, 14, 16, 17, 22, 23, 25, 26)
+    )
+    val qtensor = QTensor(dtype = dtype, shape = Seq(3, 3, 3))
+    val res = LayerMapping.slidingWindowMap(
+      qtensor,
+      kernelSize = Seq(2, 2),
+      stride = Seq(1, 1),
+      padding = Seq(0, 0),
+      dilation = Seq(),
+      groups = 1,
+      outChannels = 1
     )
     assert(res == reference)
   }

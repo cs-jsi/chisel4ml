@@ -1,16 +1,23 @@
 import os
 
+import brevitas.nn as qnn
 import numpy as np
+import onnx
+import pytest
 import torch
 from pytest_cases import get_current_cases
 from pytest_cases import parametrize_with_cases
+from qonnx.core.datatype import DataType
+from qonnx.util.basic import gen_finn_dt_tensor
+from torch.nn import Module
 
 from chisel4ml import generate
 from chisel4ml import optimize
+from chisel4ml import transform
 from chisel4ml.utils import get_submodel
-from tests.brevitas_quantizers import Int4ActQuant
-from tests.brevitas_quantizers import Int8BiasQuant
-from tests.brevitas_quantizers import LearnedSFInt4WeightPerChannel
+from tests.brevitas_quantizers import CommonWeightQuant
+from tests.brevitas_quantizers import IntActQuant
+from tests.brevitas_quantizers import IntBiasQuant
 from tests.conftest import TEST_MODELS_LIST
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -208,65 +215,93 @@ def test_brevitas(request, model_ishape_data):
     circuit.delete_from_server()
 
 
-def get_random_config(num_tests):
-    pass
+def get_conv_layer_model(input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq):
+    class ConvLayerModel(Module):
+        def __init__(self):
+            super(ConvLayerModel, self).__init__()
+            self.ishape = (1, input_ch, 4, 4)
+            self.conv = qnn.QuantConv2d(
+                in_channels=input_ch,
+                out_channels=output_ch,
+                groups=1,
+                kernel_size=kernel_size,
+                padding=padding,
+                stride=1,
+                bias=True,
+                weight_quant=CommonWeightQuant,
+                weight_bit_width=wq,
+                weight_scaling_impl_type="const",
+                weight_scaling_init=1 if wq == 1 else 2 ** (wq - 1) - 1,
+                bias_quant=IntBiasQuant,
+                bias_bit_width=bq,
+                bias_scaling_impl_type="const",
+                bias_scaling_init=2 ** (bq - 1) - 1,
+                input_quant=IntActQuant,
+                input_bit_width=iq,
+                input_scaling_impl_type="const",
+                input_scaling_init=1 if iq == 1 else 2 ** (iq - 1) - 1,
+                output_quant=IntActQuant,
+                output_bit_width=oq,
+                output_scaling_impl_type="const",
+                output_scaling_init=1 if oq == 1 else 2 ** (oq - 1) - 1,
+            )
+
+        def forward(self, x):
+            return self.conv(x)
+
+    model = ConvLayerModel()
+    wshape = (output_ch, input_ch, kernel_size[0], kernel_size[1])
+    bshape = (output_ch,)
+    # set seed for repeatability
+    np.random.seed(42)
+    wq_type = DataType[f"INT{wq}"] if wq > 1 else DataType["BIPOLAR"]
+    iq_type = DataType[f"INT{iq}"] if iq > 1 else DataType["BIPOLAR"]
+    weights = gen_finn_dt_tensor(wq_type, wshape)
+    bias = gen_finn_dt_tensor(DataType[f"INT{bq}"], bshape)
+    model.conv.weight = torch.nn.Parameter(torch.from_numpy(weights).float())
+    model.conv.bias = torch.nn.Parameter(torch.from_numpy(bias).float())
+    qonnx_model = transform.brevitas_to_qonnx(model, model.ishape)
+    qstr = f"i{iq}_w{wq}_b{bq}_o{oq}"
+    fname = f"conv_ich{input_ch}_och{output_ch}_ks{kernel_size}_p{padding}_{qstr}.onnx"
+    onnx.save(qonnx_model.model, fname)
+    ishape = (8,) + model.ishape[1:]
+    input_data = gen_finn_dt_tensor(iq_type, ishape)
+    return model, input_data
 
 
-comb_test_conf = [
-    (
-        [
-            {
-                "ich": 1,
-                "och": 1,
-                "groups": 1,
-                "ks": (3, 3),
-                "pa": 0,
-                "st": 1,
-                "iq": Int4ActQuant,
-                "wq": LearnedSFInt4WeightPerChannel,
-                "bq": Int8BiasQuant,
-                "oq": Int4ActQuant,
-            }
-        ],  # conv_confs
-        [{"ks": (2, 2), "st": 1, "pa": 0}],  # mp_confs
-        [
-            {
-                "in_size": 5 * 5,
-                "out_size": 3,
-                "iq": Int4ActQuant,
-                "wq": LearnedSFInt4WeightPerChannel,
-                "bq": Int8BiasQuant,
-                "oq": Int4ActQuant,
-            }
-        ],  # dense_confs
-        (8, 8),  # input_size
+@pytest.mark.parametrize("input_ch", (1, 3))
+@pytest.mark.parametrize("output_ch", (1, 3))
+@pytest.mark.parametrize("kernel_size", ((3, 3), (2, 3)))
+@pytest.mark.parametrize("padding", (0,))
+@pytest.mark.parametrize("iq", (1, 3))
+@pytest.mark.parametrize("wq", (1, 5))
+@pytest.mark.parametrize("bq", (3, 8))
+@pytest.mark.parametrize("oq", (1, 4))
+def test_combinational_conv(
+    request, input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
+):
+    if iq == 1 and wq != 1:
+        return True  # this combination does'nt make sense
+    model, data = get_conv_layer_model(
+        input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
     )
-]
-
-
-# @pytest.mark.parametrize("conv_confs,maxp_confs,dense_confs,input_size",
-# comb_test_conf)
-# def test_combinational(request, conv_confs, maxp_confs, dense_confs, input_size):
-#    model, ishape, data = get_brevitas_model(
-#        conv_confs, maxp_confs, dense_confs, input_size
-#    )
-#    accelerators, lbir_model = generate.accelerators(
-#        model, ishape=ishape, minimize="delay"
-#    )
-#    circuit = generate.circuit(
-#        accelerators,
-#        lbir_model,
-#        use_verilator=request.config.getoption("--use-verilator"),
-#        gen_waveform=request.config.getoption("--gen-waveform"),
-#        waveform_type=request.config.getoption("--waveform-type"),
-#        gen_timeout_sec=request.config.getoption("--generation-timeout"),
-#        debug=request.config.getoption("--debug-trans"),
-#    )
-#    assert circuit is not None
-#    for x in data:
-#        sw_res = (
-#            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
-#        )
-#        hw_res = circuit(x)
-#        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
-#    circuit.delete_from_server()
+    accelerators, lbir_model = generate.accelerators(
+        model, ishape=model.ishape, minimize="delay"
+    )
+    circuit = generate.circuit(
+        accelerators,
+        lbir_model,
+        use_verilator=request.config.getoption("--use-verilator"),
+        gen_waveform=request.config.getoption("--gen-waveform"),
+        waveform_type=request.config.getoption("--waveform-type"),
+        gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        debug=request.config.getoption("--debug-trans"),
+    )
+    assert circuit is not None
+    for x in data:
+        sw_res = (
+            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
+        )
+        hw_res = circuit(x)
+        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
+    circuit.delete_from_server()

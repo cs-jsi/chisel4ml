@@ -45,7 +45,10 @@ object NeuronCompute {
       new NeuronComputeSSS(l.activation, l.input.dtype.bitwidth, l.output.dtype.bitwidth, l.output.roundingMode)
     case (UNIFORM, false, UNIFORM, true, UNIFORM, true) =>
       new NeuronComputeUSS(l.activation, l.input.dtype.bitwidth, l.output.dtype.bitwidth, l.output.roundingMode)
-    case _ => throw new RuntimeException
+    case _ =>
+      throw new RuntimeException(
+        f"Quantization type not supported: ${l.input.dtype.quantization}, ${l.input.dtype.signed}, ${l.kernel.dtype.quantization}, ${l.kernel.dtype.signed}, ${l.output.dtype.quantization}, ${l.output.dtype.signed}."
+      )
   }
 }
 
@@ -111,7 +114,7 @@ class SignedBinaryNeuronCompute(roundingMode: String, bitwidth: Int) extends Neu
   type O = Bool
   override def ringA: Ring[A] = implicitly[Ring[SInt]]
   override def binA:  BinaryRepresentation[A] = implicitly[BinaryRepresentation[SInt]]
-  override def mul = (i: SInt, w: Bool) => Mux(w, i, -i)
+  override def mul = (i: SInt, w: Bool) => Mux(w, i, 0.S -& i)
   override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
   override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
   override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)

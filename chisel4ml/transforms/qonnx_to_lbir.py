@@ -59,12 +59,8 @@ class WeightQuantToQTensor(Transformation):
                         node.input[3],
                     )
                     weights = model.get_initializer(weight_init)
-                    num_nodes = (
-                        weights.shape[1] if len(weights.shape) > 1 else weights.shape[0]
-                    )
                     shift = _scale_to_shift(
-                        np.atleast_1d(model.get_initializer(scale_init)),
-                        num_nodes,
+                        np.atleast_1d(model.get_initializer(scale_init))
                     )
 
                     offset = (
@@ -79,8 +75,7 @@ class WeightQuantToQTensor(Transformation):
                     weight_init, scale_init = node.input[0], node.input[1]
                     weights = model.get_initializer(weight_init)
                     shift = _scale_to_shift(
-                        np.atleast_1d(model.get_initializer(scale_init)),
-                        weights.shape[1],
+                        np.atleast_1d(model.get_initializer(scale_init))
                     )
                     offset = [0]
                     bitwidth = 1
@@ -147,8 +142,7 @@ class QuantToQTensor(Transformation):
                         node.input[3],
                     )
                     shift = _scale_to_shift(
-                        np.atleast_1d(model.get_initializer(scale_init)),
-                        model.get_tensor_shape(node.input[0])[1],
+                        np.atleast_1d(model.get_initializer(scale_init))
                     )
                     offset = (
                         np.atleast_1d(model.get_initializer(zp_init))
@@ -164,8 +158,7 @@ class QuantToQTensor(Transformation):
                 else:
                     scale_init = node.input[1]
                     shift = _scale_to_shift(
-                        np.atleast_1d(model.get_initializer(scale_init)),
-                        model.get_tensor_shape(node.input[0])[1],
+                        np.atleast_1d(model.get_initializer(scale_init))
                     )
                     offset = [0]
                     bitwidth = 1
