@@ -1,7 +1,11 @@
 package chisel4ml.tests
 
 import _root_.chisel3._
-import chisel4ml.util.{shiftAndRoundSIntStaticHalfToEven, shiftAndRoundSIntStaticUp, shiftAndRoundSIntUp}
+import chisel4ml.compute.ShiftRoundableImplementations.{
+  shiftRoundSIntStaticHalfToEven,
+  shiftRoundSIntStaticUp,
+  shiftRoundSIntUp
+}
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -11,21 +15,21 @@ class RoundTestBedStaticHalfToEven(inputWidth: Int, shift: Int) extends Module {
   val in = IO(Input(SInt(inputWidth.W)))
   val out = IO(Output(SInt()))
 
-  out := shiftAndRoundSIntStaticHalfToEven(in, shift)
+  out := shiftRoundSIntStaticHalfToEven(in, shift)
 }
 
 class RoundTestBedStatic(inputWidth: Int, shift: Int) extends Module {
   val in = IO(Input(SInt(inputWidth.W)))
   val out = IO(Output(SInt()))
 
-  out := shiftAndRoundSIntStaticUp(in, shift)
+  out := shiftRoundSIntStaticUp(in, shift)
 }
 
 class RoundTestBedDynamic(inputWidth: Int, shift: Int) extends Module {
   val in = IO(Input(SInt(inputWidth.W)))
   val out = IO(Output(SInt()))
 
-  out := shiftAndRoundSIntUp(in, shift.abs.U, (shift >= 0).B)
+  out := shiftRoundSIntUp(in, shift.abs.U, (shift >= 0).B)
 }
 
 object UtilityFunctionsTests {

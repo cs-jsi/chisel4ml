@@ -16,8 +16,12 @@
 package chisel4ml.compute
 
 import chisel3._
-import chisel3.util._
-import chisel4ml.util._
+import chisel4ml.HasLayerWrap
+import chisel4ml.compute.ActivatableImplementations._
+import chisel4ml.compute.MultipliableImplementations._
+import chisel4ml.compute.ShiftRoundableImplementations._
+import chisel4ml.compute.VectorAddableImplementations._
+import chisel4ml.implicits._
 import dsptools.numbers._
 import dsptools.numbers.implicits._
 import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
@@ -32,19 +36,42 @@ object NeuronCompute {
     l.output.dtype.quantization,
     l.output.dtype.signed
   ) match {
-    case (BINARY, _, BINARY, _, BINARY, _) => BinarizedNeuronCompute
-    case (UNIFORM, false, BINARY, _, BINARY, _) =>
-      new UnsignedBinaryNeuronCompute(l.output.roundingMode, l.input.dtype.bitwidth)
-    case (UNIFORM, true, BINARY, _, BINARY, _) =>
-      new SignedBinaryNeuronCompute(l.output.roundingMode, l.input.dtype.bitwidth)
-    case (UNIFORM, true, UNIFORM, true, UNIFORM, false) =>
-      new NeuronComputeSSU(l.activation, l.input.dtype.bitwidth, l.output.dtype.bitwidth, l.output.roundingMode)
-    case (UNIFORM, false, UNIFORM, true, UNIFORM, false) =>
-      new NeuronComputeUSU(l.activation, l.input.dtype.bitwidth, l.output.dtype.bitwidth, l.output.roundingMode)
-    case (UNIFORM, true, UNIFORM, true, UNIFORM, true) =>
-      new NeuronComputeSSS(l.activation, l.input.dtype.bitwidth, l.output.dtype.bitwidth, l.output.roundingMode)
-    case (UNIFORM, false, UNIFORM, true, UNIFORM, true) =>
-      new NeuronComputeUSS(l.activation, l.input.dtype.bitwidth, l.output.dtype.bitwidth, l.output.roundingMode)
+    case (UNIFORM, false, UNIFORM, false, UNIFORM, false) => new NeuronComputeUIntUIntUInt(l)
+    case (UNIFORM, false, UNIFORM, false, UNIFORM, true)  => new NeuronComputeUIntUIntSInt(l)
+    case (UNIFORM, false, UNIFORM, false, BINARY, _)      => new NeuronComputeUIntUIntBool(l)
+
+    case (UNIFORM, false, UNIFORM, true, UNIFORM, false) => new NeuronComputeUIntSIntUInt(l)
+    case (UNIFORM, false, UNIFORM, true, UNIFORM, true)  => new NeuronComputeUIntSIntSInt(l)
+    case (UNIFORM, false, UNIFORM, true, BINARY, _)      => new NeuronComputeUIntSIntBool(l)
+
+    case (UNIFORM, false, BINARY, _, UNIFORM, false) => new NeuronComputeUIntBoolUInt(l)
+    case (UNIFORM, false, BINARY, _, UNIFORM, true)  => new NeuronComputeUIntBoolSInt(l)
+    case (UNIFORM, false, BINARY, _, BINARY, _)      => new NeuronComputeUIntBoolBool(l)
+
+    case (UNIFORM, true, UNIFORM, false, UNIFORM, false) => new NeuronComputeSIntUIntUInt(l)
+    case (UNIFORM, true, UNIFORM, false, UNIFORM, true)  => new NeuronComputeSIntUIntSInt(l)
+    case (UNIFORM, true, UNIFORM, false, BINARY, _)      => new NeuronComputeSIntUIntBool(l)
+
+    case (UNIFORM, true, UNIFORM, true, UNIFORM, false) => new NeuronComputeSIntSIntUInt(l)
+    case (UNIFORM, true, UNIFORM, true, UNIFORM, true)  => new NeuronComputeSIntSIntSInt(l)
+    case (UNIFORM, true, UNIFORM, true, BINARY, _)      => new NeuronComputeSIntSIntBool(l)
+
+    case (UNIFORM, true, BINARY, _, UNIFORM, false) => new NeuronComputeSIntBoolUInt(l)
+    case (UNIFORM, true, BINARY, _, UNIFORM, true)  => new NeuronComputeSIntBoolSInt(l)
+    case (UNIFORM, true, BINARY, _, BINARY, _)      => new NeuronComputeSIntBoolBool(l)
+
+    case (BINARY, _, UNIFORM, false, UNIFORM, false) => new NeuronComputeBoolUIntUInt(l)
+    case (BINARY, _, UNIFORM, false, UNIFORM, true)  => new NeuronComputeBoolUIntSInt(l)
+    case (BINARY, _, UNIFORM, false, BINARY, _)      => new NeuronComputeBoolUIntBool(l)
+
+    case (BINARY, _, UNIFORM, true, UNIFORM, false) => new NeuronComputeBoolSIntUInt(l)
+    case (BINARY, _, UNIFORM, true, UNIFORM, true)  => new NeuronComputeBoolSIntSInt(l)
+    case (BINARY, _, UNIFORM, true, BINARY, _)      => new NeuronComputeBoolSIntBool(l)
+
+    case (BINARY, _, BINARY, _, UNIFORM, false) => new NeuronComputeBoolBoolUInt(l)
+    case (BINARY, _, BINARY, _, UNIFORM, true)  => new NeuronComputeBoolBoolSInt(l)
+    case (BINARY, _, BINARY, _, BINARY, _)      => new NeuronComputeBoolBoolBool(l)
+
     case _ =>
       throw new RuntimeException(
         f"Quantization type not supported: ${l.input.dtype.quantization}, ${l.input.dtype.signed}, ${l.kernel.dtype.quantization}, ${l.kernel.dtype.signed}, ${l.output.dtype.quantization}, ${l.output.dtype.signed}."
@@ -52,153 +79,422 @@ object NeuronCompute {
   }
 }
 
-abstract class NeuronCompute {
+abstract class NeuronCompute extends HasLayerWrap {
   type I <: Bits
   type W <: Bits
   type M <: Bits
   type A <: Bits
   type O <: Bits
-  def ringA:                Ring[A]
-  def binA:                 BinaryRepresentation[A]
-  def mul:                  (I, W) => M
-  def add:                  Vec[M] => A
-  def actFn:                (A, A) => O
-  def shiftAndRoundStatic:  (A, Int) => A
-  def shiftAndRoundDynamic: (A, UInt, Bool) => A
-  def genI:                 I
-  def genO:                 O
+  def rngA:              Ring[A]
+  def binA:              BinaryRepresentation[A]
+  def mul:               (I, W) => M
+  def addVec:            Vec[M] => A
+  def shiftRound:        (A, Int) => A
+  def shiftRoundDynamic: (A, UInt, Bool) => A
+  def actFn:             (A, A) => O
+  def genI: I = cfg.input.getType[I]
+  def genO: O = cfg.output.getType[O]
 }
 
-object BinarizedNeuronCompute extends NeuronCompute {
+class NeuronComputeUIntUIntUInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableUIntUInt
+    with VectorAddableUIntUInt
+    with ShiftRoundableUInt
+    with ActivatableUIntUInt {
+  type I = UInt
+  type W = UInt
+  type M = UInt
+  type A = UInt
+  type O = UInt
+  override def rngA = Ring[UInt]
+  override def binA = BinaryRepresentation[UInt]
+}
+
+class NeuronComputeUIntUIntSInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableUIntUInt
+    with VectorAddableUIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntSInt {
+  type I = UInt
+  type W = UInt
+  type M = UInt
+  type A = SInt
+  type O = SInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeUIntUIntBool(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableUIntUInt
+    with VectorAddableUIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntBool {
+  type I = UInt
+  type W = UInt
+  type M = UInt
+  type A = SInt
+  type O = Bool
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeUIntSIntUInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableUIntSInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntUInt {
+  type I = UInt
+  type W = SInt
+  type M = SInt
+  type A = SInt
+  type O = UInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeUIntSIntSInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableUIntSInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntSInt {
+  type I = UInt
+  type W = SInt
+  type M = SInt
+  type A = SInt
+  type O = SInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeUIntSIntBool(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableUIntSInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntBool {
+  type I = UInt
+  type W = SInt
+  type M = SInt
+  type A = SInt
+  type O = Bool
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeUIntBoolUInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableUIntBool
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntUInt {
+  type I = UInt
+  type W = Bool
+  type M = SInt
+  type A = SInt
+  type O = UInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+class NeuronComputeUIntBoolSInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableUIntBool
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntSInt {
+  type I = UInt
+  type W = Bool
+  type M = SInt
+  type A = SInt
+  type O = SInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+class NeuronComputeUIntBoolBool(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableUIntBool
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntBool {
+  type I = UInt
+  type W = Bool
+  type M = SInt
+  type A = SInt
+  type O = Bool
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeSIntUIntUInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableSIntUInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntUInt {
+  type I = SInt
+  type W = UInt
+  type M = SInt
+  type A = SInt
+  type O = UInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeSIntUIntSInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableSIntUInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntSInt {
+  type I = SInt
+  type W = UInt
+  type M = SInt
+  type A = SInt
+  type O = SInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeSIntUIntBool(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableSIntUInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntBool {
+  type I = SInt
+  type W = UInt
+  type M = SInt
+  type A = SInt
+  type O = Bool
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeSIntSIntUInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableSIntSInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntUInt {
+  type I = SInt
+  type W = SInt
+  type M = SInt
+  type A = SInt
+  type O = UInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeSIntSIntSInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableSIntSInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntSInt {
+  type I = SInt
+  type W = SInt
+  type M = SInt
+  type A = SInt
+  type O = SInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeSIntSIntBool(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableSIntSInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntBool {
+  type I = SInt
+  type W = SInt
+  type M = SInt
+  type A = SInt
+  type O = Bool
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeSIntBoolUInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableSIntBool
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntUInt {
+  type I = SInt
+  type W = Bool
+  type M = SInt
+  type A = SInt
+  type O = UInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeSIntBoolSInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableSIntBool
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntSInt {
+  type I = SInt
+  type W = Bool
+  type M = SInt
+  type A = SInt
+  type O = SInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeSIntBoolBool(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableSIntBool
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntBool {
+  type I = SInt
+  type W = Bool
+  type M = SInt
+  type A = SInt
+  type O = Bool
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeBoolUIntUInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableBoolUInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntUInt {
+  type I = Bool
+  type W = UInt
+  type M = SInt
+  type A = SInt
+  type O = UInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeBoolUIntSInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableBoolUInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntSInt {
+  type I = Bool
+  type W = UInt
+  type M = SInt
+  type A = SInt
+  type O = SInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeBoolUIntBool(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableBoolUInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntBool {
+  type I = Bool
+  type W = UInt
+  type M = SInt
+  type A = SInt
+  type O = Bool
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeBoolSIntUInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableBoolSInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntUInt {
+  type I = Bool
+  type W = SInt
+  type M = SInt
+  type A = SInt
+  type O = UInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeBoolSIntSInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableBoolSInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntSInt {
+  type I = Bool
+  type W = SInt
+  type M = SInt
+  type A = SInt
+  type O = SInt
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeBoolSIntBool(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableBoolSInt
+    with VectorAddableSIntSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntBool {
+  type I = Bool
+  type W = SInt
+  type M = SInt
+  type A = SInt
+  type O = Bool
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
+}
+
+class NeuronComputeBoolBoolUInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableBoolBool
+    with VectorAddableBoolUInt
+    with ShiftRoundableUInt
+    with ActivatableUIntUInt {
   type I = Bool
   type W = Bool
   type M = Bool
   type A = UInt
-
-  type O = Bool
-  override def ringA: Ring[A] = implicitly[Ring[UInt]]
-  override def binA:  BinaryRepresentation[A] = implicitly[BinaryRepresentation[UInt]]
-  override def mul = (i: Bool, w: Bool) => ~(i ^ w)
-  override def add = (x: Vec[Bool]) => PopCount(x.asUInt)
-  override def shiftAndRoundStatic:  (UInt, Int) => UInt = shiftAndRoundUIntStatic
-  override def shiftAndRoundDynamic: (UInt, UInt, Bool) => UInt = shiftAndRoundUInt
-  override def actFn:                (UInt, UInt) => Bool = new SignFunction[UInt].actFn
-
-  override def genI = Bool()
-  override def genO = Bool()
-}
-
-class UnsignedBinaryNeuronCompute(roundingMode: String, bitwidth: Int) extends NeuronCompute {
-  type I = UInt
-  type W = Bool
-  type M = SInt
-  type A = SInt
-  type O = Bool
-  override def ringA: Ring[A] = implicitly[Ring[SInt]]
-  override def binA:  BinaryRepresentation[A] = implicitly[BinaryRepresentation[SInt]]
-  override def mul = (i: UInt, w: Bool) => Mux(w, i.zext, -(i.zext))
-  override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  override def actFn = new SignFunction[SInt].actFn
-
-  override def genI = UInt(bitwidth.W)
-  override def genO = Bool()
-}
-
-class SignedBinaryNeuronCompute(roundingMode: String, bitwidth: Int) extends NeuronCompute {
-  type I = SInt
-  type W = Bool
-  type M = SInt
-  type A = SInt
-  type O = Bool
-  override def ringA: Ring[A] = implicitly[Ring[SInt]]
-  override def binA:  BinaryRepresentation[A] = implicitly[BinaryRepresentation[SInt]]
-  override def mul = (i: SInt, w: Bool) => Mux(w, i, 0.S -& i)
-  override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  override def actFn = new SignFunction[SInt].actFn
-
-  override def genI = SInt(bitwidth.W)
-  override def genO = Bool()
-}
-
-class NeuronComputeSSU(act: lbir.Activation, inputBitwidth: Int, outputBitwidth: Int, roundingMode: String)
-    extends NeuronCompute {
-  type I = SInt
-  type W = SInt
-  type M = SInt
-  type A = SInt
   type O = UInt
-  override def ringA: Ring[A] = implicitly[Ring[SInt]]
-  override def binA:  BinaryRepresentation[A] = implicitly[BinaryRepresentation[SInt]]
-  override def mul = (i: SInt, w: SInt) => i * w
-  override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  override def actFn = Utilities.activationToFunctionSU(act, outputBitwidth)
-
-  override def genI = SInt(inputBitwidth.W)
-  override def genO = UInt(outputBitwidth.W)
+  override def rngA = Ring[UInt]
+  override def binA = BinaryRepresentation[UInt]
 }
 
-class NeuronComputeUSU(act: lbir.Activation, inputBitwidth: Int, outputBitwidth: Int, roundingMode: String)
-    extends NeuronCompute {
-
-  type I = UInt
-  type W = SInt
-  type M = SInt
-  type A = SInt
-
-  type O = UInt
-  override def ringA: Ring[A] = implicitly[Ring[SInt]]
-  override def binA:  BinaryRepresentation[A] = implicitly[BinaryRepresentation[SInt]]
-  override def mul = (i: UInt, w: SInt) => i * w
-  override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  override def actFn = Utilities.activationToFunctionSU(act, outputBitwidth)
-
-  override def genI = UInt(inputBitwidth.W)
-  override def genO = UInt(outputBitwidth.W)
-}
-
-class NeuronComputeSSS(act: lbir.Activation, inputBitwidth: Int, outputBitwidth: Int, roundingMode: String)
-    extends NeuronCompute {
-
-  type I = SInt
-  type W = SInt
-  type M = SInt
+class NeuronComputeBoolBoolSInt(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableBoolBool
+    with VectorAddableBoolSInt
+    with ShiftRoundableSInt
+    with ActivatableSIntSInt {
+  type I = Bool
+  type W = Bool
+  type M = Bool
   type A = SInt
   type O = SInt
-  override def ringA: Ring[A] = implicitly[Ring[SInt]]
-  override def binA:  BinaryRepresentation[A] = implicitly[BinaryRepresentation[SInt]]
-  override def mul = (i: SInt, w: SInt) => i * w
-  override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  override def actFn = Utilities.activationToFunctionSS(act, outputBitwidth)
-
-  override def genI = SInt(inputBitwidth.W)
-  override def genO = SInt(outputBitwidth.W)
+  override def rngA = Ring[SInt]
+  override def binA = BinaryRepresentation[SInt]
 }
 
-class NeuronComputeUSS(act: lbir.Activation, inputBitwidth: Int, outputBitwidth: Int, roundingMode: String)
-    extends NeuronCompute {
-  type I = UInt
-  type W = SInt
-  type M = SInt
-  type A = SInt
-  type O = SInt
-  override def ringA: Ring[A] = implicitly[Ring[SInt]]
-  override def binA:  BinaryRepresentation[A] = implicitly[BinaryRepresentation[SInt]]
-  override def mul = (i: UInt, w: SInt) => i * w
-  override def add = (x: Vec[SInt]) => x.reduceTree(_ +& _)
-  override def shiftAndRoundStatic:  (SInt, Int) => SInt = shiftAndRoundSIntStatic(roundingMode)
-  override def shiftAndRoundDynamic: (SInt, UInt, Bool) => SInt = shiftAndRoundSIntDynamic(roundingMode)
-  override def actFn = Utilities.activationToFunctionSS(act, outputBitwidth)
-
-  override def genI = UInt(inputBitwidth.W)
-  override def genO = SInt(outputBitwidth.W)
+class NeuronComputeBoolBoolBool(val cfg: LayerWrap with IsActiveLayer)
+    extends NeuronCompute
+    with MultipliableBoolBool
+    with VectorAddableBoolUInt
+    with ShiftRoundableUInt
+    with ActivatableUIntBool {
+  type I = Bool
+  type W = Bool
+  type M = Bool
+  type A = UInt
+  type O = Bool
+  override def rngA = Ring[UInt]
+  override def binA = BinaryRepresentation[UInt]
 }

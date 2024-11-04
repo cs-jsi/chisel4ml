@@ -34,14 +34,14 @@ class DynamicNeuron(val nc: NeuronCompute)(l: lbir.Conv2DConfig) extends Module 
   val muls = VecInit((io.in.bits.zip(inWeights)).map { case (i, w) => nc.mul(i, w) })
   assert((!io.weights.bits.threshShift.shiftLeft) || (io.weights.bits.threshShift.shift === 0.U))
   val pAct = DspContext.withOverflowType(Grow) {
-    nc.ringA.plusContext(nc.add(muls), io.weights.bits.threshShift.bias)
+    nc.rngA.plusContext(nc.addVec(muls), io.weights.bits.threshShift.bias)
   }
-  val sAct = nc.shiftAndRoundDynamic(
+  val sAct = nc.shiftRoundDynamic(
     pAct,
     io.weights.bits.threshShift.shift,
     io.weights.bits.threshShift.shiftLeft
   )
-  io.out.bits := nc.actFn(sAct, nc.ringA.zero)
+  io.out.bits := nc.actFn(sAct, nc.rngA.zero)
 
   io.out.valid := io.in.valid && io.weights.valid
   io.in.ready := io.out.ready && io.weights.valid

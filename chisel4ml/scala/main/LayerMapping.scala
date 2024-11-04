@@ -188,10 +188,19 @@ object LayerMapping {
       case _ => throw new RuntimeException
     }
 
+  def saturateToZero(x: Float): Float = {
+    if (x > 0.0) x else 0.0f
+  }
+
   def getThresh[T <: Data](layer: LayerWrap with HasInputOutputQTensor with IsActiveLayer): Seq[T] =
     (layer.input.dtype.quantization, layer.kernel.dtype.quantization, layer.activation) match {
       case (BINARY, BINARY, lbir.Activation.BINARY_SIGN) =>
-        layer.thresh.values.map(x => (layer.numActiveParams + x) / 2).map(_.ceil).map(_.toInt.U).map(_.asInstanceOf[T])
+        layer.thresh.values
+          .map(x => (layer.numActiveParams + x) / 2)
+          .map(_.ceil)
+          .map((x: Float) => saturateToZero(x))
+          .map(_.toInt.U)
+          .map(_.asInstanceOf[T])
       case _ => layer.thresh.values.map(_.toInt.S(layer.thresh.dtype.bitwidth.W)).map(_.asInstanceOf[T])
     }
 }

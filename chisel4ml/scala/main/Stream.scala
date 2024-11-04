@@ -16,12 +16,16 @@
 package chisel4ml
 import chisel3._
 import interfaces.amba.axis._
-import lbir.LayerWrap
+import lbir.{IsActiveLayer, LayerWrap}
 import org.chipsalliance.cde.config.{Field, Parameters}
 
 case object NumBeatsInField extends Field[Int](default = 4)
 case object NumBeatsOutField extends Field[Int](default = 4)
 case object LayerWrapSeqField extends Field[Seq[LayerWrap]]()
+
+trait HasLayerWrap {
+  val cfg: LayerWrap with IsActiveLayer
+}
 
 trait HasLayerWrapSeq {
   val p: Parameters

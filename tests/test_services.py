@@ -2,7 +2,6 @@ import os
 
 import brevitas.nn as qnn
 import numpy as np
-import onnx
 import pytest
 import torch
 from pytest_cases import get_current_cases
@@ -13,7 +12,6 @@ from torch.nn import Module
 
 from chisel4ml import generate
 from chisel4ml import optimize
-from chisel4ml import transform
 from chisel4ml.utils import get_submodel
 from tests.brevitas_quantizers import CommonWeightQuant
 from tests.brevitas_quantizers import IntActQuant
@@ -260,10 +258,10 @@ def get_conv_layer_model(input_ch, output_ch, kernel_size, padding, iq, wq, bq, 
     bias = gen_finn_dt_tensor(DataType[f"INT{bq}"], bshape)
     model.conv.weight = torch.nn.Parameter(torch.from_numpy(weights).float())
     model.conv.bias = torch.nn.Parameter(torch.from_numpy(bias).float())
-    qonnx_model = transform.brevitas_to_qonnx(model, model.ishape)
-    qstr = f"i{iq}_w{wq}_b{bq}_o{oq}"
-    fname = f"conv_ich{input_ch}_och{output_ch}_ks{kernel_size}_p{padding}_{qstr}.onnx"
-    onnx.save(qonnx_model.model, fname)
+    # qonnx_model = transform.brevitas_to_qonnx(model, model.ishape)
+    # qstr = f"i{iq}_w{wq}_b{bq}_o{oq}.onnx"
+    # fname = f"conv_ich{input_ch}_och{output_ch}_ks{kernel_size}_p{padding}_{qstr}"
+    # onnx.save(qonnx_model.model, fname)
     ishape = (8,) + model.ishape[1:]
     input_data = gen_finn_dt_tensor(iq_type, ishape)
     return model, input_data
@@ -280,8 +278,6 @@ def get_conv_layer_model(input_ch, output_ch, kernel_size, padding, iq, wq, bq, 
 def test_combinational_conv(
     request, input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
 ):
-    if iq == 1 and wq != 1:
-        return True  # this combination does'nt make sense
     model, data = get_conv_layer_model(
         input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
     )

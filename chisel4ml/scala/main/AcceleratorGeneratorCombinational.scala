@@ -17,7 +17,7 @@ package chisel4ml
 
 import chisel3._
 import chisel4ml.combinational.{MaxPoolOperation, NeuronProcessingUnit, OrderProcessingUnit}
-import chisel4ml.compute.{BinarizedNeuronCompute, NeuronCompute, OrderCompute}
+import chisel4ml.compute.{NeuronCompute, NeuronComputeBoolBoolBool, OrderCompute}
 import lbir.{HasInputOutputQTensor, IsActiveLayer, LayerWrap, MaxPool2DConfig}
 
 object AcceleratorGeneratorCombinational {
@@ -25,7 +25,7 @@ object AcceleratorGeneratorCombinational {
     case l: MaxPool2DConfig => Module(new OrderProcessingUnit(OrderCompute(l))(l, MaxPoolOperation))
     case l: IsActiveLayer => {
       NeuronCompute(l) match {
-        case nc: BinarizedNeuronCompute.type => Module(new NeuronProcessingUnit(nc)(l, combinational.NeuronWithoutBias))
+        case nc: NeuronComputeBoolBoolBool => Module(new NeuronProcessingUnit(nc)(l, combinational.NeuronWithoutBias))
         case nc => Module(new NeuronProcessingUnit(nc)(l, combinational.NeuronWithBias))
       }
     }
