@@ -276,7 +276,7 @@ def get_conv_layer_model(input_ch, output_ch, kernel_size, padding, iq, wq, bq, 
 @pytest.mark.parametrize("bq", (3, 8))
 @pytest.mark.parametrize("oq", (1, 4))
 def test_combinational_conv(
-    request, input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
+    request, c4ml_server, input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
 ):
     model, data = get_conv_layer_model(
         input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
@@ -292,6 +292,7 @@ def test_combinational_conv(
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
         debug=request.config.getoption("--debug-trans"),
+        server=c4ml_server,
     )
     assert circuit is not None
     for x in data:

@@ -17,8 +17,6 @@ package chisel4ml.logging
 import chisel4ml._
 import lbir.LayerWrap
 import org.chipsalliance.cde.config.{Field, Parameters}
-import org.reflections.Reflections
-import org.reflections.scanners.Scanners.SubTypes
 import org.slf4j.LoggerFactory
 
 trait HasLogger {
@@ -26,17 +24,12 @@ trait HasLogger {
 }
 
 trait HasParameterLogging extends HasLogger {
-  private def fields: Seq[Field[_]] = {
-    val configFields = Seq(
-      LayerWrapSeqField,
-      NumBeatsInField,
-      NumBeatsOutField
-    )
-    val reflections = new Reflections("chisel4ml");
-    val reflectedFields = reflections.get(SubTypes.of(classOf[Field[_]]).asClass())
-    require(reflectedFields.size() == configFields.length)
-    configFields
-  }
+  // Macro to find this?
+  private def fields: Seq[Field[_]] = Seq(
+    LayerWrapSeqField,
+    NumBeatsInField,
+    NumBeatsOutField
+  )
 
   def logParameters(implicit p: Parameters): Unit = {
     var msg = s"Generated new ${this.getClass()} module.\n"

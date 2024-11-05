@@ -1,7 +1,12 @@
 import importlib
 import os
+import socket
+import subprocess
+from pathlib import Path
 
-from chisel4ml import chisel4ml_server
+import pytest
+
+from chisel4ml.chisel4ml_server import Chisel4mlServer
 
 pytest_plugins = ["tests.data"]
 
@@ -80,14 +85,37 @@ def pytest_addoption(parser):
         default=False,
         help="Print debug information when performing transformations.",
     )
+    parser.addoption(
+        "--chisel4ml-jar",
+        default=f"{os.path.dirname(__file__)}/../out/chisel4ml/assembly.dest/out.jar",
+        type=str,
+        help="Location of the chisel4ml jar to use for testing.",
+    )
 
 
-def pytest_sessionstart(session):
-    global C4ML_SERVER
-    C4ML_SERVER = chisel4ml_server.connect_to_server()
+@pytest.fixture
+def free_port():
+    sock = socket.socket()
+    sock.bind(("", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    return port
 
 
-def pytest_sessionfinish(session, exitstatus):
-    global C4ML_SERVER
-    if C4ML_SERVER is not None:
-        C4ML_SERVER.stop()
+@pytest.fixture
+def c4ml_server(worker_id, request, free_port, tmp_path_factory):
+    tmp_dir = tmp_path_factory.mktemp("chisel4ml") / worker_id
+    c4ml_jar = Path(request.config.getoption("--chisel4ml-jar")).resolve()
+    assert c4ml_jar.exists(), f"Path {c4ml_jar} does not exist."
+    command = ["java", "-jar", f"{c4ml_jar}", "-p", f"{free_port}", "-d", f"{tmp_dir}"]
+    c4ml_subproc = None
+    c4ml_server = None
+    try:
+        c4ml_subproc = subprocess.Popen(command)
+        c4ml_server = Chisel4mlServer(tmp_dir, free_port)
+        yield c4ml_server
+    finally:
+        if c4ml_subproc is not None:
+            c4ml_subproc.terminate()
+        if c4ml_server is not None:
+            c4ml_server.stop()
