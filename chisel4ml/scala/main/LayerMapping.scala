@@ -79,8 +79,10 @@ object LayerMapping {
         kh <- 0 until kernelSize(0)
         kw <- 0 until kernelSize(1)
       } {
+        val channelsPerGroup = inputTensor.numChannels / groups
+        val groupsOffset = och * channelsPerGroup * (paddedInputWidth * paddedInputHeight)
         val baseIndex = ich * (paddedInputWidth * paddedInputHeight) + h * paddedInputWidth + w
-        map = map :+ inputIndecies(baseIndex + kh * paddedInputWidth + kw)
+        map = map :+ inputIndecies(baseIndex + groupsOffset + kh * paddedInputWidth + kw)
       }
       val outIndex = och * (outWidth * outHeight) + h * outWidth + w
       out(outIndex) = map

@@ -213,7 +213,9 @@ def test_brevitas(request, model_ishape_data):
     circuit.delete_from_server()
 
 
-def get_conv_layer_model(input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq):
+def get_conv_layer_model(
+    input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq, depthwise=False
+):
     class ConvLayerModel(Module):
         def __init__(self):
             super(ConvLayerModel, self).__init__()
@@ -221,7 +223,7 @@ def get_conv_layer_model(input_ch, output_ch, kernel_size, padding, iq, wq, bq, 
             self.conv = qnn.QuantConv2d(
                 in_channels=input_ch,
                 out_channels=output_ch,
-                groups=1,
+                groups=output_ch if depthwise else 1,
                 kernel_size=kernel_size,
                 padding=padding,
                 stride=1,
@@ -248,7 +250,7 @@ def get_conv_layer_model(input_ch, output_ch, kernel_size, padding, iq, wq, bq, 
             return self.conv(x)
 
     model = ConvLayerModel()
-    wshape = (output_ch, input_ch, kernel_size[0], kernel_size[1])
+    wshape = (output_ch, 1 if depthwise else input_ch, kernel_size[0], kernel_size[1])
     bshape = (output_ch,)
     # set seed for repeatability
     np.random.seed(42)
@@ -280,6 +282,43 @@ def test_combinational_conv(
 ):
     model, data = get_conv_layer_model(
         input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
+    )
+    accelerators, lbir_model = generate.accelerators(
+        model, ishape=model.ishape, minimize="delay"
+    )
+    circuit = generate.circuit(
+        accelerators,
+        lbir_model,
+        use_verilator=request.config.getoption("--use-verilator"),
+        gen_waveform=request.config.getoption("--gen-waveform"),
+        waveform_type=request.config.getoption("--waveform-type"),
+        gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        debug=request.config.getoption("--debug-trans"),
+        server=c4ml_server,
+    )
+    assert circuit is not None
+    for x in data:
+        sw_res = (
+            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
+        )
+        hw_res = circuit(x)
+        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
+    circuit.delete_from_server()
+
+
+@pytest.mark.parametrize("input_ch", (3,))
+@pytest.mark.parametrize("output_ch", (3,))
+@pytest.mark.parametrize("kernel_size", ((3, 3), (2, 3)))
+@pytest.mark.parametrize("padding", (0,))
+@pytest.mark.parametrize("iq", (1, 3))
+@pytest.mark.parametrize("wq", (1, 5))
+@pytest.mark.parametrize("bq", (3, 8))
+@pytest.mark.parametrize("oq", (1, 4))
+def test_combinational_conv_dw(
+    request, c4ml_server, input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
+):
+    model, data = get_conv_layer_model(
+        input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq, depthwise=True
     )
     accelerators, lbir_model = generate.accelerators(
         model, ishape=model.ishape, minimize="delay"
