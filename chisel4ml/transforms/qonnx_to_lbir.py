@@ -15,6 +15,7 @@ from chisel4ml.transforms.transform_conv import transform_conv
 from chisel4ml.transforms.transform_fftreal import transform_fftreal
 from chisel4ml.transforms.transform_lmfe import transform_lmfe
 from chisel4ml.transforms.transform_matmul import transform_matmul
+from chisel4ml.transforms.transform_maxpool import transform_maxpool
 
 
 class QONNXToLBIR(Transformation):
@@ -28,9 +29,10 @@ class QONNXToLBIR(Transformation):
             # Check for the "root" computational nodes
             if node.op_type == "MatMul":
                 model_changed = transform_matmul(model, node)
-                break
             elif node.op_type == "Conv":
                 model_changed = transform_conv(model, node)
+            elif node.op_type == "MaxPool":
+                model_changed = transform_maxpool(model, node)
             elif node.op_type == "FFTreal":
                 model_changed = transform_fftreal(model, node)
             elif node.op_type == "lmfe":

@@ -7,6 +7,7 @@ from chisel4ml.lbir.lbir_pb2 import Conv2DConfig
 from chisel4ml.lbir.lbir_pb2 import DenseConfig
 from chisel4ml.lbir.lbir_pb2 import FFTConfig
 from chisel4ml.lbir.lbir_pb2 import LMFEConfig
+from chisel4ml.lbir.lbir_pb2 import MaxPool2DConfig
 from chisel4ml.lbir.qtensor_pb2 import QTensor
 
 _quant_to_string_dict = {0: "UNIFORM", 1: "BINARY"}
@@ -69,6 +70,14 @@ def _conv2dconfig_to_kwargs(layer: Conv2DConfig):
     kwargs.update(_qtensor_to_kwargs(layer.kernel, key_prefix="kernel_"))
     kwargs["activation"] = _act_to_string_dict[layer.activation]
     kwargs["depthwise"] = layer.depthwise
+    return kwargs
+
+
+def _maxpool2dconfig_to_kwargs(layer: MaxPool2DConfig):
+    kwargs = dict()
+    kwargs.update(_qtensor_to_kwargs(layer.input, key_prefix="input_"))
+    kwargs.update(_qtensor_to_kwargs(layer.output, key_prefix="output_"))
+    kwargs["kernel_shape"] = layer.kernel_shape
     return kwargs
 
 

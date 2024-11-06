@@ -87,6 +87,7 @@ message Conv2DConfig {
 message MaxPool2DConfig {
     QTensor input = 1;
     QTensor output = 2;
+    repeated uint32 kernel_shape = 3;
 }
 
 

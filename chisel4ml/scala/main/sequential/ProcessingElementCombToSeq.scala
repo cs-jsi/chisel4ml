@@ -55,12 +55,12 @@ class ProcessingElementCombToSeq[I <: Bits, O <: Bits](implicit val p: Parameter
   val inStream = IO(Flipped(AXIStream(chiselTypeOf(CombModule.in.head), numBeatsIn)))
   val outStream = IO(AXIStream(chiselTypeOf(CombModule.out.head), numBeatsOut))
   val inputBuffer = RegInit(
-    VecInit.fill(_cfg.head.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(_cfg.head.input.gen[I]))
+    VecInit.fill(_cfg.head.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(_cfg.head.input.zero[I]))
   )
   dontTouch(inputBuffer)
   require(inputBuffer.flatten.length >= inStream.beats)
   val outputBuffer = RegInit(
-    VecInit.fill(_cfg.last.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(_cfg.last.output.gen[O]))
+    VecInit.fill(_cfg.last.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(_cfg.last.output.zero[O]))
   )
   dontTouch(outputBuffer)
   require(outputBuffer.flatten.length >= outStream.beats)

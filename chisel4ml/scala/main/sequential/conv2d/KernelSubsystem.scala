@@ -37,7 +37,7 @@ class KernelRegisterFile[W <: Bits](kernel: lbir.QTensor, depthwise: Boolean) ex
     val activeKernel = Valid(Vec(kernel.numActiveParams(depthwise), kernel.getType[W]))
   })
   val valid = RegInit(false.B)
-  val regs = RegInit(VecInit(Seq.fill(kernel.numActiveParams(depthwise))(kernel.gen[W])))
+  val regs = RegInit(VecInit(Seq.fill(kernel.numActiveParams(depthwise))(kernel.zero[W])))
   val (regCnt, regCntWrap) = Counter(0 until kernel.numActiveParams(depthwise), io.write.valid)
   when(regCntWrap) {
     valid := true.B

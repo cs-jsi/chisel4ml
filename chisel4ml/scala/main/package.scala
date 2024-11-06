@@ -58,7 +58,7 @@ package object implicits {
       case _                => throw new Exception("Datatype not supported.")
     }
 
-    def gen[T <: Data]: T = (qt.dtype.quantization, qt.dtype.signed) match {
+    def zero[T <: Data]: T = (qt.dtype.quantization, qt.dtype.signed) match {
       case (BINARY, _)      => false.B.asInstanceOf[T]
       case (UNIFORM, true)  => 0.S(qt.dtype.bitwidth.W).asInstanceOf[T]
       case (UNIFORM, false) => 0.U(qt.dtype.bitwidth.W).asInstanceOf[T]
@@ -77,7 +77,7 @@ package object implicits {
         case _                => throw new NotImplementedError
       }
       val diff = if (typeBeats.length % numBeats == 0) 0 else numBeats - (typeBeats.length % numBeats)
-      val modBeats = typeBeats ++ Seq.fill(diff)(qt.gen[T])
+      val modBeats = typeBeats ++ Seq.fill(diff)(qt.zero[T])
       val transactions = modBeats
         .map(
           _.asInstanceOf[T]

@@ -27,12 +27,13 @@ class OrderProcessingUnit(
   operation: OrderOperation)
     extends Module
     with HasSimpleStream {
-  val in = IO(Input(Vec(layer.input.width, layer.input.gen[oc.T])))
-  val out = IO(Output(Vec(layer.output.width, layer.output.gen[oc.T])))
+  val in = IO(Input(Vec(layer.input.numParams, layer.input.getType[oc.T])))
+  val out = IO(Output(Vec(layer.output.numParams, layer.output.getType[oc.T])))
 
   val inMap: Seq[Seq[Int]] = LayerMapping.layerToInputMap(layer)
+  println(inMap)
 
-  for (i <- 0 until layer.output.shape(0)) {
+  for (i <- 0 until layer.output.numParams) {
     out(i) := operation(oc)(LayerMapping.getReceptiveField[oc.T](in.map(_.asInstanceOf[oc.T]), inMap(i)))
   }
 }

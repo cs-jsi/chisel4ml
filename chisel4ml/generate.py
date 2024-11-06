@@ -135,9 +135,7 @@ def circuit(
     gen_waveform=False,
     gen_timeout_sec=800,
     waveform_type="fst",
-    num_layers=None,
     server=None,
-    debug=False,
 ):
     assert gen_timeout_sec > 5, "Please provide at least a 5 second generation timeout."
     if server is None:

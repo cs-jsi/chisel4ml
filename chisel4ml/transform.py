@@ -134,6 +134,9 @@ def _unwrap_qonnx_layer_to_lbir(layer: NodeProto) -> lbir.LayerWrap:
     elif layer.op_type == "QConv":
         qconv_str = onnx.helper.get_node_attr_value(layer, "qconv")
         return lbir.LayerWrap(conv2d=lbir.Conv2DConfig.FromString(qconv_str))
+    elif layer.op_type == "MaxPool2D":
+        maxpool_str = onnx.helper.get_node_attr_value(layer, "maxpool2d")
+        return lbir.LayerWrap(maxpool2d=lbir.MaxPool2DConfig.FromString(maxpool_str))
     elif layer.op_type == "FFTConfig":
         fft_str = onnx.helper.get_node_attr_value(layer, "fft")
         return lbir.LayerWrap(fft=lbir.FFTConfig.FromString(fft_str))

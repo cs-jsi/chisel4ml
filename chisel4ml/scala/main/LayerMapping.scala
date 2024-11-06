@@ -65,8 +65,8 @@ object LayerMapping {
       .flatten
       .flatten
 
-    val outWidth = ((inputTensor.width - kernelSize(1) + 2 * padding(1)) / stride(0)) + 1
-    val outHeight = ((inputTensor.height - kernelSize(0) + 2 * padding(0)) / stride(1)) + 1
+    val outWidth = ((inputTensor.width - kernelSize(1) + 2 * padding(1)) / stride(1)) + 1
+    val outHeight = ((inputTensor.height - kernelSize(0) + 2 * padding(0)) / stride(0)) + 1
     val out: ArraySeq[Seq[Int]] = ArraySeq.fill(outChannels * outHeight * outWidth)(Seq())
     for {
       och <- 0 until outChannels
@@ -81,7 +81,7 @@ object LayerMapping {
       } {
         val channelsPerGroup = inputTensor.numChannels / groups
         val groupsOffset = och * channelsPerGroup * (paddedInputWidth * paddedInputHeight)
-        val baseIndex = ich * (paddedInputWidth * paddedInputHeight) + h * paddedInputWidth + w
+        val baseIndex = ich * (paddedInputWidth * paddedInputHeight) + h * paddedInputWidth * stride(0) + w * stride(1)
         map = map :+ inputIndecies(baseIndex + groupsOffset + kh * paddedInputWidth + kw)
       }
       val outIndex = och * (outWidth * outHeight) + h * outWidth + w
@@ -104,8 +104,8 @@ object LayerMapping {
     case l: MaxPool2DConfig =>
       slidingWindowMap(
         l.input,
-        kernelSize = Seq(l.input.shape(0) / l.output.shape(0), l.input.shape(1) / l.output.shape(1)),
-        stride = Seq(1, 1),
+        kernelSize = l.kernelShape,
+        stride = l.kernelShape,
         padding = Seq(0, 0),
         dilation = Seq(),
         groups = l.input.numChannels,

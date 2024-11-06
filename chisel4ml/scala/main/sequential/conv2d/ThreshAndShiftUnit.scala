@@ -33,8 +33,10 @@ class ThreshAndShiftUnit[A <: Bits](thresh: lbir.QTensor, kernel: lbir.QTensor) 
   }
   val threshWithIndex = thresh.values.zipWithIndex
   val shiftWithIndex = kernel.dtype.shift.zipWithIndex
-  io.tas.bias := MuxLookup(kernelNum, 0.S.asTypeOf(thresh.gen[A]))(
-    threshWithIndex.map(x => (x._2.toInt.U -> ((-x._1.toInt) << kernel.dtype.shift(x._2)).S.asTypeOf(thresh.gen[A])))
+  io.tas.bias := MuxLookup(kernelNum, thresh.zero[A])(
+    threshWithIndex.map(x =>
+      (x._2.toInt.U -> ((-x._1.toInt) << kernel.dtype.shift(x._2)).S.asTypeOf(thresh.getType[A]))
+    )
   )
 
   io.tas.shift := MuxLookup(kernelNum, 0.U)(shiftWithIndex.map(x => (x._2.toInt.U -> x._1.abs.U)))

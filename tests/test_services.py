@@ -191,7 +191,10 @@ def test_brevitas(request, model_ishape_data):
         data,
     ) = model_ishape_data
     accelerators, lbir_model = generate.accelerators(
-        model, ishape=ishape, minimize="area"
+        model,
+        ishape=ishape,
+        minimize="area",
+        debug=request.config.getoption("--debug-trans"),
     )
 
     circuit = generate.circuit(
@@ -201,7 +204,6 @@ def test_brevitas(request, model_ishape_data):
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        debug=request.config.getoption("--debug-trans"),
     )
     assert circuit is not None
     for x in data:
@@ -260,10 +262,6 @@ def get_conv_layer_model(
     bias = gen_finn_dt_tensor(DataType[f"INT{bq}"], bshape)
     model.conv.weight = torch.nn.Parameter(torch.from_numpy(weights).float())
     model.conv.bias = torch.nn.Parameter(torch.from_numpy(bias).float())
-    # qonnx_model = transform.brevitas_to_qonnx(model, model.ishape)
-    # qstr = f"i{iq}_w{wq}_b{bq}_o{oq}.onnx"
-    # fname = f"conv_ich{input_ch}_och{output_ch}_ks{kernel_size}_p{padding}_{qstr}"
-    # onnx.save(qonnx_model.model, fname)
     ishape = (8,) + model.ishape[1:]
     input_data = gen_finn_dt_tensor(iq_type, ishape)
     return model, input_data
@@ -284,7 +282,10 @@ def test_combinational_conv(
         input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
     )
     accelerators, lbir_model = generate.accelerators(
-        model, ishape=model.ishape, minimize="delay"
+        model,
+        ishape=model.ishape,
+        minimize="delay",
+        debug=request.config.getoption("--debug-trans"),
     )
     circuit = generate.circuit(
         accelerators,
@@ -293,7 +294,6 @@ def test_combinational_conv(
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        debug=request.config.getoption("--debug-trans"),
         server=c4ml_server,
     )
     assert circuit is not None
@@ -321,7 +321,10 @@ def test_combinational_conv_dw(
         input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq, depthwise=True
     )
     accelerators, lbir_model = generate.accelerators(
-        model, ishape=model.ishape, minimize="delay"
+        model,
+        ishape=model.ishape,
+        minimize="delay",
+        debug=request.config.getoption("--debug-trans"),
     )
     circuit = generate.circuit(
         accelerators,
@@ -330,7 +333,81 @@ def test_combinational_conv_dw(
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        server=c4ml_server,
+    )
+    assert circuit is not None
+    for x in data:
+        sw_res = (
+            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
+        )
+        hw_res = circuit(x)
+        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
+    circuit.delete_from_server()
+
+
+def get_maxpool_layer_model(channels, input_size, kernel_size, padding, iq):
+    class MaxPoolLayerModel(Module):
+        def __init__(self, input_size):
+            super(MaxPoolLayerModel, self).__init__()
+            self.ishape = (1, channels) + input_size
+            self.in_quant = qnn.QuantIdentity(
+                act_quant=IntActQuant,
+                bit_width=iq,
+                scaling_impl_type="const",
+                scaling_init=1 if iq == 1 else 2 ** (iq - 1) - 1,
+            )
+            self.maxpool = torch.nn.MaxPool2d(kernel_size=kernel_size, padding=padding)
+            self.out_quant = qnn.QuantIdentity(
+                act_quant=IntActQuant,
+                bit_width=iq,
+                scaling_impl_type="const",
+                scaling_init=1 if iq == 1 else 2 ** (iq - 1) - 1,
+            )
+
+        def forward(self, x):
+            tmp = self.in_quant(x)
+            tmp = self.maxpool(tmp)
+            return self.out_quant(tmp)
+
+    model = MaxPoolLayerModel(input_size)
+    # set seed for repeatability
+    np.random.seed(42)
+    iq_type = DataType[f"INT{iq}"] if iq > 1 else DataType["BIPOLAR"]
+    ishape = (8,) + model.ishape[1:]
+    input_data = gen_finn_dt_tensor(iq_type, ishape)
+    return model, input_data
+
+
+@pytest.mark.parametrize("input_size", ((4, 4), (8, 15)))
+@pytest.mark.parametrize(
+    "channels",
+    (
+        1,
+        3,
+    ),
+)
+@pytest.mark.parametrize("kernel_size", ((3, 3), (2, 3)))
+@pytest.mark.parametrize("padding", (0,))
+@pytest.mark.parametrize("iq", (1, 3))
+def test_combinational_maxpool(
+    request, c4ml_server, input_size, channels, kernel_size, padding, iq
+):
+    model, data = get_maxpool_layer_model(
+        channels, input_size, kernel_size, padding, iq
+    )
+    accelerators, lbir_model = generate.accelerators(
+        model,
+        ishape=model.ishape,
+        minimize="delay",
         debug=request.config.getoption("--debug-trans"),
+    )
+    circuit = generate.circuit(
+        accelerators,
+        lbir_model,
+        use_verilator=request.config.getoption("--use-verilator"),
+        gen_waveform=request.config.getoption("--gen-waveform"),
+        waveform_type=request.config.getoption("--waveform-type"),
+        gen_timeout_sec=request.config.getoption("--generation-timeout"),
         server=c4ml_server,
     )
     assert circuit is not None
