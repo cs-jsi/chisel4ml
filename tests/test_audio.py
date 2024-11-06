@@ -99,7 +99,10 @@ def test_fft(
     )
     ishape = (1, num_frames, frame_length)
     accelerators, lbir_model = generate.accelerators(
-        model, ishape=ishape, minimize="area"
+        model,
+        ishape=ishape,
+        minimize="area",
+        debug=request.config.getoption("--debug-trans"),
     )
     audio_preproc = generate.circuit(
         accelerators,
@@ -108,7 +111,6 @@ def test_fft(
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        debug=request.config.getoption("--debug-trans"),
     )
     for frame, _ in frames:
         hw_res = audio_preproc(frame, sim_timeout_sec=400) / 2**12
@@ -160,7 +162,12 @@ def test_lmfe(
     model = get_model(fft_size=frame_length, num_frames=num_frames, num_mels=num_mels)
 
     ishape = (1, num_frames, frame_length)
-    accels, lbir_model = generate.accelerators(model, ishape=ishape, minimize="area")
+    accels, lbir_model = generate.accelerators(
+        model,
+        ishape=ishape,
+        minimize="area",
+        debug=request.config.getoption("--debug-trans"),
+    )
     audio_preproc = generate.circuit(
         accels,
         lbir_model,
@@ -168,7 +175,6 @@ def test_lmfe(
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        debug=request.config.getoption("--debug-trans"),
     )
     for frame, _ in frames:
         hw_res = audio_preproc(frame, sim_timeout_sec=400) - 24

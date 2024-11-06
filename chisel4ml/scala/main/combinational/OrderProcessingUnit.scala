@@ -31,7 +31,6 @@ class OrderProcessingUnit(
   val out = IO(Output(Vec(layer.output.numParams, layer.output.getType[oc.T])))
 
   val inMap: Seq[Seq[Int]] = LayerMapping.layerToInputMap(layer)
-  println(inMap)
 
   for (i <- 0 until layer.output.numParams) {
     out(i) := operation(oc)(LayerMapping.getReceptiveField[oc.T](in.map(_.asInstanceOf[oc.T]), inMap(i)))

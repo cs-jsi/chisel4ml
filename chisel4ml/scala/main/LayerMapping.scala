@@ -65,6 +65,8 @@ object LayerMapping {
       .flatten
       .flatten
 
+    val channelsPerGroup = inputTensor.numChannels / groups
+    val kernelsPerGroups = outChannels / groups
     val outWidth = ((inputTensor.width - kernelSize(1) + 2 * padding(1)) / stride(1)) + 1
     val outHeight = ((inputTensor.height - kernelSize(0) + 2 * padding(0)) / stride(0)) + 1
     val out: ArraySeq[Seq[Int]] = ArraySeq.fill(outChannels * outHeight * outWidth)(Seq())
@@ -75,14 +77,17 @@ object LayerMapping {
     } {
       var map: Seq[Int] = Seq()
       for {
-        ich <- 0 until (inputTensor.numChannels / groups)
+        ich <- 0 until channelsPerGroup
         kh <- 0 until kernelSize(0)
         kw <- 0 until kernelSize(1)
       } {
-        val channelsPerGroup = inputTensor.numChannels / groups
-        val groupsOffset = och * channelsPerGroup * (paddedInputWidth * paddedInputHeight)
-        val baseIndex = ich * (paddedInputWidth * paddedInputHeight) + h * paddedInputWidth * stride(0) + w * stride(1)
-        map = map :+ inputIndecies(baseIndex + groupsOffset + kh * paddedInputWidth + kw)
+        val heightOffset = (h * stride(0)) * paddedInputWidth
+        val widthOffset = w * stride(1)
+        val channelOffset = ich * (paddedInputWidth * paddedInputHeight)
+        val group = och / kernelsPerGroups
+        val groupOffset = group * (channelsPerGroup * paddedInputWidth * paddedInputHeight)
+        map =
+          map :+ inputIndecies(groupOffset + channelOffset + heightOffset + widthOffset + kh * paddedInputWidth + kw)
       }
       val outIndex = och * (outWidth * outHeight) + h * outWidth + w
       out(outIndex) = map

@@ -59,7 +59,9 @@ def test_trainable_simulation(request, model_data_info):
         opt_model = optimize.qkeras_model(model)
         opt_model.load_weights(model_weights)
 
-    accelerators, lbir_model = generate.accelerators(opt_model, minimize="area")
+    accelerators, lbir_model = generate.accelerators(
+        opt_model, minimize="area", debug=request.config.getoption("--debug-trans")
+    )
     circuit = generate.circuit(
         accelerators,
         lbir_model,
@@ -138,7 +140,9 @@ def test_trainable_gen_simulation(request, model_data_info):
         opt_model = optimize.qkeras_model(model)
         opt_model.load_weights(model_weights)
 
-    accelerators, lbir_model = generate.accelerators(opt_model, minimize="area")
+    accelerators, lbir_model = generate.accelerators(
+        opt_model, minimize="area", debug=request.config.getoption("--debug-trans")
+    )
     circuit = generate.circuit(
         accelerators,
         lbir_model,
@@ -146,7 +150,6 @@ def test_trainable_gen_simulation(request, model_data_info):
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        debug=request.config.getoption("--debug-trans"),
     )
     assert circuit is not None
     for x, _ in data["test_set"]:
@@ -163,7 +166,9 @@ def test_simulation(request, model_data):
         data,
     ) = model_data
     opt_model = optimize.qkeras_model(model)
-    accelerators, lbir_model = generate.accelerators(opt_model, minimize="area")
+    accelerators, lbir_model = generate.accelerators(
+        opt_model, minimize="area", debug=request.config.getoption("--debug-trans")
+    )
     circuit = generate.circuit(
         accelerators,
         lbir_model,
@@ -171,7 +176,6 @@ def test_simulation(request, model_data):
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        debug=request.config.getoption("--debug-trans"),
     )
     if request.config.getoption("--num-layers") is not None:
         opt_model = get_submodel(opt_model, request.config.getoption("--num-layers"))
