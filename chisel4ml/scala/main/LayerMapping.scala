@@ -211,6 +211,6 @@ object LayerMapping {
           .map((x: Float) => saturateToZero(x))
           .map(_.toInt.U)
           .map(_.asInstanceOf[T])
-      case _ => layer.thresh.values.map(_.toInt.S(layer.thresh.dtype.bitwidth.W)).map(_.asInstanceOf[T])
+      case _ => layer.thresh.values.map(_.toInt.S).map(_.asInstanceOf[T])
     }
 }
