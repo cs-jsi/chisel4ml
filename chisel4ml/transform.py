@@ -24,6 +24,8 @@ from qonnx.transformation.general import SortGraph
 from qonnx.transformation.infer_data_layouts import InferDataLayouts
 from qonnx.transformation.infer_shapes import InferShapes
 from qonnx.transformation.remove import RemoveIdentityOps
+from qonnx.transformation.gemm_to_matmul import GemmToMatMul
+from qonnx.transformation.quant_constant_folding import FoldTransposeIntoQuantInit
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import AddDummyBiasToConv
@@ -41,6 +43,8 @@ DEFAULT_QONNX_TRANSFORMS = [
     DoubleToSingleFloat(),
     InferDataLayouts(),
     AddFFTrealOutputShape(),
+    GemmToMatMul(),
+    FoldTransposeIntoQuantInit(),
     InferShapes(),
     RemoveIdentityOps(),
     SortGraph(),

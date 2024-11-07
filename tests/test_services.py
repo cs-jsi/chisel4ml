@@ -425,3 +425,85 @@ def test_combinational_maxpool(
         hw_res = circuit(x)
         assert np.array_equal(sw_res.flatten(), hw_res.flatten())
     circuit.delete_from_server()
+
+def get_linear_layer_model(in_features, out_features, bias, iq, wq, bq, oq):
+    class LinearLayerModel(Module):
+        def __init__(self):
+            super(LinearLayerModel, self).__init__()
+            self.ishape = (1, in_features)
+            self.linear = qnn.QuantLinear(
+                in_features=in_features,
+                out_features=out_features,
+                bias=bias,
+                weight_quant=CommonWeightQuant,
+                weight_bit_width=wq,
+                weight_scaling_impl_type="const",
+                weight_scaling_init=1 if wq == 1 else 2 ** (wq - 1) - 1,
+                bias_quant=IntBiasQuant,
+                bias_bit_width=bq,
+                bias_scaling_impl_type="const",
+                bias_scaling_init=2 ** (bq - 1) - 1,
+                input_quant=IntActQuant,
+                input_bit_width=iq,
+                input_scaling_impl_type="const",
+                input_scaling_init=1 if iq == 1 else 2 ** (iq - 1) - 1,
+                output_quant=IntActQuant,
+                output_bit_width=oq,
+                output_scaling_impl_type="const",
+                output_scaling_init=1 if oq == 1 else 2 ** (oq - 1) - 1,
+            )
+
+        def forward(self, x):
+            return self.linear(x)
+
+    model = LinearLayerModel()
+    wshape = (out_features, in_features)
+    bshape = (out_features,)
+    # set seed for repeatability
+    np.random.seed(42)
+    wq_type = DataType[f"INT{wq}"] if wq > 1 else DataType["BIPOLAR"]
+    iq_type = DataType[f"INT{iq}"] if iq > 1 else DataType["BIPOLAR"]
+    weights = gen_finn_dt_tensor(wq_type, wshape)
+    bias = gen_finn_dt_tensor(DataType[f"INT{bq}"], bshape)
+    model.linear.weight = torch.nn.Parameter(torch.from_numpy(weights).float())
+    model.linear.bias = torch.nn.Parameter(torch.from_numpy(bias).float())
+    ishape = (8,) + model.ishape[1:]
+    input_data = gen_finn_dt_tensor(iq_type, ishape)
+    return model, input_data
+
+@pytest.mark.parametrize("in_features", (4, 8, 32))
+@pytest.mark.parametrize("out_features", (4, 8, 32))
+@pytest.mark.parametrize("bias", (True, False))
+@pytest.mark.parametrize("iq", (1, 5))
+@pytest.mark.parametrize("wq", (1, 5))
+@pytest.mark.parametrize("bq", (3, 5))
+@pytest.mark.parametrize("oq", (1, 3))
+def test_combinational_fullyconnected(
+    request, c4ml_server, in_features, out_features, bias, iq, wq, bq, oq
+):
+    model, data = get_linear_layer_model(
+        in_features, out_features, bias, iq, wq, bq, oq
+    )
+    accelerators, lbir_model = generate.accelerators(
+        model,
+        ishape=model.ishape,
+        minimize="delay",
+        debug=request.config.getoption("--debug-trans"),
+    )
+    circuit = generate.circuit(
+        accelerators,
+        lbir_model,
+        use_verilator=request.config.getoption("--use-verilator"),
+        gen_waveform=request.config.getoption("--gen-waveform"),
+        waveform_type=request.config.getoption("--waveform-type"),
+        gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        server=c4ml_server,
+    )
+    assert circuit is not None
+    for x in data:
+        sw_res = (
+            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
+        )
+        hw_res = circuit(x)
+        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
+    circuit.delete_from_server()
