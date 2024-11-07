@@ -92,11 +92,11 @@ def accelerators(model, ishape=None, num_layers=None, minimize="area", debug=Fal
 
     for lay in range(len(lbir_model.layers)):
         for a in range(len(ACCELERATORS)):
-            vars_cp[(lay, a)] = model_cp.new_bool_var(f"l{lay}-a{a}")
+            vars_cp[(lay, a)] = model_cp.NewBoolVar(f"l{lay}-a{a}")
 
     # Only 1 accelerator per layer
     for lay in range(len(lbir_model.layers)):
-        model_cp.add(sum(vars_cp[(lay, a)] for a in range(len(ACCELERATORS))) == 1)
+        model_cp.Add(sum(vars_cp[(lay, a)] for a in range(len(ACCELERATORS))) == 1)
 
     # Each accelerator only for layers it can handle
     for lay in range(len(lbir_model.layers)):
@@ -105,15 +105,15 @@ def accelerators(model, ishape=None, num_layers=None, minimize="area", debug=Fal
                 lbir_model.layers[lay].WhichOneof("sealed_value_optional")
                 not in ACCELERATORS[a].layers
             ):
-                model_cp.add(vars_cp[(lay, a)] == 0)
+                model_cp.Add(vars_cp[(lay, a)] == 0)
 
     la_iter = itertools.product(range(len(lbir_model.layers)), range(len(ACCELERATORS)))
     if minimize == "area":
-        model_cp.minimize(
+        model_cp.Minimize(
             sum(vars_cp[(lay, a)] * ACCELERATORS[a].area for lay, a in la_iter)
         )
     elif minimize == "delay":
-        model_cp.minimize(
+        model_cp.Minimize(
             sum(vars_cp[(lay, a)] * ACCELERATORS[a].delay for lay, a in la_iter)
         )
     else:
@@ -121,7 +121,7 @@ def accelerators(model, ishape=None, num_layers=None, minimize="area", debug=Fal
 
     solver = cp_model.CpSolver()
     solution_collector = VarArraySolutionCollector(vars_cp, lbir_model, ACCELERATORS)
-    solution_status = solver.solve(model_cp, solution_collector)
+    solution_status = solver.Solve(model_cp, solution_collector)
     assert solution_status in (cp_model.FEASIBLE, cp_model.OPTIMAL)
     solution = solution_collector.solution_list[0]
     accels = solution_to_accelerators(solution, lbir_model.layers)

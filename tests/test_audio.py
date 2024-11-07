@@ -82,7 +82,15 @@ test_opts_list.append((0, 0.0, None, 512, 32, "audio"))
     "tone_freq,amplitude,function,frame_length,num_frames,data", test_opts_list
 )
 def test_fft(
-    request, tone_freq, amplitude, function, frame_length, num_frames, data, audio_data
+    request, 
+    c4ml_server, 
+    tone_freq, 
+    amplitude, 
+    function, 
+    frame_length, 
+    num_frames, 
+    data, 
+    audio_data
 ):
     if data == "generated":
         frames = get_frames(tone_freq, amplitude, function, frame_length, num_frames)
@@ -111,6 +119,7 @@ def test_fft(
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        server=c4ml_server
     )
     for frame, _ in frames:
         hw_res = audio_preproc(frame, sim_timeout_sec=400) / 2**12
@@ -142,6 +151,7 @@ test_opts_lmfe_list.append((0, 0.0, None, 512, 32, "audio", 20))
 )
 def test_lmfe(
     request,
+    c4ml_server,
     tone_freq,
     amplitude,
     function,
@@ -158,9 +168,7 @@ def test_lmfe(
         frames = list(frames)[:5]
     else:
         raise ValueError
-
     model = get_model(fft_size=frame_length, num_frames=num_frames, num_mels=num_mels)
-
     ishape = (1, num_frames, frame_length)
     accels, lbir_model = generate.accelerators(
         model,
@@ -175,6 +183,7 @@ def test_lmfe(
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        server=c4ml_server
     )
     for frame, _ in frames:
         hw_res = audio_preproc(frame, sim_timeout_sec=400) - 24

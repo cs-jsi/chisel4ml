@@ -19,7 +19,9 @@ classifiers = [
 keywords = ["Chisel", "FPGA", "quantized neural networks"]
 dynamic=["version"]
 dependencies = [
-    "qonnx[qkeras] @ file:///home/jure/Projekti/qonnx/",
+    "qonnx[qkeras] @ git+https://github.com/jurevreca12/qonnx",  # TODO
+    "brevitas",
+    "ortools",
     "grpcio>1.0.0",
     "tf2-keras-surgeon",
     "librosa",
@@ -43,6 +45,7 @@ dev = [
     "Flake8-pyproject",
     "pytest<8",
     "pytest-cases",
+    "pytest-xdist",
     "grpcio-tools",
     "build",
     "pre_commit",

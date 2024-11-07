@@ -23,7 +23,7 @@ MODEL_DIR = os.path.join(SCRIPT_DIR, "models")
 
 
 @parametrize_with_cases("model_data_info", cases=TEST_MODELS_LIST, has_tag="trainable")
-def test_trainable_simulation(request, model_data_info):
+def test_trainable_simulation(request, c4ml_server, model_data_info):
     model, data, training_info = model_data_info
     filename = get_current_cases(request)["model_data_info"][0]
     if request.config.getoption("--retrain"):
@@ -69,7 +69,7 @@ def test_trainable_simulation(request, model_data_info):
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        debug=request.config.getoption("--debug-trans"),
+        server=c4ml_server
     )
     assert circuit is not None
     for data in data["X_test"]:
@@ -84,7 +84,7 @@ def test_trainable_simulation(request, model_data_info):
 @parametrize_with_cases(
     "model_data_info", cases=TEST_MODELS_LIST, has_tag="trainable-gen"
 )
-def test_trainable_gen_simulation(request, model_data_info):
+def test_trainable_gen_simulation(request, c4ml_server, model_data_info):
     model, data, training_info = model_data_info
     filename = get_current_cases(request)["model_data_info"][0]
     if request.config.getoption("--retrain"):
@@ -150,6 +150,7 @@ def test_trainable_gen_simulation(request, model_data_info):
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        server=c4ml_server
     )
     assert circuit is not None
     for x, _ in data["test_set"]:
@@ -160,7 +161,7 @@ def test_trainable_gen_simulation(request, model_data_info):
 
 
 @parametrize_with_cases("model_data", cases=TEST_MODELS_LIST, has_tag="non-trainable")
-def test_simulation(request, model_data):
+def test_simulation(request, c4ml_server, model_data):
     (
         model,
         data,
@@ -176,6 +177,7 @@ def test_simulation(request, model_data):
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        server=c4ml_server
     )
     if request.config.getoption("--num-layers") is not None:
         opt_model = get_submodel(opt_model, request.config.getoption("--num-layers"))
@@ -188,7 +190,7 @@ def test_simulation(request, model_data):
 
 
 @parametrize_with_cases("model_ishape_data", cases=TEST_MODELS_LIST, has_tag="brevitas")
-def test_brevitas(request, model_ishape_data):
+def test_brevitas(request, c4ml_server, model_ishape_data):
     (
         model,
         ishape,
@@ -208,6 +210,7 @@ def test_brevitas(request, model_ishape_data):
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        server=c4ml_server
     )
     assert circuit is not None
     for x in data:
