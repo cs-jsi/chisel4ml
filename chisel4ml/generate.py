@@ -23,6 +23,7 @@ from chisel4ml.circuit import Circuit
 from chisel4ml.lbir.services_pb2 import Accelerator
 from chisel4ml.lbir.services_pb2 import GenerateCircuitParams
 from chisel4ml.lbir.services_pb2 import GenerateCircuitReturn
+from qonnx.core.modelwrapper import ModelWrapper
 
 log = logging.getLogger(__name__)
 
@@ -80,6 +81,8 @@ def accelerators(model, ishape=None, num_layers=None, minimize="area", debug=Fal
         qonnx_model = transform.qkeras_to_qonnx(model)
     elif isinstance(model, torch.nn.Module):
         qonnx_model = transform.brevitas_to_qonnx(model, ishape)
+    elif isinstance(model, ModelWrapper):
+        qonnx_model = model
     else:
         raise TypeError(f"Model of type {type(model)} not supported.")
     lbir_model = transform.qonnx_to_lbir(qonnx_model, debug=debug)
