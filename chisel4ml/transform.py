@@ -38,6 +38,8 @@ from chisel4ml.transforms import QuantToQTensor
 from chisel4ml.transforms import UnquantizedBiasToQTensor
 from chisel4ml.transforms import UnquantizedOutputToQTensor
 from chisel4ml.transforms import WeightQuantToQTensor
+from chisel4ml.transforms import RemoveFlattenNode
+from chisel4ml.transforms import CleanupQTensors
 
 DEFAULT_QONNX_TRANSFORMS = [
     DoubleToSingleFloat(),
@@ -60,7 +62,9 @@ QONNX_TO_LBIR_TRANSFORMS = [
     UnquantizedBiasToQTensor(),
     UnquantizedOutputToQTensor(),
     InputReluQTensorToQTensor(),
+    RemoveFlattenNode(),
     QONNXToLBIR(),
+    CleanupQTensors(),
 ]
 
 
@@ -112,14 +116,12 @@ def qonnx_to_lbir(
 
 def _uwrap_qonnx_to_lbir(onnx_model: ModelWrapper, name: str) -> lbir.Model:
     if (
-        onnx_model.graph.node[0].op_type == "QTensor"
-        and onnx_model.graph.node[1].op_type == "Reshape"
-        and onnx_model.graph.node[-1].op_type == "QTensor"
-        and onnx_model.graph.node[-2].op_type == "Reshape"
+        onnx_model.graph.node[0].op_type == "Reshape"
+        and onnx_model.graph.node[-1].op_type == "Reshape"
     ):
         # This condition typically arises from QKeras conv models that have different
         # tensor memory layout, hence the reshape ops.
-        layers = onnx_model.graph.node[2:-2]
+        layers = onnx_model.graph.node[1:-1]
         input_channel_first = True
     else:
         layers = onnx_model.graph.node

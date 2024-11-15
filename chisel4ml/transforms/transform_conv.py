@@ -6,6 +6,7 @@ from qonnx.core.modelwrapper import ModelWrapper
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.lbir_pb2 import Conv2DConfig
+from chisel4ml.lbir.lbir_pb2 import MaxPool2DConfig
 from chisel4ml.lbir.qtensor_pb2 import QTensor
 from chisel4ml.transforms.qonnx_utils import _conv2dconfig_to_kwargs
 from chisel4ml.transforms.transform_matmul import node_has_attr
@@ -29,16 +30,12 @@ def transform_conv(model: ModelWrapper, node) -> bool:
     if not node_has_attr(weights_node, "values"):
         logging.warning(f"{b_err_str} Because weight node has no values")
         return False
-    if input_node.op_type == "QConv":
-        input_qtensor = Conv2DConfig.FromString(
-            onnx.helper.get_node_attr_value(input_node, "qconv")
-        ).output
-        inputs = input_node.output
-    else:
+    if input_node.op_type == "QTensor":
         input_qtensor = QTensor.FromString(
             onnx.helper.get_node_attr_value(input_node, "qtensor")
         )
-        inputs = input_node.input
+    else:
+        raise ValueError(f"Input node should be QTensor, not {input_node.op_type}")
     suc = model.find_direct_successors(node)
     if len(suc) != 1:
         logging.warning(f"{b_err_str} Because it does not have exactly 1 output.")
@@ -114,17 +111,15 @@ def transform_conv(model: ModelWrapper, node) -> bool:
         activation=activation,
         depthwise=(groups == channels),
     )
-    for n in (node, weights_node, bias_node, add_node, output_node):
+    for n in (node, weights_node, bias_node, add_node):
         model.graph.node.remove(n)
-    if input_node.op_type == "QTensor":
-        model.graph.node.remove(input_node)
     if activation_node is not None:
         model.graph.node.remove(activation_node)
     kwargs = _conv2dconfig_to_kwargs(conv2dcfg)
     new_node = onnx.helper.make_node(
         op_type="QConv",
-        inputs=inputs,
-        outputs=output_node.output,
+        inputs=node.input,
+        outputs=output_node.input,
         domain="chisel4ml",
         qconv=conv2dcfg.SerializeToString(),
         **kwargs,

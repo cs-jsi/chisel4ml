@@ -64,15 +64,16 @@ def solution_to_accelerators(solution, lbir_layers):
     solution_layers = zip(solution, lbir_layers)
     accels = list(map(_create_accelerator, solution_layers))
     # merging ProcessingElementCombToSeq
-    for ind, accel in enumerate(accels):
-        if accel.name == "ProcessingElementCombToSeq":
-            if ind > 1 and accels[ind - 1].name == "ProcessingElementCombToSeq":
-                accels[ind].layers = None
     new_accels = []
     for accel in accels:
-        if accel.layers is None:
-            continue
-        new_accels.append(accel)
+        if len(new_accels) == 0:
+            new_accels.append(accel)
+        else:
+            if (accel.name == "ProcessingElementCombToSeq" and new_accels[-1].name == "ProcessingElementCombToSeq"):
+                for _ in accel.layers:
+                    new_accels[-1].layers.append(accel.layers.pop())
+            else:
+                new_accels.append(accel)
     return new_accels
 
 

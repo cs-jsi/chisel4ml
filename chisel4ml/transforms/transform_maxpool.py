@@ -4,6 +4,8 @@ import onnx
 from qonnx.core.modelwrapper import ModelWrapper
 
 from chisel4ml.lbir.lbir_pb2 import MaxPool2DConfig
+from chisel4ml.lbir.lbir_pb2 import Conv2DConfig
+from chisel4ml.lbir.lbir_pb2 import DenseConfig
 from chisel4ml.lbir.qtensor_pb2 import QTensor
 from chisel4ml.transforms.qonnx_utils import _maxpool2dconfig_to_kwargs
 
@@ -26,6 +28,14 @@ def transform_maxpool(model: ModelWrapper, node) -> bool:
         input_qtensor = QTensor.FromString(
             onnx.helper.get_node_attr_value(input_node, "qtensor")
         )
+    elif input_node.op_type == "QDense":
+        input_qtensor = DenseConfig.FromString(
+            onnx.helper.get_node_attr_value(input_node, "qdense")
+        ).output
+    elif input_node.op_type == "QConv":
+        input_qtensor = Conv2DConfig.FromString(
+            onnx.helper.get_node_attr_value(input_node, "qconv")
+        ).output
     else:
         logging.warning(
             f"{b_err_str} Because it does not have a qtensor input,"
@@ -51,14 +61,12 @@ def transform_maxpool(model: ModelWrapper, node) -> bool:
         output=output_qtensor,
         kernel_shape=onnx.helper.get_node_attr_value(node, "kernel_shape"),
     )
-    model.graph.node.remove(input_node)
-    model.graph.node.remove(output_nodes[0])
     model.graph.node.remove(node)
     kwargs = _maxpool2dconfig_to_kwargs(maxpool2dcfg)
     new_node = onnx.helper.make_node(
         op_type="MaxPool2D",
-        inputs=input_node.input,
-        outputs=output_nodes[0].output,
+        inputs=node.input,
+        outputs=node.output,
         domain="chisel4ml",
         maxpool2d=maxpool2dcfg.SerializeToString(),
         **kwargs,

@@ -142,9 +142,9 @@ def qtensor_to_quantizer(qtensor):
     if qtensor.dtype.quantization == LBIRDatatype.QuantizationType.UNIFORM:
         return lambda x: quant(
             x,
-            scale=np.exp2(np.array(qtensor.dtype.shift)),  # inverse _scale_to_shift
-            zeropt=np.array(qtensor.dtype.offset),
-            bitwidth=np.array(qtensor.dtype.bitwidth),
+            scale=np.exp2(np.array(qtensor.dtype.shift), dtype=np.float32),  # inverse _scale_to_shift
+            zeropt=np.array(qtensor.dtype.offset, dtype=np.float32),
+            bitwidth=np.array(qtensor.dtype.bitwidth, dtype=np.float32),
             signed=qtensor.dtype.signed,
             narrow=False,
             rounding_mode=qtensor.rounding_mode,

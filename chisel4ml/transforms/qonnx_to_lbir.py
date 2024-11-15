@@ -37,7 +37,9 @@ class QONNXToLBIR(Transformation):
                 model_changed = transform_fftreal(model, node)
             elif node.op_type == "lmfe":
                 model_changed = transform_lmfe(model, node)
-        return model, model_changed
+            if model_changed:
+                return model, True
+        return model, False
 
 
 class WeightQuantToQTensor(Transformation):
@@ -61,8 +63,9 @@ class WeightQuantToQTensor(Transformation):
                         node.input[3],
                     )
                     weights = model.get_initializer(weight_init)
+                    scale = model.get_initializer(scale_init)
                     shift = _scale_to_shift(
-                        np.atleast_1d(model.get_initializer(scale_init))
+                        np.atleast_1d(scale)
                     )
 
                     offset = (
@@ -76,8 +79,9 @@ class WeightQuantToQTensor(Transformation):
                 else:
                     weight_init, scale_init = node.input[0], node.input[1]
                     weights = model.get_initializer(weight_init)
+                    scale = model.get_initializer(scale_init)
                     shift = _scale_to_shift(
-                        np.atleast_1d(model.get_initializer(scale_init))
+                        np.atleast_1d(scale)
                     )
                     offset = [0]
                     bitwidth = 1
@@ -89,6 +93,7 @@ class WeightQuantToQTensor(Transformation):
                 new_shape = get_lbir_shape(
                     old_shape=weights.shape, old_layout=old_layout, is_weight=True
                 )
+                adjusted_weights = weights / scale
                 qt = QTensor(
                     dtype=LBIRDatatype(
                         quantization=quantization,
@@ -98,7 +103,7 @@ class WeightQuantToQTensor(Transformation):
                         offset=offset,
                     ),
                     shape=new_shape,
-                    values=weights.flatten().tolist(),
+                    values=adjusted_weights.flatten().tolist(),
                 )
                 # This node is (most likely) here becuase it was inserted when
                 # converting from QKeras to qonnx (see QONNX converter). If this is not
@@ -410,4 +415,66 @@ class AddFFTrealOutputShape(Transformation):
                 model.set_tensor_shape(
                     tensor_name=node.output[0], tensor_shape=inp_shape
                 )
+        return model, False
+
+class RemoveFlattenNode(Transformation):
+    def apply(self, model):
+        log_err_str = "Flatten removal transformation failed because: "
+        for node in model.graph.node:
+            if node.op_type == "Flatten":
+                pre = model.find_direct_predecessors(node)
+                suc = model.find_direct_successors(node)
+                if len(pre) != 1:
+                   logging.warning(f"{log_err_str} More then one input - {len(pre)}")
+                   continue
+                if len(suc) != 1:
+                   logging.warning(f"{log_err_str} More then one output - {len(suc)}")
+                   continue
+                if pre[0].op_type != "QTensor":
+                    logging.warning(f"{log_err_str} Input node not QTensor.")
+                    continue
+                model.graph.node.remove(node)
+                suc[0].input.remove(node.output[0])
+                suc[0].input.extend([node.input[0]])
+                
+        return model, False
+
+class CleanupQTensors(Transformation):
+    "Cleans up QTensors from the graph when the qonnx->lbir transformations are finnished."
+
+    def replace_input(self, n, orig, new):
+        n.input.remove(orig)
+        n.input.extend([new])
+    
+    def replace_output(self, n, orig, new):
+        n.output.remove(orig)
+        n.output.extend([new])
+
+    def apply(self, model):
+        log_err_str = "QTensor cleanup failed because: "
+        for node in model.graph.node:
+            if node.op_type != "QTensor":
+                continue
+            if len(node.input) != 1:
+               logging.warning(f"{log_err_str} More then one input - {len(node.input)}")
+               continue
+            if len(node.output) != 1:
+               logging.warning(f"{log_err_str} More then one output - {len(node.output)}")
+               continue
+            pre = model.find_direct_predecessors(node)
+            suc = model.find_direct_successors(node)
+            if pre is not None and len(pre) != 1:
+               logging.warning(f"{log_err_str} More then one predecessor - {len(pre)}")
+               continue
+            if suc is not None and len(suc) != 1:
+               logging.warning(f"{log_err_str} More then one successor - {len(suc)}")
+               continue
+            model.graph.node.remove(node)
+            if pre is not None and suc is not None:
+                self.replace_output(pre[0], node.input[0], node.output[0])
+            elif pre is not None:
+                self.replace_output(pre[0], node.input[0], node.output[0])
+            elif suc is not None:
+                self.replace_input(suc[0], node.output[0], node.input[0])
+            return model, True 
         return model, False

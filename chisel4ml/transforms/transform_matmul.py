@@ -1,5 +1,5 @@
 import logging
-
+from functools import reduce
 import numpy as np
 import onnx
 from onnx.onnx_ml_pb2 import NodeProto
@@ -7,6 +7,8 @@ from qonnx.core.modelwrapper import ModelWrapper
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.lbir_pb2 import DenseConfig
+from chisel4ml.lbir.lbir_pb2 import Conv2DConfig
+from chisel4ml.lbir.lbir_pb2 import MaxPool2DConfig
 from chisel4ml.lbir.qtensor_pb2 import QTensor
 from chisel4ml.transforms.qonnx_utils import _denseconfig_to_kwargs
 
@@ -40,16 +42,13 @@ def transform_matmul(model: ModelWrapper, node) -> bool:
     weights_node, input_node = (
         (pre[0], pre[1]) if node_has_attr(pre[0], "values") else (pre[1], pre[0])
     )
-    if input_node.op_type == "QDense":
-        input_qtensor = DenseConfig.FromString(
-            onnx.helper.get_node_attr_value(input_node, "qdense")
-        ).output
-        inputs = input_node.output
-    else:
+    if input_node.op_type == "QTensor":
         input_qtensor = QTensor.FromString(
             onnx.helper.get_node_attr_value(input_node, "qtensor")
         )
-        inputs = input_node.input
+        input_qtensor.shape[:] = [reduce(lambda x,y: x * y, input_qtensor.shape)]
+    else:
+        raise ValueError(f"Input node should be QTensor, not {input_node.op_type}")
     suc = model.find_direct_successors(node)
     if len(suc) != 1:
         logging.warning(f"{b_err_str} Because it does not have exactly 1 output.")
@@ -122,7 +121,7 @@ def transform_matmul(model: ModelWrapper, node) -> bool:
         ),
         activation=activation,
     )
-    for n in (node, weights_node, bias_node, add_node, output_node):
+    for n in (node, weights_node, bias_node, add_node):
         model.graph.node.remove(n)
     if input_node.op_type == "QTensor":
         model.graph.node.remove(input_node)
@@ -131,8 +130,8 @@ def transform_matmul(model: ModelWrapper, node) -> bool:
     kwargs = _denseconfig_to_kwargs(densecfg)
     new_node = onnx.helper.make_node(
         op_type="QDense",
-        inputs=inputs,
-        outputs=output_node.output,
+        inputs=input_node.input,
+        outputs=output_node.input,
         domain="chisel4ml",
         qdense=densecfg.SerializeToString(),
         **kwargs,
