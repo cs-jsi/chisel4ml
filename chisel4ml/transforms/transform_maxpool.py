@@ -28,14 +28,6 @@ def transform_maxpool(model: ModelWrapper, node) -> bool:
         input_qtensor = QTensor.FromString(
             onnx.helper.get_node_attr_value(input_node, "qtensor")
         )
-    elif input_node.op_type == "QDense":
-        input_qtensor = DenseConfig.FromString(
-            onnx.helper.get_node_attr_value(input_node, "qdense")
-        ).output
-    elif input_node.op_type == "QConv":
-        input_qtensor = Conv2DConfig.FromString(
-            onnx.helper.get_node_attr_value(input_node, "qconv")
-        ).output
     else:
         logging.warning(
             f"{b_err_str} Because it does not have a qtensor input,"
