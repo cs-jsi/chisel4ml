@@ -31,7 +31,7 @@ class ProcessingPipelineCombinational(layers: Seq[LayerWrap with HasInputOutputQ
   // Connect the inputs and outputs of the layers
   peList.head.in := in
   for (i <- 1 until layers.length) {
-    peList(i).in := RegNext(peList(i - 1).out)
+    peList(i).in := peList(i - 1).out
   }
   out := peList.last.out
 }

@@ -19,7 +19,6 @@ import chisel3._
 import chisel3.util._
 import chisel4ml.implicits._
 import chisel4ml.logging.HasParameterLogging
-import chisel4ml.util.risingEdge
 import interfaces.amba.axis._
 import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
 import org.chipsalliance.cde.config.Parameters
@@ -42,14 +41,25 @@ object ProcessingElementCombToSeq {
       case _                                => throw new RuntimeException
     }
   }
+
+  object BufferState extends ChiselEnum {
+    val sFULL, sNOT_FULL = Value
+  }
 }
+
+trait HasPipelineRegisters extends HasLayerWrapSeq {
+  val p: Parameters
+  val numPipes = _cfg.length
+}
+
 
 class ProcessingElementCombToSeq[I <: Bits, O <: Bits](implicit val p: Parameters)
     extends Module
     with HasAXIStream
     with HasAXIStreamParameters
     with HasParameterLogging
-    with HasLayerWrapSeq {
+    with HasLayerWrapSeq
+    with HasPipelineRegisters {
   logParameters
   val CombModule = Module(new ProcessingPipelineCombinational(_cfg))
   val inStream = IO(Flipped(AXIStream(chiselTypeOf(CombModule.in.head), numBeatsIn)))
@@ -57,37 +67,68 @@ class ProcessingElementCombToSeq[I <: Bits, O <: Bits](implicit val p: Parameter
   val inputBuffer = RegInit(
     VecInit.fill(_cfg.head.input.numTransactions(numBeatsIn), numBeatsIn)(RegInit(_cfg.head.input.zero[I]))
   )
+  import ProcessingElementCombToSeq.BufferState
+  val inputBufferState = RegInit(BufferState.sNOT_FULL)
   dontTouch(inputBuffer)
+  dontTouch(inputBufferState)
   require(inputBuffer.flatten.length >= inStream.beats)
   val outputBuffer = RegInit(
     VecInit.fill(_cfg.last.output.numTransactions(numBeatsOut), numBeatsOut)(RegInit(_cfg.last.output.zero[O]))
   )
+  val outputBufferState = RegInit(BufferState.sNOT_FULL)
   dontTouch(outputBuffer)
+  dontTouch(outputBufferState)
   require(outputBuffer.flatten.length >= outStream.beats)
 
-  val (inputCntValue, _) = Counter(inStream.fire, _cfg.head.input.numTransactions(numBeatsIn))
-  val (outputCntValue, outputCntWrap) = Counter(outStream.fire, _cfg.last.output.numTransactions(numBeatsOut))
-  val outputBufferFull = RegInit(false.B)
+  val (inputCntValue, inputCntWrap) = Counter(
+    0 until _cfg.head.input.numTransactions(numBeatsIn),
+    enable = inStream.fire,
+    reset = inStream.last
+  )
+  dontTouch(inputCntWrap)
+  val (outputCntValue, outputCntWrap) = Counter(
+    0 until _cfg.last.output.numTransactions(numBeatsOut),
+    enable = outStream.fire
+  )
+  dontTouch(outputCntWrap)
 
   // INPUT DATA INTERFACE
-  inStream.ready := !outputBufferFull
+  inStream.ready := inputBufferState === BufferState.sNOT_FULL
   when(inStream.fire) {
     inputBuffer(inputCntValue) := inStream.bits
   }
 
   // CONNECT INPUT AND OUTPUT REGSITERS WITH THE PE
-  CombModule.in := inputBuffer.flatten.slice(0, CombModule.in.length)
-  val cond = RegNext(risingEdge(inStream.last))
-  dontTouch(cond)
+  CombModule.in := ShiftRegister(
+    VecInit(inputBuffer.flatten.slice(0, CombModule.in.length)),
+    numPipes
+  )
+  
+  val cond = ShiftRegister(
+    inStream.last,
+    numPipes + 1
+  )
   when(cond) {
     outputBuffer := CombModule.out.asTypeOf(outputBuffer)
-    outputBufferFull := true.B
-  }.elsewhen(outStream.last) {
-    outputBufferFull := false.B
+    assert(outputBufferState === BufferState.sNOT_FULL)
   }
+  dontTouch(cond)
 
   // OUTPUT DATA INTERFACE
-  outStream.valid := outputBufferFull
+  outStream.valid := outputBufferState === BufferState.sFULL
   outStream.bits := outputBuffer(outputCntValue)
   outStream.last := outputCntWrap
+  
+  // FINITE STATE MACHINE
+  when(inStream.last) {
+    inputBufferState :=  BufferState.sFULL
+  }.elsewhen(outStream.last) {
+    // Worst case FSM here, what if downstream PE can't block?
+    inputBufferState :=  BufferState.sNOT_FULL
+  }
+  when(cond) {
+    outputBufferState := BufferState.sFULL
+  }.elsewhen(outStream.last) {
+    outputBufferState := BufferState.sNOT_FULL
+  }
 }
