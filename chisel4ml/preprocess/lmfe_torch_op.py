@@ -106,8 +106,9 @@ class lmfe_layer(QuantInputOutputLayer, Module):
             self._set_global_is_quant_layer(False)
             return out
         quant_input = self.input_quant(input)
+
         output = lmfe(
-            quant_input.value,
+            quant_input if isinstance(quant_input, Tensor) else quant_input.value,
             filter_banks=self.filter_banks,
             fft_size=self.fft_size,
             num_mels=self.num_mels,
