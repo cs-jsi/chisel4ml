@@ -39,9 +39,10 @@ object NeuronWithBias extends NeuronOperation {
   ): nc.O = {
     val muls = VecInit((in.zip(weights)).map { case (i, w) => nc.mul(i, w) })
     require(shift <= 0)
-    val threshAdjusted = nc.binA.shl(thresh, shift.abs)
+    val threshAdjusted = (thresh.litValue << shift).S.asInstanceOf[nc.A]
+    val pActNoBias = nc.addVec(muls)
     val pAct = DspContext.withOverflowType(Grow) {
-      nc.rngA.minusContext(nc.addVec(muls), threshAdjusted)
+      nc.rngA.minusContext(pActNoBias, threshAdjusted)
     }
     val sAct = nc.shiftRound(pAct, shift)
     nc.actFn(sAct, nc.rngA.zero)
