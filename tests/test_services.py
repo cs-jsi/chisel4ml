@@ -1,21 +1,18 @@
 import os
 
-import brevitas.nn as qnn
 import numpy as np
 import pytest
 import torch
 from pytest_cases import get_current_cases
 from pytest_cases import parametrize_with_cases
-from qonnx.core.datatype import DataType
-from qonnx.util.basic import gen_finn_dt_tensor
-from torch.nn import Module
 
 from chisel4ml import generate
 from chisel4ml import optimize
 from chisel4ml.utils import get_submodel
-from tests.brevitas_quantizers import CommonWeightQuant
-from tests.brevitas_quantizers import IntActQuant
-from tests.brevitas_quantizers import IntBiasQuant
+from tests.brevitas_models import get_cnn_model
+from tests.brevitas_models import get_conv_layer_model
+from tests.brevitas_models import get_maxpool_layer_model
+from tests.brevitas_models import get_linear_layer_model
 from tests.conftest import TEST_MODELS_LIST
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -222,58 +219,6 @@ def test_brevitas(request, c4ml_server, model_ishape_data):
     circuit.delete_from_server()
 
 
-def get_conv_layer_model(
-    input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq, depthwise=False
-):
-    class ConvLayerModel(Module):
-        def __init__(self):
-            super(ConvLayerModel, self).__init__()
-            self.ishape = (1, input_ch, 4, 4)
-            self.conv = qnn.QuantConv2d(
-                in_channels=input_ch,
-                out_channels=output_ch,
-                groups=output_ch if depthwise else 1,
-                kernel_size=kernel_size,
-                padding=padding,
-                stride=1,
-                bias=True,
-                weight_quant=CommonWeightQuant,
-                weight_bit_width=wq,
-                weight_scaling_impl_type="const",
-                weight_scaling_init=1 if wq == 1 else 2 ** (wq - 1) - 1,
-                bias_quant=IntBiasQuant,
-                bias_bit_width=bq,
-                bias_scaling_impl_type="const",
-                bias_scaling_init=2 ** (bq - 1) - 1,
-                input_quant=IntActQuant,
-                input_bit_width=iq,
-                input_scaling_impl_type="const",
-                input_scaling_init=1 if iq == 1 else 2 ** (iq - 1) - 1,
-                output_quant=IntActQuant,
-                output_bit_width=oq,
-                output_scaling_impl_type="const",
-                output_scaling_init=1 if oq == 1 else 2 ** (oq - 1) - 1,
-            )
-
-        def forward(self, x):
-            return self.conv(x)
-
-    model = ConvLayerModel()
-    wshape = (output_ch, 1 if depthwise else input_ch, kernel_size[0], kernel_size[1])
-    bshape = (output_ch,)
-    # set seed for repeatability
-    np.random.seed(42)
-    wq_type = DataType[f"INT{wq}"] if wq > 1 else DataType["BIPOLAR"]
-    iq_type = DataType[f"INT{iq}"] if iq > 1 else DataType["BIPOLAR"]
-    weights = gen_finn_dt_tensor(wq_type, wshape)
-    bias = gen_finn_dt_tensor(DataType[f"INT{bq}"], bshape)
-    model.conv.weight = torch.nn.Parameter(torch.from_numpy(weights).float())
-    model.conv.bias = torch.nn.Parameter(torch.from_numpy(bias).float())
-    ishape = (8,) + model.ishape[1:]
-    input_data = gen_finn_dt_tensor(iq_type, ishape)
-    return model, input_data
-
-
 @pytest.mark.parametrize("input_ch", (1, 3))
 @pytest.mark.parametrize("output_ch", (1, 3))
 @pytest.mark.parametrize("kernel_size", ((3, 3), (2, 3)))
@@ -352,39 +297,6 @@ def test_combinational_conv_dw(
     circuit.delete_from_server()
 
 
-def get_maxpool_layer_model(channels, input_size, kernel_size, padding, iq):
-    class MaxPoolLayerModel(Module):
-        def __init__(self, input_size):
-            super(MaxPoolLayerModel, self).__init__()
-            self.ishape = (1, channels) + input_size
-            self.in_quant = qnn.QuantIdentity(
-                act_quant=IntActQuant,
-                bit_width=iq,
-                scaling_impl_type="const",
-                scaling_init=1 if iq == 1 else 2 ** (iq - 1) - 1,
-            )
-            self.maxpool = torch.nn.MaxPool2d(kernel_size=kernel_size, padding=padding)
-            self.out_quant = qnn.QuantIdentity(
-                act_quant=IntActQuant,
-                bit_width=iq,
-                scaling_impl_type="const",
-                scaling_init=1 if iq == 1 else 2 ** (iq - 1) - 1,
-            )
-
-        def forward(self, x):
-            tmp = self.in_quant(x)
-            tmp = self.maxpool(tmp)
-            return self.out_quant(tmp)
-
-    model = MaxPoolLayerModel(input_size)
-    # set seed for repeatability
-    np.random.seed(42)
-    iq_type = DataType[f"INT{iq}"] if iq > 1 else DataType["BIPOLAR"]
-    ishape = (8,) + model.ishape[1:]
-    input_data = gen_finn_dt_tensor(iq_type, ishape)
-    return model, input_data
-
-
 @pytest.mark.parametrize("input_size", ((4, 4), (8, 15)))
 @pytest.mark.parametrize(
     "channels",
@@ -426,50 +338,7 @@ def test_combinational_maxpool(
         assert np.array_equal(sw_res.flatten(), hw_res.flatten())
     circuit.delete_from_server()
 
-def get_linear_layer_model(in_features, out_features, bias, iq, wq, bq, oq):
-    class LinearLayerModel(Module):
-        def __init__(self):
-            super(LinearLayerModel, self).__init__()
-            self.ishape = (1, in_features)
-            self.linear = qnn.QuantLinear(
-                in_features=in_features,
-                out_features=out_features,
-                bias=bias,
-                weight_quant=CommonWeightQuant,
-                weight_bit_width=wq,
-                weight_scaling_impl_type="const",
-                weight_scaling_init=1 if wq == 1 else 2 ** (wq - 1) - 1,
-                bias_quant=IntBiasQuant,
-                bias_bit_width=bq,
-                bias_scaling_impl_type="const",
-                bias_scaling_init=2 ** (bq - 1) - 1,
-                input_quant=IntActQuant,
-                input_bit_width=iq,
-                input_scaling_impl_type="const",
-                input_scaling_init=1 if iq == 1 else 2 ** (iq - 1) - 1,
-                output_quant=IntActQuant,
-                output_bit_width=oq,
-                output_scaling_impl_type="const",
-                output_scaling_init=1 if oq == 1 else 2 ** (oq - 1) - 1,
-            )
 
-        def forward(self, x):
-            return self.linear(x)
-
-    model = LinearLayerModel()
-    wshape = (out_features, in_features)
-    bshape = (out_features,)
-    # set seed for repeatability
-    np.random.seed(42)
-    wq_type = DataType[f"INT{wq}"] if wq > 1 else DataType["BIPOLAR"]
-    iq_type = DataType[f"INT{iq}"] if iq > 1 else DataType["BIPOLAR"]
-    weights = gen_finn_dt_tensor(wq_type, wshape)
-    bias = gen_finn_dt_tensor(DataType[f"INT{bq}"], bshape)
-    model.linear.weight = torch.nn.Parameter(torch.from_numpy(weights).float())
-    model.linear.bias = torch.nn.Parameter(torch.from_numpy(bias).float())
-    ishape = (8,) + model.ishape[1:]
-    input_data = gen_finn_dt_tensor(iq_type, ishape)
-    return model, input_data
 
 @pytest.mark.parametrize("in_features", (4, 8, 32))
 @pytest.mark.parametrize("out_features", (4, 8, 32))
@@ -484,6 +353,35 @@ def test_combinational_fullyconnected(
     model, data = get_linear_layer_model(
         in_features, out_features, bias, iq, wq, bq, oq
     )
+    accelerators, lbir_model = generate.accelerators(
+        model,
+        ishape=model.ishape,
+        minimize="delay",
+        debug=request.config.getoption("--debug-trans"),
+    )
+    circuit = generate.circuit(
+        accelerators,
+        lbir_model,
+        use_verilator=request.config.getoption("--use-verilator"),
+        gen_waveform=request.config.getoption("--gen-waveform"),
+        waveform_type=request.config.getoption("--waveform-type"),
+        gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        server=c4ml_server,
+    )
+    assert circuit is not None
+    for x in data:
+        sw_res = (
+            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
+        )
+        hw_res = circuit(x)
+        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
+    circuit.delete_from_server()
+
+
+@pytest.mark.parametrize("input_size", ((6, 6),))
+@pytest.mark.parametrize("in_ch", (1, 3))
+def test_combinational_cnn(request, c4ml_server, input_size, in_ch):
+    model, data = get_cnn_model(input_size, in_ch)
     accelerators, lbir_model = generate.accelerators(
         model,
         ishape=model.ishape,

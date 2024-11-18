@@ -172,7 +172,11 @@ class QuantToQTensor(Transformation):
                     quantization = LBIRDatatype.QuantizationType.BINARY
                     signed = 1
                     rounding_mode = "NONE"
-
+                
+                qtshape = model.get_tensor_shape(node.input[0])
+                if len(qtshape) > 1:
+                    # we remove the batch dimension if its present
+                    qtshape = qtshape[1:]
                 qt = QTensor(
                     dtype=LBIRDatatype(
                         quantization=quantization,
@@ -181,9 +185,7 @@ class QuantToQTensor(Transformation):
                         shift=shift,
                         offset=offset,
                     ),
-                    shape=model.get_tensor_shape(node.input[0])[
-                        1:
-                    ],  # we remove the batch dimension
+                    shape=qtshape,  
                     rounding_mode=rounding_mode,
                 )
                 model.graph.node.remove(node)
@@ -353,9 +355,13 @@ class AddInputOrOutputQTensorToReshape(Transformation):
                 new_val_info = onnx.helper.make_value_info(
                     name=new_link_name, type_proto=tensor_vi.type
                 )
+                qtshape = model.get_tensor_shape(tensor_tmp)
+                if len(qtshape) > 1:
+                    # we remove the batch dimension if its present
+                    qtshape = qtshape[1:]
                 new_qt = QTensor(
                     dtype=qt.dtype,
-                    shape=model.get_tensor_shape(tensor_tmp)[1:],
+                    shape=qtshape,
                     values=qt.values,  # should be empty
                     rounding_mode=qt.rounding_mode,
                     layout=qt.layout,
@@ -421,7 +427,12 @@ class RemoveFlattenNode(Transformation):
     def apply(self, model):
         log_err_str = "Flatten removal transformation failed because: "
         for node in model.graph.node:
-            if node.op_type == "Flatten":
+            if node.op_type == "Flatten" or node.op_type == "Reshape":
+                if node.op_type  == "Reshape":
+                    shape = model.get_initializer(node.input[1])
+                    if not np.array_equal(shape, np.array([-1])):
+                        # reshape with shape [-1] equals flatten
+                        break
                 pre = model.find_direct_predecessors(node)
                 suc = model.find_direct_successors(node)
                 if len(pre) != 1:
