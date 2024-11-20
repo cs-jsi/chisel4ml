@@ -378,6 +378,51 @@ def test_combinational_fullyconnected(
     circuit.delete_from_server()
 
 
+@pytest.mark.parametrize("in_features", (2,))
+@pytest.mark.parametrize("out_features", (3,))
+@pytest.mark.parametrize("bias", (True,))
+@pytest.mark.parametrize("iq", (3,))
+@pytest.mark.parametrize("wq", (3,))
+@pytest.mark.parametrize("bq", (5,))
+@pytest.mark.parametrize("oq", (3,))
+@pytest.mark.parametrize("weight_scale", (0.25, 0.5, 2))
+def test_combinational_fullyconnected_nonunitscale(
+    request, c4ml_server, in_features, out_features, bias, iq, wq, bq, oq, weight_scale
+):
+    model, data = get_linear_layer_model(
+        in_features, 
+        out_features, 
+        bias, 
+        iq, 
+        wq, 
+        bq, 
+        oq,
+        weight_scale
+    )
+    accelerators, lbir_model = generate.accelerators(
+        model,
+        ishape=model.ishape,
+        minimize="delay",
+        debug=request.config.getoption("--debug-trans"),
+    )
+    circuit = generate.circuit(
+        accelerators,
+        lbir_model,
+        use_verilator=request.config.getoption("--use-verilator"),
+        gen_waveform=request.config.getoption("--gen-waveform"),
+        waveform_type=request.config.getoption("--waveform-type"),
+        gen_timeout_sec=request.config.getoption("--generation-timeout"),
+        server=c4ml_server,
+    )
+    assert circuit is not None
+    for x in data:
+        sw_res = (
+            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
+        )
+        hw_res = circuit(x)
+        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
+    circuit.delete_from_server()
+
 @pytest.mark.parametrize("input_size", ((6, 6),))
 @pytest.mark.parametrize("in_ch", (1, 3))
 def test_combinational_cnn(request, c4ml_server, input_size, in_ch):

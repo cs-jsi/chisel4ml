@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 import onnx
+import qonnx.core.onnx_exec as oxe
 from qonnx.core.modelwrapper import ModelWrapper
 from qonnx.transformation.base import Transformation
 
@@ -93,7 +94,9 @@ class WeightQuantToQTensor(Transformation):
                 new_shape = get_lbir_shape(
                     old_shape=weights.shape, old_layout=old_layout, is_weight=True
                 )
-                adjusted_weights = weights / scale
+                exec_context = model.make_empty_exec_context()
+                oxe.execute_node(node, exec_context, model.graph)
+                adjusted_weights = exec_context[node.output[0]] / scale
                 qt = QTensor(
                     dtype=LBIRDatatype(
                         quantization=quantization,

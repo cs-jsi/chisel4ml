@@ -8,6 +8,7 @@ from tests.brevitas_quantizers import IntBiasQuant
 from tests.brevitas_quantizers import WeightPerChannelQuant
 from torch import nn
 from torch.nn import Module
+import numpy as np
 
 def quant_to_dt(quant):
     return DataType[f"INT{quant}"] if quant > 1 else DataType["BIPOLAR"]
@@ -185,9 +186,11 @@ def get_maxpool_layer_model(channels, input_size, kernel_size, padding, iq):
     input_data = gen_finn_dt_tensor(iq_type, ishape)
     return model, input_data
 
-def get_linear_layer_model(in_features, out_features, bias, iq, wq, bq, oq):
+def get_linear_layer_model(in_features, out_features, bias, iq, wq, bq, oq, weight_scale=1):
     class LinearLayerModel(Module):
         def __init__(self):
+            wscale = 1 if wq == 1 else 2 ** (wq - 1) - 1
+            wscale = wscale * weight_scale
             super(LinearLayerModel, self).__init__()
             self.ishape = (1, in_features)
             self.linear = qnn.QuantLinear(
@@ -197,7 +200,7 @@ def get_linear_layer_model(in_features, out_features, bias, iq, wq, bq, oq):
                 weight_quant=CommonWeightQuant,
                 weight_bit_width=wq,
                 weight_scaling_impl_type="const",
-                weight_scaling_init=1 if wq == 1 else 2 ** (wq - 1) - 1,
+                weight_scaling_init=wscale,
                 bias_quant=IntBiasQuant,
                 bias_bit_width=bq,
                 bias_scaling_impl_type="const",
@@ -222,7 +225,7 @@ def get_linear_layer_model(in_features, out_features, bias, iq, wq, bq, oq):
     np.random.seed(42)
     wq_type = DataType[f"INT{wq}"] if wq > 1 else DataType["BIPOLAR"]
     iq_type = DataType[f"INT{iq}"] if iq > 1 else DataType["BIPOLAR"]
-    weights = gen_finn_dt_tensor(wq_type, wshape)
+    weights = gen_finn_dt_tensor(wq_type, wshape) * weight_scale
     bias = gen_finn_dt_tensor(DataType[f"INT{bq}"], bshape)
     model.linear.weight = torch.nn.Parameter(torch.from_numpy(weights).float())
     model.linear.bias = torch.nn.Parameter(torch.from_numpy(bias).float())
