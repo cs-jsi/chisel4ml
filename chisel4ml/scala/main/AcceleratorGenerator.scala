@@ -23,8 +23,8 @@ import services.Accelerator
 
 object AcceleratorGenerator {
   def apply(accel: Accelerator): Module with HasAXIStream = {
-    implicit val defaults: Parameters = Parameters.empty.alterPartial({
-      case LayerWrapSeqField => accel.layers.map(_.get)
+    implicit val defaults: Parameters = Parameters.empty.alterPartial({ case LayerWrapSeqField =>
+      accel.layers.map(_.get)
     })
     accel.name match {
       case "MaxPool2D"                       => Module(MaxPool2D(accel))

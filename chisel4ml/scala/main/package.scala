@@ -165,14 +165,14 @@ package object implicits {
       case 4 => qt.shape(0)
       case _ => throw new RuntimeException("Shape to small.")
     }
-    def numParams:       Int = qt.shape.reduce(_ * _)
-    def numKernelParams: Int = numParams / numKernels
+    def numParams:                           Int = qt.shape.reduce(_ * _)
+    def numKernelParams:                     Int = numParams / numKernels
     def numActiveParams(depthwise: Boolean): Int = if (depthwise) width * height else numKernelParams
     def paramsPerWord(wordSize: Int = 32): Int = {
       require(wordSize >= qt.dtype.bitwidth)
       wordSize / qt.dtype.bitwidth
     }
-    def totalBitwidth: Int = qt.dtype.bitwidth * numParams
+    def totalBitwidth:                Int = qt.dtype.bitwidth * numParams
     def transactionWidth(beats: Int): Int = beats * qt.dtype.bitwidth
     def memDepth(memWordSize: Int): Int = {
       qt.shape.length match {

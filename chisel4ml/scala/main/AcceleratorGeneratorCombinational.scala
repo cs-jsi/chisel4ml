@@ -17,7 +17,13 @@ package chisel4ml
 
 import chisel3._
 import chisel4ml.combinational.{MaxPoolOperation, NeuronProcessingUnit, OrderProcessingUnit}
-import chisel4ml.compute.{NeuronCompute, NeuronComputeBoolBoolBool, NeuronComputeBoolUIntBool, NeuronComputeBoolSIntBool, OrderCompute}
+import chisel4ml.compute.{
+  NeuronCompute,
+  NeuronComputeBoolBoolBool,
+  NeuronComputeBoolSIntBool,
+  NeuronComputeBoolUIntBool,
+  OrderCompute
+}
 import lbir.{HasInputOutputQTensor, IsActiveLayer, LayerWrap, MaxPool2DConfig}
 
 object AcceleratorGeneratorCombinational {

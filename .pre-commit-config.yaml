@@ -29,7 +29,3 @@ repos:
     rev: 1.0.1
     hooks:
     - id: scalafmt
-  - repo: https://github.com/jurevreca12/pre-commit-mill-scalafix
-    rev: 0.1.1
-    hooks:
-      - id: mill-scalafix

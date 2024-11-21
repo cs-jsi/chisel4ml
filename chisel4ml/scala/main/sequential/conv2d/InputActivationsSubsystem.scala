@@ -13,7 +13,8 @@ import org.chipsalliance.cde.config.Parameters
  * as a convolution opperation would; and does so continously until the next signal is asserted. This allows looping
  * through the input to convolve it with more than one kernel.
  */
-class InputActivationsSubsystem[I <: Bits](implicit val p: Parameters)
+class InputActivationsSubsystem[I <: Bits](
+  implicit val p: Parameters)
     extends Module
     with HasSequentialConvParameters
     with HasAXIStreamParameters {

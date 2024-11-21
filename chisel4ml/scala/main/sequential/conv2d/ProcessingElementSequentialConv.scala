@@ -72,7 +72,11 @@ class ProcessingElementSequentialConv(
 }
 
 object ProcessingElementSequentialConv {
-  def apply(accel: Accelerator)(implicit p: Parameters): Module with HasAXIStream = {
+  def apply(
+    accel: Accelerator
+  )(
+    implicit p: Parameters
+  ): Module with HasAXIStream = {
     require(accel.name == "ProcessingElementSequentialConv")
     require(accel.layers.length == 1)
     accel.layers.head.get match {

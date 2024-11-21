@@ -27,7 +27,7 @@ import org.chipsalliance.cde.config.Parameters
 
 trait HasLMFEParameters extends HasAXIStreamParameters with HasLayerWrapSeq {
   val p: Parameters
-  val cfg:                  LMFEConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head.asMessage).get.asInstanceOf[LMFEConfig]
+  val cfg: LMFEConfig = LayerWrap.LayerWrapTypeMapper.toCustom(_cfg.head.asMessage).get.asInstanceOf[LMFEConfig]
   override val numBeatsIn:  Int = 1
   override val numBeatsOut: Int = 1
 
@@ -35,7 +35,8 @@ trait HasLMFEParameters extends HasAXIStreamParameters with HasLayerWrapSeq {
   require(!cfg.output.dtype.signed)
 }
 
-class LMFEWrapper(implicit val p: Parameters)
+class LMFEWrapper(
+  implicit val p: Parameters)
     extends Module
     with HasAXIStream
     with HasAXIStreamParameters

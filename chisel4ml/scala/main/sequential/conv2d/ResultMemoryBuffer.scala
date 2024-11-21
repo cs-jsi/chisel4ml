@@ -21,7 +21,8 @@ import chisel4ml.implicits._
 import interfaces.amba.axis.AXIStream
 import org.chipsalliance.cde.config.Parameters
 
-class ResultMemoryBuffer[O <: Bits](implicit val p: Parameters)
+class ResultMemoryBuffer[O <: Bits](
+  implicit val p: Parameters)
     extends Module
     with HasSequentialConvParameters
     with HasAXIStreamParameters {

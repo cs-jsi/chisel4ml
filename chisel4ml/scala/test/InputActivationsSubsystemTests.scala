@@ -97,17 +97,17 @@ class InputActivationsSubsystemTests extends AnyFlatSpec with ChiselScalatestTes
     })
     it should f"Test $testId window a random input tensor with bw:${p.bitwidth} kernelHeight:${p.kernelHeight} " +
       f"kernelWidth:${p.kernelWidth}, inChannels:${p.inChannels}, inHeight:${p.inHeight}, inWidth:${p.inWidth}" in {
-      test(new InputActivationsSubsystem[UInt]()(cfg)) { dut =>
-        dut.io.inputActivationsWindow.initSink()
-        dut.io.inputActivationsWindow.setSinkClock(dut.clock)
+        test(new InputActivationsSubsystem[UInt]()(cfg)) { dut =>
+          dut.io.inputActivationsWindow.initSink()
+          dut.io.inputActivationsWindow.setSinkClock(dut.clock)
 
-        dut.clock.step()
-        fork {
-          dut.io.inStream.enqueueQTensor(convLayer.input, dut.clock)
-        }.fork {
-          dut.io.inputActivationsWindow.expectDequeueSeq(goldenVec)
-        }.join()
+          dut.clock.step()
+          fork {
+            dut.io.inStream.enqueueQTensor(convLayer.input, dut.clock)
+          }.fork {
+            dut.io.inputActivationsWindow.expectDequeueSeq(goldenVec)
+          }.join()
+        }
       }
-    }
   }
 }

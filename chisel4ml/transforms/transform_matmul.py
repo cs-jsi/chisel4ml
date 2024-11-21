@@ -1,5 +1,6 @@
 import logging
 from functools import reduce
+
 import numpy as np
 import onnx
 from onnx.onnx_ml_pb2 import NodeProto
@@ -7,8 +8,6 @@ from qonnx.core.modelwrapper import ModelWrapper
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.lbir_pb2 import DenseConfig
-from chisel4ml.lbir.lbir_pb2 import Conv2DConfig
-from chisel4ml.lbir.lbir_pb2 import MaxPool2DConfig
 from chisel4ml.lbir.qtensor_pb2 import QTensor
 from chisel4ml.transforms.qonnx_utils import _denseconfig_to_kwargs
 
@@ -46,7 +45,7 @@ def transform_matmul(model: ModelWrapper, node) -> bool:
         input_qtensor = QTensor.FromString(
             onnx.helper.get_node_attr_value(input_node, "qtensor")
         )
-        input_qtensor.shape[:] = [reduce(lambda x,y: x * y, input_qtensor.shape)]
+        input_qtensor.shape[:] = [reduce(lambda x, y: x * y, input_qtensor.shape)]
     else:
         raise ValueError(f"Input node should be QTensor, not {input_node.op_type}")
     suc = model.find_direct_successors(node)

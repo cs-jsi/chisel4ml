@@ -31,22 +31,25 @@ trait HasParameterLogging extends HasLogger {
     NumBeatsOutField
   )
 
-  def logParameters(implicit p: Parameters): Unit = {
+  def logParameters(
+    implicit p: Parameters
+  ): Unit = {
     var msg = s"Generated new ${this.getClass()} module.\n"
     for (field <- fields) {
       try {
         val pValue = p(field)
         val pName = field.getClass().getSimpleName()
         val str = pValue match {
-          case l: LayerWrap => s""" Input shape: ${l.input.shape},
-                                  | Input quantization: ${l.input.dtype.quantization},
-                                  | Input sign: ${l.input.dtype.signed},
-                                  | Input shift: ${l.input.dtype.shift},
-                                  | Output shape: ${l.output.shape},
-                                  | Output quantization: ${l.output.dtype.quantization},
-                                  | Output sign: ${l.output.dtype.signed},
-                                  | Output shift: ${l.output.dtype.shift}
-                                  | Other parameters are: """.stripMargin
+          case l: LayerWrap =>
+            s""" Input shape: ${l.input.shape},
+               | Input quantization: ${l.input.dtype.quantization},
+               | Input sign: ${l.input.dtype.signed},
+               | Input shift: ${l.input.dtype.shift},
+               | Output shape: ${l.output.shape},
+               | Output quantization: ${l.output.dtype.quantization},
+               | Output sign: ${l.output.dtype.signed},
+               | Output shift: ${l.output.dtype.shift}
+               | Other parameters are: """.stripMargin
           case _ => s"$pName->$pValue, "
         }
         msg = msg + str

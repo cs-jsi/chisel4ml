@@ -92,8 +92,8 @@ abstract class NeuronCompute extends HasLayerWrap {
   def shiftRound:        (A, Int) => A
   def shiftRoundDynamic: (A, UInt, Bool) => A
   def actFn:             (A, A) => O
-  def genI: I = cfg.input.getType[I]
-  def genO: O = cfg.output.getType[O]
+  def genI:              I = cfg.input.getType[I]
+  def genO:              O = cfg.output.getType[O]
 }
 
 class NeuronComputeUIntUIntUInt(val cfg: LayerWrap with IsActiveLayer)

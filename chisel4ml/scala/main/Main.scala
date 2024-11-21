@@ -34,8 +34,8 @@ case class Config(
 
 /** Contains the main function.
   *
-  *  Contains the main function that is the main entry point to the the software, and it starts a chisel4ml
-  *  server instance.
+  * Contains the main function that is the main entry point to the the software, and it starts a chisel4ml server
+  * instance.
   */
 object Chisel4mlServer {
   // we convert git describe output to pep440
@@ -87,8 +87,8 @@ object Chisel4mlServer {
 
 /** The server implementation based on gRPC.
   *
-  *  Implementation of the gRPC based Chisel4ml server.  It implements the services as defined by gRPC in the
-  *  service.proto file. It also has conveinance functions for starting and stoping the server.
+  * Implementation of the gRPC based Chisel4ml server. It implements the services as defined by gRPC in the
+  * service.proto file. It also has conveinance functions for starting and stoping the server.
   */
 class Chisel4mlServer(executionContext: ExecutionContext, tempDir: os.Path, port: Int) { self =>
   private[this] var server: Server = null

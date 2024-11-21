@@ -46,7 +46,10 @@ trait HasMaxPoolParameters extends HasAXIStreamParameters with HasLayerWrapSeq {
  * moments.
  *
  */
-class MaxPool2D(val oc: OrderCompute)(implicit val p: Parameters)
+class MaxPool2D(
+  val oc: OrderCompute
+)(
+  implicit val p: Parameters)
     extends Module
     with HasAXIStream
     with HasLayerWrapSeq
@@ -132,7 +135,11 @@ class MaxPool2D(val oc: OrderCompute)(implicit val p: Parameters)
 }
 
 object MaxPool2D {
-  def apply(accel: Accelerator)(implicit p: Parameters): Module with HasAXIStream = {
+  def apply(
+    accel: Accelerator
+  )(
+    implicit p: Parameters
+  ): Module with HasAXIStream = {
     require(accel.name == "MaxPool2D")
     require(accel.layers.length == 1)
     accel.layers.head.get match {

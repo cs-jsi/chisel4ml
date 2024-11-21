@@ -82,15 +82,15 @@ test_opts_list.append((0, 0.0, None, 512, 32, "audio"))
     "tone_freq,amplitude,function,frame_length,num_frames,data", test_opts_list
 )
 def test_fft(
-    request, 
-    c4ml_server, 
-    tone_freq, 
-    amplitude, 
-    function, 
-    frame_length, 
-    num_frames, 
-    data, 
-    audio_data
+    request,
+    c4ml_server,
+    tone_freq,
+    amplitude,
+    function,
+    frame_length,
+    num_frames,
+    data,
+    audio_data,
 ):
     if data == "generated":
         frames = get_frames(tone_freq, amplitude, function, frame_length, num_frames)
@@ -119,7 +119,7 @@ def test_fft(
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        server=c4ml_server
+        server=c4ml_server,
     )
     for frame, _ in frames:
         hw_res = audio_preproc(frame, sim_timeout_sec=400) / 2**12
@@ -144,7 +144,10 @@ test_opts_lmfe_dict["num_mels"] = (10, 20)
 test_opts_lmfe_list = list(itertools.product(*test_opts_lmfe_dict.values()))
 test_opts_lmfe_list.append((0, 0.0, None, 512, 32, "audio", 20))
 
-@pytest.mark.skip("One test fails. Should be revisited when generalizing scaling factor behavior.")
+
+@pytest.mark.skip(
+    "One test fails. Should be revisited when generalizing scaling factor behavior."
+)
 @pytest.mark.parametrize(
     "tone_freq,amplitude,function,frame_length,num_frames,data,num_mels",
     test_opts_lmfe_list,
@@ -183,7 +186,7 @@ def test_lmfe(
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        server=c4ml_server
+        server=c4ml_server,
     )
     for frame, _ in frames:
         hw_res = audio_preproc(frame, sim_timeout_sec=400) - 24

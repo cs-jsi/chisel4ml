@@ -20,26 +20,26 @@ from onnx.onnx_ml_pb2 import NodeProto
 from qonnx.core.modelwrapper import ModelWrapper
 from qonnx.transformation.double_to_single_float import DoubleToSingleFloat
 from qonnx.transformation.extract_conv_bias import ExtractBiasFromConv
+from qonnx.transformation.gemm_to_matmul import GemmToMatMul
 from qonnx.transformation.general import SortGraph
 from qonnx.transformation.infer_data_layouts import InferDataLayouts
 from qonnx.transformation.infer_shapes import InferShapes
-from qonnx.transformation.remove import RemoveIdentityOps
-from qonnx.transformation.gemm_to_matmul import GemmToMatMul
 from qonnx.transformation.quant_constant_folding import FoldTransposeIntoQuantInit
+from qonnx.transformation.remove import RemoveIdentityOps
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import AddDummyBiasToConv
 from chisel4ml.transforms import AddFFTrealOutputShape
 from chisel4ml.transforms import AddInputOrOutputQTensorToReshape
+from chisel4ml.transforms import CleanupQTensors
 from chisel4ml.transforms import ExtractQuantizedBiasFromConv
 from chisel4ml.transforms import InputReluQTensorToQTensor
 from chisel4ml.transforms import QONNXToLBIR
 from chisel4ml.transforms import QuantToQTensor
+from chisel4ml.transforms import RemoveFlattenNode
 from chisel4ml.transforms import UnquantizedBiasToQTensor
 from chisel4ml.transforms import UnquantizedOutputToQTensor
 from chisel4ml.transforms import WeightQuantToQTensor
-from chisel4ml.transforms import RemoveFlattenNode
-from chisel4ml.transforms import CleanupQTensors
 
 DEFAULT_QONNX_TRANSFORMS = [
     DoubleToSingleFloat(),

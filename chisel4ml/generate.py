@@ -15,6 +15,7 @@ import numpy as np
 import tensorflow as tf
 import torch
 from ortools.sat.python import cp_model
+from qonnx.core.modelwrapper import ModelWrapper
 
 from chisel4ml import chisel4ml_server
 from chisel4ml import transform
@@ -23,7 +24,6 @@ from chisel4ml.circuit import Circuit
 from chisel4ml.lbir.services_pb2 import Accelerator
 from chisel4ml.lbir.services_pb2 import GenerateCircuitParams
 from chisel4ml.lbir.services_pb2 import GenerateCircuitReturn
-from qonnx.core.modelwrapper import ModelWrapper
 
 log = logging.getLogger(__name__)
 
@@ -69,7 +69,10 @@ def solution_to_accelerators(solution, lbir_layers):
         if len(new_accels) == 0:
             new_accels.append(accel)
         else:
-            if (accel.name == "ProcessingElementCombToSeq" and new_accels[-1].name == "ProcessingElementCombToSeq"):
+            if (
+                accel.name == "ProcessingElementCombToSeq"
+                and new_accels[-1].name == "ProcessingElementCombToSeq"
+            ):
                 for _ in accel.layers:
                     new_accels[-1].layers.append(accel.layers.pop())
             else:

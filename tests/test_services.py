@@ -11,8 +11,8 @@ from chisel4ml import optimize
 from chisel4ml.utils import get_submodel
 from tests.brevitas_models import get_cnn_model
 from tests.brevitas_models import get_conv_layer_model
-from tests.brevitas_models import get_maxpool_layer_model
 from tests.brevitas_models import get_linear_layer_model
+from tests.brevitas_models import get_maxpool_layer_model
 from tests.conftest import TEST_MODELS_LIST
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -66,7 +66,7 @@ def test_trainable_simulation(request, c4ml_server, model_data_info):
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        server=c4ml_server
+        server=c4ml_server,
     )
     assert circuit is not None
     for data in data["X_test"]:
@@ -147,7 +147,7 @@ def test_trainable_gen_simulation(request, c4ml_server, model_data_info):
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        server=c4ml_server
+        server=c4ml_server,
     )
     assert circuit is not None
     for x, _ in data["test_set"]:
@@ -156,7 +156,13 @@ def test_trainable_gen_simulation(request, c4ml_server, model_data_info):
         assert np.array_equal(sw_res.flatten(), hw_res.flatten())
     circuit.delete_from_server()
 
-@pytest.mark.skip("Currently does not work, because of slight differences in scaling factor behaviour between Brevitas and QKeras QONNX flows.")
+
+@pytest.mark.skip(
+    (
+        "Currently does not work, because of slight differences in scaling"
+        " factor behaviour between Brevitas and QKeras QONNX flows."
+    )
+)
 @parametrize_with_cases("model_data", cases=TEST_MODELS_LIST, has_tag="non-trainable")
 def test_simulation(request, c4ml_server, model_data):
     (
@@ -174,7 +180,7 @@ def test_simulation(request, c4ml_server, model_data):
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        server=c4ml_server
+        server=c4ml_server,
     )
     if request.config.getoption("--num-layers") is not None:
         opt_model = get_submodel(opt_model, request.config.getoption("--num-layers"))
@@ -207,7 +213,7 @@ def test_brevitas(request, c4ml_server, model_ishape_data):
         gen_waveform=request.config.getoption("--gen-waveform"),
         waveform_type=request.config.getoption("--waveform-type"),
         gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        server=c4ml_server
+        server=c4ml_server,
     )
     assert circuit is not None
     for x in data:
@@ -339,7 +345,6 @@ def test_combinational_maxpool(
     circuit.delete_from_server()
 
 
-
 @pytest.mark.parametrize("in_features", (4, 8, 32))
 @pytest.mark.parametrize("out_features", (4, 8, 32))
 @pytest.mark.parametrize("bias", (True, False))
@@ -390,14 +395,7 @@ def test_combinational_fullyconnected_nonunitscale(
     request, c4ml_server, in_features, out_features, bias, iq, wq, bq, oq, weight_scale
 ):
     model, data = get_linear_layer_model(
-        in_features, 
-        out_features, 
-        bias, 
-        iq, 
-        wq, 
-        bq, 
-        oq,
-        weight_scale
+        in_features, out_features, bias, iq, wq, bq, oq, weight_scale
     )
     accelerators, lbir_model = generate.accelerators(
         model,
@@ -422,6 +420,7 @@ def test_combinational_fullyconnected_nonunitscale(
         hw_res = circuit(x)
         assert np.array_equal(sw_res.flatten(), hw_res.flatten())
     circuit.delete_from_server()
+
 
 @pytest.mark.parametrize("input_size", ((6, 6),))
 @pytest.mark.parametrize("in_ch", (1, 3))

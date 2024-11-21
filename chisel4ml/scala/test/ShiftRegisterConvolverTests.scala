@@ -153,21 +153,21 @@ class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester
       RandShiftRegConvTestParams.genShiftRegisterConvolverTestCase(p)
     it should f"Compute random test $testId correctly. Parameters inHeight:${p.inHeight}, " +
       f"inWidth:${p.inWidth}, kernelHeight:${p.kernelHeight}, kernelWidth:${p.kernelWidth}" in {
-      test(new ShiftRegisterConvolver[UInt](convLayer)) { dut =>
-        dut.io.nextElement.initSource()
-        dut.io.nextElement.setSourceClock(dut.clock)
-        dut.io.inputActivationsWindow.initSink()
-        dut.io.inputActivationsWindow.setSinkClock(dut.clock)
+        test(new ShiftRegisterConvolver[UInt](convLayer)) { dut =>
+          dut.io.nextElement.initSource()
+          dut.io.nextElement.setSourceClock(dut.clock)
+          dut.io.inputActivationsWindow.initSink()
+          dut.io.inputActivationsWindow.setSinkClock(dut.clock)
 
-        dut.reset.poke(true.B)
-        dut.clock.step()
-        dut.reset.poke(false.B)
-        fork {
-          dut.io.nextElement.enqueueSeq(convLayer.input.values.map(_.toInt.U))
-        }.fork {
-          dut.io.inputActivationsWindow.expectDequeueSeq(goldenVector)
-        }.join()
+          dut.reset.poke(true.B)
+          dut.clock.step()
+          dut.reset.poke(false.B)
+          fork {
+            dut.io.nextElement.enqueueSeq(convLayer.input.values.map(_.toInt.U))
+          }.fork {
+            dut.io.inputActivationsWindow.expectDequeueSeq(goldenVector)
+          }.join()
+        }
       }
-    }
   }
 }

@@ -51,6 +51,7 @@ class LearnedSFInt4WeightPerChannel(WeightQuantSolver):
     narrow_range = False  # quantization range is [-127,127] rather than [-128, 127]
     zero_point_impl = ZeroZeroPoint  # zero point is 0.
 
+
 class WeightPerChannelQuant(WeightQuantSolver):
     quant_type = QuantType.INT  # integer quantization
     bit_width_impl_type = BitWidthImplType.CONST  # constant bit width
@@ -64,6 +65,7 @@ class WeightPerChannelQuant(WeightQuantSolver):
     signed = True  # quantization range is signed
     narrow_range = False  # quantization range is [-127,127] rather than [-128, 127]
     zero_point_impl = ZeroZeroPoint  # zero point is 0.
+
 
 class IntBiasQuant(BiasQuantSolver):
     quant_type = QuantType.INT  # integer quantization

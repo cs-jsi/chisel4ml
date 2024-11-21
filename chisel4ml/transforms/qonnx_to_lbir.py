@@ -65,9 +65,7 @@ class WeightQuantToQTensor(Transformation):
                     )
                     weights = model.get_initializer(weight_init)
                     scale = model.get_initializer(scale_init)
-                    shift = _scale_to_shift(
-                        np.atleast_1d(scale)
-                    )
+                    shift = _scale_to_shift(np.atleast_1d(scale))
 
                     offset = (
                         np.atleast_1d(model.get_initializer(zp_init))
@@ -81,9 +79,7 @@ class WeightQuantToQTensor(Transformation):
                     weight_init, scale_init = node.input[0], node.input[1]
                     weights = model.get_initializer(weight_init)
                     scale = model.get_initializer(scale_init)
-                    shift = _scale_to_shift(
-                        np.atleast_1d(scale)
-                    )
+                    shift = _scale_to_shift(np.atleast_1d(scale))
                     offset = [0]
                     bitwidth = 1
                     quantization = LBIRDatatype.QuantizationType.BINARY
@@ -175,7 +171,7 @@ class QuantToQTensor(Transformation):
                     quantization = LBIRDatatype.QuantizationType.BINARY
                     signed = 1
                     rounding_mode = "NONE"
-                
+
                 qtshape = model.get_tensor_shape(node.input[0])
                 if len(qtshape) > 1:
                     # we remove the batch dimension if its present
@@ -188,7 +184,7 @@ class QuantToQTensor(Transformation):
                         shift=shift,
                         offset=offset,
                     ),
-                    shape=qtshape,  
+                    shape=qtshape,
                     rounding_mode=rounding_mode,
                 )
                 model.graph.node.remove(node)
@@ -426,12 +422,13 @@ class AddFFTrealOutputShape(Transformation):
                 )
         return model, False
 
+
 class RemoveFlattenNode(Transformation):
     def apply(self, model):
         log_err_str = "Flatten removal transformation failed because: "
         for node in model.graph.node:
             if node.op_type == "Flatten" or node.op_type == "Reshape":
-                if node.op_type  == "Reshape":
+                if node.op_type == "Reshape":
                     shape = model.get_initializer(node.input[1])
                     if not np.array_equal(shape, np.array([-1])):
                         # reshape with shape [-1] equals flatten
@@ -439,27 +436,28 @@ class RemoveFlattenNode(Transformation):
                 pre = model.find_direct_predecessors(node)
                 suc = model.find_direct_successors(node)
                 if len(pre) != 1:
-                   logging.warning(f"{log_err_str} More then one input - {len(pre)}")
-                   continue
+                    logging.warning(f"{log_err_str} More then one input - {len(pre)}")
+                    continue
                 if len(suc) != 1:
-                   logging.warning(f"{log_err_str} More then one output - {len(suc)}")
-                   continue
+                    logging.warning(f"{log_err_str} More then one output - {len(suc)}")
+                    continue
                 if pre[0].op_type != "QTensor":
                     logging.warning(f"{log_err_str} Input node not QTensor.")
                     continue
                 model.graph.node.remove(node)
                 suc[0].input.remove(node.output[0])
                 suc[0].input.extend([node.input[0]])
-                
+
         return model, False
 
+
 class CleanupQTensors(Transformation):
-    "Cleans up QTensors from the graph when the qonnx->lbir transformations are finnished."
+    "Cleans up QTensors from the graph when the qonnx->lbir transformations are done."
 
     def replace_input(self, n, orig, new):
         n.input.remove(orig)
         n.input.extend([new])
-    
+
     def replace_output(self, n, orig, new):
         n.output.remove(orig)
         n.output.extend([new])
@@ -470,19 +468,23 @@ class CleanupQTensors(Transformation):
             if node.op_type != "QTensor":
                 continue
             if len(node.input) != 1:
-               logging.warning(f"{log_err_str} More then one input - {len(node.input)}")
-               continue
+                logging.warning(
+                    f"{log_err_str} More then one input - {len(node.input)}"
+                )
+                continue
             if len(node.output) != 1:
-               logging.warning(f"{log_err_str} More then one output - {len(node.output)}")
-               continue
+                logging.warning(
+                    f"{log_err_str} More then one output - {len(node.output)}"
+                )
+                continue
             pre = model.find_direct_predecessors(node)
             suc = model.find_direct_successors(node)
             if pre is not None and len(pre) != 1:
-               logging.warning(f"{log_err_str} More then one predecessor - {len(pre)}")
-               continue
+                logging.warning(f"{log_err_str} More then one predecessor - {len(pre)}")
+                continue
             if suc is not None and len(suc) != 1:
-               logging.warning(f"{log_err_str} More then one successor - {len(suc)}")
-               continue
+                logging.warning(f"{log_err_str} More then one successor - {len(suc)}")
+                continue
             model.graph.node.remove(node)
             if pre is not None and suc is not None:
                 self.replace_output(pre[0], node.input[0], node.output[0])
@@ -490,5 +492,5 @@ class CleanupQTensors(Transformation):
                 self.replace_output(pre[0], node.input[0], node.output[0])
             elif suc is not None:
                 self.replace_input(suc[0], node.output[0], node.input[0])
-            return model, True 
+            return model, True
         return model, False

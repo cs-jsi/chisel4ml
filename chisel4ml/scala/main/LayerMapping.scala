@@ -149,9 +149,9 @@ object LayerMapping {
   def layerToShiftMap(layer: LayerWrap with IsActiveLayer): Seq[Int] = layer match {
     case l: DenseConfig => {
       l.kernel.dtype.shift.length match {
-        case 1 => Seq.fill(l.output.numParams)(0)
+        case 1                              => Seq.fill(l.output.numParams)(0)
         case x if (x == l.output.numParams) => 0 until l.output.numParams
-        case _ => throw new RuntimeException
+        case _                              => throw new RuntimeException
       }
     }
     case l: Conv2DConfig => {

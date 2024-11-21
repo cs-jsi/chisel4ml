@@ -1,29 +1,33 @@
 import brevitas.nn as qnn
+import numpy as np
 import torch
 from qonnx.core.datatype import DataType
 from qonnx.util.basic import gen_finn_dt_tensor
+from torch import nn
+from torch.nn import Module
+
 from tests.brevitas_quantizers import CommonWeightQuant
 from tests.brevitas_quantizers import IntActQuant
 from tests.brevitas_quantizers import IntBiasQuant
 from tests.brevitas_quantizers import WeightPerChannelQuant
-from torch import nn
-from torch.nn import Module
-import numpy as np
+
 
 def quant_to_dt(quant):
     return DataType[f"INT{quant}"] if quant > 1 else DataType["BIPOLAR"]
 
+
 def get_cnn_model(input_size, in_ch):
-    in_feat = int((input_size[0] - 2) * (input_size[1] -2) / 4) * in_ch
+    in_feat = int((input_size[0] - 2) * (input_size[1] - 2) / 4) * in_ch
+
     class Model(Module):
         def __init__(self):
             super(Model, self).__init__()
             self.ishape = (1, in_ch, input_size[0], input_size[1])
             self.quant_inp = qnn.QuantIdentity(
-                bit_width=3, 
-                scaling_impl_type='const', 
-                scaling_init=2**(3 - 1),
-                signed=True
+                bit_width=3,
+                scaling_impl_type="const",
+                scaling_init=2 ** (3 - 1),
+                signed=True,
             )
             self.conv = nn.Sequential(
                 qnn.QuantConv2d(
@@ -40,19 +44,15 @@ def get_cnn_model(input_size, in_ch):
                     bias_scaling_init=2 ** (4 - 1) - 1,
                 ),
                 qnn.QuantReLU(
-                     bit_width=3, 
-                     scaling_impl_type='const', 
-                     scaling_init=(2**3) - 1
-                )
+                    bit_width=3, scaling_impl_type="const", scaling_init=(2**3) - 1
+                ),
             )
-            self.mp = nn.MaxPool2d(
-                kernel_size=2
-            )
+            self.mp = nn.MaxPool2d(kernel_size=2)
             self.quant = qnn.QuantIdentity(
-                bit_width=3, 
-                scaling_impl_type='const', 
+                bit_width=3,
+                scaling_impl_type="const",
                 scaling_init=2**3 - 1,
-                signed=False  # ReLU
+                signed=False,  # ReLU
             )
             self.dense = qnn.QuantLinear(
                 in_features=in_feat,
@@ -66,9 +66,7 @@ def get_cnn_model(input_size, in_ch):
                 bias_scaling_init=2 ** (4 - 1) - 1,
             )
             self.relu = qnn.QuantReLU(
-                bit_width=3, 
-                scaling_impl_type='const', 
-                scaling_init=(2**3) - 1
+                bit_width=3, scaling_impl_type="const", scaling_init=(2**3) - 1
             )
 
         def forward(self, x):
@@ -84,7 +82,7 @@ def get_cnn_model(input_size, in_ch):
     model = Model()
 
     # we need to initialize the mode with approprirate weights
-    wshape_conv = (in_ch, in_ch , 3, 3)
+    wshape_conv = (in_ch, in_ch, 3, 3)
     weights_conv = gen_finn_dt_tensor(quant_to_dt(3), wshape_conv)
     bias_conv = gen_finn_dt_tensor(quant_to_dt(4), (in_ch,))
     model.conv.weight = torch.nn.Parameter(torch.from_numpy(weights_conv).float())
@@ -97,7 +95,6 @@ def get_cnn_model(input_size, in_ch):
     model.dense.bias = torch.nn.Parameter(torch.from_numpy(bias_dense).float())
     model.eval()
 
-    
     test_data_shape = (8,) + model.ishape[1:]
     data = gen_finn_dt_tensor(quant_to_dt(3), test_data_shape)
     return model, data
@@ -154,6 +151,7 @@ def get_conv_layer_model(
     input_data = gen_finn_dt_tensor(iq_type, ishape)
     return model, input_data
 
+
 def get_maxpool_layer_model(channels, input_size, kernel_size, padding, iq):
     class MaxPoolLayerModel(Module):
         def __init__(self, input_size):
@@ -186,7 +184,10 @@ def get_maxpool_layer_model(channels, input_size, kernel_size, padding, iq):
     input_data = gen_finn_dt_tensor(iq_type, ishape)
     return model, input_data
 
-def get_linear_layer_model(in_features, out_features, bias, iq, wq, bq, oq, weight_scale=1):
+
+def get_linear_layer_model(
+    in_features, out_features, bias, iq, wq, bq, oq, weight_scale=1
+):
     class LinearLayerModel(Module):
         def __init__(self):
             wscale = 1 if wq == 1 else 2 ** (wq - 1) - 1

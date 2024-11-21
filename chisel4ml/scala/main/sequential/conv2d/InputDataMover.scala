@@ -27,7 +27,8 @@ import org.chipsalliance.cde.config.Parameters
   Moves the entire tensor after obtainint the signal io.start.
   (this includes several channels)
  */
-class InputDataMover[I <: Bits](implicit val p: Parameters)
+class InputDataMover[I <: Bits](
+  implicit val p: Parameters)
     extends Module
     with HasSequentialConvParameters
     with HasAXIStreamParameters {

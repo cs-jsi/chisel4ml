@@ -25,7 +25,11 @@ import org.chipsalliance.cde.config.Parameters
 import services.Accelerator
 
 object ProcessingElementCombToSeq {
-  def apply(accel: Accelerator)(implicit p: Parameters) = {
+  def apply(
+    accel: Accelerator
+  )(
+    implicit p: Parameters
+  ) = {
     val idt = accel.layers.head.get.input.dtype
     val odt = accel.layers.last.get.output.dtype
     (idt.quantization, idt.signed, odt.quantization, odt.signed) match {
@@ -52,8 +56,8 @@ trait HasPipelineRegisters extends HasLayerWrapSeq {
   val numPipes = _cfg.length
 }
 
-
-class ProcessingElementCombToSeq[I <: Bits, O <: Bits](implicit val p: Parameters)
+class ProcessingElementCombToSeq[I <: Bits, O <: Bits](
+  implicit val p: Parameters)
     extends Module
     with HasAXIStream
     with HasAXIStreamParameters
@@ -103,7 +107,7 @@ class ProcessingElementCombToSeq[I <: Bits, O <: Bits](implicit val p: Parameter
     VecInit(inputBuffer.flatten.slice(0, CombModule.in.length)),
     numPipes
   )
-  
+
   val cond = ShiftRegister(
     inStream.last,
     numPipes + 1
@@ -118,13 +122,13 @@ class ProcessingElementCombToSeq[I <: Bits, O <: Bits](implicit val p: Parameter
   outStream.valid := outputBufferState === BufferState.sFULL
   outStream.bits := outputBuffer(outputCntValue)
   outStream.last := outputCntWrap
-  
+
   // FINITE STATE MACHINE
   when(inStream.last) {
-    inputBufferState :=  BufferState.sFULL
+    inputBufferState := BufferState.sFULL
   }.elsewhen(outStream.last) {
     // Worst case FSM here, what if downstream PE can't block?
-    inputBufferState :=  BufferState.sNOT_FULL
+    inputBufferState := BufferState.sNOT_FULL
   }
   when(cond) {
     outputBufferState := BufferState.sFULL

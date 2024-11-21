@@ -4,8 +4,6 @@ import onnx
 from qonnx.core.modelwrapper import ModelWrapper
 
 from chisel4ml.lbir.lbir_pb2 import MaxPool2DConfig
-from chisel4ml.lbir.lbir_pb2 import Conv2DConfig
-from chisel4ml.lbir.lbir_pb2 import DenseConfig
 from chisel4ml.lbir.qtensor_pb2 import QTensor
 from chisel4ml.transforms.qonnx_utils import _maxpool2dconfig_to_kwargs
 

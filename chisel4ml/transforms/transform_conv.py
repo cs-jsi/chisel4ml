@@ -6,7 +6,6 @@ from qonnx.core.modelwrapper import ModelWrapper
 
 import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.lbir_pb2 import Conv2DConfig
-from chisel4ml.lbir.lbir_pb2 import MaxPool2DConfig
 from chisel4ml.lbir.qtensor_pb2 import QTensor
 from chisel4ml.transforms.qonnx_utils import _conv2dconfig_to_kwargs
 from chisel4ml.transforms.transform_matmul import node_has_attr

@@ -59,8 +59,8 @@ class ShiftRegisterConvolver[I <: Bits](l: Conv2DConfig) extends Module {
   dontTouch(outputCounter)
   dontTouch(elementCounter)
 
-  io.inputActivationsWindow.bits.zipWithIndex.foreach {
-    case (elem, ind) => elem := regs(transformIndex(ind))
+  io.inputActivationsWindow.bits.zipWithIndex.foreach { case (elem, ind) =>
+    elem := regs(transformIndex(ind))
   }
 
   io.channelDone := outputCounterWrap
