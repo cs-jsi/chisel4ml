@@ -29,6 +29,8 @@ jobs:
     - name: Cleanup space
       run: |
         sudo apt-get clean
+        sudo rm -rf "/usr/local/share/boost" # https://github.com/actions/runner-images/issues/709
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
     - name: Install python dependencies
       run: |
