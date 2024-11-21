@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-22.04]
         python-version: ['3.8', '3.9', '3.10']
 
     steps:
@@ -25,6 +25,10 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip' # caching pip dependencies
+
+    - name: Cleanup space
+      run: |
+        sudo apt-get clean
 
     - name: Install python dependencies
       run: |
