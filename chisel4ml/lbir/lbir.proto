@@ -37,7 +37,6 @@ option (scalapb.options) = {
       "  def kernel: QTensor",
       "  def thresh: QTensor",
       "  def activation: Activation",
-      "  def roundingMode: RoundingMode",
       "}"
     ];
   };
@@ -45,6 +44,7 @@ option (scalapb.options) = {
 message Model {
     string name = 1;
     repeated LayerWrap layers = 2;
+    bool input_channel_first = 3;
 }
 
 
@@ -52,20 +52,6 @@ enum Activation {
     BINARY_SIGN = 0;
     RELU = 1;
     NO_ACTIVATION = 2;
-}
-
-enum RoundingMode {
-    ROUND_NONE = 0;
-    ROUND_UP = 1;
-    ROUND_DOWN = 2;
-    ROUND_TOWARDS_ZERO = 3;
-    ROUND_TOWARD_INFINITY = 4;
-    ROUND_HALF_TO_EVEN = 5;
-    ROUND_HALF_TO_ODD = 6;
-    ROUND_HALF_UP = 7;
-    ROUND_HALF_DOWN = 8;
-    ROUND_HALF_TOWARDS_ZERO = 9;
-    ROUND_HALF_TOWARDS_INFINITY = 10;
 }
 
 message LayerWrap {
@@ -86,7 +72,6 @@ message DenseConfig {
     QTensor input = 3;
     QTensor output = 4;
     Activation activation = 5;
-    RoundingMode rounding_mode = 6;
 }
 
 message Conv2DConfig {
@@ -96,13 +81,13 @@ message Conv2DConfig {
     QTensor input = 3;
     QTensor output = 4;
     Activation activation = 5;
-    RoundingMode rounding_mode = 6;
     bool depthwise = 7;
 }
 
 message MaxPool2DConfig {
     QTensor input = 1;
     QTensor output = 2;
+    repeated uint32 kernel_shape = 3;
 }
 
 

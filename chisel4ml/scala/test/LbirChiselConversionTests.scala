@@ -42,9 +42,13 @@ class LbirChiselConversionTests extends AnyFunSuite {
 
     test(s"Random test QTensor -> UInt -> QTensor: $idx") {
       assert(
-        qtensor.toLBIRTransactions(busWidth).map(_.litValue).toQTensor(stencil, busWidth).values == qtensor.values,
-        s"""QTensor was first converted to ${qtensor.toLBIRTransactions(busWidth)}, and then back to a qtensor:
-           | ${qtensor.toLBIRTransactions(busWidth).map(_.litValue).toQTensor(stencil, busWidth).values}.
+        qtensor
+          .toLBIRTransactions[Bits](busWidth)
+          .map(_.litValue)
+          .toQTensor(stencil, busWidth)
+          .values == qtensor.values,
+        s"""QTensor was first converted to ${qtensor.toLBIRTransactions[Bits](busWidth)}, and then back to a qtensor:
+           | ${qtensor.toLBIRTransactions[Bits](busWidth).map(_.litValue).toQTensor(stencil, busWidth).values}.
            | The QTensor was signed:$signed, bitwidth: $bitwidth. The simulated transaction buswidth was
            | $busWidth.""".stripMargin.replaceAll("\n", "")
       )

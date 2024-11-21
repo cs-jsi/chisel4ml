@@ -20,6 +20,7 @@ from chisel4ml import transforms
 from chisel4ml.chisel4ml_server import Chisel4mlServer
 from chisel4ml.chisel4ml_server import connect_to_server
 from chisel4ml.lbir.qtensor_pb2 import QTensor
+from chisel4ml.transforms.qonnx_utils import qtensor_to_quantizer
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +34,6 @@ class Circuit:
     def __init__(
         self,
         circuit_id: int,
-        input_quantizer,
         input_qtensor: QTensor,
         lbir_model,
         server: Chisel4mlServer = None,
@@ -43,7 +43,7 @@ class Circuit:
             f" {circuit_id}."
         )
         self.circuit_id = circuit_id
-        self.input_quantizer = input_quantizer
+        self.input_quantizer = qtensor_to_quantizer(input_qtensor)
         self.input_qtensor = input_qtensor
         if server is None:
             self._server = connect_to_server()
@@ -80,9 +80,7 @@ class Circuit:
         log.info(delete_circuit_return.msg)
         return delete_circuit_return.success
 
-    def package(self, directory=None):
-        if directory is None:
-            raise ValueError("Directory parameter missing.")
+    def package(self, directory):
         temp_dir = self._server.temp_dir
         temp_circuit_dir = os.path.join(temp_dir, f"circuit{self.circuit_id}")
 

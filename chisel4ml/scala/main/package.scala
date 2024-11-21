@@ -16,35 +16,26 @@
 package chisel4ml
 
 import chisel3._
-import lbir._
-import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
 import chisel3.experimental.VecLiterals._
-import org.slf4j.LoggerFactory
 import chisel4ml.util._
 import interfaces.amba.axis._
+import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
+import lbir._
+import org.slf4j.LoggerFactory
 
 import scala.language.implicitConversions
 
 package object implicits {
   val logger = LoggerFactory.getLogger("chisel4ml")
 
-  implicit def axiStreamToLBIRDriver(x: AXIStreamIO[Vec[UInt]]): AXIStreamLBIRDriver = {
+  implicit def axiStreamToLBIRDriver[T <: Data](x: AXIStreamIO[T]): AXIStreamLBIRDriver[T] = {
     new AXIStreamLBIRDriver(new AXIStreamDriver(x))
   }
 
-  implicit class DenseConfigExtensions(layer: DenseConfig) {
-    def getThresh[T <: Bits]: Seq[T] =
-      (layer.input.dtype.quantization, layer.kernel.dtype.quantization, layer.activation) match {
-        case (BINARY, BINARY, Activation.BINARY_SIGN) =>
-          layer.thresh.values.map(x => (layer.input.shape(0) + x) / 2).map(_.ceil).map(_.toInt.U).map(_.asInstanceOf[T])
-        case _ => layer.thresh.values.map(_.toInt.S(layer.thresh.dtype.bitwidth.W)).map(_.asInstanceOf[T])
-      }
-    def getWeights[T <: Bits]: Seq[Seq[T]] = layer.kernel.dtype.quantization match {
-      case UNIFORM =>
-        layer.kernel.values.map(_.toInt.S.asInstanceOf[T]).grouped(layer.kernel.shape(0)).toSeq.transpose
-      case BINARY =>
-        layer.kernel.values.map(_ > 0).map(_.B.asInstanceOf[T]).grouped(layer.kernel.shape(0)).toSeq.transpose
-      case _ => throw new RuntimeException
+  implicit class LayerWrapExtensions(layerWrap: LayerWrap with IsActiveLayer) {
+    def numActiveParams: Int = layerWrap match {
+      case l: DenseConfig  => l.input.shape(0)
+      case l: Conv2DConfig => l.kernel.numActiveParams(l.depthwise)
     }
   }
 
@@ -60,34 +51,40 @@ package object implicits {
      *  xx_00010_00011_00100_00011_00010_00001
      *  xx_xxxxx_xxxxx_xxxxx_xxxxx_xxxxx_00001
      */
-    def getType[T <: Bits]: T = (qt.dtype.quantization, qt.dtype.signed) match {
+    def getType[T <: Data]: T = (qt.dtype.quantization, qt.dtype.signed) match {
       case (BINARY, _)      => Bool().asInstanceOf[T]
       case (UNIFORM, true)  => SInt(qt.dtype.bitwidth.W).asInstanceOf[T]
       case (UNIFORM, false) => UInt(qt.dtype.bitwidth.W).asInstanceOf[T]
       case _                => throw new Exception("Datatype not supported.")
     }
 
-    def toLBIRTransactions(busWidth: Int): Seq[Vec[UInt]] = {
+    def zero[T <: Data]: T = (qt.dtype.quantization, qt.dtype.signed) match {
+      case (BINARY, _)      => false.B.asInstanceOf[T]
+      case (UNIFORM, true)  => 0.S(qt.dtype.bitwidth.W).asInstanceOf[T]
+      case (UNIFORM, false) => 0.U(qt.dtype.bitwidth.W).asInstanceOf[T]
+      case _                => throw new Exception("Datatype not supported.")
+    }
+
+    def toLBIRTransactions[T <: Data](busWidth: Int): Seq[Vec[T]] = {
       require(busWidth % qt.dtype.bitwidth == 0)
-      val binaryStr = qt.toBinaryString
       val paramWidth = qt.dtype.bitwidth
       val numBeats = busWidth / paramWidth
-      val beats: Seq[UInt] = binaryStr
-        .drop(1) // drop the "b" symbol
-        .grouped(paramWidth)
-        .toSeq
-        .reverse
-        .map("b" + _)
-        .map(_.U(qt.dtype.bitwidth.W))
-      val diff = if (beats.length % numBeats == 0) 0 else numBeats - (beats.length % numBeats)
-      val modBeats = beats ++ Seq.fill(diff)(0.U(qt.dtype.bitwidth.W))
+      val beats: Seq[Int] = qt.values.map(_.toInt)
+      val typeBeats = (qt.dtype.quantization, qt.dtype.signed) match {
+        case (UNIFORM, true)  => beats.map(_.S(qt.dtype.bitwidth.W))
+        case (UNIFORM, false) => beats.map(_.U(qt.dtype.bitwidth.W))
+        case (BINARY, _)      => beats.map(_ > 0).map(_.B)
+        case _                => throw new NotImplementedError
+      }
+      val diff = if (typeBeats.length % numBeats == 0) 0 else numBeats - (typeBeats.length % numBeats)
+      val modBeats = typeBeats ++ Seq.fill(diff)(qt.zero[T])
       val transactions = modBeats
+        .map(
+          _.asInstanceOf[T]
+        )
         .grouped(numBeats)
         .map(
-          _.zipWithIndex.map((x: (UInt, Int)) => x._2 -> x._1)
-        )
-        .map(
-          Vec(numBeats, UInt(qt.dtype.bitwidth.W)).Lit(_: _*) // This syntax just unwraps the Seq to a vararg argument
+          Vec.Lit(_: _*) // _* syntax just unwraps the Seq to a vararg argument
         )
         .toSeq
       transactions
@@ -168,14 +165,15 @@ package object implicits {
       case 4 => qt.shape(0)
       case _ => throw new RuntimeException("Shape to small.")
     }
-    def numParams:       Int = qt.shape.reduce(_ * _)
-    def numKernelParams: Int = numParams / numKernels
+    def numParams:                           Int = qt.shape.reduce(_ * _)
+    def numKernelParams:                     Int = numParams / numKernels
     def numActiveParams(depthwise: Boolean): Int = if (depthwise) width * height else numKernelParams
     def paramsPerWord(wordSize: Int = 32): Int = {
       require(wordSize >= qt.dtype.bitwidth)
       wordSize / qt.dtype.bitwidth
     }
-    def totalBitwidth: Int = qt.dtype.bitwidth * numParams
+    def totalBitwidth:                Int = qt.dtype.bitwidth * numParams
+    def transactionWidth(beats: Int): Int = beats * qt.dtype.bitwidth
     def memDepth(memWordSize: Int): Int = {
       qt.shape.length match {
         // Each kernel goes to a new word!
@@ -184,13 +182,8 @@ package object implicits {
       }
     }
     def memDepthOneKernel(memWordSize: Int): Int = memDepth(memWordSize) / numKernels
-    def numTransactions(busWidth: Int): Int = {
-      require(
-        busWidth >= qt.dtype.bitwidth,
-        s"Buswidth must be at least the size of input data bitwidth. $busWidth !>= ${qt.dtype.bitwidth}"
-      )
-      val paramsPerTrans = paramsPerWord(busWidth)
-      math.ceil(numParams.toFloat / paramsPerTrans.toFloat).toInt
+    def numTransactions(beats: Int): Int = {
+      math.ceil(numParams.toFloat / beats.toFloat).toInt
     }
   }
 

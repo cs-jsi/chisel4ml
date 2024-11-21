@@ -34,7 +34,9 @@ class Chisel4mlServer:
         self._temp_dir = temp_dir
         self._channel = grpc.insecure_channel(self._server_addr)
         self._stub = services_grpc.Chisel4mlServiceStub(self._channel)
-        scala_version = self._stub.GetVersion(services.GetVersionParams()).version
+        scala_version = self._stub.GetVersion(
+            services.GetVersionParams(), wait_for_ready=True
+        ).version
 
         # this ignores the changes in a working repo (see _version.py)
         if (

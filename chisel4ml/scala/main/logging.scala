@@ -14,53 +14,42 @@
  * limitations under the License.
  */
 package chisel4ml.logging
-
-import org.slf4j.LoggerFactory
-import org.chipsalliance.cde.config.{Field, Parameters}
-import org.reflections.Reflections
-import org.reflections.scanners.Scanners.SubTypes
 import chisel4ml._
-import chisel4ml.conv2d.Conv2DConfigField
-import chisel4ml.MaxPool2DConfigField
 import lbir.LayerWrap
+import org.chipsalliance.cde.config.{Field, Parameters}
+import org.slf4j.LoggerFactory
 
 trait HasLogger {
   val logger = LoggerFactory.getLogger(this.getClass().toString())
 }
 
 trait HasParameterLogging extends HasLogger {
-  private def fields: Seq[Field[_]] = {
-    val configFields = Seq(
-      Conv2DConfigField,
-      MaxPool2DConfigField,
-      DenseConfigField,
-      FFTConfigField,
-      LMFEConfigField,
-      LBIRNumBeatsIn,
-      LBIRNumBeatsOut
-    )
-    val reflections = new Reflections("chisel4ml");
-    val reflectedFields = reflections.get(SubTypes.of(classOf[Field[_]]).asClass())
-    require(reflectedFields.size() == configFields.length)
-    configFields
-  }
+  // Macro to find this?
+  private def fields: Seq[Field[_]] = Seq(
+    LayerWrapSeqField,
+    NumBeatsInField,
+    NumBeatsOutField
+  )
 
-  def logParameters(implicit p: Parameters): Unit = {
+  def logParameters(
+    implicit p: Parameters
+  ): Unit = {
     var msg = s"Generated new ${this.getClass()} module.\n"
     for (field <- fields) {
       try {
         val pValue = p(field)
         val pName = field.getClass().getSimpleName()
         val str = pValue match {
-          case l: LayerWrap => s""" Input shape: ${l.input.shape},
-                                  | Input quantization: ${l.input.dtype.quantization},
-                                  | Input sign: ${l.input.dtype.signed},
-                                  | Input shift: ${l.input.dtype.shift},
-                                  | Output shape: ${l.output.shape},
-                                  | Output quantization: ${l.output.dtype.quantization},
-                                  | Output sign: ${l.output.dtype.signed},
-                                  | Output shift: ${l.output.dtype.shift}
-                                  | Other parameters are: """.stripMargin
+          case l: LayerWrap =>
+            s""" Input shape: ${l.input.shape},
+               | Input quantization: ${l.input.dtype.quantization},
+               | Input sign: ${l.input.dtype.signed},
+               | Input shift: ${l.input.dtype.shift},
+               | Output shape: ${l.output.shape},
+               | Output quantization: ${l.output.dtype.quantization},
+               | Output sign: ${l.output.dtype.signed},
+               | Output shift: ${l.output.dtype.shift}
+               | Other parameters are: """.stripMargin
           case _ => s"$pName->$pValue, "
         }
         msg = msg + str

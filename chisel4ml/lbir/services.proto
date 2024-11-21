@@ -29,16 +29,19 @@ service Chisel4mlService {
     rpc DeleteCircuit (DeleteCircuitParams) returns (DeleteCircuitReturn) {}
 }
 
+message Accelerator {
+    string name = 1;
+    repeated lbir.LayerWrap layers = 2;
+    repeated string options = 3;
+    repeated string values = 4;
+}
+
 message GenerateCircuitParams {
-    message Options {
-        bool is_simple = 1;
-        bool pipeline_circuit = 2;
-    }
-    lbir.Model model = 1;
-    Options options = 2;
-    bool use_verilator = 3;
+    repeated Accelerator accelerators = 1;
+    bool use_verilator = 2;
     bool gen_waveform = 4;
     uint32 generation_timeout_sec = 5;
+    string waveform_type = 6;
 }
 
 message GenerateCircuitReturn {

@@ -19,12 +19,14 @@ classifiers = [
 keywords = ["Chisel", "FPGA", "quantized neural networks"]
 dynamic=["version"]
 dependencies = [
-    "QKeras==0.9.0",
+    "qonnx[qkeras] @ git+https://github.com/jurevreca12/qonnx",  # TODO
+    "brevitas",
+    "ortools",
     "grpcio>1.0.0",
-    "protobuf<=3.20.0",
     "tf2-keras-surgeon",
-    "pyparsing",
-    "librosa"
+    "librosa",
+    "brevitas",
+    "onnxoptimizer"
 ]
 
 [tool.setuptools.dynamic]
@@ -32,7 +34,7 @@ version = {attr = "chisel4ml.__version__"}
 
 [tool.setuptools_scm]
 version_file = "chisel4ml/_version.py"
-
+git_describe_command = "git describe --tags"
 
 [project.optional-dependencies]
 dev = [
@@ -43,11 +45,12 @@ dev = [
     "Flake8-pyproject",
     "pytest<8",
     "pytest-cases",
+    "pytest-xdist",
     "grpcio-tools",
     "build",
     "pre_commit",
     "tensorflow-datasets",
-    "pydub",
+    "pydub"
 ]
 
 [project.urls]

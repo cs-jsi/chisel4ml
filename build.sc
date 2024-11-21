@@ -10,6 +10,9 @@ import mill.bsp._
 // protobuf stuff
 import $ivy.`com.lihaoyi::mill-contrib-scalapblib:`
 import contrib.scalapblib._
+// scalafix
+import $ivy.`com.goyeau::mill-scalafix::0.4.2`
+import com.goyeau.mill.scalafix.ScalafixModule
 
 trait ScalaVersionModule extends SbtModule {
     override def scalaVersion = "2.13.10"
@@ -32,7 +35,7 @@ trait BaseChiselModule extends ScalaVersionModule {
     )
 }
 
-object chisel4ml extends BaseChiselModule with ScalaPBModule { m =>
+object chisel4ml extends BaseChiselModule with ScalaPBModule with ScalafixModule { m =>
     override def millSourcePath = os.pwd
     def sources = T.sources(Seq(PathRef(millSourcePath / "chisel4ml" / "scala")))
 
@@ -83,8 +86,8 @@ object chisel4ml extends BaseChiselModule with ScalaPBModule { m =>
     }
 }
 
-object interfaces extends BaseChiselModule
-object memories extends BaseChiselModule {
+object interfaces extends BaseChiselModule with ScalafixModule
+object memories extends BaseChiselModule  with ScalafixModule {
     def ivyDeps = super.ivyDeps() ++ Agg(
         ivy"org.slf4j:slf4j-api:1.7.5",
         ivy"org.slf4j:slf4j-simple:1.7.5",
@@ -112,7 +115,7 @@ object `sdf-fft` extends  BaseChiselModule {
     )
 }
 
-object `mel-engine` extends BaseChiselModule {
+object `mel-engine` extends BaseChiselModule with ScalafixModule {
     def sources = T.sources(Seq(PathRef(millSourcePath / "src" / "main" / "scala")))
     def moduleDeps = Seq(memories,
                          interfaces,

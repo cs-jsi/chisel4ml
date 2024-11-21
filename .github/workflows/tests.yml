@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-22.04]
         python-version: ['3.8', '3.9', '3.10']
 
     steps:
@@ -25,6 +25,12 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip' # caching pip dependencies
+
+    - name: Cleanup space
+      run: |
+        sudo apt-get clean
+        sudo rm -rf "/usr/local/share/boost" # https://github.com/actions/runner-images/issues/709
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
     - name: Install python dependencies
       run: |
@@ -58,8 +64,11 @@ jobs:
     - name: Spin up a chisel4ml server
       run: java -jar ./out/chisel4ml/assembly.dest/out.jar &> chisel4ml_sever.log &
 
-    - name: Test with tox
-      run: python -m tox -vv
+    - name: Lint
+      run: flake8 -v --max-line-length=88 chisel4ml tests
+
+    - name: Run tests
+      run: python -m pytest -x --use-verilator -n 4
 
     - name: Cat logs on fail
       if: ${{ failure() }}

@@ -18,15 +18,15 @@ package chisel4ml
 import chisel3._
 import chisel4ml.Circuit
 import io.grpc.{Server, ServerBuilder}
-import java.util.concurrent.TimeUnit
+import lbir.QTensor
 import org.slf4j.LoggerFactory
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.matching.Regex
-import scala.io.Source
+import scopt.OParser
 import services.GenerateCircuitReturn.ErrorMsg
 import services._
-import lbir.QTensor
-import scopt.OParser
+
+import java.util.concurrent.TimeUnit
+import scala.concurrent.{ExecutionContext, Future}
+import scala.io.Source
 
 case class Config(
   tempDir: os.Path = os.Path("/tmp/.chisel4ml/"),
@@ -34,8 +34,8 @@ case class Config(
 
 /** Contains the main function.
   *
-  *  Contains the main function that is the main entry point to the the software, and it starts a chisel4ml
-  *  server instance.
+  * Contains the main function that is the main entry point to the the software, and it starts a chisel4ml server
+  * instance.
   */
 object Chisel4mlServer {
   // we convert git describe output to pep440
@@ -68,7 +68,7 @@ object Chisel4mlServer {
   }
 
   def main(args: Array[String]): Unit = {
-    val config = OParser.parse(cliParser, args, Config()) match {
+    OParser.parse(cliParser, args, Config()) match {
       case Some(config) => {
         if (!os.exists(config.tempDir)) {
           os.makeDir(config.tempDir, "rwxrwxrw-")
@@ -87,13 +87,13 @@ object Chisel4mlServer {
 
 /** The server implementation based on gRPC.
   *
-  *  Implementation of the gRPC based Chisel4ml server.  It implements the services as defined by gRPC in the
-  *  service.proto file. It also has conveinance functions for starting and stoping the server.
+  * Implementation of the gRPC based Chisel4ml server. It implements the services as defined by gRPC in the
+  * service.proto file. It also has conveinance functions for starting and stoping the server.
   */
 class Chisel4mlServer(executionContext: ExecutionContext, tempDir: os.Path, port: Int) { self =>
   private[this] var server: Server = null
   private var circuits =
-    Map[Int, Circuit[Module with HasLBIRStream[Vec[UInt]]]]() // Holds the circuit and simulation object
+    Map[Int, Circuit[Module with HasAXIStream]]() // Holds the circuit and simulation object
   private var nextId: Int = 0
   val logger = LoggerFactory.getLogger(classOf[Chisel4mlServer])
 
@@ -121,12 +121,13 @@ class Chisel4mlServer(executionContext: ExecutionContext, tempDir: os.Path, port
 
   private object Chisel4mlServiceImpl extends Chisel4mlServiceGrpc.Chisel4mlService {
     override def generateCircuit(params: GenerateCircuitParams): Future[GenerateCircuitReturn] = {
-      val circuit = new Circuit[Module with HasLBIRStream[Vec[UInt]]](
-        dutGen = new ProcessingPipeline(params.model.get),
-        outputStencil = params.model.get.layers.last.get.output,
+      val circuit = new Circuit[Module with HasAXIStream](
+        dutGen = new ProcessingPipeline(params.accelerators),
+        outputStencil = params.accelerators.last.layers.last.get.output,
         directory = tempDir / s"circuit$nextId",
         useVerilator = params.useVerilator,
-        genWaveform = params.genWaveform
+        genWaveform = params.genWaveform,
+        waveformType = params.waveformType
       )
       circuits = circuits + (nextId -> circuit)
       logger.info(s"""Started generating hardware for circuit id:$nextId in temporary directory $tempDir

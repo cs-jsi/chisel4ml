@@ -24,6 +24,7 @@
 
  message QTensor {
    option (scalapb.message).no_box = true;  // do not wrap in Option
+
    /* Describes datatype of the tensor. I.e. signedness, scalling, bitwidth, etc.    */
    Datatype dtype = 1;
 
@@ -44,4 +45,17 @@
       implementation values can be different (1,0).
    */
    repeated float values = 3;
+
+   // Rounding mode string with names and functionality equivalent to the QONNX rounding modes.
+   string rounding_mode = 4;
+
+   /* Specifies the layout of the QTensor.
+      Allowed values are:
+      CHW, HWC, (for Conv/MaxPool inputs/outputs)
+      KCHW, KHWC (for Conv kernels)
+      KC (For Conv thresh)
+      N (For dense inputs/thresholds)
+      MN (For dense kernels)
+   */
+   string layout = 5;
  }

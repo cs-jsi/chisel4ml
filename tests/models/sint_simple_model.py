@@ -6,9 +6,9 @@ from pytest_cases import case
 
 @case(tags="non-trainable")
 def case_sint_simple_model():
-    w1 = np.array([[1, 2, 3, 4], [-4, -3, -2, -1], [2, -1, 1, 1]])
+    w1 = np.array([[1, 2, 3, 3], [-4, -3, -2, -1], [2, -1, 1, 1]])
     b1 = np.array([1, 2, 0, 1])
-    w2 = np.array([-1, 4, -3, -1]).reshape(4, 1)
+    w2 = np.array([-1, 3, -3, -1]).reshape(4, 1)
     b2 = np.array([2])
 
     x = x_in = tf.keras.layers.Input(shape=3)
@@ -18,14 +18,14 @@ def case_sint_simple_model():
     x = qkeras.QDense(
         4,
         kernel_quantizer=qkeras.quantized_bits(
-            bits=4, integer=3, keep_negative=True, alpha=np.array([0.5, 0.25, 1, 0.25])
+            bits=4, integer=3, keep_negative=True, alpha=[0.5, 0.5, 1, 0.5]
         ),
     )(x)
     x = qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3))(x)
     x = qkeras.QDense(
         1,
         kernel_quantizer=qkeras.quantized_bits(
-            bits=4, integer=3, keep_negative=True, alpha=np.array([0.125])
+            bits=4, integer=3, keep_negative=True, alpha=[0.5]
         ),
     )(x)
     x = qkeras.QActivation(qkeras.quantized_relu(bits=3, integer=3))(x)

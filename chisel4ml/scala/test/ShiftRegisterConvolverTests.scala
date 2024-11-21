@@ -15,14 +15,14 @@
  */
 package chisel4ml.tests
 
-import chisel3._
-import chisel3.experimental.VecLiterals._
-import chiseltest._
-import chisel4ml.conv2d.ShiftRegisterConvolver
-import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.LoggerFactory
 import _root_.lbir.Datatype.QuantizationType.UNIFORM
 import breeze.linalg.DenseMatrix
+import chisel3._
+import chisel3.experimental.VecLiterals._
+import chisel4ml.sequential.ShiftRegisterConvolver
+import chiseltest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.slf4j.LoggerFactory
 
 case class RandShiftRegConvTestParams(
   bitwidth:     Int,
@@ -153,21 +153,21 @@ class ShiftRegisterConvolverTests extends AnyFlatSpec with ChiselScalatestTester
       RandShiftRegConvTestParams.genShiftRegisterConvolverTestCase(p)
     it should f"Compute random test $testId correctly. Parameters inHeight:${p.inHeight}, " +
       f"inWidth:${p.inWidth}, kernelHeight:${p.kernelHeight}, kernelWidth:${p.kernelWidth}" in {
-      test(new ShiftRegisterConvolver[UInt](convLayer)) { dut =>
-        dut.io.nextElement.initSource()
-        dut.io.nextElement.setSourceClock(dut.clock)
-        dut.io.inputActivationsWindow.initSink()
-        dut.io.inputActivationsWindow.setSinkClock(dut.clock)
+        test(new ShiftRegisterConvolver[UInt](convLayer)) { dut =>
+          dut.io.nextElement.initSource()
+          dut.io.nextElement.setSourceClock(dut.clock)
+          dut.io.inputActivationsWindow.initSink()
+          dut.io.inputActivationsWindow.setSinkClock(dut.clock)
 
-        dut.reset.poke(true.B)
-        dut.clock.step()
-        dut.reset.poke(false.B)
-        fork {
-          dut.io.nextElement.enqueueSeq(convLayer.input.values.map(_.toInt.U))
-        }.fork {
-          dut.io.inputActivationsWindow.expectDequeueSeq(goldenVector)
-        }.join()
+          dut.reset.poke(true.B)
+          dut.clock.step()
+          dut.reset.poke(false.B)
+          fork {
+            dut.io.nextElement.enqueueSeq(convLayer.input.values.map(_.toInt.U))
+          }.fork {
+            dut.io.inputActivationsWindow.expectDequeueSeq(goldenVector)
+          }.join()
+        }
       }
-    }
   }
 }

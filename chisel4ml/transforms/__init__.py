@@ -16,6 +16,22 @@ import importlib
 
 from chisel4ml.transforms.qkeras_transforms import QKerasTransform
 from typing import List
+from chisel4ml.transforms.qonnx_to_lbir import (  # noqa: F401
+    QONNXToLBIR,
+    WeightQuantToQTensor,
+    QuantToQTensor,
+    UnquantizedBiasToQTensor,
+    UnquantizedOutputToQTensor,
+    InputReluQTensorToQTensor,
+    AddInputOrOutputQTensorToReshape,
+    AddDummyBiasToConv,
+    AddFFTrealOutputShape,
+    RemoveFlattenNode,
+    CleanupQTensors,
+)
+from chisel4ml.transforms.extract_quantized_bias import (  # noqa: F401
+    ExtractQuantizedBiasFromConv,
+)
 
 qkeras_trans_list: List[QKerasTransform] = list()
 

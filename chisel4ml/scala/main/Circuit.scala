@@ -19,22 +19,24 @@ import chisel3._
 import chisel4ml._
 import chisel4ml.implicits._
 import chiseltest._
-import chiseltest.simulator.WriteFstAnnotation
+import chiseltest.simulator.{WriteFstAnnotation, WriteVcdAnnotation}
 import firrtl2.AnnotationSeq
 import firrtl2.options.TargetDirAnnotation
-import java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, TimeUnit}
-import lbir.QTensor
-import org.slf4j.LoggerFactory
-import scala.util.control.Breaks._
-import memories.MemoryGenerator
 import firrtl2.transforms.NoCircuitDedupAnnotation
+import lbir.QTensor
+import memories.MemoryGenerator
+import org.slf4j.LoggerFactory
 
-class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](
+import java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, TimeUnit}
+import scala.util.control.Breaks._
+
+class Circuit[+T <: Module with HasAXIStream](
   dutGen:        => T,
   outputStencil: QTensor,
   directory:     os.Path,
   useVerilator:  Boolean,
-  genWaveform:   Boolean)
+  genWaveform:   Boolean,
+  waveformType:  String = "fst")
     extends Runnable {
   case class ValidQTensor(qtensor: QTensor, valid: Boolean)
   case class TimedQTensor(qtensor: QTensor, consumedCycles: Int)
@@ -49,7 +51,14 @@ class Circuit[+T <: Module with HasLBIRStream[Vec[UInt]]](
   // This can likely be removed when upgrading to newer chisel/firrtl versions. TODO
   var annot: AnnotationSeq =
     Seq(TargetDirAnnotation(relativeDirectory), NoCircuitDedupAnnotation) // TODO - work with .pb instead of .lo.fir
-  if (genWaveform) annot = annot :+ WriteFstAnnotation
+  if (genWaveform) {
+    if (waveformType.toLowerCase == "vcd") {
+      annot = annot :+ WriteVcdAnnotation
+    } else {
+      annot = annot :+ WriteFstAnnotation
+    }
+
+  }
   if (useVerilator) annot = annot :+ VerilatorBackendAnnotation
 
   def stopSimulation(): Unit = {
