@@ -82,12 +82,16 @@ message Conv2DConfig {
     QTensor output = 4;
     Activation activation = 5;
     bool depthwise = 7;
+    repeated uint32 stride = 8;
+    repeated uint32 padding = 9;
 }
 
 message MaxPool2DConfig {
     QTensor input = 1;
     QTensor output = 2;
     repeated uint32 kernel_shape = 3;
+    repeated uint32 stride = 4;
+    repeated uint32 padding = 5;
 }
 
 

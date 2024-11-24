@@ -31,9 +31,11 @@ import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.transforms import AddDummyBiasToConv
 from chisel4ml.transforms import AddFFTrealOutputShape
 from chisel4ml.transforms import AddInputOrOutputQTensorToReshape
+from chisel4ml.transforms import AutoPadToPad
 from chisel4ml.transforms import CleanupQTensors
 from chisel4ml.transforms import ExtractQuantizedBiasFromConv
 from chisel4ml.transforms import InputReluQTensorToQTensor
+from chisel4ml.transforms import MergePad
 from chisel4ml.transforms import QONNXToLBIR
 from chisel4ml.transforms import QuantToQTensor
 from chisel4ml.transforms import RemoveFlattenNode
@@ -63,6 +65,8 @@ QONNX_TO_LBIR_TRANSFORMS = [
     UnquantizedOutputToQTensor(),
     InputReluQTensorToQTensor(),
     RemoveFlattenNode(),
+    MergePad(),
+    AutoPadToPad(),
     QONNXToLBIR(),
     CleanupQTensors(),
 ]

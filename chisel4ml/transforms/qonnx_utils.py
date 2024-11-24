@@ -70,6 +70,8 @@ def _conv2dconfig_to_kwargs(layer: Conv2DConfig):
     kwargs.update(_qtensor_to_kwargs(layer.kernel, key_prefix="kernel_"))
     kwargs["activation"] = _act_to_string_dict[layer.activation]
     kwargs["depthwise"] = layer.depthwise
+    kwargs["stride"] = layer.stride
+    kwargs["padding"] = layer.padding
     return kwargs
 
 
@@ -78,6 +80,8 @@ def _maxpool2dconfig_to_kwargs(layer: MaxPool2DConfig):
     kwargs.update(_qtensor_to_kwargs(layer.input, key_prefix="input_"))
     kwargs.update(_qtensor_to_kwargs(layer.output, key_prefix="output_"))
     kwargs["kernel_shape"] = layer.kernel_shape
+    kwargs["stride"] = layer.stride
+    kwargs["padding"] = layer.padding
     return kwargs
 
 
@@ -153,3 +157,15 @@ def qtensor_to_quantizer(qtensor):
         )
     else:
         return lambda x: binary_quant(x, 1.0)
+
+
+def replace_tensor(tensor_list, old, new):
+    "Replaces the tensor and preservers the order in the list."
+    old_ind = -1
+    for ind, tensor in enumerate(tensor_list):
+        if tensor == old:
+            old_ind = ind
+            break
+    if old_ind == -1:
+        raise ValueError(f"Tensor {old} not in tensor list: {tensor_list}")
+    tensor_list[old_ind] = new

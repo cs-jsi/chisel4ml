@@ -228,16 +228,30 @@ def test_brevitas(request, c4ml_server, model_ishape_data):
 @pytest.mark.parametrize("input_ch", (1, 3))
 @pytest.mark.parametrize("output_ch", (1, 3))
 @pytest.mark.parametrize("kernel_size", ((3, 3), (2, 3)))
-@pytest.mark.parametrize("padding", (0,))
+@pytest.mark.parametrize("padding", (0, "same"))
+@pytest.mark.parametrize("stride", (1, 2))
 @pytest.mark.parametrize("iq", (1, 3))
 @pytest.mark.parametrize("wq", (1, 5))
 @pytest.mark.parametrize("bq", (3, 8))
 @pytest.mark.parametrize("oq", (1, 4))
 def test_combinational_conv(
-    request, c4ml_server, input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
+    request,
+    c4ml_server,
+    input_ch,
+    output_ch,
+    kernel_size,
+    padding,
+    stride,
+    iq,
+    wq,
+    bq,
+    oq,
 ):
+    if padding != 0 and iq == 1:
+        # this is an illegal combination binary type has no zero to pad!
+        return
     model, data = get_conv_layer_model(
-        input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
+        input_ch, output_ch, kernel_size, padding, stride, iq, wq, bq, oq
     )
     accelerators, lbir_model = generate.accelerators(
         model,
@@ -268,15 +282,35 @@ def test_combinational_conv(
 @pytest.mark.parametrize("output_ch", (3,))
 @pytest.mark.parametrize("kernel_size", ((3, 3), (2, 3)))
 @pytest.mark.parametrize("padding", (0,))
+@pytest.mark.parametrize("stride", (1,))
 @pytest.mark.parametrize("iq", (1, 3))
 @pytest.mark.parametrize("wq", (1, 5))
 @pytest.mark.parametrize("bq", (3, 8))
 @pytest.mark.parametrize("oq", (1, 4))
 def test_combinational_conv_dw(
-    request, c4ml_server, input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq
+    request,
+    c4ml_server,
+    input_ch,
+    output_ch,
+    kernel_size,
+    padding,
+    stride,
+    iq,
+    wq,
+    bq,
+    oq,
 ):
     model, data = get_conv_layer_model(
-        input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq, depthwise=True
+        input_ch,
+        output_ch,
+        kernel_size,
+        padding,
+        stride,
+        iq,
+        wq,
+        bq,
+        oq,
+        depthwise=True,
     )
     accelerators, lbir_model = generate.accelerators(
         model,
@@ -312,13 +346,14 @@ def test_combinational_conv_dw(
     ),
 )
 @pytest.mark.parametrize("kernel_size", ((3, 3), (2, 3)))
-@pytest.mark.parametrize("padding", (0,))
+@pytest.mark.parametrize("padding", (0, 1))
+@pytest.mark.parametrize("stride", (1,))
 @pytest.mark.parametrize("iq", (1, 3))
 def test_combinational_maxpool(
-    request, c4ml_server, input_size, channels, kernel_size, padding, iq
+    request, c4ml_server, input_size, channels, kernel_size, padding, stride, iq
 ):
     model, data = get_maxpool_layer_model(
-        channels, input_size, kernel_size, padding, iq
+        channels, input_size, kernel_size, padding, stride, iq
     )
     accelerators, lbir_model = generate.accelerators(
         model,

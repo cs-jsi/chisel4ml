@@ -109,6 +109,8 @@ def transform_conv(model: ModelWrapper, node) -> bool:
         ),
         activation=activation,
         depthwise=(groups == channels),
+        stride=onnx.helper.get_node_attr_value(node, "strides"),
+        padding=onnx.helper.get_node_attr_value(node, "pads"),
     )
     for n in (node, weights_node, bias_node, add_node):
         model.graph.node.remove(n)
