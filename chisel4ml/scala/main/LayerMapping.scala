@@ -1,7 +1,6 @@
 package chisel4ml
 
 import chisel3._
-import chisel3.experimental.VecLiterals._
 import chisel4ml.implicits._
 import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
 import lbir.{Conv2DConfig, DenseConfig, HasInputOutputQTensor, IsActiveLayer, LayerWrap, MaxPool2DConfig, QTensor}
@@ -24,8 +23,9 @@ object LayerMapping {
     require(stride.length == 2)
     require(stride(0) > 0 && stride(1) > 0)
 
-    require(padding.length == 2)
-    require(padding(0) >= 0 && padding(1) >= 0)
+    require(padding.length == 4)
+    // padding = List(pad_top, pad_left, pad_bottom, pad_right)
+    require(padding(0) >= 0 && padding(1) >= 0 && padding(2) >= 0 && padding(3) >= 0)
 
     require(groups == tensor.numChannels || groups == 1, "Only depthwise or normal conv supported.")
     require(dilation.length == 0, "Dillation not yet supported")
@@ -53,8 +53,10 @@ object LayerMapping {
       G I H                  -1  6  7  8 -1
                              -1 -1 -1 -1 -1
      */
-    val paddedInputHeight: Int = inputTensor.height + 2 * padding(0)
-    val paddedInputWidth:  Int = inputTensor.width + 2 * padding(1)
+    // Padding assumes the same "layout" as in onnx
+    val paddedInputHeight: Int = padding(0) + inputTensor.height + padding(2)
+    val paddedInputWidth:  Int = padding(1) + inputTensor.width + padding(3)
+
     // -1 signifies padded values (later gets converted to zeros)
     val inputIndecies = Seq
       .tabulate(inputTensor.numChannels, paddedInputHeight, paddedInputWidth)((c, h, w) => {
@@ -67,8 +69,8 @@ object LayerMapping {
 
     val channelsPerGroup = inputTensor.numChannels / groups
     val kernelsPerGroups = outChannels / groups
-    val outWidth = ((inputTensor.width - kernelSize(1) + 2 * padding(1)) / stride(1)) + 1
-    val outHeight = ((inputTensor.height - kernelSize(0) + 2 * padding(0)) / stride(0)) + 1
+    val outWidth = ((inputTensor.width - kernelSize(1) + padding(1) + padding(3)) / stride(1)) + 1
+    val outHeight = ((inputTensor.height - kernelSize(0) + padding(0) + padding(2)) / stride(0)) + 1
     val out: ArraySeq[Seq[Int]] = ArraySeq.fill(outChannels * outHeight * outWidth)(Seq())
     for {
       och <- 0 until outChannels
@@ -100,8 +102,8 @@ object LayerMapping {
       slidingWindowMap(
         l.input,
         kernelSize = Seq(l.kernel.height, l.kernel.width),
-        stride = Seq(1, 1),
-        padding = Seq(0, 0),
+        stride = l.stride,
+        padding = l.padding,
         dilation = Seq(),
         groups = { if (l.depthwise) l.input.numChannels else 1 },
         outChannels = l.output.numChannels
@@ -110,8 +112,8 @@ object LayerMapping {
       slidingWindowMap(
         l.input,
         kernelSize = l.kernelShape,
-        stride = l.kernelShape,
-        padding = Seq(0, 0),
+        stride = l.stride,
+        padding = l.padding,
         dilation = Seq(),
         groups = l.input.numChannels,
         outChannels = l.output.numChannels
@@ -167,12 +169,21 @@ object LayerMapping {
     case _ => throw new RuntimeException
   }
 
-  def getReceptiveField[T <: Data](input: Seq[T], receptiveField: Seq[Int]): Seq[T] = {
-    Seq(receptiveField.map(input(_)): _*)
-  }
-
-  def getReceptiveField[T <: Data](input: Vec[T], receptiveField: Seq[Int]): Vec[T] = {
-    Vec.Lit(receptiveField.map(input(_)): _*)
+  def getReceptiveField[T <: Data](
+    input:          Seq[T],
+    receptiveField: Seq[Int],
+    zeroGen:        Option[T],
+    skipPadding:    Boolean = false
+  ): Seq[T] = {
+    val filiteredField = if (skipPadding) {
+      receptiveField.filter(_ != -1) // -1 signals a padding value
+    } else {
+      receptiveField
+    }
+    Seq(filiteredField.map {
+      case -1 => zeroGen.get // -1 signals a padding value
+      case x  => input(x)
+    }: _*)
   }
 
   def getKernel[T <: Data](layer: LayerWrap with HasInputOutputQTensor with IsActiveLayer): Seq[T] =

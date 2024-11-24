@@ -21,12 +21,12 @@ import dsptools.{DspContext, Grow}
 
 trait NeuronOperation {
   def apply(
-    qc:      NeuronCompute
-  )(in:      Seq[qc.I],
-    weights: Seq[qc.W],
-    thresh:  qc.A,
+    nc:      NeuronCompute
+  )(in:      Seq[nc.I],
+    weights: Seq[nc.W],
+    thresh:  nc.A,
     shift:   Int
-  ): qc.O
+  ): nc.O
 }
 
 object NeuronWithBias extends NeuronOperation {

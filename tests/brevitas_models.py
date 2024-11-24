@@ -101,7 +101,7 @@ def get_cnn_model(input_size, in_ch):
 
 
 def get_conv_layer_model(
-    input_ch, output_ch, kernel_size, padding, iq, wq, bq, oq, depthwise=False
+    input_ch, output_ch, kernel_size, padding, stride, iq, wq, bq, oq, depthwise=False
 ):
     class ConvLayerModel(Module):
         def __init__(self):
@@ -113,7 +113,7 @@ def get_conv_layer_model(
                 groups=output_ch if depthwise else 1,
                 kernel_size=kernel_size,
                 padding=padding,
-                stride=1,
+                stride=stride,
                 bias=True,
                 weight_quant=CommonWeightQuant,
                 weight_bit_width=wq,
@@ -152,7 +152,7 @@ def get_conv_layer_model(
     return model, input_data
 
 
-def get_maxpool_layer_model(channels, input_size, kernel_size, padding, iq):
+def get_maxpool_layer_model(channels, input_size, kernel_size, padding, stride, iq):
     class MaxPoolLayerModel(Module):
         def __init__(self, input_size):
             super(MaxPoolLayerModel, self).__init__()
@@ -163,7 +163,11 @@ def get_maxpool_layer_model(channels, input_size, kernel_size, padding, iq):
                 scaling_impl_type="const",
                 scaling_init=1 if iq == 1 else 2 ** (iq - 1) - 1,
             )
-            self.maxpool = torch.nn.MaxPool2d(kernel_size=kernel_size, padding=padding)
+            self.maxpool = torch.nn.MaxPool2d(
+                kernel_size=kernel_size,
+                padding=padding,
+                stride=stride,
+            )
             self.out_quant = qnn.QuantIdentity(
                 act_quant=IntActQuant,
                 bit_width=iq,

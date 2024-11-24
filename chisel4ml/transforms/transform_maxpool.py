@@ -50,6 +50,8 @@ def transform_maxpool(model: ModelWrapper, node) -> bool:
         input=input_qtensor,
         output=output_qtensor,
         kernel_shape=onnx.helper.get_node_attr_value(node, "kernel_shape"),
+        stride=onnx.helper.get_node_attr_value(node, "strides"),
+        padding=onnx.helper.get_node_attr_value(node, "pads"),
     )
     model.graph.node.remove(node)
     kwargs = _maxpool2dconfig_to_kwargs(maxpool2dcfg)
