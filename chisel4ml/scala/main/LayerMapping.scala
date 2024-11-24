@@ -1,6 +1,7 @@
 package chisel4ml
 
 import chisel3._
+import chisel3.experimental.VecLiterals._
 import chisel4ml.implicits._
 import lbir.Datatype.QuantizationType.{BINARY, UNIFORM}
 import lbir.{Conv2DConfig, DenseConfig, HasInputOutputQTensor, IsActiveLayer, LayerWrap, MaxPool2DConfig, QTensor}
@@ -69,6 +70,7 @@ object LayerMapping {
 
     val channelsPerGroup = inputTensor.numChannels / groups
     val kernelsPerGroups = outChannels / groups
+
     val outWidth = ((inputTensor.width - kernelSize(1) + padding(1) + padding(3)) / stride(1)) + 1
     val outHeight = ((inputTensor.height - kernelSize(0) + padding(0) + padding(2)) / stride(0)) + 1
     val out: ArraySeq[Seq[Int]] = ArraySeq.fill(outChannels * outHeight * outWidth)(Seq())

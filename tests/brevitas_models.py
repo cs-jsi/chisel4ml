@@ -151,7 +151,7 @@ def get_conv_layer_model(
     input_data = gen_finn_dt_tensor(iq_type, ishape)
     return model, input_data
 
-
+  
 def get_maxpool_layer_model(channels, input_size, kernel_size, padding, stride, iq):
     class MaxPoolLayerModel(Module):
         def __init__(self, input_size):

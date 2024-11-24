@@ -590,3 +590,4 @@ class MergePad(Transformation):
                     replace_tensor(out_node.input, node.output[0], node.input[0])
                     model.graph.node.remove(node)
         return model, False
+

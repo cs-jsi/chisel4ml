@@ -41,8 +41,8 @@ class NeuronProcessingUnit(
 
   for (i <- 0 until layer.output.numParams) {
     out(i) := operation(nc)(
-      LayerMapping.getReceptiveField[nc.I](in.map(_.asInstanceOf[nc.I]), inMap(i), Some(layer.input.zero[nc.I])),
-      VecInit(LayerMapping.getReceptiveField[nc.W](kernel, kernelMap(i), None)),
+      LayerMapping.getReceptiveField[nc.I](in.map(_.asInstanceOf[nc.I]), inMap(i)),
+      LayerMapping.getReceptiveField[nc.W](kernel, kernelMap(i)),
       thresh(threshMap(i)),
       shift(shiftMap(i))
     )

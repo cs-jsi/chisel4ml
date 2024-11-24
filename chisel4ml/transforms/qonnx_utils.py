@@ -169,3 +169,4 @@ def replace_tensor(tensor_list, old, new):
     if old_ind == -1:
         raise ValueError(f"Tensor {old} not in tensor list: {tensor_list}")
     tensor_list[old_ind] = new
+
