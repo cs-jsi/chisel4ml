@@ -12,6 +12,7 @@ from chisel4ml.transforms.qonnx_utils import _numpy_to_qtensor
 from chisel4ml.transforms.qonnx_utils import _qtensor_to_kwargs
 from chisel4ml.transforms.qonnx_utils import _scale_to_shift
 from chisel4ml.transforms.qonnx_utils import get_lbir_shape
+from chisel4ml.transforms.qonnx_utils import replace_tensor
 from chisel4ml.transforms.transform_conv import transform_conv
 from chisel4ml.transforms.transform_fftreal import transform_fftreal
 from chisel4ml.transforms.transform_lmfe import transform_lmfe
@@ -493,4 +494,91 @@ class CleanupQTensors(Transformation):
             elif suc is not None:
                 self.replace_input(suc[0], node.output[0], node.input[0])
             return model, True
+        return model, False
+
+
+class AutoPadToPad(Transformation):
+    "Transforms padding specified with autopad to more explicit pads."
+
+    def autopad_to_pads(self, model, node, autopad):
+        if autopad == b"VALID":
+            return [0, 0, 0, 0]
+        elif autopad == b"SAME_UPPER" or autopad == b"SAME_LOWER":
+            ishape = model.get_tensor_shape(node.input[0])  # NCHW
+            kshape = model.get_tensor_shape(node.input[1])  # NCHW
+            stride = onnx.helper.get_node_attr_value(node, "strides")
+            out_width = ishape[-1] // stride[1]
+            out_height = ishape[-2] // stride[0]
+            # This equation is derived from outshape calc eq
+            # see LayerMapping.scala
+            wpt = (out_width - 1) * stride[1] - ishape[-1] + kshape[-1]
+            hpt = (out_height - 1) * stride[0] - ishape[-2] + kshape[-2]
+            hm = hpt // 2
+            wm = wpt // 2
+            he = hpt % 2
+            we = wpt % 2
+            if autopad == b"SAME_UPPER":
+                return [hm, wm, (hm + he), (wm + we)]
+            else:
+                return [(hm + he), (wm + we), hm, wm]
+        else:
+            raise ValueError(f"Value {autopad} not supported.")
+
+    def apply(self, model):
+        for node in model.graph.node:
+            if node.op_type == "Conv" or node.op_type == "MaxPool":
+                has_no_pads = len([x for x in node.attribute if x.name == "pads"]) == 0
+                if has_no_pads:
+                    autopad = onnx.helper.get_node_attr_value(node, "auto_pad")
+                    pads = self.autopad_to_pads(model, node, autopad)
+                    attr = onnx.helper.make_attribute("pads", pads)
+                    node.attribute.append(attr)
+        return model, False
+
+
+class MergePad(Transformation):
+    def transform_pads(self, pads):
+        if len(pads) == 4:
+            return pads
+        if len(pads) == 8:
+            # This must be NCHW -> return should be only for HW (spatial axes)
+            # https://onnx.ai/onnx/operators/onnx__Pad.html
+            # https://onnx.ai/onnx/operators/onnx__Conv.html
+            return [pads[2], pads[3], pads[6], pads[7]]
+        else:
+            raise ValueError
+
+    def apply(self, model):
+        log_err_str = "Failed to merge pad into successor node!"
+        for node in model.graph.node:
+            if node.op_type == "Pad":
+                assert len(node.output) == 1
+                out_node = model.find_consumer(node.output[0])
+                if out_node.op_type in ("Conv", "MaxPool"):
+                    mode = onnx.helper.get_node_attr_value(node, "mode")
+                    if mode != b"constant":
+                        logging.warning(f"{log_err_str} Mode not constant, but {mode}.")
+                        continue
+                    has_const_val = (
+                        len([x for x in node.attribute if x.name == "constant_value"])
+                        > 0
+                    )
+                    if has_const_val:
+                        const_val = onnx.helper.get_node_attr_value(
+                            node, "constant_value"
+                        )
+                        if const_val != 0:
+                            # Currently only supporting padding with zeros
+                            logging.warning(
+                                f"{log_err_str} Constant value not 0, but {const_val}"
+                            )
+                            continue
+                    pads = model.get_initializer(node.input[1])
+                    transformed_pads = self.transform_pads(pads)
+                    pads_attr = onnx.helper.make_attribute("pads", transformed_pads)
+                    org_attr = [x for x in out_node.attribute if x.name == "pads"]
+                    out_node.attribute.remove(org_attr[0])
+                    out_node.attribute.append(pads_attr)
+                    replace_tensor(out_node.input, node.output[0], node.input[0])
+                    model.graph.node.remove(node)
         return model, False

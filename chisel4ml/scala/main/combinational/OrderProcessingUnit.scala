@@ -33,6 +33,8 @@ class OrderProcessingUnit(
   val inMap: Seq[Seq[Int]] = LayerMapping.layerToInputMap(layer)
 
   for (i <- 0 until layer.output.numParams) {
-    out(i) := operation(oc)(LayerMapping.getReceptiveField[oc.T](in.map(_.asInstanceOf[oc.T]), inMap(i)))
+    out(i) := operation(oc)(
+      LayerMapping.getReceptiveField[oc.T](in.map(_.asInstanceOf[oc.T]), inMap(i), None, skipPadding = true)
+    )
   }
 }

@@ -28,6 +28,8 @@ from chisel4ml.transforms.qonnx_to_lbir import (  # noqa: F401
     AddFFTrealOutputShape,
     RemoveFlattenNode,
     CleanupQTensors,
+    AutoPadToPad,
+    MergePad,
 )
 from chisel4ml.transforms.extract_quantized_bias import (  # noqa: F401
     ExtractQuantizedBiasFromConv,
