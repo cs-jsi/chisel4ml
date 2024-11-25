@@ -1,5 +1,4 @@
 import logging
-from functools import reduce
 
 import numpy as np
 import onnx
@@ -507,13 +506,6 @@ class AutoPadToPad(Transformation):
         elif autopad == b"SAME_UPPER" or autopad == b"SAME_LOWER":
             ishape = model.get_tensor_shape(node.input[0])  # NCHW
             kshape = model.get_tensor_shape(node.input[1])  # NCHW
-
-            def reduce_shape(shape):
-                return reduce(lambda x, y: x + y, shape)
-
-            assert reduce_shape(ishape) > reduce_shape(
-                kshape
-            ), "Make sure that ishape is indeed the input shape and not kernel shape"
             stride = onnx.helper.get_node_attr_value(node, "strides")
             out_width = ishape[-1] // stride[1]
             out_height = ishape[-2] // stride[0]
