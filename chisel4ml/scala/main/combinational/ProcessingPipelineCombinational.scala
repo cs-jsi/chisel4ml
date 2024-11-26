@@ -18,6 +18,11 @@ package chisel4ml
 import chisel3._
 import lbir.{HasInputOutputQTensor, LayerWrap}
 
+/** Constructs a series of combinatorial processing elements and connects them.
+  *
+  * @param layers
+  *   A series of LBIR layers to generate hardware for
+  */
 class ProcessingPipelineCombinational(layers: Seq[LayerWrap with HasInputOutputQTensor])
     extends Module
     with HasSimpleStream {

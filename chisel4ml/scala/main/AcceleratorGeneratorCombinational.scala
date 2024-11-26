@@ -26,6 +26,13 @@ import chisel4ml.compute.{
 }
 import lbir.{HasInputOutputQTensor, IsActiveLayer, LayerWrap, MaxPool2DConfig}
 
+/** Generates combinational accelerators with optional shift registers.
+  *
+  * Transforms `layer` into the corresponding combinational hardware module.
+  *
+  * @param layer
+  *   The LBIR layer to transform to a combinational module.
+  */
 object AcceleratorGeneratorCombinational {
   def apply(layer: LayerWrap with HasInputOutputQTensor): Module with HasSimpleStream = layer match {
     case l: MaxPool2DConfig => Module(new OrderProcessingUnit(OrderCompute(l))(l, MaxPoolOperation))

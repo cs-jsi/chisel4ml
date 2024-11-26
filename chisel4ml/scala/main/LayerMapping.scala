@@ -7,6 +7,8 @@ import lbir.{Conv2DConfig, DenseConfig, HasInputOutputQTensor, IsActiveLayer, La
 
 import scala.collection.mutable.ArraySeq
 
+/** Functions related to tensor linearization in memory/vector
+  */
 object LayerMapping {
   def checkParamsSlidingWindow(
     tensor:      QTensor,
@@ -30,12 +32,47 @@ object LayerMapping {
     require(groups == tensor.numChannels || groups == 1, "Only depthwise or normal conv supported.")
     require(dilation.length == 0, "Dillation not yet supported")
   }
+
+  /** Checks that a given index is inside the active area, and not the padding
+    *
+    * @param h
+    *   Height index
+    * @param w
+    *   Width index
+    * @param padding
+    *   A length of four integer sequence of padding information (top, left, bottom, right)
+    * @param tensor
+    *   The tensor for which this is being computed
+    */
   def inBoundary(h: Int, w: Int, padding: Seq[Int], tensor: QTensor): Boolean = {
     h >= padding(0) &&
     h < (padding(0) + tensor.height) &&
     w >= padding(1) &&
     w < (padding(1) + tensor.width)
   }
+
+  /** Given an input tensor and configuration it returns the sliding window map of input used by succesive output
+    * neurons. This is used for two-dimensional MaxPool and Conv operations.
+    *
+    * @param inputTensor
+    *   The input tensor for which we seek the map (e.g. conv.input)
+    * @param kernelSize
+    *   A length of two sequence of the kernel shape (kernelHeight, kernelWidth)
+    * @param stride
+    *   A length of two sequence of the stride (stride in height direction, stride in width direction)
+    * @param padding
+    *   A length of four integer sequence of padding information (top, left, bottom, right)
+    * @param dilation
+    *   NOT CURRENTLY SUPPORTED
+    * @param groups
+    *   Number of groups to use (see ONNX defintion for Conv op)
+    * @param outChannels
+    *   The number of output channels
+    *
+    * @return
+    *   Returns a sequence the length of the number of outputs. For each output it returns a sequence of inputs that
+    *   relate to this input. In other words it returns the input activation map/window.
+    */
   def slidingWindowMap(
     inputTensor: QTensor,
     kernelSize:  Seq[Int],
@@ -96,6 +133,15 @@ object LayerMapping {
     }
     out.map(_.toSeq).toSeq
   }
+
+  /** Converts a LBIR LayerWrap object to an input activation map. (e.g. see use in
+    * combinational/NeuronProcessingUnit.scala)
+    *
+    * @param layer
+    *   The LBIR layer object to convert to an input map
+    * @return
+    *   The input activation map, i.e. for each output what inputs are relevant?
+    */
   def layerToInputMap(layer: LayerWrap): Seq[Seq[Int]] = layer match {
     case l: DenseConfig => Seq.fill(l.output.width)((0 until l.input.width).toSeq)
     case l: Conv2DConfig =>
@@ -121,6 +167,13 @@ object LayerMapping {
     case _ => throw new RuntimeException
   }
 
+  /** Coverts a LBIR LayerWrap object to a kernel map. (e.g. see use in combinational/NeuronProcessingUnit.scala)
+    *
+    * @param layer
+    *   The LBIR layer object to convert to a kernel map
+    * @return
+    *   The kernel map, i.e. for each output which kernel values are relevant?
+    */
   def layerToKernelMap(layer: LayerWrap): Seq[Seq[Int]] = layer match {
     case l: DenseConfig => (0 until l.kernel.numParams).toSeq.grouped(l.input.width).toSeq
     case l: Conv2DConfig =>
@@ -132,6 +185,13 @@ object LayerMapping {
     case _ => throw new RuntimeException
   }
 
+  /** Coverts a LBIR LayerWrap object to a threshold map. (e.g. see use in combinational/NeuronProcessingUnit.scala)
+    *
+    * @param layer
+    *   The LBIR layer object to convert to a threshold map
+    * @return
+    *   The threshold map, i.e. for each output which threshold value is relevant?
+    */
   def layerToThreshMap(layer: LayerWrap with IsActiveLayer): Seq[Int] = layer match {
     case l: DenseConfig => {
       require(l.thresh.numParams == l.output.numParams)
@@ -148,6 +208,13 @@ object LayerMapping {
     case _ => throw new RuntimeException
   }
 
+  /** Coverts a LBIR LayerWrap object to a shift map. (e.g. see use in combinational/NeuronProcessingUnit.scala)
+    *
+    * @param layer
+    *   The LBIR layer object to convert to a shift map
+    * @return
+    *   The shift map, i.e. for each output which shift value is relevant?
+    */
   def layerToShiftMap(layer: LayerWrap with IsActiveLayer): Seq[Int] = layer match {
     case l: DenseConfig => {
       l.kernel.dtype.shift.length match {
@@ -169,6 +236,21 @@ object LayerMapping {
     case _ => throw new RuntimeException
   }
 
+  /** Given an input map for a particular output return the chisel values of the input.
+    *
+    * @param input
+    *   The entire input values sequence.
+    * @param receptiveField
+    *   The input map for a particular output (i.e. which inputs to take).
+    * @param zeroGen
+    *   In place of the -1 map value place this value (signifies padding)
+    * @param skipPadding
+    *   Skip values that contain -1. Used in maxpool because padding values should not be compared (see
+    *   OrderProcessingUnit).
+    *
+    * @return
+    *   Chisel values of the receptive field of the input.
+    */
   def getReceptiveField[T <: Data](
     input:          Seq[T],
     receptiveField: Seq[Int],
@@ -186,6 +268,14 @@ object LayerMapping {
     }: _*)
   }
 
+  /** Transforms the LBIR LayerWrap values of kernel into properly shaped Chisel sequence.
+    *
+    * @param layer
+    *   The LBIR layer in question.
+    *
+    * @return
+    *   A sequence of chisel values representing the kernel of a LBIR active layer.
+    */
   def getKernel[T <: Data](layer: LayerWrap with HasInputOutputQTensor with IsActiveLayer): Seq[T] =
     layer match {
       case l: DenseConfig => {
@@ -213,6 +303,14 @@ object LayerMapping {
     if (x > 0.0) x else 0.0f
   }
 
+  /** Transforms the LBIR LayerWrap values of threshold into properly shaped Chisel sequence.
+    *
+    * @param layer
+    *   The LBIR layer in question.
+    *
+    * @return
+    *   A sequence of chisel values representing the thresholds of a LBIR active layer.
+    */
   def getThresh[T <: Data](layer: LayerWrap with HasInputOutputQTensor with IsActiveLayer): Seq[T] =
     (layer.input.dtype.quantization, layer.kernel.dtype.quantization, layer.activation) match {
       case (BINARY, BINARY, lbir.Activation.BINARY_SIGN) =>

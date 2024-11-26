@@ -1,5 +1,5 @@
 # Chisel4ml
-Chisel4ml is an open-source library for generating dataflow architectures inspired by the hls4ml library.
+Chisel4ml is an open-source library for generating highly-parallel dataflow style hardware implementations of Deeply Quantized Neural Networks. These types of networks are trained using frameworks such as [Brevitas](https://github.com/Xilinx/brevitas) and [QKeras](https://github.com/google/qkeras). However, any training framework is supported as long as it export [QONNX](https://github.com/fastmachinelearning/qonnx).
 
 ## Instalation: from pip
 1. pip install chisel4ml.
@@ -57,6 +57,10 @@ data = np.array(
 
 
 opt_model = optimize.qkeras_model(model)
+accelerators, lbir_model = generate.accelerators(
+    model,
+    minimize="delay"
+)
 circuit = generate.circuit(opt_model)
 for x in data:
     sw_res = opt_model.predict(np.expand_dims(x, axis=0))
@@ -67,6 +71,8 @@ circuit.delete_from_server()
 This will generate a circuit of a simple two layer fully-connected neural network, and store it in `/tmp/.chisel4ml/circuit0`.
 If you have verilator installed you can also add the argument: `use_verilator=True` in the `generate.circuit` function. In the first case only a firrtl file be generated (this can be converted to verilog using firtool), if you use verilator, however, a SystemVerilog file will also be created.
 
+chisel4ml also supports convolutional layers and maxpool layers. It also has some support for calculating FFTs and log-mel feature energy (audio features) in hardware.
+
 ## Installation: from source
 1. Install [mill build tool](https://mill-build.com/mill/Intro_to_Mill.html).
 2. Install [python](https://www.python.org/downloads/) 3.8-3.10
@@ -74,8 +80,8 @@ If you have verilator installed you can also add the argument: `use_verilator=Tr
 4. Activate environment (Linux)`source venv/bin/activate`
     - Windows `.\venv\Scripts\activate`
 5. Upgrade pip `python -m pip install --upgrade pip`
-6. Install chisel4ml pip install -ve .[dev]
+6. Install chisel4ml `pip install -ve .[dev]`
 7. Build Python protobuf code `make`
 8. Build Scala code `mill chisel4ml.assembly`
-9. Start a chisel4ml server `java -jar ./out/chisel4ml/assembly.dest/out.jar`
-10. In another terminal run tests `pytest -svv`
+10. In another terminal run tests `pytest --use-verilator -n auto`
+    - The `--use-verilator` flag is optional if you have verilator installed, however it is highly recommended, since it is much faster.

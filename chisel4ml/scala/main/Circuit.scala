@@ -30,6 +30,21 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, TimeUnit}
 import scala.util.control.Breaks._
 
+/** Contains the generated hardware module and provides a simulation interface
+  *
+  * @param dutGen
+  *   The generated hardware container
+  * @param outputStencil
+  *   The expected output QTensor shape and datatype
+  * @param directory
+  *   The directory that holds the generated FIRRTL/Verilog files
+  * @param useVerilator
+  *   Use verilator for simulation?
+  * @param genWaveform
+  *   Generate waveform during RTL simulation?
+  * @param waveformType
+  *   The type of waveform to generate during RTL simulation. Either 'fst' or 'vcd'.
+  */
 class Circuit[+T <: Module with HasAXIStream](
   dutGen:        => T,
   outputStencil: QTensor,
@@ -73,6 +88,11 @@ class Circuit[+T <: Module with HasAXIStream](
     isStoped.countDown()
   }
 
+  /** Simulates a circuit using an input and output queue of QTensors.
+    *
+    * @param dut
+    *   the hardware module to simulate.
+    */
   private[this] def simulate(dut: T): Unit = {
     isGenerated.countDown()
     logger.info(s"Generated circuit in directory: ${directory}.")
@@ -109,6 +129,13 @@ class Circuit[+T <: Module with HasAXIStream](
     }
   }
 
+  /** The user interface to the QTensor based simulation
+    *
+    * @param x
+    *   A sequence of input QTensors to simulate
+    * @return
+    *   Resulting QTensors and the number of cycles used to simulate it.
+    */
   def sim(x: Seq[QTensor]): (Seq[QTensor], Int) = {
     var result:         Seq[QTensor] = Seq()
     var consumedCycles: Int = 0

@@ -21,6 +21,17 @@ import chisel4ml.implicits._
 import chisel4ml.{HasSimpleStream, LayerMapping}
 import lbir.{HasInputOutputQTensor, LayerWrap}
 
+/** Combinatorial order procesing unit.
+  *
+  * Defines a combinatorial order processing unit for layers that do comparing (basically MaxPool)
+  *
+  * @param oc
+  *   A OrderCompute object that defines the quantization details.
+  * @param layer
+  *   An (active) layer for which to generate an implementation
+  * @param operation
+  *   Which version of the OrderOperation use
+  */
 class OrderProcessingUnit(
   val oc:    OrderCompute
 )(layer:     LayerWrap with HasInputOutputQTensor,

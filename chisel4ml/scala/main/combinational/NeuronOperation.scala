@@ -19,6 +19,13 @@ import chisel3._
 import chisel4ml.compute.NeuronCompute
 import dsptools.{DspContext, Grow}
 
+/** Defines an interface for a NeuroOperation
+  *
+  * Defined for scaling values that are power of two (i.e. shift)
+  *
+  * @param nc
+  *   A NeuronCompute object that defines the quantization details.
+  */
 trait NeuronOperation {
   def apply(
     nc:      NeuronCompute
@@ -29,6 +36,13 @@ trait NeuronOperation {
   ): nc.O
 }
 
+/** A NeuroOperation implementation with a bias.
+  *
+  * Defined for scaling values that are power of two (i.e. shift)
+  *
+  * @param nc
+  *   A NeuronCompute object that defines the quantization details.
+  */
 object NeuronWithBias extends NeuronOperation {
   def apply(
     nc:      NeuronCompute
@@ -48,6 +62,15 @@ object NeuronWithBias extends NeuronOperation {
   }
 }
 
+/** A NeuroOperation implementation without a bias value.
+  *
+  * Used in binarized neural networks.
+  *
+  * Defined for scaling values that are power of two (i.e. shift)
+  *
+  * @param nc
+  *   A NeuronCompute object that defines the quantization details.
+  */
 object NeuronWithoutBias extends NeuronOperation {
   def apply(
     nc:      NeuronCompute
