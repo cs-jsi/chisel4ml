@@ -88,4 +88,4 @@ chisel4ml also supports convolutional layers and maxpool layers. It also has som
 
 
 ## ScalaDocs
-To create ScalaDocs run `mill chisel4ml.docJar` and they will be generated to `out/chisel4ml/docJar`.
+To create ScalaDocs run `mill chisel4ml.docJar` and they will be generated to `out/chisel4ml/docJar.dest/javadoc`.
