@@ -85,3 +85,7 @@ chisel4ml also supports convolutional layers and maxpool layers. It also has som
 8. Build Scala code `mill chisel4ml.assembly`
 10. In another terminal run tests `pytest --use-verilator -n auto`
     - The `--use-verilator` flag is optional if you have verilator installed, however it is highly recommended, since it is much faster.
+
+
+## ScalaDocs
+To create ScalaDocs run `mill chisel4ml.docJar` and they will be generated to `out/chisel4ml/docJar`.
