@@ -21,6 +21,13 @@ import chisel4ml.sequential.{FFTWrapper, MaxPool2D, ProcessingElementSequentialC
 import org.chipsalliance.cde.config.Parameters
 import services.Accelerator
 
+/** Generates sequential accelerators with AXIStream interfaces.
+  *
+  * Instantiates `accel` accelerator to the corresponding hardware implementation..
+  *
+  * @param accel
+  *   The accelerator to instantitate.
+  */
 object AcceleratorGenerator {
   def apply(accel: Accelerator): Module with HasAXIStream = {
     implicit val defaults: Parameters = Parameters.empty.alterPartial({ case LayerWrapSeqField =>

@@ -19,15 +19,41 @@ import chisel3._
 import chisel4ml.implicits._
 import interfaces.amba.axis._
 
+/** Extends the AXIStreamDriver with ability to write and read QTensor objects to AXI Stream.
+  *
+  * Extends `axiDrive` with functions `enqueueQTensor` and `dequeueQTensor`. This function is called implicitly (see
+  * implicit def axiStreamToLBIRDriver).
+  *
+  * @param axiDrive
+  *   The AXIStreamDriver to extends.
+  */
 class AXIStreamLBIRDriver[T <: Data](val axiDrive: AXIStreamDriver[T]) {
-  /*
-        Drives a AXIStreamIO with a LBIR QTensor.
-   */
+
+  /** Drives a AXIStreamIO with a LBIR QTensor.
+    *
+    * The qtensor is serialized as per the layout specification of the QTensor (See LBIR proto for more information on
+    * this)
+    *
+    * @param qt
+    *   QTensor to drive to the AXI Stream bus.
+    * @param clock
+    *   The clock used to drive the bus.
+    */
   def enqueueQTensor(qt: QTensor, clock: Clock): Unit = {
     val transactions = qt.toLBIRTransactions[T](axiDrive.getBusWidth())
     axiDrive.enqueuePacket(transactions, clock)
   }
 
+  /** Reads a AXIStreamIO to obtain an LBIR QTensor.
+    *
+    * The qtensor is deserialized as per the layout specification of the QTensor (See LBIR proto for more information on
+    * this)
+    *
+    * @param qt
+    *   QTensor shape we are expecting (empty qtensor with only shape in datatype).
+    * @param clock
+    *   The clock used to drive the bus.
+    */
   def dequeueQTensor(stencil: QTensor, clock: Clock): QTensor = {
     axiDrive.dequeuePacket(clock).toQTensor(stencil, axiDrive.getBusWidth())
   }

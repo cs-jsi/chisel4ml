@@ -23,6 +23,9 @@ trait HasLogger {
   val logger = LoggerFactory.getLogger(this.getClass().toString())
 }
 
+/** Parameter logging trait Looks for the special field parameter listed bellow and lists them when logParameters
+  * function is called.
+  */
 trait HasParameterLogging extends HasLogger {
   // Macro to find this?
   private def fields: Seq[Field[_]] = Seq(

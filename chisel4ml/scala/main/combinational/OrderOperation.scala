@@ -18,10 +18,27 @@ package chisel4ml.combinational
 import chisel3._
 import chisel4ml.compute.OrderCompute
 
+/** Defines an interface for a comparing values
+  *
+  * Used in the OrderProcessingUnit to create a MaxPool layer.
+  *
+  * @param oc
+  *   A OrderCompute object that defines the quantization details.
+  */
 trait OrderOperation {
+
+  /** Given an order what is the output value from the input sequence? (e.g for maxpool give largest value)
+    */
   def apply(oc: OrderCompute)(in: Seq[oc.T]): oc.T
 }
 
+/** An OrderOperation implementation
+  *
+  * Used in the OrderProcessingUnit to create a MaxPool layer.
+  *
+  * @param oc
+  *   A OrderCompute object that defines the quantization details.
+  */
 object MaxPoolOperation extends OrderOperation {
   def max(oc: OrderCompute)(x: oc.T, y: oc.T): oc.T = {
     val out = Wire(chiselTypeOf(x))
