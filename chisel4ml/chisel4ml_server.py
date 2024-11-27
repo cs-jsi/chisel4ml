@@ -10,7 +10,6 @@
 # limitations under the License.
 import atexit
 import logging
-import signal
 
 import grpc
 
@@ -57,8 +56,6 @@ class Chisel4mlServer:
 
         # Here we make sure that the chisel4ml server is shut down.
         atexit.register(self.stop)
-        signal.signal(signal.SIGTERM, self.stop)
-        signal.signal(signal.SIGINT, self.stop)
 
     @property
     def temp_dir(self):
