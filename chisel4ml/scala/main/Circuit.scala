@@ -18,11 +18,15 @@ package chisel4ml
 import chisel3._
 import chisel4ml._
 import chisel4ml.implicits._
-import chiseltest._
-import chiseltest.simulator.{WriteFstAnnotation, WriteVcdAnnotation}
-import firrtl2.AnnotationSeq
-import firrtl2.options.TargetDirAnnotation
-import firrtl2.transforms.NoCircuitDedupAnnotation
+//import chiseltest._
+//import chiseltest.simulator.{WriteFstAnnotation, WriteVcdAnnotation}
+//import firrtl2.AnnotationSeq
+//import firrtl2.options.TargetDirAnnotation
+//import firrtl2.transforms.NoCircuitDedupAnnotation
+import svsim._
+import chisel3.simulator._
+import chisel4ml.simulator._
+import chisel4ml.simulator.simulatorSettings._
 import lbir.QTensor
 import memories.MemoryGenerator
 import org.slf4j.LoggerFactory
@@ -62,19 +66,18 @@ class Circuit[+T <: Module with HasAXIStream](
   val isStoped = new CountDownLatch(1)
   val relativeDirectory = directory.relativeTo(os.pwd).toString()
 
-  // NoCircuitDedupAnnotation is needed because memory deduplication is causing problems
-  // This can likely be removed when upgrading to newer chisel/firrtl versions. TODO
-  var annot: AnnotationSeq =
-    Seq(TargetDirAnnotation(relativeDirectory), NoCircuitDedupAnnotation) // TODO - work with .pb instead of .lo.fir
+  var simSettings: Seq[SimulatorSettings] = Seq(
+    SaveWorkdirFile(relativeDirectory)
+  )
   if (genWaveform) {
     if (waveformType.toLowerCase == "vcd") {
-      annot = annot :+ WriteVcdAnnotation
+      simSettings = simSettings :+ VcdTrace
     } else {
-      annot = annot :+ WriteFstAnnotation
+      simSettings = simSettings :+ VcdTrace
     }
 
   }
-  if (useVerilator) annot = annot :+ VerilatorBackendAnnotation
+  if (useVerilator) simSettings = simSettings
 
   def stopSimulation(): Unit = {
     inQueue.put(ValidQTensor(QTensor(), false))
@@ -82,9 +85,12 @@ class Circuit[+T <: Module with HasAXIStream](
   }
 
   def run(): Unit = {
-    logger.info(s"Used annotations for generated circuit are: ${annot.map(_.toString)}.")
+    logger.info(s"Used settings for generated circuit are: ${simSettings.map(_.toString)}.")
     MemoryGenerator.setGenDir(directory)
-    RawTester.test(dutGen, annot)(this.simulate(_))
+    ParametricSimulator.simulate(
+      dutGen,
+      simSettings
+    )(this.simulate(_))
     isStoped.countDown()
   }
 
@@ -96,37 +102,7 @@ class Circuit[+T <: Module with HasAXIStream](
   private[this] def simulate(dut: T): Unit = {
     isGenerated.countDown()
     logger.info(s"Generated circuit in directory: ${directory}.")
-    dut.inStream.initSource()
-    dut.outStream.initSink()
-    dut.clock.setTimeout(50000) // TODO
-    breakable {
-      while (true) {
-        // inQueue.take() blocks execution until data is available
-        val validQTensor = inQueue.take()
-        if (validQTensor.valid == false) break()
-
-        logger.info(
-          s"Simulating a sequential circuit on a new input. Input shape: ${validQTensor.qtensor.shape}" +
-            s", input dtype: ${validQTensor.qtensor.dtype}, output stencil: $outputStencil."
-        )
-        val isOver = new CountDownLatch(1)
-        var clockCounter = 0
-        fork {
-          dut.inStream.enqueueQTensor(validQTensor.qtensor, dut.clock)
-          breakable {
-            while (true) {
-              dut.clock.step()
-              clockCounter = clockCounter + 1
-              if (isOver.getCount() == 0) break()
-            }
-          }
-        }.fork {
-          val qtensor = dut.outStream.dequeueQTensor(outputStencil, dut.clock)
-          isOver.countDown()
-          outQueue.put(TimedQTensor(qtensor, clockCounter))
-        }.join()
-      }
-    }
+    dut.clock.step(200) // TODO
   }
 
   /** The user interface to the QTensor based simulation

@@ -28,7 +28,6 @@ trait ScalaVersionModule extends SbtModule {
 trait BaseChiselModule extends ScalaVersionModule {
     override def ivyDeps = Agg(
         ivy"org.chipsalliance::chisel:5.0.0",
-        ivy"edu.berkeley.cs::chiseltest:5.0.0",
     )
     override def scalacPluginIvyDeps = Agg(
         ivy"org.chipsalliance:::chisel-plugin:5.0.0",
