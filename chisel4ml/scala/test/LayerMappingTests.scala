@@ -38,7 +38,7 @@ class LayerMappingTests extends AnyFlatSpec {
       qtensor,
       kernelSize = Seq(2, 2),
       stride = Seq(1, 1),
-      padding = Seq(0, 0),
+      padding = Seq(0, 0, 0, 0),
       dilation = Seq(),
       groups = 1,
       outChannels = 1
@@ -75,7 +75,7 @@ class LayerMappingTests extends AnyFlatSpec {
       qtensor,
       kernelSize = Seq(2, 2),
       stride = Seq(1, 1),
-      padding = Seq(1, 1),
+      padding = Seq(1, 1, 1, 1), // (top, left, bottom, right)
       dilation = Seq(),
       groups = 1,
       outChannels = 1
@@ -98,7 +98,7 @@ class LayerMappingTests extends AnyFlatSpec {
       qtensor,
       kernelSize = Seq(2, 2),
       stride = Seq(1, 1),
-      padding = Seq(0, 0),
+      padding = Seq(0, 0, 0, 0),
       dilation = Seq(),
       groups = 1,
       outChannels = 1
