@@ -8,48 +8,56 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from dataclasses import dataclass
+from typing import List
 
 
-class ProcessingElementCombToSeq:
+@dataclass(frozen=True)
+class Accelerator:
+    layers: List[str]
+    area: int
+    delay: int
+
+
+@dataclass(frozen=True)
+class ProcessingElementCombToSeq(Accelerator):
     layers = ["conv2d", "maxpool2d", "dense"]
-    numBeatsIn = None
-    numBeatsOut = None
     area = 9999
     delay = 1
 
 
-class FFTWrapper:
+@dataclass(frozen=True)
+class FFTWrapper(Accelerator):
     layers = ["fft"]
-    numBeatsIn = 1
-    numBeatsOut = 1
     area = 40
     delay = 40
 
 
-class LMFEWrapper:
+@dataclass(frozen=True)
+class LMFEWrapper(Accelerator):
     layers = ["lmfe"]
-    numBeatsIn = 1
-    numBeatsOut = 1
     area = 40
     delay = 40
 
 
-class MaxPool2D:
+@dataclass(frozen=True)
+class MaxPool2D(Accelerator):
     layers = ["maxpool2d"]
     area = 20
     delay = 20
 
 
-class ProcessingElementSequentialConv:
+@dataclass(frozen=True)
+class ProcessingElementSequentialConv(Accelerator):
     layers = ["conv2d"]
     area = 20
     delay = 20
 
 
-ACCELERATORS = [
-    ProcessingElementCombToSeq(),
-    FFTWrapper(),
-    LMFEWrapper(),
-    MaxPool2D(),
-    ProcessingElementSequentialConv(),
+ACCELERATORS: List[Accelerator] = [
+    ProcessingElementCombToSeq,
+    FFTWrapper,
+    LMFEWrapper,
+    MaxPool2D,
+    ProcessingElementSequentialConv,
 ]

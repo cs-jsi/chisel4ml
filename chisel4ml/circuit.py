@@ -35,7 +35,6 @@ class Circuit:
         self,
         circuit_id: int,
         input_qtensor: QTensor,
-        lbir_model,
         server: Chisel4mlServer = None,
     ):
         assert circuit_id >= 0, (
@@ -49,7 +48,6 @@ class Circuit:
             self._server = connect_to_server()
         else:
             self._server = server
-        self.lbir_model = lbir_model
         self.consumed_cycles = None
 
     def __call__(self, np_arr, sim_timeout_sec=200):
