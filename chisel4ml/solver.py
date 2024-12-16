@@ -5,31 +5,53 @@ from chisel4ml.accelerator import ACCELERATORS
 from chisel4ml.lbir.services_pb2 import Accelerator
 
 
-class VarArraySolutionCollector(cp_model.CpSolverSolutionCallback):
-    def __init__(self, variables, lbir_model, accels):
+class _VarArraySolutionCollector(cp_model.CpSolverSolutionCallback):
+    def __init__(self, vars_cp, lbir_model, accel_list, solution_list):
         cp_model.CpSolverSolutionCallback.__init__(self)
-        self.variables = variables
-        self.solution_list = []
+        self.vars_cp = vars_cp
+        self.solution_list = solution_list
         self.lbir_model = lbir_model
-        self.accels = accels
+        self.accel_list = accel_list
 
     def name_to_la(self, name):
         # key = f"l{lay_ind}-a{accel_ind}"
         l_str, a_str = name.split("-")
         return int(l_str[1:]), int(a_str[1:])
 
+    def acc_data_to_srvc(self, acc_data, ind):
+        accel = Accelerator()
+        accel.name = acc_data.name
+        accel.layers.extend([self.lbir_model.layers[ind]])
+        return accel
+
     def on_solution_callback(self):
-        solution_raw = np.zeros((len(self.lbir_model.layers), len(self.accels)))
-        for layer_vars in self.variables:
+        solution_raw = np.zeros((len(self.lbir_model.layers), len(self.accel_list)))
+        for layer_vars in self.vars_cp:
             for var in layer_vars:
                 if self.Value(var) == 1:
                     l_ind, a_ind = self.name_to_la(var.Name())
                     solution_raw[l_ind][a_ind] = 1
         solution = []
-        for lay in solution_raw:
+        for ind, lay in enumerate(solution_raw):
             acc_ind = lay.tolist().index(1)
-            solution.append(self.accels[acc_ind])
-        self.solution_list.append(solution)
+            acc_data = self.accel_list[acc_ind]
+            solution.append(self.acc_data_to_srvc(acc_data, ind))
+
+        # merging ProcessingElementCombToSeq
+        merged_solution = []
+        for accel in solution:
+            if len(merged_solution) == 0:
+                merged_solution.append(accel)
+            else:
+                if (
+                    accel.name == "ProcessingElementCombToSeq"
+                    and merged_solution[-1].name == "ProcessingElementCombToSeq"
+                ):
+                    for _ in accel.layers:
+                        merged_solution[-1].layers.append(accel.layers.pop())
+                else:
+                    merged_solution.append(accel)
+        self.solution_list.append(merged_solution)
 
 
 class SolutionSpace:
@@ -37,6 +59,7 @@ class SolutionSpace:
         self.lbir_model = lbir_model
         self.model_cp = cp_model.CpModel()
         self.vars_cp = []
+        self.solution_list = []
 
         # Setup the base variables
         for lay_ind, layer in enumerate(lbir_model.layers):
@@ -51,46 +74,13 @@ class SolutionSpace:
             self.model_cp.Add(sum(var for var in layer_vars) == 1)
 
         self.solver = cp_model.CpSolver()
-        self.solution_collector = VarArraySolutionCollector(
-            self.vars_cp, lbir_model, accel_list
+        self.solution_collector = _VarArraySolutionCollector(
+            self.vars_cp, lbir_model, accel_list, self.solution_list
         )
 
     def __iter__(self):
-        for sol in self.solutions:
+        for sol in self.solution_list:
             yield sol
 
     def solve(self):
         return self.solver.Solve(self.model_cp, self.solution_collector)
-
-
-def _create_accelerator(solution_layers):
-    solution, layers = solution_layers
-    acc = Accelerator()
-    acc.name = type(solution).__name__
-    layer_mod = layers
-    if not hasattr(layers, "__iter__"):
-        layer_mod = [layers]
-    for layer in layer_mod:
-        acc.layers.append(layer)
-    return acc
-
-
-def solution_to_accelerators(solution, lbir_layers):
-    assert len(solution) == len(lbir_layers)
-    solution_layers = zip(solution, lbir_layers)
-    accels = list(map(_create_accelerator, solution_layers))
-    # merging ProcessingElementCombToSeq
-    new_accels = []
-    for accel in accels:
-        if len(new_accels) == 0:
-            new_accels.append(accel)
-        else:
-            if (
-                accel.name == "ProcessingElementCombToSeq"
-                and new_accels[-1].name == "ProcessingElementCombToSeq"
-            ):
-                for _ in accel.layers:
-                    new_accels[-1].layers.append(accel.layers.pop())
-            else:
-                new_accels.append(accel)
-    return new_accels

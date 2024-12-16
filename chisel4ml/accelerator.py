@@ -13,48 +13,31 @@ from typing import List
 
 
 @dataclass(frozen=True)
-class Accelerator:
+class AcceleratorData:
+    name: str
     layers: List[str]
     area: int
     delay: int
 
 
-@dataclass(frozen=True)
-class ProcessingElementCombToSeq(Accelerator):
-    layers = ["conv2d", "maxpool2d", "dense"]
-    area = 9999
-    delay = 1
+ProcessingElementCombToSeq = AcceleratorData(
+    name="ProcessingElementCombToSeq",
+    layers=["conv2d", "maxpool2d", "dense"],
+    area=9999,
+    delay=1,
+)
 
+FFTWrapper = AcceleratorData(name="FFTWrapper", layers=["fft"], area=40, delay=40)
 
-@dataclass(frozen=True)
-class FFTWrapper(Accelerator):
-    layers = ["fft"]
-    area = 40
-    delay = 40
+LMFEWrapper = AcceleratorData(name="LMFEWrapper", layers=["lmfe"], area=40, delay=40)
 
+MaxPool2D = AcceleratorData(name="MaxPool2D", layers=["maxpool2d"], area=20, delay=20)
 
-@dataclass(frozen=True)
-class LMFEWrapper(Accelerator):
-    layers = ["lmfe"]
-    area = 40
-    delay = 40
+ProcessingElementSequentialConv = AcceleratorData(
+    name="ProcessingElementSequentialConv", layers=["conv2d"], area=20, delay=20
+)
 
-
-@dataclass(frozen=True)
-class MaxPool2D(Accelerator):
-    layers = ["maxpool2d"]
-    area = 20
-    delay = 20
-
-
-@dataclass(frozen=True)
-class ProcessingElementSequentialConv(Accelerator):
-    layers = ["conv2d"]
-    area = 20
-    delay = 20
-
-
-ACCELERATORS: List[Accelerator] = [
+ACCELERATORS: List[AcceleratorData] = [
     ProcessingElementCombToSeq,
     FFTWrapper,
     LMFEWrapper,
