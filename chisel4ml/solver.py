@@ -1,4 +1,5 @@
 import numpy as np
+from google.protobuf import text_format
 from ortools.sat.python import cp_model
 
 from chisel4ml.accelerator import ACCELERATORS
@@ -84,3 +85,26 @@ class SolutionSpace:
 
     def solve(self):
         return self.solver.Solve(self.model_cp, self.solution_collector)
+
+    def __repr__(self):
+        repr = ""
+        for solution in self.solution_list:
+            for accel in solution:
+                repr += text_format.MessageToString(
+                    accel, use_short_repeated_primitives=True
+                )
+        return repr
+
+    def __str__(self):
+        str = ""
+        for sol_id, solution in enumerate(self.solution_list):
+            str += f"Solution {sol_id}:\n"
+            lstr = "-> ("
+            for accel in solution:
+                str += f"-> {accel.name} ->"
+                for layer in accel.layers:
+                    name = layer.WhichOneof("sealed_value_optional")
+                    lstr += f"{name}, "
+                lstr = lstr[:-2] + ") ->\n"
+            str += "\n" + lstr + "\n"
+        return str
