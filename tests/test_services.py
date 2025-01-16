@@ -1,10 +1,14 @@
 import os
 
+import brevitas
 import numpy as np
 import pytest
+import qonnx
 import torch
 from pytest_cases import get_current_cases
 from pytest_cases import parametrize_with_cases
+from qonnx.core.modelwrapper import ModelWrapper
+from qonnx.core.onnx_exec import execute_onnx
 
 from chisel4ml import generate
 from chisel4ml import optimize
@@ -14,6 +18,7 @@ from tests.brevitas_models import get_conv_layer_model
 from tests.brevitas_models import get_linear_layer_model
 from tests.brevitas_models import get_maxpool_layer_model
 from tests.conftest import TEST_MODELS_LIST
+
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 MODEL_DIR = os.path.join(SCRIPT_DIR, "models")
@@ -250,12 +255,17 @@ def test_combinational_conv(
     if padding != 0 and iq == 1:
         # this is an illegal combination binary type has no zero to pad!
         return
-    model, data = get_conv_layer_model(
+    brevitas_model, data = get_conv_layer_model(
         input_ch, output_ch, kernel_size, padding, stride, iq, wq, bq, oq
     )
+    qonnx_proto = brevitas.export.export_qonnx(
+        brevitas_model, torch.randn(brevitas_model.ishape)
+    )
+    qonnx_model = ModelWrapper(qonnx_proto)
+    qonnx_model = qonnx.util.cleanup.cleanup_model(qonnx_model)
     accelerators, lbir_model = generate.accelerators(
-        model,
-        ishape=model.ishape,
+        qonnx_model,
+        ishape=brevitas_model.ishape,
         minimize="delay",
         debug=request.config.getoption("--debug-trans"),
     )
@@ -270,10 +280,13 @@ def test_combinational_conv(
     )
     assert circuit is not None
     for x in data:
-        sw_res = (
-            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
-        )
+        expanded_x = np.expand_dims(x, axis=0)
+        sw_res = brevitas_model.forward(torch.from_numpy(expanded_x)).detach().numpy()
+        inp_name = qonnx_proto.graph.input[0].name
+        qonnx_res = execute_onnx(qonnx_model, {inp_name: expanded_x})
+        qonnx_res = qonnx_res[list(qonnx_res.keys())[0]]
         hw_res = circuit(x)
+        assert np.array_equal(sw_res.flatten(), qonnx_res.flatten())
         assert np.array_equal(sw_res.flatten(), hw_res.flatten())
     circuit.delete_from_server()
 
@@ -460,10 +473,15 @@ def test_combinational_fullyconnected_nonunitscale(
 @pytest.mark.parametrize("input_size", ((6, 6),))
 @pytest.mark.parametrize("in_ch", (1, 3))
 def test_combinational_cnn(request, c4ml_server, input_size, in_ch):
-    model, data = get_cnn_model(input_size, in_ch)
+    brevitas_model, data = get_cnn_model(input_size, in_ch)
+    qonnx_proto = brevitas.export.export_qonnx(
+        brevitas_model, torch.randn(brevitas_model.ishape)
+    )
+    qonnx_model = ModelWrapper(qonnx_proto)
+    qonnx_model = qonnx.util.cleanup.cleanup_model(qonnx_model)
     accelerators, lbir_model = generate.accelerators(
-        model,
-        ishape=model.ishape,
+        qonnx_model,
+        ishape=brevitas_model.ishape,
         minimize="delay",
         debug=request.config.getoption("--debug-trans"),
     )
@@ -478,9 +496,12 @@ def test_combinational_cnn(request, c4ml_server, input_size, in_ch):
     )
     assert circuit is not None
     for x in data:
-        sw_res = (
-            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
-        )
+        expanded_x = np.expand_dims(x, axis=0)
+        sw_res = brevitas_model.forward(torch.from_numpy(expanded_x)).detach().numpy()
+        inp_name = qonnx_proto.graph.input[0].name
+        qonnx_res = execute_onnx(qonnx_model, {inp_name: expanded_x})
+        qonnx_res = qonnx_res[list(qonnx_res.keys())[0]]
         hw_res = circuit(x)
+        assert np.array_equal(sw_res.flatten(), qonnx_res.flatten())
         assert np.array_equal(sw_res.flatten(), hw_res.flatten())
     circuit.delete_from_server()

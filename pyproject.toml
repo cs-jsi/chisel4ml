@@ -20,12 +20,8 @@ keywords = ["Chisel", "FPGA", "quantized neural networks"]
 dynamic=["version"]
 dependencies = [
     "qonnx[qkeras] @ git+https://github.com/jurevreca12/qonnx",  # TODO
-    "brevitas",
     "ortools",
     "grpcio>1.0.0",
-    "tf2-keras-surgeon",
-    "librosa",
-    "brevitas",
     "onnxoptimizer"
 ]
 
@@ -50,7 +46,9 @@ dev = [
     "build",
     "pre_commit",
     "tensorflow-datasets",
-    "pydub"
+    "pydub",
+    "librosa",
+    "brevitas",
 ]
 
 [project.urls]
