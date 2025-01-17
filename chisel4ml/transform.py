@@ -96,7 +96,6 @@ def qonnx_to_lbir(
         transforms = DEFAULT_QONNX_TRANSFORMS
     else:
         transforms = custom_trans_list
-    qonnx.custom_op.registry.register_custom_domain("chisel4ml")
     if cleanup:
         modelwrap = qonnx.util.cleanup.cleanup_model(modelwrap)
 

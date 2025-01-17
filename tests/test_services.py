@@ -258,37 +258,9 @@ def test_combinational_conv(
     brevitas_model, data = get_conv_layer_model(
         input_ch, output_ch, kernel_size, padding, stride, iq, wq, bq, oq
     )
-    qonnx_proto = brevitas.export.export_qonnx(
-        brevitas_model, torch.randn(brevitas_model.ishape)
-    )
-    qonnx_model = ModelWrapper(qonnx_proto)
-    qonnx_model = qonnx.util.cleanup.cleanup_model(qonnx_model)
-    accelerators, lbir_model = generate.accelerators(
-        qonnx_model,
-        ishape=brevitas_model.ishape,
-        minimize="delay",
-        debug=request.config.getoption("--debug-trans"),
-    )
-    circuit = generate.circuit(
-        accelerators,
-        lbir_model,
-        use_verilator=request.config.getoption("--use-verilator"),
-        gen_waveform=request.config.getoption("--gen-waveform"),
-        waveform_type=request.config.getoption("--waveform-type"),
-        gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        server=c4ml_server,
-    )
-    assert circuit is not None
-    for x in data:
-        expanded_x = np.expand_dims(x, axis=0)
-        sw_res = brevitas_model.forward(torch.from_numpy(expanded_x)).detach().numpy()
-        inp_name = qonnx_proto.graph.input[0].name
-        qonnx_res = execute_onnx(qonnx_model, {inp_name: expanded_x})
-        qonnx_res = qonnx_res[list(qonnx_res.keys())[0]]
-        hw_res = circuit(x)
-        assert np.array_equal(sw_res.flatten(), qonnx_res.flatten())
-        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
-    circuit.delete_from_server()
+    qonnx_model = _brevitas_to_qonnx(brevitas_model, brevitas_model.ishape)
+    circuit = _qonnx_to_circuit(qonnx_model, request, c4ml_server)
+    _compare_models(qonnx_model, circuit, data)
 
 
 @pytest.mark.parametrize("input_ch", (3,))
@@ -313,7 +285,7 @@ def test_combinational_conv_dw(
     bq,
     oq,
 ):
-    model, data = get_conv_layer_model(
+    brevitas_model, data = get_conv_layer_model(
         input_ch,
         output_ch,
         kernel_size,
@@ -325,29 +297,9 @@ def test_combinational_conv_dw(
         oq,
         depthwise=True,
     )
-    accelerators, lbir_model = generate.accelerators(
-        model,
-        ishape=model.ishape,
-        minimize="delay",
-        debug=request.config.getoption("--debug-trans"),
-    )
-    circuit = generate.circuit(
-        accelerators,
-        lbir_model,
-        use_verilator=request.config.getoption("--use-verilator"),
-        gen_waveform=request.config.getoption("--gen-waveform"),
-        waveform_type=request.config.getoption("--waveform-type"),
-        gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        server=c4ml_server,
-    )
-    assert circuit is not None
-    for x in data:
-        sw_res = (
-            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
-        )
-        hw_res = circuit(x)
-        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
-    circuit.delete_from_server()
+    qonnx_model = _brevitas_to_qonnx(brevitas_model, brevitas_model.ishape)
+    circuit = _qonnx_to_circuit(qonnx_model, request, c4ml_server)
+    _compare_models(qonnx_model, circuit, data)
 
 
 @pytest.mark.parametrize("input_size", ((4, 4), (8, 15)))
@@ -365,32 +317,12 @@ def test_combinational_conv_dw(
 def test_combinational_maxpool(
     request, c4ml_server, input_size, channels, kernel_size, padding, stride, iq
 ):
-    model, data = get_maxpool_layer_model(
+    brevitas_model, data = get_maxpool_layer_model(
         channels, input_size, kernel_size, padding, stride, iq
     )
-    accelerators, lbir_model = generate.accelerators(
-        model,
-        ishape=model.ishape,
-        minimize="delay",
-        debug=request.config.getoption("--debug-trans"),
-    )
-    circuit = generate.circuit(
-        accelerators,
-        lbir_model,
-        use_verilator=request.config.getoption("--use-verilator"),
-        gen_waveform=request.config.getoption("--gen-waveform"),
-        waveform_type=request.config.getoption("--waveform-type"),
-        gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        server=c4ml_server,
-    )
-    assert circuit is not None
-    for x in data:
-        sw_res = (
-            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
-        )
-        hw_res = circuit(x)
-        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
-    circuit.delete_from_server()
+    qonnx_model = _brevitas_to_qonnx(brevitas_model, brevitas_model.ishape)
+    circuit = _qonnx_to_circuit(qonnx_model, request, c4ml_server)
+    _compare_models(qonnx_model, circuit, data)
 
 
 @pytest.mark.parametrize("in_features", (4, 8, 32))
@@ -403,32 +335,12 @@ def test_combinational_maxpool(
 def test_combinational_fullyconnected(
     request, c4ml_server, in_features, out_features, bias, iq, wq, bq, oq
 ):
-    model, data = get_linear_layer_model(
+    brevitas_model, data = get_linear_layer_model(
         in_features, out_features, bias, iq, wq, bq, oq
     )
-    accelerators, lbir_model = generate.accelerators(
-        model,
-        ishape=model.ishape,
-        minimize="delay",
-        debug=request.config.getoption("--debug-trans"),
-    )
-    circuit = generate.circuit(
-        accelerators,
-        lbir_model,
-        use_verilator=request.config.getoption("--use-verilator"),
-        gen_waveform=request.config.getoption("--gen-waveform"),
-        waveform_type=request.config.getoption("--waveform-type"),
-        gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        server=c4ml_server,
-    )
-    assert circuit is not None
-    for x in data:
-        sw_res = (
-            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
-        )
-        hw_res = circuit(x)
-        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
-    circuit.delete_from_server()
+    qonnx_model = _brevitas_to_qonnx(brevitas_model, brevitas_model.ishape)
+    circuit = _qonnx_to_circuit(qonnx_model, request, c4ml_server)
+    _compare_models(qonnx_model, circuit, data)
 
 
 @pytest.mark.parametrize("in_features", (2,))
@@ -442,46 +354,33 @@ def test_combinational_fullyconnected(
 def test_combinational_fullyconnected_nonunitscale(
     request, c4ml_server, in_features, out_features, bias, iq, wq, bq, oq, weight_scale
 ):
-    model, data = get_linear_layer_model(
+    brevitas_model, data = get_linear_layer_model(
         in_features, out_features, bias, iq, wq, bq, oq, weight_scale
     )
-    accelerators, lbir_model = generate.accelerators(
-        model,
-        ishape=model.ishape,
-        minimize="delay",
-        debug=request.config.getoption("--debug-trans"),
-    )
-    circuit = generate.circuit(
-        accelerators,
-        lbir_model,
-        use_verilator=request.config.getoption("--use-verilator"),
-        gen_waveform=request.config.getoption("--gen-waveform"),
-        waveform_type=request.config.getoption("--waveform-type"),
-        gen_timeout_sec=request.config.getoption("--generation-timeout"),
-        server=c4ml_server,
-    )
-    assert circuit is not None
-    for x in data:
-        sw_res = (
-            model.forward(torch.from_numpy(np.expand_dims(x, axis=0))).detach().numpy()
-        )
-        hw_res = circuit(x)
-        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
-    circuit.delete_from_server()
+    qonnx_model = _brevitas_to_qonnx(brevitas_model, brevitas_model.ishape)
+    circuit = _qonnx_to_circuit(qonnx_model, request, c4ml_server)
+    _compare_models(qonnx_model, circuit, data)
 
 
 @pytest.mark.parametrize("input_size", ((6, 6),))
 @pytest.mark.parametrize("in_ch", (1, 3))
 def test_combinational_cnn(request, c4ml_server, input_size, in_ch):
     brevitas_model, data = get_cnn_model(input_size, in_ch)
-    qonnx_proto = brevitas.export.export_qonnx(
-        brevitas_model, torch.randn(brevitas_model.ishape)
-    )
+    qonnx_model = _brevitas_to_qonnx(brevitas_model, brevitas_model.ishape)
+    circuit = _qonnx_to_circuit(qonnx_model, request, c4ml_server)
+    _compare_models(qonnx_model, circuit, data)
+
+
+def _brevitas_to_qonnx(brevitas_model, input_shape):
+    qonnx_proto = brevitas.export.export_qonnx(brevitas_model, torch.randn(input_shape))
     qonnx_model = ModelWrapper(qonnx_proto)
     qonnx_model = qonnx.util.cleanup.cleanup_model(qonnx_model)
+    return qonnx_model
+
+
+def _qonnx_to_circuit(qonnx_model, request, c4ml_server):
     accelerators, lbir_model = generate.accelerators(
         qonnx_model,
-        ishape=brevitas_model.ishape,
         minimize="delay",
         debug=request.config.getoption("--debug-trans"),
     )
@@ -495,13 +394,15 @@ def test_combinational_cnn(request, c4ml_server, input_size, in_ch):
         server=c4ml_server,
     )
     assert circuit is not None
-    for x in data:
+    return circuit
+
+
+def _compare_models(qonnx_model, circuit, test_data):
+    for x in test_data:
         expanded_x = np.expand_dims(x, axis=0)
-        sw_res = brevitas_model.forward(torch.from_numpy(expanded_x)).detach().numpy()
-        inp_name = qonnx_proto.graph.input[0].name
-        qonnx_res = execute_onnx(qonnx_model, {inp_name: expanded_x})
+        input_name = qonnx_model.model.graph.input[0].name
+        qonnx_res = execute_onnx(qonnx_model, {input_name: expanded_x})
         qonnx_res = qonnx_res[list(qonnx_res.keys())[0]]
         hw_res = circuit(x)
-        assert np.array_equal(sw_res.flatten(), qonnx_res.flatten())
-        assert np.array_equal(sw_res.flatten(), hw_res.flatten())
+        assert np.array_equal(hw_res.flatten(), qonnx_res.flatten())
     circuit.delete_from_server()
