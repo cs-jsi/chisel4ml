@@ -1,12 +1,14 @@
-import brevitas
+from brevitas.export import export_qonnx
 import numpy as np
 import pytest
-import qonnx
 import torch
 from qonnx.core.modelwrapper import ModelWrapper
 from qonnx.core.onnx_exec import execute_onnx
+from qonnx.util.cleanup import cleanup_model
 
 from chisel4ml import generate
+from chisel4ml import transform
+
 from tests.brevitas_models import get_cnn_model
 from tests.brevitas_models import get_conv_layer_model
 from tests.brevitas_models import get_linear_layer_model
@@ -155,17 +157,20 @@ def test_combinational_cnn(request, c4ml_server, input_size, in_ch):
 
 
 def _brevitas_to_qonnx(brevitas_model, input_shape):
-    qonnx_proto = brevitas.export.export_qonnx(brevitas_model, torch.randn(input_shape))
+    qonnx_proto =export_qonnx(brevitas_model, torch.randn(input_shape))
     qonnx_model = ModelWrapper(qonnx_proto)
-    qonnx_model = qonnx.util.cleanup.cleanup_model(qonnx_model)
+    qonnx_model = cleanup_model(qonnx_model)
     return qonnx_model
 
 
 def _qonnx_to_circuit(qonnx_model, request, c4ml_server):
-    accelerators, lbir_model = generate.accelerators(
+    lbir_model = transform.qonnx_to_lbir(
         qonnx_model,
-        minimize="delay",
         debug=request.config.getoption("--debug-trans"),
+    )
+    accelerators = generate.accelerators(
+        lbir_model,
+        minimize="delay",
     )
     circuit = generate.circuit(
         accelerators,
@@ -189,3 +194,5 @@ def _compare_models(qonnx_model, circuit, test_data):
         hw_res = circuit(x)
         assert np.array_equal(hw_res.flatten(), qonnx_res.flatten())
     circuit.delete_from_server()
+
+

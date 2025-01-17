@@ -20,9 +20,9 @@ keywords = ["Chisel", "FPGA", "quantized neural networks"]
 dynamic=["version"]
 dependencies = [
     "qonnx",
+    "onnxoptimizer",
     "ortools",
     "grpcio>1.0.0",
-    "onnxoptimizer"
 ]
 
 [tool.setuptools.dynamic]

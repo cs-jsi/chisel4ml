@@ -14,8 +14,7 @@ import onnx
 import qonnx.converters
 import qonnx.custom_op.registry
 import qonnx.util.cleanup
-import torch
-from brevitas.export import export_qonnx
+
 from onnx.onnx_ml_pb2 import NodeProto
 from qonnx.core.modelwrapper import ModelWrapper
 from qonnx.transformation.double_to_single_float import DoubleToSingleFloat
@@ -72,19 +71,13 @@ QONNX_TO_LBIR_TRANSFORMS = [
 ]
 
 
-def brevitas_to_qonnx(brevitas_model, ishape):
-    qonnx_proto = export_qonnx(brevitas_model, torch.randn(ishape))
-    modelwrap = qonnx.core.modelwrapper.ModelWrapper(qonnx_proto)
-    return modelwrap
-
-
 def qonnx_to_lbir(
     modelwrap: ModelWrapper,
     name="chisel4ml_model",
     custom_trans_list=[],
     cleanup=True,
     debug=False,
-) -> lbir.Model:
+) -> lbir.Model: # type: ignore
     "Applys transformation to a QONNX model, and returns a LBIR model."
     if len(custom_trans_list) == 0:
         transforms = DEFAULT_QONNX_TRANSFORMS
@@ -111,7 +104,7 @@ def qonnx_to_lbir(
     return lbir_model
 
 
-def _uwrap_qonnx_to_lbir(onnx_model: ModelWrapper, name: str) -> lbir.Model:
+def _uwrap_qonnx_to_lbir(onnx_model: ModelWrapper, name: str) -> lbir.Model: # type: ignore
     if (
         onnx_model.graph.node[0].op_type == "Reshape"
         and onnx_model.graph.node[-1].op_type == "Reshape"
@@ -130,7 +123,7 @@ def _uwrap_qonnx_to_lbir(onnx_model: ModelWrapper, name: str) -> lbir.Model:
     )
 
 
-def _unwrap_qonnx_layer_to_lbir(layer: NodeProto) -> lbir.LayerWrap:
+def _unwrap_qonnx_layer_to_lbir(layer: NodeProto) -> lbir.LayerWrap: # type: ignore
     if layer.op_type == "QDense":
         qdense_str = onnx.helper.get_node_attr_value(layer, "qdense")
         return lbir.LayerWrap(dense=lbir.DenseConfig.FromString(qdense_str))

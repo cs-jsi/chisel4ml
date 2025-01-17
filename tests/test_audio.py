@@ -6,6 +6,7 @@ import pytest
 import torch
 
 from chisel4ml import generate
+from chisel4ml import transform
 from chisel4ml.preprocess.fft_torch_op import FFTreal_layer
 from chisel4ml.preprocess.lmfe_torch_op import lmfe_layer
 from tests.brevitas_quantizers import Int12ActQuant
@@ -13,6 +14,8 @@ from tests.brevitas_quantizers import Int31ActQuant
 from tests.brevitas_quantizers import Int32ActQuant
 from tests.brevitas_quantizers import Int33ActQuant
 from tests.brevitas_quantizers import UInt8ActQuant
+from tests.test_services import _brevitas_to_qonnx
+from qonnx.core.onnx_exec import execute_onnx
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -25,7 +28,7 @@ def get_frames(tone_freq, amplitude, function, frame_length, num_frames):
     return [(frame, 0)]  # we add this dummy 0 to be compatible with audio_data
 
 
-def get_model(fft_size, num_frames, num_mels):
+def get_brevitas_model(fft_size, num_frames, num_mels):
     output_quant_dict = {128: Int31ActQuant, 256: Int32ActQuant, 512: Int33ActQuant}
 
     class Model(torch.nn.Module):
@@ -89,17 +92,20 @@ def test_fft(
     num_frames,
 ):
     frames = get_frames(tone_freq, amplitude, function, frame_length, num_frames)
-    model = get_model(
+    brevitas_model = get_brevitas_model(
         fft_size=frame_length,
         num_frames=num_frames,
         num_mels=0,  # we dont use the lmfe layer in this test
     )
     ishape = (1, num_frames, frame_length)
-    accelerators, lbir_model = generate.accelerators(
-        model,
-        ishape=ishape,
-        minimize="area",
+    qonnx_model = _brevitas_to_qonnx(brevitas_model, ishape)
+    lbir_model = transform.qonnx_to_lbir(
+        qonnx_model,
         debug=request.config.getoption("--debug-trans"),
+    )
+    accelerators = generate.accelerators(
+        lbir_model,
+        minimize="area", 
     )
     audio_preproc = generate.circuit(
         accelerators,
@@ -112,15 +118,18 @@ def test_fft(
     )
     for frame, _ in frames:
         hw_res = audio_preproc(frame, sim_timeout_sec=400) / 2**12
-        sw_res = model(torch.from_numpy(frame.reshape(1, num_frames, frame_length)))
+        expanded_x = frame.reshape(1, num_frames, frame_length)
+        input_name = qonnx_model.model.graph.input[0].name
+        qonnx_res = execute_onnx(qonnx_model, {input_name: expanded_x})
+        qonnx_res = qonnx_res[list(qonnx_res.keys())[0]]
         if request.config.getoption("--visualize"):
             import matplotlib.pyplot as plt
 
             plt.plot(hw_res.flatten(), color="r")
-            plt.plot(sw_res.numpy().flatten(), color="g", linestyle="dashed")
+            plt.plot(qonnx_res.numpy().flatten(), color="g", linestyle="dashed")
             plt.show()
         assert np.allclose(
-            sw_res.numpy().reshape(num_frames, frame_length),
+            qonnx_res.reshape(num_frames, frame_length),
             hw_res,
             atol=10,
             rtol=0.05,
@@ -151,13 +160,16 @@ def test_lmfe(
     num_mels,
 ):
     frames = get_frames(tone_freq, amplitude, function, frame_length, num_frames)
-    model = get_model(fft_size=frame_length, num_frames=num_frames, num_mels=num_mels)
+    brevitas_model = get_brevitas_model(fft_size=frame_length, num_frames=num_frames, num_mels=num_mels)    
     ishape = (1, num_frames, frame_length)
-    accels, lbir_model = generate.accelerators(
-        model,
-        ishape=ishape,
-        minimize="area",
+    qonnx_model = _brevitas_to_qonnx(brevitas_model, ishape)
+    lbir_model = transform.qonnx_to_lbir(
+        qonnx_model,
         debug=request.config.getoption("--debug-trans"),
+    )
+    accels = generate.accelerators(
+        lbir_model,
+        minimize="area",
     )
     audio_preproc = generate.circuit(
         accels,
@@ -170,20 +182,19 @@ def test_lmfe(
     )
     for frame, _ in frames:
         hw_res = audio_preproc(frame, sim_timeout_sec=400) - 24
-        sw_res = model(
-            torch.from_numpy(
-                frame.reshape(1, num_frames, frame_length).astype(np.float32)
-            )
-        )
+        expanded_x = frame.reshape(1, num_frames, frame_length)
+        input_name = qonnx_model.model.graph.input[0].name
+        qonnx_res = execute_onnx(qonnx_model, {input_name: expanded_x})
+        qonnx_res = qonnx_res[list(qonnx_res.keys())[0]]
 
         if request.config.getoption("--visualize"):
             import matplotlib.pyplot as plt
 
             plt.plot(hw_res.flatten(), color="r")
-            plt.plot(sw_res.numpy().flatten(), color="g", linestyle="dashed")
+            plt.plot(qonnx_res.numpy().flatten(), color="g", linestyle="dashed")
             plt.show()
         assert np.allclose(
-            sw_res.numpy().flatten(),
+            qonnx_res.flatten(),
             hw_res.flatten(),
             atol=10,
             rtol=0.05,
