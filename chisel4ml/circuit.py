@@ -16,10 +16,10 @@ from pathlib import Path
 import numpy as np
 
 import chisel4ml.lbir.services_pb2 as services
-from chisel4ml import transforms
 from chisel4ml.chisel4ml_server import Chisel4mlServer
 from chisel4ml.chisel4ml_server import connect_to_server
 from chisel4ml.lbir.qtensor_pb2 import QTensor
+from chisel4ml.transforms.numpy_transforms import numpy_to_qtensor
 from chisel4ml.transforms.qonnx_utils import qtensor_to_quantizer
 
 log = logging.getLogger(__name__)
@@ -54,9 +54,7 @@ class Circuit:
 
     def __call__(self, np_arr, sim_timeout_sec=200):
         "Simulate the circuit, timeout in seconds."
-        qtensors = transforms.numpy_transforms.numpy_to_qtensor(
-            np_arr, self.input_quantizer, self.input_qtensor
-        )
+        qtensors = numpy_to_qtensor(np_arr, self.input_quantizer, self.input_qtensor)
         run_sim_params = services.RunSimulationParams(
             circuit_id=self.circuit_id, inputs=qtensors
         )

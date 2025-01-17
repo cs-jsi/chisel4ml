@@ -72,14 +72,12 @@ test_opts_dict = {
     "function": (np.cos,),
     "frame_length": (128, 256, 512),
     "num_frames": (8, 32),
-    "data": ("generated",),
 }
 test_opts_list = list(itertools.product(*test_opts_dict.values()))
-test_opts_list.append((0, 0.0, None, 512, 32, "audio"))
 
 
 @pytest.mark.parametrize(
-    "tone_freq,amplitude,function,frame_length,num_frames,data", test_opts_list
+    "tone_freq,amplitude,function,frame_length,num_frames", test_opts_list
 )
 def test_fft(
     request,
@@ -89,17 +87,8 @@ def test_fft(
     function,
     frame_length,
     num_frames,
-    data,
-    audio_data,
 ):
-    if data == "generated":
-        frames = get_frames(tone_freq, amplitude, function, frame_length, num_frames)
-    elif data == "audio":
-        _, _, frames, _, _, _, _ = audio_data
-        frames = list(frames)[:5]
-    else:
-        raise ValueError
-
+    frames = get_frames(tone_freq, amplitude, function, frame_length, num_frames)
     model = get_model(
         fft_size=frame_length,
         num_frames=num_frames,
@@ -142,14 +131,13 @@ def test_fft(
 test_opts_lmfe_dict = test_opts_dict.copy()
 test_opts_lmfe_dict["num_mels"] = (10, 20)
 test_opts_lmfe_list = list(itertools.product(*test_opts_lmfe_dict.values()))
-test_opts_lmfe_list.append((0, 0.0, None, 512, 32, "audio", 20))
 
 
 @pytest.mark.skip(
     "One test fails. Should be revisited when generalizing scaling factor behavior."
 )
 @pytest.mark.parametrize(
-    "tone_freq,amplitude,function,frame_length,num_frames,data,num_mels",
+    "tone_freq,amplitude,function,frame_length,num_frames,num_mels",
     test_opts_lmfe_list,
 )
 def test_lmfe(
@@ -160,17 +148,9 @@ def test_lmfe(
     function,
     frame_length,
     num_frames,
-    data,
     num_mels,
-    audio_data,
 ):
-    if data == "generated":
-        frames = get_frames(tone_freq, amplitude, function, frame_length, num_frames)
-    elif data == "audio":
-        _, _, frames, _, _, _, _ = audio_data
-        frames = list(frames)[:5]
-    else:
-        raise ValueError
+    frames = get_frames(tone_freq, amplitude, function, frame_length, num_frames)
     model = get_model(fft_size=frame_length, num_frames=num_frames, num_mels=num_mels)
     ishape = (1, num_frames, frame_length)
     accels, lbir_model = generate.accelerators(

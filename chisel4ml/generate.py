@@ -12,7 +12,6 @@ import itertools
 import logging
 
 import numpy as np
-import tensorflow as tf
 import torch
 from ortools.sat.python import cp_model
 from qonnx.core.modelwrapper import ModelWrapper
@@ -81,9 +80,7 @@ def solution_to_accelerators(solution, lbir_layers):
 
 
 def accelerators(model, ishape=None, num_layers=None, minimize="area", debug=False):
-    if isinstance(model, tf.keras.Model):
-        qonnx_model = transform.qkeras_to_qonnx(model)
-    elif isinstance(model, torch.nn.Module):
+    if isinstance(model, torch.nn.Module):
         qonnx_model = transform.brevitas_to_qonnx(model, ishape)
     elif isinstance(model, ModelWrapper):
         qonnx_model = model

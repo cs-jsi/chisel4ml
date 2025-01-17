@@ -8,46 +8,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-__all__ = ["qkeras_transform_list"]
-
-import os
-import importlib
-
-from chisel4ml.transforms.qkeras_transforms import QKerasTransform
-from typing import List
-from chisel4ml.transforms.qonnx_to_lbir import (  # noqa: F401
-    QONNXToLBIR,
-    WeightQuantToQTensor,
-    QuantToQTensor,
-    UnquantizedBiasToQTensor,
-    UnquantizedOutputToQTensor,
-    InputReluQTensorToQTensor,
-    AddInputOrOutputQTensorToReshape,
-    AddDummyBiasToConv,
-    AddFFTrealOutputShape,
-    RemoveFlattenNode,
-    CleanupQTensors,
-    AutoPadToPad,
-    MergePad,
-)
 from chisel4ml.transforms.extract_quantized_bias import (  # noqa: F401
     ExtractQuantizedBiasFromConv,
 )
-
-qkeras_trans_list: List[QKerasTransform] = list()
-
-
-def register_qkeras_transform(cls):
-    if not issubclass(cls, QKerasTransform):
-        raise ValueError(f"Class {cls} is not a subclass of {QKerasTransform}!")
-    qkeras_trans_list.append(cls())
-    return cls
-
-
-for file in os.listdir(os.path.dirname(__file__)):
-    if file.endswith(".py") and not file.startswith("_"):
-        module_name = file[: file.find(".py")]
-        module = importlib.import_module("chisel4ml.transforms." + module_name)
-
-    qkeras_trans_list = sorted(qkeras_trans_list, key=lambda x: x.order)
+from chisel4ml.transforms.qonnx_to_lbir import AddDummyBiasToConv  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import AddFFTrealOutputShape  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import (  # noqa: F401
+    AddInputOrOutputQTensorToReshape,
+)
+from chisel4ml.transforms.qonnx_to_lbir import AutoPadToPad  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import CleanupQTensors  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import InputReluQTensorToQTensor  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import MergePad  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import QONNXToLBIR  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import QuantToQTensor  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import RemoveFlattenNode  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import UnquantizedBiasToQTensor  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import UnquantizedOutputToQTensor  # noqa: F401
+from chisel4ml.transforms.qonnx_to_lbir import WeightQuantToQTensor  # noqa: F401

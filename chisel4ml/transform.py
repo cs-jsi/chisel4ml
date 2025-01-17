@@ -72,12 +72,6 @@ QONNX_TO_LBIR_TRANSFORMS = [
 ]
 
 
-def qkeras_to_qonnx(qkeras_model):
-    qonnx_proto, _ = qonnx.converters.from_keras(qkeras_model)
-    modelwrap = qonnx.core.modelwrapper.ModelWrapper(qonnx_proto)
-    return modelwrap
-
-
 def brevitas_to_qonnx(brevitas_model, ishape):
     qonnx_proto = export_qonnx(brevitas_model, torch.randn(ishape))
     modelwrap = qonnx.core.modelwrapper.ModelWrapper(qonnx_proto)
