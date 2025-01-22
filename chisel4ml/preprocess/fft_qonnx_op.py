@@ -11,8 +11,33 @@
 import numpy as np
 from onnx import helper
 from onnx import TensorProto
+from onnxruntime_extensions import onnx_op
+from onnxruntime_extensions import PyCustomOpDef
 from qonnx.core.datatype import DataType
 from qonnx.custom_op.base import CustomOp
+
+
+@onnx_op(
+    op_type="chisel4ml.preprocess::FFTreal",
+    attrs={
+        "fft_size": PyCustomOpDef.dt_int64,
+        "num_frames": PyCustomOpDef.dt_int64,
+        "win_fn": PyCustomOpDef.dt_float,
+    },
+)
+def FFTreal_onnx_op(x, **kwargs):
+    win_fn = kwargs["win_fn"]
+    fft_size = kwargs["fft_size"]
+    num_frames = kwargs["num_frames"]
+    results = []
+    for frame in x:
+        res = np.fft.fft(frame * win_fn, norm="backward", axis=-1).real
+        results.append(np.expand_dims(res, axis=-1).astype(np.float32))
+    ret = np.reshape(
+        np.array(results),
+        [len(x), num_frames, fft_size, 1],
+    )
+    return ret
 
 
 class FFTreal(CustomOp):

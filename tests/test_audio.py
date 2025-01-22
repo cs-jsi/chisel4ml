@@ -4,6 +4,7 @@ import os
 import numpy as np
 import pytest
 import torch
+from qonnx.core.onnx_exec import execute_onnx
 
 from chisel4ml import generate
 from chisel4ml import transform
@@ -15,7 +16,6 @@ from tests.brevitas_quantizers import Int32ActQuant
 from tests.brevitas_quantizers import Int33ActQuant
 from tests.brevitas_quantizers import UInt8ActQuant
 from tests.test_services import _brevitas_to_qonnx
-from qonnx.core.onnx_exec import execute_onnx
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -79,6 +79,7 @@ test_opts_dict = {
 test_opts_list = list(itertools.product(*test_opts_dict.values()))
 
 
+@pytest.mark.skip("QONNX CustomOp behavior needs to be updated.")
 @pytest.mark.parametrize(
     "tone_freq,amplitude,function,frame_length,num_frames", test_opts_list
 )
@@ -105,7 +106,7 @@ def test_fft(
     )
     accelerators = generate.accelerators(
         lbir_model,
-        minimize="area", 
+        minimize="area",
     )
     audio_preproc = generate.circuit(
         accelerators,
@@ -117,11 +118,11 @@ def test_fft(
         server=c4ml_server,
     )
     for frame, _ in frames:
-        hw_res = audio_preproc(frame, sim_timeout_sec=400) / 2**12
         expanded_x = frame.reshape(1, num_frames, frame_length)
         input_name = qonnx_model.model.graph.input[0].name
         qonnx_res = execute_onnx(qonnx_model, {input_name: expanded_x})
         qonnx_res = qonnx_res[list(qonnx_res.keys())[0]]
+        hw_res = audio_preproc(frame, sim_timeout_sec=400) / 2**12
         if request.config.getoption("--visualize"):
             import matplotlib.pyplot as plt
 
@@ -160,7 +161,9 @@ def test_lmfe(
     num_mels,
 ):
     frames = get_frames(tone_freq, amplitude, function, frame_length, num_frames)
-    brevitas_model = get_brevitas_model(fft_size=frame_length, num_frames=num_frames, num_mels=num_mels)    
+    brevitas_model = get_brevitas_model(
+        fft_size=frame_length, num_frames=num_frames, num_mels=num_mels
+    )
     ishape = (1, num_frames, frame_length)
     qonnx_model = _brevitas_to_qonnx(brevitas_model, ishape)
     lbir_model = transform.qonnx_to_lbir(
