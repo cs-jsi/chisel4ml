@@ -84,11 +84,12 @@ def c4ml_server(worker_id, request, free_port, tmp_path_factory):
 def generate_test_combiations():
     return [("my_accel1", 1), ("my_accel2", 2)], ["my_accel1_id", "mynto_accel2_id"]
 
+
 def pytest_generate_tests(metafunc):
     if "accelerator_qonnx" in metafunc.fixturenames:
         generated_tests, generated_test_names = generate_test_combiations()
         metafunc.parametrize(
-            argnames="accelerator_qonnx", 
+            argnames="accelerator_qonnx",
             argvalues=generated_tests,
-            ids=generated_test_names
+            ids=generated_test_names,
         )

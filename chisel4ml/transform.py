@@ -77,7 +77,7 @@ def qonnx_to_lbir(
     custom_trans_list=[],
     cleanup=True,
     debug=False,
-) -> lbir.Model: # type: ignore
+) -> lbir.Model:  # type: ignore
     "Applys transformation to a QONNX model, and returns a LBIR model."
     if len(custom_trans_list) == 0:
         transforms = DEFAULT_QONNX_TRANSFORMS
@@ -104,7 +104,9 @@ def qonnx_to_lbir(
     return lbir_model
 
 
-def _uwrap_qonnx_to_lbir(onnx_model: ModelWrapper, name: str) -> lbir.Model: # type: ignore
+def _uwrap_qonnx_to_lbir(
+    onnx_model: ModelWrapper, name: str
+) -> lbir.Model:  # type: ignore
     if (
         onnx_model.graph.node[0].op_type == "Reshape"
         and onnx_model.graph.node[-1].op_type == "Reshape"
@@ -123,7 +125,7 @@ def _uwrap_qonnx_to_lbir(onnx_model: ModelWrapper, name: str) -> lbir.Model: # t
     )
 
 
-def _unwrap_qonnx_layer_to_lbir(layer: NodeProto) -> lbir.LayerWrap: # type: ignore
+def _unwrap_qonnx_layer_to_lbir(layer: NodeProto) -> lbir.LayerWrap:  # type: ignore
     if layer.op_type == "QDense":
         qdense_str = onnx.helper.get_node_attr_value(layer, "qdense")
         return lbir.LayerWrap(dense=lbir.DenseConfig.FromString(qdense_str))

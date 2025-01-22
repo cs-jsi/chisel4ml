@@ -79,7 +79,10 @@ def solution_to_accelerators(solution, lbir_layers):
 
 def accelerators(lbir_model, num_layers=None, minimize="area"):
     if not isinstance(lbir_model, lbir.Model):
-        raise TypeError(f"Model of type {type(lbir_model)} not supported. Please provide a LBIR model.")
+        raise TypeError(
+            f"Model of type {type(lbir_model)} not supported. "
+            "Please provide a LBIR model."
+        )
     if num_layers is not None:
         assert num_layers <= len(lbir_model.layers)
         for _ in range(len(lbir_model.layers) - num_layers):

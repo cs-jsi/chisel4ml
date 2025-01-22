@@ -39,7 +39,7 @@ dev = [
     "pytest<8",
     "pytest-xdist",
     "grpcio-tools",
-    "pre_commit",
+    "pre-commit",
     "brevitas",
 ]
 audio = [

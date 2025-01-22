@@ -157,7 +157,7 @@ def test_combinational_cnn(request, c4ml_server, input_size, in_ch):
 
 
 def _brevitas_to_qonnx(brevitas_model, input_shape):
-    qonnx_proto =export_qonnx(brevitas_model, torch.randn(input_shape))
+    qonnx_proto = export_qonnx(brevitas_model, torch.randn(input_shape))
     qonnx_model = ModelWrapper(qonnx_proto)
     qonnx_model = cleanup_model(qonnx_model)
     return qonnx_model
@@ -194,5 +194,3 @@ def _compare_models(qonnx_model, circuit, test_data):
         hw_res = circuit(x)
         assert np.array_equal(hw_res.flatten(), qonnx_res.flatten())
     circuit.delete_from_server()
-
-

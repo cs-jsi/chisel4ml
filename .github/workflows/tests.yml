@@ -65,7 +65,7 @@ jobs:
       run: java -jar ./out/chisel4ml/assembly.dest/out.jar &> chisel4ml_sever.log &
 
     - name: Lint
-      run: flake8 -v --max-line-length=88 chisel4ml tests
+      run: tox -e lint
 
     - name: Run tests
       run: python -m pytest -x --use-verilator -n 4

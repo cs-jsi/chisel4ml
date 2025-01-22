@@ -1,4 +1,3 @@
-
 def test_functional_compatibility(accelerator_qonnx):
     accelerator, qonnx_model = accelerator_qonnx
     if accelerator == "my_accel1":
@@ -7,7 +6,3 @@ def test_functional_compatibility(accelerator_qonnx):
         assert qonnx_model == 2
     else:
         assert False
-
-
-
-        
