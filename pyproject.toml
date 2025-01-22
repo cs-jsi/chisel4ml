@@ -7,7 +7,7 @@ name = "chisel4ml"
 authors = [
     {name = "Jure Vreca", email = "jure.vreca@ijs.si"}
 ]
-description = "A Chisel based hardware generation library for highly quantized neural networks."
+description = "A Chisel based hardware generation library for deeply quantized neural networks."
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.8"
 license = { file = "LICENSE" }
@@ -19,14 +19,10 @@ classifiers = [
 keywords = ["Chisel", "FPGA", "quantized neural networks"]
 dynamic=["version"]
 dependencies = [
-    "qonnx[qkeras] @ git+https://github.com/jurevreca12/qonnx",  # TODO
-    "brevitas",
+    "qonnx",
+    "onnxoptimizer",
     "ortools",
     "grpcio>1.0.0",
-    "tf2-keras-surgeon",
-    "librosa",
-    "brevitas",
-    "onnxoptimizer"
 ]
 
 [tool.setuptools.dynamic]
@@ -40,17 +36,15 @@ git_describe_command = "git describe --tags"
 dev = [
     "tox<4",
     "tox-run-before",
-    "tox-gh-actions",
-    "flake8",
-    "Flake8-pyproject",
     "pytest<8",
-    "pytest-cases",
     "pytest-xdist",
     "grpcio-tools",
-    "build",
-    "pre_commit",
+    "pre-commit",
+    "brevitas",
+]
+audio = [
     "tensorflow-datasets",
-    "pydub"
+    "librosa",
 ]
 
 [project.urls]

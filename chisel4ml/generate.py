@@ -12,15 +12,12 @@ import itertools
 import logging
 
 import numpy as np
-import tensorflow as tf
-import torch
 from ortools.sat.python import cp_model
-from qonnx.core.modelwrapper import ModelWrapper
 
 from chisel4ml import chisel4ml_server
-from chisel4ml import transform
 from chisel4ml.accelerator import ACCELERATORS
 from chisel4ml.circuit import Circuit
+import chisel4ml.lbir.lbir_pb2 as lbir
 from chisel4ml.lbir.services_pb2 import Accelerator
 from chisel4ml.lbir.services_pb2 import GenerateCircuitParams
 from chisel4ml.lbir.services_pb2 import GenerateCircuitReturn
@@ -80,16 +77,12 @@ def solution_to_accelerators(solution, lbir_layers):
     return new_accels
 
 
-def accelerators(model, ishape=None, num_layers=None, minimize="area", debug=False):
-    if isinstance(model, tf.keras.Model):
-        qonnx_model = transform.qkeras_to_qonnx(model)
-    elif isinstance(model, torch.nn.Module):
-        qonnx_model = transform.brevitas_to_qonnx(model, ishape)
-    elif isinstance(model, ModelWrapper):
-        qonnx_model = model
-    else:
-        raise TypeError(f"Model of type {type(model)} not supported.")
-    lbir_model = transform.qonnx_to_lbir(qonnx_model, debug=debug)
+def accelerators(lbir_model, num_layers=None, minimize="area"):
+    if not isinstance(lbir_model, lbir.Model):
+        raise TypeError(
+            f"Model of type {type(lbir_model)} not supported. "
+            "Please provide a LBIR model."
+        )
     if num_layers is not None:
         assert num_layers <= len(lbir_model.layers)
         for _ in range(len(lbir_model.layers) - num_layers):
@@ -132,7 +125,7 @@ def accelerators(model, ishape=None, num_layers=None, minimize="area", debug=Fal
     assert solution_status in (cp_model.FEASIBLE, cp_model.OPTIMAL)
     solution = solution_collector.solution_list[0]
     accels = solution_to_accelerators(solution, lbir_model.layers)
-    return accels, lbir_model
+    return accels
 
 
 def circuit(

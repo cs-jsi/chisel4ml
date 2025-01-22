@@ -1,4 +1,3 @@
-import importlib
 import os
 import socket
 import subprocess
@@ -8,41 +7,8 @@ import pytest
 
 from chisel4ml.chisel4ml_server import Chisel4mlServer
 
-pytest_plugins = ["tests.data"]
-
-SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-MODEL_DIR = os.path.join(SCRIPT_DIR, "models")
-C4ML_SERVER = None
-TEST_MODELS_DICT = {}
-for _, _, files in os.walk(MODEL_DIR):
-    python_files = [f for f in files if f.endswith(".py")]
-    for file in python_files:
-        filename, extension = file.split(".")
-        if (
-            filename not in TEST_MODELS_DICT
-            and filename != "__init__"
-            and extension == "py"
-        ):
-            module = importlib.import_module(f"tests.models.{filename}")
-            f = getattr(module, f"case_{filename}")
-            TEST_MODELS_DICT[filename] = f
-            print(f"Added model: {filename} to TEST_MODELS_DICT.")
-TEST_MODELS_LIST = list(TEST_MODELS_DICT.values())
-
 
 def pytest_addoption(parser):
-    parser.addoption(
-        "--retrain",
-        action="store_true",
-        default=False,
-        help="Should trainable models be retrained?",
-    )
-    parser.addoption(
-        "--save-retrained",
-        action="store_true",
-        default=False,
-        help="Should the retrained models be saved also?",
-    )
     parser.addoption(
         "--use-verilator",
         action="store_true",
@@ -66,12 +32,6 @@ def pytest_addoption(parser):
         default=600,
         type=int,
         help="How many seconds should the generation timeout?",
-    )
-    parser.addoption(
-        "--num-layers",
-        default=None,
-        type=int,
-        help="How many layers of the model to take? (default all)",
     )
     parser.addoption(
         "--visualize",
@@ -119,3 +79,17 @@ def c4ml_server(worker_id, request, free_port, tmp_path_factory):
             c4ml_subproc.terminate()
         if c4ml_server is not None:
             c4ml_server.stop()
+
+
+def generate_test_combiations():
+    return [("my_accel1", 1), ("my_accel2", 2)], ["my_accel1_id", "mynto_accel2_id"]
+
+
+def pytest_generate_tests(metafunc):
+    if "accelerator_qonnx" in metafunc.fixturenames:
+        generated_tests, generated_test_names = generate_test_combiations()
+        metafunc.parametrize(
+            argnames="accelerator_qonnx",
+            argvalues=generated_tests,
+            ids=generated_test_names,
+        )
