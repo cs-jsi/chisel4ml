@@ -11,20 +11,20 @@
 import numpy as np
 from onnx import helper
 from onnx import TensorProto
-from onnxruntime_extensions import onnx_op
-from onnxruntime_extensions import PyCustomOpDef
+# from onnxruntime_extensions import onnx_op
+# from onnxruntime_extensions import PyCustomOpDef
 from qonnx.core.datatype import DataType
 from qonnx.custom_op.base import CustomOp
 
 
-@onnx_op(
-    op_type="chisel4ml.preprocess::FFTreal",
-    attrs={
-        "fft_size": PyCustomOpDef.dt_int64,
-        "num_frames": PyCustomOpDef.dt_int64,
-        "win_fn": PyCustomOpDef.dt_float,
-    },
-)
+# @onnx_op(
+#     op_type="chisel4ml.preprocess::FFTreal",
+#     attrs={
+#         "fft_size": PyCustomOpDef.dt_int64,
+#         "num_frames": PyCustomOpDef.dt_int64,
+#         "win_fn": PyCustomOpDef.dt_float,
+#     },
+# )
 def FFTreal_onnx_op(x, **kwargs):
     win_fn = kwargs["win_fn"]
     fft_size = kwargs["fft_size"]
